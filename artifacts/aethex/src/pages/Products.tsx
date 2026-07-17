@@ -279,7 +279,16 @@ export default function Products() {
     limit: 60,
   });
 
-  const { data: categories } = useListCategories();
+  const { data: categoriesData } = useListCategories();
+  const categories: any[] = Array.isArray(categoriesData)
+    ? categoriesData
+    : Array.isArray((categoriesData as any)?.data)
+      ? (categoriesData as any).data
+      : Array.isArray((categoriesData as any)?.categories)
+        ? (categoriesData as any).categories
+        : Array.isArray((categoriesData as any)?.items)
+          ? (categoriesData as any).items
+          : [];
   const addToCartMutation = useAddToCart();
 
   useEffect(() => { setLocalSearch(searchFilter); }, [searchFilter]);
