@@ -1,6 +1,9 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
+import { installMockApi } from "@/lib/mockApi";
+
+installMockApi();
 
 // Subdomain routing: cadus.aethex.in → /cadus-ai/
 if (window.location.hostname === "cadus.aethex.in") {
