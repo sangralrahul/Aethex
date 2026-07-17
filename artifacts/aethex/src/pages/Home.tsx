@@ -768,7 +768,16 @@ export default function Home() {
   const queryClient = useQueryClient();
 
   const { data: productsData, isLoading: loadingProducts } = useListProducts({ limit: 8, featured: true });
-  const { data: categories, isLoading: loadingCategories } = useListCategories();
+  const { data: categoriesData, isLoading: loadingCategories } = useListCategories();
+  const categories: any[] = Array.isArray(categoriesData)
+    ? categoriesData
+    : Array.isArray((categoriesData as any)?.data)
+      ? (categoriesData as any).data
+      : Array.isArray((categoriesData as any)?.categories)
+        ? (categoriesData as any).categories
+        : Array.isArray((categoriesData as any)?.items)
+          ? (categoriesData as any).items
+          : [];
 
   const addToCartMutation = useAddToCart();
 
