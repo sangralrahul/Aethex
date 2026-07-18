@@ -5,12 +5,9 @@ import { installMockApi } from "@/lib/mockApi";
 
 installMockApi();
 
-// Subdomain routing: cadus.aethex.in → /cadus-ai/
+// Subdomain routing: cadus.aethex.in → https://aethex.in/ai-assistant
 if (window.location.hostname === "cadus.aethex.in") {
-  const target = "/cadus-ai/";
-  if (!window.location.pathname.startsWith("/cadus-ai")) {
-    window.location.replace(target);
-  }
+  window.location.replace("https://aethex.in/ai-assistant");
 }
 
 createRoot(document.getElementById("root")!).render(<App />);
