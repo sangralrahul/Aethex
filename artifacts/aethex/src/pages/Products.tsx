@@ -374,7 +374,7 @@ export default function Products() {
   const currentSortLabel = SORT_OPTIONS.find(s => s.value === sortBy)?.label ?? "Relevance";
 
   return (
-    <div className="min-h-screen" style={{ background: "#F2F2F7" }}>
+    <div className="min-h-screen" style={{ background: "#F5F3EE" }}>
 
       {/* ── Page header ── */}
       {activeCategoryGradient && activeCategoryIcon ? (

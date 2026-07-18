@@ -155,7 +155,7 @@ export default function Jobs() {
     ), [search, specialty, city, type]);
 
   return (
-    <div className="min-h-screen" style={{ background: "#F2F2F7" }}>
+    <div className="min-h-screen" style={{ background: "#F5F3EE" }}>
       <PageHero
         tag="Careers"
         title="Medical Jobs Board"
@@ -188,7 +188,7 @@ export default function Jobs() {
                   <label className="block text-xs font-medium mb-1" style={{ color: "#636366" }}>{label}</label>
                   <select
                     className="w-full px-3 py-2 rounded-xl text-sm focus:outline-none"
-                    style={{ background: "#F2F2F7", border: "1px solid rgba(60,60,67,0.1)", color: "#1C1C1E" }}
+                    style={{ background: "#F5F3EE", border: "1px solid rgba(60,60,67,0.1)", color: "#1C1C1E" }}
                     value={val}
                     onChange={e => setter(e.target.value)}
                   >

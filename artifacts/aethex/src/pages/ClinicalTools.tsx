@@ -278,7 +278,7 @@ export default function ClinicalTools() {
   }, [query, activeCategory]);
 
   return (
-    <div className="min-h-screen" style={{ background: "#F2F2F7" }}>
+    <div className="min-h-screen" style={{ background: "#F5F3EE" }}>
 
       <PageHero
         tag="13 Tools · 21 Calculators"

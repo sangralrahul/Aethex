@@ -466,7 +466,7 @@ export default function DrugReference() {
   const totalLocked = DRUG_DATABASE.length - totalFree;
 
   return (
-    <div className="min-h-screen" style={{ background: "#F2F2F7" }}>
+    <div className="min-h-screen" style={{ background: "#F5F3EE" }}>
 
       {/* ── Hero ──────────────────────────────────────────────────── */}
       <PageHero

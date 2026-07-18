@@ -52,7 +52,7 @@ export default function Contact() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#F2F2F7] pb-16">
+    <div className="min-h-screen bg-[#F5F3EE] pb-16">
       <PageHero
         tag="AI-Powered Support"
         title="Contact AETHEX"
@@ -74,7 +74,7 @@ export default function Contact() {
                 </p>
               </div>
             </div>
-            <div className="bg-[#F2F2F7] border-l-2 border-[#00C2A8] rounded-r-xl p-5 text-[#1c1c1e] text-sm leading-relaxed whitespace-pre-wrap mb-6">
+            <div className="bg-[#F5F3EE] border-l-2 border-[#00C2A8] rounded-r-xl p-5 text-[#1c1c1e] text-sm leading-relaxed whitespace-pre-wrap mb-6">
               {result.aiResponse}
             </div>
             <div className="text-xs text-[#8e8e93] mb-6">

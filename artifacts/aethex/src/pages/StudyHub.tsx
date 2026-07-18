@@ -508,7 +508,7 @@ export default function StudyHub() {
   const comparePlatforms = platforms.filter(p => compareIds.includes(p.id));
 
   return (
-    <div className="min-h-screen " style={{ background: "#F2F2F7" }}>
+    <div className="min-h-screen " style={{ background: "#F5F3EE" }}>
 
       {/* ── Hero ─────────────────────────────────────────────────────── */}
       <PageHero
@@ -830,7 +830,7 @@ export default function StudyHub() {
                         border: "1px solid rgba(0,194,168,0.35)",
                         color: "#00A893",
                       } : {
-                        background: "#F2F2F7",
+                        background: "#F5F3EE",
                         border: "1px solid rgba(60,60,67,0.15)",
                         color: "#636366",
                         opacity: compareIds.length >= 3 && !compareIds.includes(platform.id) ? 0.4 : 1,

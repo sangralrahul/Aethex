@@ -634,7 +634,7 @@ export default function MedicalBooks() {
                         className="shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all"
                         style={isActive
                           ? { background: `${activeDegree.color}22`, color: activeDegree.color, border: `1px solid ${activeDegree.color}40` }
-                          : { background: "#F2F2F7", color: "#8E8E93", border: "1px solid rgba(60,60,67,0.12)" }}
+                          : { background: "#F5F3EE", color: "#8E8E93", border: "1px solid rgba(60,60,67,0.12)" }}
                       >
                         {sub.name}
                       </button>
