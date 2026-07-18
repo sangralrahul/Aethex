@@ -124,7 +124,7 @@ export default function CaseOfTheDay() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: "#F2F2F7" }}>
+    <div className="min-h-screen" style={{ background: "#F5F3EE" }}>
       <PageHero
         tag="Daily Clinical Learning"
         title="Case of the Day"
@@ -132,7 +132,7 @@ export default function CaseOfTheDay() {
         icon={<Stethoscope className="w-7 h-7" style={{ color: "rgba(255,255,255,0.82)" }} />}
       />
       {/* Case navigation bar */}
-      <div className="px-4 py-3" style={{ borderBottom: "1px solid rgba(60,60,67,0.08)", background: "#F2F2F7" }}>
+      <div className="px-4 py-3" style={{ borderBottom: "1px solid rgba(60,60,67,0.08)", background: "#F5F3EE" }}>
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <span className="text-xs font-medium" style={{ color: "#8E8E93" }}>
             Case {caseIndex + 1} of {clinicalCases.length}

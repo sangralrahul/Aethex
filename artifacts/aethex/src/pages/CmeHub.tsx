@@ -467,7 +467,7 @@ export default function CmeHub() {
   const specialties = [...new Set(COURSES.map(c => c.specialty))].length;
 
   return (
-    <div className="min-h-screen" style={{ background: "#F4F4F6" }}>
+    <div className="min-h-screen" style={{ background: "#F5F3EE" }}>
 
       <PageHero
         tag="NMC · MCI · IAP · CSI Approved"

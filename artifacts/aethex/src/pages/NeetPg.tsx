@@ -797,7 +797,7 @@ export default function NeetPg() {
 
   if (mode === "practice") {
     return (
-      <div className="min-h-screen py-12" style={{ background: "#F4F4F6" }}>
+      <div className="min-h-screen py-12" style={{ background: "#F5F3EE" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <PracticeMode questions={filteredQuestions.length ? filteredQuestions : QUESTIONS} onExit={() => setMode("hub")} />
         </div>
@@ -807,7 +807,7 @@ export default function NeetPg() {
 
   if (mode === "quicktest") {
     return (
-      <div className="min-h-screen py-12" style={{ background: "#F4F4F6" }}>
+      <div className="min-h-screen py-12" style={{ background: "#F5F3EE" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <QuickTest onExit={() => setMode("hub")} />
         </div>
@@ -816,7 +816,7 @@ export default function NeetPg() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: "#F4F4F6" }}>
+    <div className="min-h-screen" style={{ background: "#F5F3EE" }}>
 
       {/* ── Hero ── */}
       <PageHero

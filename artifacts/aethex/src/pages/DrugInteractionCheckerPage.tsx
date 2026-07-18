@@ -179,7 +179,7 @@ export default function DrugInteractionCheckerPage() {
   const minorCount = results?.filter((r) => r.interaction.severity === "minor").length ?? 0;
 
   return (
-    <div className="min-h-screen" style={{ background: "#F2F2F7" }}>
+    <div className="min-h-screen" style={{ background: "#F5F3EE" }}>
       <PageHero
         tag="Clinical Reference Only"
         title="Drug Interaction Checker"
@@ -203,7 +203,7 @@ export default function DrugInteractionCheckerPage() {
             {/* Tag input area */}
             <div
               className="flex flex-wrap gap-2 p-3 rounded-xl min-h-[52px] cursor-text transition-all"
-              style={{ background: "#F2F2F7", border: "1.5px solid rgba(60,60,67,0.14)" }}
+              style={{ background: "#F5F3EE", border: "1.5px solid rgba(60,60,67,0.14)" }}
               onClick={() => inputRef.current?.focus()}>
               {drugs.map((drug, i) => (
                 <span key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold"
