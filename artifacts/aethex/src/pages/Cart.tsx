@@ -85,7 +85,7 @@ export default function Cart() {
     <div className="min-h-screen pb-32 lg:pb-16" style={{ background: "#F5F3EE" }}>
       <PageHero
         tag="Shopping Cart"
-        title={isEmpty ? "Your Cart" : `Cart (${cart!.itemCount} ${cart!.itemCount === 1 ? "item" : "items"})`}
+        title={isEmpty ? "Your Cart" : `Cart (${items.reduce((s,i)=>s+i.quantity,0)} ${items.reduce((s,i)=>s+i.quantity,0) === 1 ? "item" : "items"})`}
         subtitle={isEmpty ? "Review your items and proceed to checkout" : `You'll save ${formatINR(totals.saved)} on this order`}
         icon={<ShoppingBag className="w-7 h-7" style={{ color: "rgba(255,255,255,0.82)" }} />}
       />
@@ -158,7 +158,7 @@ export default function Cart() {
 
               {/* Items */}
               <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
-                {cart!.items.map((item) => {
+                {items.map((item) => {
                   const original = Number((item as any).originalPrice) || Number(item.price);
                   const disc = original > item.price ? Math.round(((original - item.price) / original) * 100) : 0;
                   return (
@@ -280,7 +280,7 @@ export default function Cart() {
                   Price Details
                 </h3>
                 <div className="space-y-2.5 py-3 text-sm">
-                  <Row label={`Price (${cart!.itemCount} ${cart!.itemCount === 1 ? "item" : "items"})`} value={formatINR(totals.mrp)} />
+                  <Row label={`Price (${items.reduce((s,i)=>s+i.quantity,0)} ${items.reduce((s,i)=>s+i.quantity,0) === 1 ? "item" : "items"})`} value={formatINR(totals.mrp)} />
                   {totals.discount > 0 && <Row label="Discount" value={`− ${formatINR(totals.discount)}`} positive />}
                   {couponApplied && couponApplied.amount > 0 && <Row label={`Coupon (${couponApplied.code})`} value={`− ${formatINR(couponApplied.coupon ?? couponApplied.amount)}`} positive />}
                   <Row label="Delivery Charges" value={totals.delivery === 0 ? "FREE" : formatINR(totals.delivery)} positive={totals.delivery === 0} strike={totals.delivery === 0 ? "₹40" : undefined} />
