@@ -49,7 +49,7 @@ export default function Cart() {
     if (!code) return;
     // Simple demo: AETHEX10 = 10% off, SBI50 = ₹50 off
     if (!cart) return;
-    if (code === "AETHEX10") setCouponApplied({ code, amount: Math.round(cart.total * 0.10) });
+    if (code === "AETHEX10") setCouponApplied({ code, amount: Math.round((cart?.total ?? 0) * 0.10) });
     else if (code === "SBI50") setCouponApplied({ code, amount: 50 });
     else setCouponApplied({ code, amount: 0 });
   };
@@ -59,8 +59,8 @@ export default function Cart() {
 
   const totals = useMemo(() => {
     if (!cart) return { mrp: 0, discount: 0, subtotal: 0, delivery: 0, fee: 0, coupon: 0, total: 0, saved: 0 };
-    const mrp = cart.items.reduce((s, i) => s + (Number((i as any).originalPrice) || Number(i.price)) * i.quantity, 0);
-    const subtotal = cart.total;
+    const mrp = items.reduce((s, i) => s + (Number((i as any).originalPrice) || Number(i.price)) * i.quantity, 0);
+    const subtotal = (cart?.total ?? 0);
     const discount = Math.max(0, mrp - subtotal);
     const delivery = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : 40;
     const fee = PLATFORM_FEE;
