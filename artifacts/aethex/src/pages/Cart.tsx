@@ -54,7 +54,8 @@ export default function Cart() {
     else setCouponApplied({ code, amount: 0 });
   };
 
-  const isEmpty = !cart || cart.items.length === 0;
+  const items = cart?.items ?? [];
+  const isEmpty = items.length === 0;
 
   const totals = useMemo(() => {
     if (!cart) return { mrp: 0, discount: 0, subtotal: 0, delivery: 0, fee: 0, coupon: 0, total: 0, saved: 0 };
