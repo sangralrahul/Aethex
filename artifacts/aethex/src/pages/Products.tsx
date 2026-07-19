@@ -559,8 +559,8 @@ export default function Products() {
 
             {/* ── Product grid / list ── */}
             {loadingProducts ? (
-              <div className={cn(viewMode === "grid" ? "grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4" : "flex flex-col gap-3")}>
-                {Array.from({ length: 8 }).map((_, i) => (
+              <div className={cn(viewMode === "grid" ? "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3" : "flex flex-col gap-3")}>
+                {Array.from({ length: 12 }).map((_, i) => (
                   <div key={i} className={cn("animate-pulse rounded-2xl bg-white border border-slate-200", viewMode === "grid" ? "h-72" : "h-36")} />
                 ))}
               </div>
@@ -582,7 +582,7 @@ export default function Products() {
             ) : (
               <div className={cn(
                 viewMode === "grid"
-                  ? "grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4"
+                  ? "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3"
                   : "flex flex-col gap-3"
               )}>
                 {filteredProducts.map(product => (
