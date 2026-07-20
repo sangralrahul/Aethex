@@ -281,9 +281,9 @@ export function DiagramCarousel({ topicSlug = "", subjectSlug = "", conditionSlu
             <button key={i} onClick={() => setActive(i)}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
               style={{
-                background: active === i ? "#00C2A8" : "#21262D",
-                color: active === i ? "#0D1117" : "#8B949E",
-                border: `1px solid ${active === i ? "#00C2A8" : "#21262D"}`,
+                background: active === i ? "#00C2A8" : "#E5E1D8",
+                color: active === i ? "#F5F3EE" : "#6B7280",
+                border: `1px solid ${active === i ? "#00C2A8" : "#E5E1D8"}`,
               }}>
               {d.title}
             </button>
@@ -291,26 +291,26 @@ export function DiagramCarousel({ topicSlug = "", subjectSlug = "", conditionSlu
         </div>
       )}
 
-      <div className="rounded-xl overflow-hidden border" style={{ borderColor: "#21262D" }}>
-        <div className="px-4 py-2 border-b flex items-center justify-between" style={{ background: "#161B22", borderColor: "#21262D" }}>
-          <span className="text-sm font-semibold" style={{ color: "#E6EDF3" }}>{diagrams[active].title}</span>
+      <div className="rounded-xl overflow-hidden border" style={{ borderColor: "#E5E1D8" }}>
+        <div className="px-4 py-2 border-b flex items-center justify-between" style={{ background: "#FFFFFF", borderColor: "#E5E1D8" }}>
+          <span className="text-sm font-semibold" style={{ color: "#0F1729" }}>{diagrams[active].title}</span>
           {diagrams.length > 1 && (
             <div className="flex items-center gap-2">
               <button onClick={() => setActive(i => Math.max(0, i - 1))} disabled={active === 0}
                 className="p-1 rounded-lg disabled:opacity-30 transition-all hover:bg-white/5"
-                style={{ color: "#8B949E" }}>
+                style={{ color: "#6B7280" }}>
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="text-xs" style={{ color: "#8B949E" }}>{active + 1}/{diagrams.length}</span>
+              <span className="text-xs" style={{ color: "#6B7280" }}>{active + 1}/{diagrams.length}</span>
               <button onClick={() => setActive(i => Math.min(diagrams.length - 1, i + 1))} disabled={active === diagrams.length - 1}
                 className="p-1 rounded-lg disabled:opacity-30 transition-all hover:bg-white/5"
-                style={{ color: "#8B949E" }}>
+                style={{ color: "#6B7280" }}>
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           )}
         </div>
-        <div className="p-4" style={{ background: "#0D1117" }}>
+        <div className="p-4" style={{ background: "#F5F3EE" }}>
           {diagrams[active].component}
         </div>
       </div>

@@ -88,19 +88,19 @@ function SectionBlock({ title, icon, content, loading, error, onRetry }: {
   loading: boolean; error: boolean; onRetry: () => void;
 }) {
   return (
-    <div className="rounded-xl border overflow-hidden" style={{ background: "#161B22", borderColor: "#21262D" }}>
-      <div className="px-6 py-4 border-b flex items-center gap-3" style={{ borderColor: "#21262D", background: "rgba(0,194,168,0.03)" }}>
+    <div className="rounded-xl border overflow-hidden" style={{ background: "#FFFFFF", borderColor: "#E5E1D8" }}>
+      <div className="px-6 py-4 border-b flex items-center gap-3" style={{ borderColor: "#E5E1D8", background: "rgba(0,194,168,0.03)" }}>
         <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "rgba(0,194,168,0.1)", color: "#00C2A8" }}>
           {icon}
         </div>
-        <h3 className="font-bold text-base" style={{ color: "#E6EDF3" }}>{title}</h3>
+        <h3 className="font-bold text-base" style={{ color: "#0F1729" }}>{title}</h3>
       </div>
       <div className="px-6 py-5">
         {loading && <SectionLoader lines={6} />}
         {error && (
           <div className="flex items-center gap-3 py-2">
             <AlertCircle className="w-4 h-4 shrink-0" style={{ color: "#F85149" }} />
-            <span className="text-sm" style={{ color: "#8B949E" }}>Content unavailable.</span>
+            <span className="text-sm" style={{ color: "#6B7280" }}>Content unavailable.</span>
             <button onClick={onRetry} className="flex items-center gap-1 text-sm" style={{ color: "#00C2A8" }}>
               <RefreshCw className="w-3.5 h-3.5" /> Retry
             </button>
@@ -174,9 +174,9 @@ export default function ConditionPage() {
 
   if (!result) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#0D1117" }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#F5F3EE" }}>
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2" style={{ color: "#E6EDF3" }}>Condition not found</h1>
+          <h1 className="text-2xl font-bold mb-2" style={{ color: "#0F1729" }}>Condition not found</h1>
           <Link href={`${BASE}/study-hub/medical-knowledge-hub`} style={{ color: "#00C2A8" }}>← Back to Hub</Link>
         </div>
       </div>
@@ -213,11 +213,11 @@ export default function ConditionPage() {
   const FALLBACK_DEPT_BG = "https://images.unsplash.com/photo-1516069677018-378515003435?w=1400&q=80";
 
   return (
-    <div className="min-h-screen" style={{ background: "#0D1117" }}>
+    <div className="min-h-screen" style={{ background: "#F5F3EE" }}>
       {/* Hero */}
-      <div className="relative border-b overflow-hidden" style={{ borderColor: "#21262D" }}>
+      <div className="relative border-b overflow-hidden" style={{ borderColor: "#E5E1D8" }}>
         <div className="absolute inset-0" style={{ backgroundImage: `url('${DEPT_BG[dept.slug] ?? FALLBACK_DEPT_BG}')`, backgroundSize: "cover", backgroundPosition: "center" }} />
-        <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, rgba(13,17,23,0.97) 0%, rgba(22,27,34,0.95) 60%, ${dept.color ?? "#00C2A8"}10 100%)` }} />
+        <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, rgba(245,243,238,0.97) 0%, rgba(255,255,255,0.95) 60%, ${dept.color ?? "#00C2A8"}10 100%)` }} />
         <div className="max-w-5xl mx-auto px-4 py-6 relative z-10">
           <BreadcrumbNav crumbs={[
             { label: "Study Hub", href: `${BASE}/study-hub` },
@@ -226,30 +226,30 @@ export default function ConditionPage() {
             { label: condition.name },
           ]} />
           <Link href={`${BASE}/study-hub/medical-knowledge-hub/departments/${dept.slug}`}
-            className="flex items-center gap-2 text-sm mt-4 mb-5 hover:opacity-80 transition-opacity" style={{ color: "#8B949E" }}>
+            className="flex items-center gap-2 text-sm mt-4 mb-5 hover:opacity-80 transition-opacity" style={{ color: "#6B7280" }}>
             <ArrowLeft className="w-4 h-4" /> Back to {dept.name}
           </Link>
 
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-3">
-                <span className="text-xs font-mono px-2.5 py-1 rounded font-bold" style={{ background: "#21262D", color: "#00C2A8" }}>{condition.icd10}</span>
+                <span className="text-xs font-mono px-2.5 py-1 rounded font-bold" style={{ background: "#E5E1D8", color: "#00C2A8" }}>{condition.icd10}</span>
                 <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ background: "rgba(0,194,168,0.1)", color: "#00C2A8", border: "1px solid rgba(0,194,168,0.2)" }}>{dept.icon} {dept.name}</span>
                 <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ background: sev.bg, color: sev.color }}>{condition.severity}</span>
               </div>
-              <h1 className="text-3xl md:text-4xl font-bold mb-3" style={{ color: "#E6EDF3", letterSpacing: "-0.01em" }}>{condition.name}</h1>
-              <p className="text-sm leading-relaxed" style={{ color: "#8B949E", maxWidth: 600 }}>{condition.description}</p>
+              <h1 className="text-3xl md:text-4xl font-bold mb-3" style={{ color: "#0F1729", letterSpacing: "-0.01em" }}>{condition.name}</h1>
+              <p className="text-sm leading-relaxed" style={{ color: "#6B7280", maxWidth: 600 }}>{condition.description}</p>
             </div>
             <button onClick={handleSave}
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all shrink-0"
-              style={{ background: saved ? "rgba(0,194,168,0.1)" : "#21262D", color: saved ? "#00C2A8" : "#8B949E", border: `1px solid ${saved ? "#00C2A8" : "#21262D"}` }}>
+              style={{ background: saved ? "rgba(0,194,168,0.1)" : "#E5E1D8", color: saved ? "#00C2A8" : "#6B7280", border: `1px solid ${saved ? "#00C2A8" : "#E5E1D8"}` }}>
               {saved ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
               {saved ? "Saved" : "Save"}
             </button>
           </div>
 
           {/* Tabs */}
-          <div className="flex flex-wrap gap-1 mt-6 border-b" style={{ borderColor: "#21262D" }}>
+          <div className="flex flex-wrap gap-1 mt-6 border-b" style={{ borderColor: "#E5E1D8" }}>
             {[
               ["overview", "📖 Overview"],
               ["management", "💊 Management"],
@@ -259,7 +259,7 @@ export default function ConditionPage() {
               <button key={t} onClick={() => setActiveTab(t as any)}
                 className="px-4 py-2.5 text-sm font-semibold transition-all border-b-2 -mb-px"
                 style={{
-                  color: activeTab === t ? "#00C2A8" : "#8B949E",
+                  color: activeTab === t ? "#00C2A8" : "#6B7280",
                   borderBottomColor: activeTab === t ? "#00C2A8" : "transparent",
                 }}>
                 {label}
@@ -277,10 +277,10 @@ export default function ConditionPage() {
             <SectionBlock title="Overview & Epidemiology" icon={<Brain className="w-4 h-4" />}
               content={overview.content} loading={overview.loading} error={overview.error} onRetry={overview.fetch} />
 
-            <div className="rounded-xl border overflow-hidden" style={{ background: "#161B22", borderColor: "#21262D" }}>
-              <div className="px-6 py-4 border-b flex items-center gap-3" style={{ borderColor: "#21262D", background: "rgba(0,194,168,0.03)" }}>
+            <div className="rounded-xl border overflow-hidden" style={{ background: "#FFFFFF", borderColor: "#E5E1D8" }}>
+              <div className="px-6 py-4 border-b flex items-center gap-3" style={{ borderColor: "#E5E1D8", background: "rgba(0,194,168,0.03)" }}>
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(0,194,168,0.1)", color: "#00C2A8" }}>📊</div>
-                <h3 className="font-bold text-base" style={{ color: "#E6EDF3" }}>Medical Diagrams</h3>
+                <h3 className="font-bold text-base" style={{ color: "#0F1729" }}>Medical Diagrams</h3>
               </div>
               <div className="px-6 py-5">
                 <DiagramCarousel conditionSlug={condition.slug} deptSlug={dept.slug} />
@@ -301,7 +301,7 @@ export default function ConditionPage() {
 
         {activeTab === "management" && (
           <div className="space-y-5">
-            <h2 className="text-xl font-bold" style={{ color: "#E6EDF3" }}>Complete Management Protocol</h2>
+            <h2 className="text-xl font-bold" style={{ color: "#0F1729" }}>Complete Management Protocol</h2>
             <SectionBlock title="Treatment & Management" icon={<Pill className="w-4 h-4" />}
               content={treatment.content} loading={treatment.loading} error={treatment.error} onRetry={treatment.fetch} />
             <SectionBlock title="Prognosis & Complications" icon={<BarChart2Icon />}
@@ -318,24 +318,24 @@ export default function ConditionPage() {
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(248,81,73,0.1)", border: "1px solid rgba(248,81,73,0.2)" }}>🎯</div>
               <div>
-                <h2 className="text-xl font-bold" style={{ color: "#E6EDF3" }}>Exam Corner — MCQ Practice</h2>
-                <p className="text-sm" style={{ color: "#8B949E" }}>NEET-PG / USMLE Style with Clinical Vignettes</p>
+                <h2 className="text-xl font-bold" style={{ color: "#0F1729" }}>Exam Corner — MCQ Practice</h2>
+                <p className="text-sm" style={{ color: "#6B7280" }}>NEET-PG / USMLE Style with Clinical Vignettes</p>
               </div>
             </div>
             {!mcqData.content && !mcqData.loading && !mcqData.error && (
-              <div className="text-center py-12 rounded-xl border" style={{ borderColor: "#21262D", background: "#161B22" }}>
+              <div className="text-center py-12 rounded-xl border" style={{ borderColor: "#E5E1D8", background: "#FFFFFF" }}>
                 <div className="text-4xl mb-4">🧠</div>
-                <p className="text-base font-medium mb-2" style={{ color: "#E6EDF3" }}>Test your knowledge on {condition.name}</p>
-                <p className="text-sm mb-6" style={{ color: "#8B949E" }}>NEET-PG / USMLE style clinical vignette questions</p>
+                <p className="text-base font-medium mb-2" style={{ color: "#0F1729" }}>Test your knowledge on {condition.name}</p>
+                <p className="text-sm mb-6" style={{ color: "#6B7280" }}>NEET-PG / USMLE style clinical vignette questions</p>
                 <div className="mb-6">
-                  <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#8B949E" }}>Number of Questions</p>
+                  <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#6B7280" }}>Number of Questions</p>
                   <div className="flex flex-wrap justify-center gap-2">
                     {[8, 15, 20, 25, 35, 50].map(n => (
                       <button key={n} onClick={() => setMcqCount(n)}
                         className="px-4 py-2 rounded-xl text-sm font-bold transition-all hover:scale-105"
                         style={{
-                          background: mcqCount === n ? "linear-gradient(135deg,#00C2A8,#0088cc)" : "#21262D",
-                          color: mcqCount === n ? "#fff" : "#8B949E",
+                          background: mcqCount === n ? "linear-gradient(135deg,#00C2A8,#0088cc)" : "#E5E1D8",
+                          color: mcqCount === n ? "#fff" : "#6B7280",
                           border: `1px solid ${mcqCount === n ? "#00C2A8" : "#30363D"}`,
                         }}>
                         {n}
@@ -350,18 +350,18 @@ export default function ConditionPage() {
               </div>
             )}
             {mcqData.loading && (
-              <div className="text-center py-14 rounded-xl border" style={{ borderColor: "#21262D", background: "#161B22" }}>
+              <div className="text-center py-14 rounded-xl border" style={{ borderColor: "#E5E1D8", background: "#FFFFFF" }}>
                 <div className="w-10 h-10 border-2 border-t-transparent rounded-full animate-spin mx-auto mb-4" style={{ borderColor: "#00C2A8", borderTopColor: "transparent" }} />
-                <p className="text-sm font-medium" style={{ color: "#E6EDF3" }}>Generating clinical MCQs...</p>
-                <p className="text-xs mt-1" style={{ color: "#8B949E" }}>This takes 5–10 seconds</p>
+                <p className="text-sm font-medium" style={{ color: "#0F1729" }}>Generating clinical MCQs...</p>
+                <p className="text-xs mt-1" style={{ color: "#6B7280" }}>This takes 5–10 seconds</p>
               </div>
             )}
             {mcqData.error && (
-              <div className="text-center py-10 rounded-xl border" style={{ borderColor: "#21262D", background: "#161B22" }}>
+              <div className="text-center py-10 rounded-xl border" style={{ borderColor: "#E5E1D8", background: "#FFFFFF" }}>
                 <AlertCircle className="w-8 h-8 mx-auto mb-3" style={{ color: "#F85149" }} />
-                <p className="text-sm mb-4" style={{ color: "#8B949E" }}>Failed to generate questions.</p>
+                <p className="text-sm mb-4" style={{ color: "#6B7280" }}>Failed to generate questions.</p>
                 <button onClick={mcqData.fetch} className="flex items-center gap-2 text-sm mx-auto px-5 py-2.5 rounded-xl"
-                  style={{ background: "#21262D", color: "#00C2A8" }}>
+                  style={{ background: "#E5E1D8", color: "#00C2A8" }}>
                   <RefreshCw className="w-4 h-4" /> Try Again
                 </button>
               </div>
@@ -370,7 +370,7 @@ export default function ConditionPage() {
               const questions = robustParseJSON(mcqData.content);
               if (questions) return <MCQQuiz questions={questions} topic={condition.name} />;
               return (
-                <div className="p-5 rounded-xl border" style={{ borderColor: "#21262D", background: "#161B22" }}>
+                <div className="p-5 rounded-xl border" style={{ borderColor: "#E5E1D8", background: "#FFFFFF" }}>
                   <p className="text-sm mb-3 font-semibold" style={{ color: "#F85149" }}>⚠ Could not parse questions.</p>
                   <button onClick={() => { sessionStorage.removeItem(`mkc_mcq_${JSON.stringify(apiParams)}`); mcqData.fetch(); }}
                     className="flex items-center gap-1 text-sm mb-3" style={{ color: "#00C2A8" }}>
@@ -387,15 +387,15 @@ export default function ConditionPage() {
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(0,194,168,0.1)", border: "1px solid rgba(0,194,168,0.2)" }}>⚡</div>
               <div>
-                <h2 className="text-xl font-bold" style={{ color: "#E6EDF3" }}>Quick Revision Flashcards</h2>
-                <p className="text-sm" style={{ color: "#8B949E" }}>Key facts, DOC, gold standard, mnemonics</p>
+                <h2 className="text-xl font-bold" style={{ color: "#0F1729" }}>Quick Revision Flashcards</h2>
+                <p className="text-sm" style={{ color: "#6B7280" }}>Key facts, DOC, gold standard, mnemonics</p>
               </div>
             </div>
             {!flashData.content && !flashData.loading && !flashData.error && (
-              <div className="text-center py-14 rounded-xl border" style={{ borderColor: "#21262D", background: "#161B22" }}>
+              <div className="text-center py-14 rounded-xl border" style={{ borderColor: "#E5E1D8", background: "#FFFFFF" }}>
                 <div className="text-4xl mb-4">📇</div>
-                <p className="text-base font-medium mb-2" style={{ color: "#E6EDF3" }}>High-yield flashcards for {condition.name}</p>
-                <p className="text-sm mb-6" style={{ color: "#8B949E" }}>Covers drug of choice, gold standards, mnemonics</p>
+                <p className="text-base font-medium mb-2" style={{ color: "#0F1729" }}>High-yield flashcards for {condition.name}</p>
+                <p className="text-sm mb-6" style={{ color: "#6B7280" }}>Covers drug of choice, gold standards, mnemonics</p>
                 <button onClick={flashData.fetch} className="px-8 py-3 rounded-xl font-semibold text-sm hover:opacity-90 hover:scale-105 transition-all"
                   style={{ background: "linear-gradient(135deg,#00C2A8,#0088cc)", color: "#fff" }}>
                   Generate Flashcards
@@ -403,16 +403,16 @@ export default function ConditionPage() {
               </div>
             )}
             {flashData.loading && (
-              <div className="text-center py-14 rounded-xl border" style={{ borderColor: "#21262D", background: "#161B22" }}>
+              <div className="text-center py-14 rounded-xl border" style={{ borderColor: "#E5E1D8", background: "#FFFFFF" }}>
                 <div className="w-10 h-10 border-2 border-t-transparent rounded-full animate-spin mx-auto mb-4" style={{ borderColor: "#00C2A8", borderTopColor: "transparent" }} />
-                <p className="text-sm font-medium" style={{ color: "#E6EDF3" }}>Generating flashcards...</p>
-                <p className="text-xs mt-1" style={{ color: "#8B949E" }}>This takes 5–10 seconds</p>
+                <p className="text-sm font-medium" style={{ color: "#0F1729" }}>Generating flashcards...</p>
+                <p className="text-xs mt-1" style={{ color: "#6B7280" }}>This takes 5–10 seconds</p>
               </div>
             )}
             {flashData.error && (
               <div className="text-center py-8">
                 <button onClick={flashData.fetch} className="flex items-center gap-2 text-sm mx-auto px-5 py-2.5 rounded-xl"
-                  style={{ background: "#21262D", color: "#00C2A8" }}>
+                  style={{ background: "#E5E1D8", color: "#00C2A8" }}>
                   <RefreshCw className="w-4 h-4" /> Retry
                 </button>
               </div>
@@ -421,7 +421,7 @@ export default function ConditionPage() {
               const cards = robustParseJSON(flashData.content);
               if (cards) return <FlashCard cards={cards} />;
               return (
-                <div className="p-5 rounded-xl border" style={{ borderColor: "#21262D", background: "#161B22" }}>
+                <div className="p-5 rounded-xl border" style={{ borderColor: "#E5E1D8", background: "#FFFFFF" }}>
                   <p className="text-sm mb-3 font-semibold" style={{ color: "#F85149" }}>⚠ Could not parse flashcards.</p>
                   <button onClick={() => { sessionStorage.removeItem(`mkc_flashcards_${JSON.stringify(apiParams)}`); flashData.fetch(); }}
                     className="flex items-center gap-1 text-sm" style={{ color: "#00C2A8" }}>
@@ -436,7 +436,7 @@ export default function ConditionPage() {
 
       <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
         className="fixed bottom-6 right-6 w-10 h-10 rounded-xl flex items-center justify-center transition-all hover:opacity-90 shadow-lg"
-        style={{ background: "#00C2A8", color: "#0D1117", fontSize: "18px" }}>
+        style={{ background: "#00C2A8", color: "#F5F3EE", fontSize: "18px" }}>
         ↑
       </button>
     </div>

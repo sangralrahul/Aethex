@@ -72,7 +72,7 @@ function renderLine(line: string, i: number) {
         <span className="shrink-0 text-xs font-bold mt-0.5" style={{ color: "#00C2A8" }}>
           {trimmed.match(/^(\d+)\./)?.[1]}.
         </span>
-        <span className="text-sm leading-relaxed" style={{ color: "#E6EDF3" }}>
+        <span className="text-sm leading-relaxed" style={{ color: "#0F1729" }}>
           {parseInlineMarkers(trimmed.replace(/^\d+\.\s+/, ""))}
         </span>
       </div>
@@ -83,7 +83,7 @@ function renderLine(line: string, i: number) {
     return (
       <div key={i} className="flex gap-2 py-0.5 pl-1">
         <span className="shrink-0 text-xs mt-1" style={{ color: "#00C2A8" }}>▸</span>
-        <span className="text-sm leading-relaxed" style={{ color: "#E6EDF3" }}>
+        <span className="text-sm leading-relaxed" style={{ color: "#0F1729" }}>
           {parseInlineMarkers(trimmed.replace(/^[-•–]\s+/, ""))}
         </span>
       </div>
@@ -122,16 +122,16 @@ export function RichContent({ content, lineByLine = true }: RichContentProps) {
           ))}
         </div>
       )}
-      <div className="flex flex-wrap gap-3 mt-3 pt-3" style={{ borderTop: "1px solid #21262D" }}>
-        <span className="flex items-center gap-1.5 text-xs" style={{ color: "#8B949E" }}>
+      <div className="flex flex-wrap gap-3 mt-3 pt-3" style={{ borderTop: "1px solid #E5E1D8" }}>
+        <span className="flex items-center gap-1.5 text-xs" style={{ color: "#6B7280" }}>
           <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: "#F85149" }} />
           Critical / Must-know
         </span>
-        <span className="flex items-center gap-1.5 text-xs" style={{ color: "#8B949E" }}>
+        <span className="flex items-center gap-1.5 text-xs" style={{ color: "#6B7280" }}>
           <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: "#58A6FF" }} />
           Important
         </span>
-        <span className="flex items-center gap-1.5 text-xs" style={{ color: "#8B949E" }}>
+        <span className="flex items-center gap-1.5 text-xs" style={{ color: "#6B7280" }}>
           <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: "#3FB950" }} />
           Notable
         </span>

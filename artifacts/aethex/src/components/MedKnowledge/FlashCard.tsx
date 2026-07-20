@@ -65,9 +65,9 @@ export function FlashCard({ cards }: FlashCardProps) {
 
   if (!cards || cards.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 rounded-2xl border" style={{ background: "#161B22", borderColor: "#21262D" }}>
-        <BookOpen className="w-10 h-10 mb-3" style={{ color: "#8B949E" }} />
-        <p className="text-sm font-medium" style={{ color: "#8B949E" }}>No flashcards available</p>
+      <div className="flex flex-col items-center justify-center py-12 rounded-2xl border" style={{ background: "#FFFFFF", borderColor: "#E5E1D8" }}>
+        <BookOpen className="w-10 h-10 mb-3" style={{ color: "#6B7280" }} />
+        <p className="text-sm font-medium" style={{ color: "#6B7280" }}>No flashcards available</p>
       </div>
     );
   }
@@ -84,7 +84,7 @@ export function FlashCard({ cards }: FlashCardProps) {
           <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: colorScheme.bg }}>
             <BookOpen className="w-4 h-4 text-white" />
           </div>
-          <span className="text-sm font-bold" style={{ color: "#E6EDF3" }}>
+          <span className="text-sm font-bold" style={{ color: "#0F1729" }}>
             Card {current + 1} of {cards.length}
           </span>
         </div>
@@ -96,7 +96,7 @@ export function FlashCard({ cards }: FlashCardProps) {
         </div>
       </div>
 
-      <div className="w-full rounded-full h-2 overflow-hidden" style={{ background: "#21262D" }} role="progressbar" aria-valuenow={current + 1} aria-valuemin={1} aria-valuemax={cards.length} aria-label={`Card ${current + 1} of ${cards.length}`}>
+      <div className="w-full rounded-full h-2 overflow-hidden" style={{ background: "#E5E1D8" }} role="progressbar" aria-valuenow={current + 1} aria-valuemin={1} aria-valuemax={cards.length} aria-label={`Card ${current + 1} of ${cards.length}`}>
         <div
           className="h-full rounded-full transition-all duration-500 ease-out"
           style={{ width: `${progress}%`, background: colorScheme.bg }}
@@ -153,7 +153,7 @@ export function FlashCard({ cards }: FlashCardProps) {
           <div
             className="absolute inset-0 rounded-2xl p-6 flex flex-col"
             style={{
-              background: "#0D1117",
+              background: "#F5F3EE",
               backfaceVisibility: "hidden",
               transform: "rotateY(180deg)",
               border: `2px solid`,
@@ -169,7 +169,7 @@ export function FlashCard({ cards }: FlashCardProps) {
               <RotateCcw className="w-5 h-5" style={{ color: colorScheme.accent }} aria-hidden="true" />
             </div>
             <div className="flex-1 flex items-center justify-center">
-              <p className="text-center text-base leading-relaxed font-medium" style={{ color: "#E6EDF3" }}>
+              <p className="text-center text-base leading-relaxed font-medium" style={{ color: "#0F1729" }}>
                 {card.back}
               </p>
             </div>
@@ -186,7 +186,7 @@ export function FlashCard({ cards }: FlashCardProps) {
       <div className="flex items-center justify-between">
         <button onClick={prev} disabled={current === 0}
           className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 disabled:opacity-30 hover:scale-105 active:scale-95"
-          style={{ background: "rgba(255,255,255,0.08)", color: "#E6EDF3", border: "1px solid rgba(255,255,255,0.1)" }}
+          style={{ background: "rgba(255,255,255,0.08)", color: "#0F1729", border: "1px solid rgba(255,255,255,0.1)" }}
           aria-label="Previous card">
           <ChevronLeft className="w-4 h-4" /> Previous
         </button>
@@ -201,7 +201,7 @@ export function FlashCard({ cards }: FlashCardProps) {
               style={{
                 width: i === current ? 24 : 8,
                 height: 8,
-                background: i === current ? CARD_COLORS[i % CARD_COLORS.length].bg : "#21262D",
+                background: i === current ? CARD_COLORS[i % CARD_COLORS.length].bg : "#E5E1D8",
               }} />
           ))}
         </div>

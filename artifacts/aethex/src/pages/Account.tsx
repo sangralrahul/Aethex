@@ -121,7 +121,7 @@ function AddAddressForm({ onSave }: { onSave: (addr: Omit<Address, "id">) => voi
         <span className="text-sm text-[#3c3c43]">Set as default address</span>
       </label>
       <div className="flex gap-3">
-        <button type="submit" className="px-5 py-2.5 bg-[#00C2A8] text-[#0D1117] font-bold rounded-xl text-sm hover:bg-[#00D4B8] transition-colors">Save Address</button>
+        <button type="submit" className="px-5 py-2.5 bg-[#00C2A8] text-[#F5F3EE] font-bold rounded-xl text-sm hover:bg-[#00D4B8] transition-colors">Save Address</button>
       </div>
     </form>
   );
@@ -260,7 +260,7 @@ export default function Account() {
           </div>
           <h2 className="text-xl font-display font-bold text-[#1c1c1e] mb-2">Sign in to access your account</h2>
           <p className="text-[#6c6c70] text-sm mb-6">Manage your profile, addresses, orders, and Cadus AI Pro subscription.</p>
-          <Link href="/" className="px-6 py-3 bg-[#00C2A8] text-[#0D1117] font-bold rounded-xl hover:bg-[#00D4B8] transition-colors">
+          <Link href="/" className="px-6 py-3 bg-[#00C2A8] text-[#F5F3EE] font-bold rounded-xl hover:bg-[#00D4B8] transition-colors">
             Sign In
           </Link>
         </div>
@@ -473,7 +473,7 @@ export default function Account() {
                         className="w-full px-4 py-3 bg-black/5 border border-black/10 rounded-xl text-[#1c1c1e] placeholder-black/30 focus:outline-none focus:border-[#00C2A8]/50" />
                     </div>
                     <button onClick={handleSaveProfile}
-                      className="px-5 py-2.5 bg-[#00C2A8] text-[#0D1117] font-bold rounded-xl hover:bg-[#00D4B8] transition-colors text-sm">
+                      className="px-5 py-2.5 bg-[#00C2A8] text-[#F5F3EE] font-bold rounded-xl hover:bg-[#00D4B8] transition-colors text-sm">
                       Save Changes
                     </button>
                   </div>
@@ -597,7 +597,7 @@ export default function Account() {
                       ].map(option => (
                         <div key={option.plan} className={`p-6 border rounded-2xl ${option.plan === "annual" ? "border-[#00C2A8]/40 bg-[#00C2A8]/5 relative" : "border-black/[0.08] bg-white"}`}>
                           {option.plan === "annual" && (
-                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-[#00C2A8] text-[#0D1117] text-xs font-bold rounded-full whitespace-nowrap">
+                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-[#00C2A8] text-[#F5F3EE] text-xs font-bold rounded-full whitespace-nowrap">
                               Best Value
                             </div>
                           )}
@@ -619,7 +619,7 @@ export default function Account() {
                           <button onClick={() => handleActivatePro(option.plan)} disabled={proLoading}
                             className={`w-full py-3 font-bold rounded-xl transition-all text-sm disabled:opacity-60 ${
                               option.plan === "annual"
-                                ? "bg-[#00C2A8] text-[#0D1117] hover:bg-[#00D4B8]"
+                                ? "bg-[#00C2A8] text-[#F5F3EE] hover:bg-[#00D4B8]"
                                 : "bg-black/10 border border-black/15 text-[#1c1c1e] hover:bg-white/20"
                             }`}>
                             {proLoading ? "Processing..." : `Subscribe ${option.label} — ₹${option.price.toLocaleString()}`}

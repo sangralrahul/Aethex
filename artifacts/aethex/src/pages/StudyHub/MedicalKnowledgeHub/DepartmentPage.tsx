@@ -47,9 +47,9 @@ export default function DepartmentPage() {
 
   if (!dept) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#0D1117" }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#F5F3EE" }}>
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2" style={{ color: "#E6EDF3" }}>Department not found</h1>
+          <h1 className="text-2xl font-bold mb-2" style={{ color: "#0F1729" }}>Department not found</h1>
           <Link href={`${BASE}/study-hub/medical-knowledge-hub`} style={{ color: "#00C2A8" }}>← Back to Hub</Link>
         </div>
       </div>
@@ -65,11 +65,11 @@ export default function DepartmentPage() {
   });
 
   return (
-    <div className="min-h-screen" style={{ background: "#0D1117" }}>
+    <div className="min-h-screen" style={{ background: "#F5F3EE" }}>
       {/* Hero */}
-      <div className="relative border-b overflow-hidden" style={{ borderColor: "#21262D" }}>
+      <div className="relative border-b overflow-hidden" style={{ borderColor: "#E5E1D8" }}>
         <div className="absolute inset-0" style={{ backgroundImage: `url('${DEPT_BG[dept.slug] ?? FALLBACK_DEPT_BG}')`, backgroundSize: "cover", backgroundPosition: "center" }} />
-        <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, rgba(13,17,23,0.96) 0%, rgba(22,27,34,0.94) 100%)" }} />
+        <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, rgba(245,243,238,0.96) 0%, rgba(255,255,255,0.94) 100%)" }} />
         <div className="max-w-6xl mx-auto px-4 py-8 relative z-10">
           <BreadcrumbNav crumbs={[
             { label: "Study Hub", href: `${BASE}/study-hub` },
@@ -78,15 +78,15 @@ export default function DepartmentPage() {
             { label: dept.name },
           ]} />
           <Link href={`${BASE}/study-hub/medical-knowledge-hub`}
-            className="flex items-center gap-2 text-sm mt-4 mb-6 hover:opacity-80" style={{ color: "#8B949E" }}>
+            className="flex items-center gap-2 text-sm mt-4 mb-6 hover:opacity-80" style={{ color: "#6B7280" }}>
             <ArrowLeft className="w-4 h-4" /> Back to Hub
           </Link>
           <div className="flex items-start gap-5">
             <div className="text-5xl">{dept.icon}</div>
             <div className="flex-1">
-              <h1 className="text-3xl font-bold mb-2" style={{ color: "#E6EDF3" }}>{dept.name}</h1>
-              <p className="text-base mb-4 leading-relaxed" style={{ color: "#8B949E", maxWidth: 700 }}>{dept.description}</p>
-              <div className="flex flex-wrap gap-4 text-sm" style={{ color: "#8B949E" }}>
+              <h1 className="text-3xl font-bold mb-2" style={{ color: "#0F1729" }}>{dept.name}</h1>
+              <p className="text-base mb-4 leading-relaxed" style={{ color: "#6B7280", maxWidth: 700 }}>{dept.description}</p>
+              <div className="flex flex-wrap gap-4 text-sm" style={{ color: "#6B7280" }}>
                 <span>{dept.conditions.length} conditions</span>
                 <span style={{ color: "#238636" }}>{dept.conditions.filter(c => c.severity === "Mild").length} Mild</span>
                 <span style={{ color: "#E3B341" }}>{dept.conditions.filter(c => c.severity === "Moderate").length} Moderate</span>
@@ -103,19 +103,19 @@ export default function DepartmentPage() {
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-4 mb-8">
           <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "#8B949E" }} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "#6B7280" }} />
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder={`Search ${dept.conditions.length} conditions...`}
               className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm outline-none"
-              style={{ background: "#161B22", border: "1px solid #21262D", color: "#E6EDF3" }} />
+              style={{ background: "#FFFFFF", border: "1px solid #E5E1D8", color: "#0F1729" }} />
           </div>
           <div className="flex gap-2">
             {["All", "Mild", "Moderate", "Severe", "Critical"].map(s => (
               <button key={s} onClick={() => setSeverityFilter(s)}
                 className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
                 style={{
-                  background: severityFilter === s ? (s === "All" ? "#00C2A8" : severityConfig[s]?.bg) : "#21262D",
-                  color: severityFilter === s ? (s === "All" ? "#0D1117" : severityConfig[s]?.color) : "#8B949E",
+                  background: severityFilter === s ? (s === "All" ? "#00C2A8" : severityConfig[s]?.bg) : "#E5E1D8",
+                  color: severityFilter === s ? (s === "All" ? "#F5F3EE" : severityConfig[s]?.color) : "#6B7280",
                 }}>
                 {s}
               </button>
@@ -123,7 +123,7 @@ export default function DepartmentPage() {
           </div>
         </div>
 
-        <div className="text-sm mb-4" style={{ color: "#8B949E" }}>
+        <div className="text-sm mb-4" style={{ color: "#6B7280" }}>
           {filtered.length} condition{filtered.length !== 1 ? "s" : ""}
           {search && ` matching "${search}"`}
           {severityFilter !== "All" && ` · ${severityFilter}`}
@@ -136,35 +136,35 @@ export default function DepartmentPage() {
             return (
               <Link key={condition.slug} href={`${BASE}/study-hub/medical-knowledge-hub/departments/${dept.slug}/${condition.slug}`}
                 className="group rounded-xl border p-4 transition-all duration-200 cursor-pointer"
-                style={{ background: "#161B22", borderColor: "#21262D" }}
+                style={{ background: "#FFFFFF", borderColor: "#E5E1D8" }}
                 onMouseEnter={e => {
                   (e.currentTarget as HTMLElement).style.borderColor = "#00C2A8";
                   (e.currentTarget as HTMLElement).style.boxShadow = "0 0 16px rgba(0,194,168,0.12)";
                   (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)";
                 }}
                 onMouseLeave={e => {
-                  (e.currentTarget as HTMLElement).style.borderColor = "#21262D";
+                  (e.currentTarget as HTMLElement).style.borderColor = "#E5E1D8";
                   (e.currentTarget as HTMLElement).style.boxShadow = "none";
                   (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
                 }}>
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-mono px-2 py-0.5 rounded" style={{ background: "#21262D", color: "#00C2A8" }}>{condition.icd10}</span>
+                      <span className="text-xs font-mono px-2 py-0.5 rounded" style={{ background: "#E5E1D8", color: "#00C2A8" }}>{condition.icd10}</span>
                       <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: sev.bg, color: sev.color }}>{condition.severity}</span>
                     </div>
-                    <h3 className="font-semibold text-sm leading-tight" style={{ color: "#E6EDF3" }}>{condition.name}</h3>
+                    <h3 className="font-semibold text-sm leading-tight" style={{ color: "#0F1729" }}>{condition.name}</h3>
                   </div>
                   <ChevronRight className="w-4 h-4 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity mt-1" style={{ color: "#00C2A8" }} />
                 </div>
-                <p className="text-xs leading-relaxed" style={{ color: "#8B949E" }}>{condition.description}</p>
+                <p className="text-xs leading-relaxed" style={{ color: "#6B7280" }}>{condition.description}</p>
               </Link>
             );
           })}
         </div>
 
         {filtered.length === 0 && (
-          <div className="text-center py-16" style={{ color: "#8B949E" }}>
+          <div className="text-center py-16" style={{ color: "#6B7280" }}>
             No conditions found for "{search}"
           </div>
         )}

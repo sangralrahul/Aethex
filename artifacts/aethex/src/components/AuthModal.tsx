@@ -349,7 +349,7 @@ export function AuthModal({ open, onClose, defaultMode = "login" }: AuthModalPro
             {(["login", "signup", "otp"] as const).map(t => (
               <button key={t} onClick={() => switchTab(t)}
                 className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
-                  tab === t ? "bg-[#00C2A8] text-[#0D1117]" : "text-[#6c6c70] hover:text-[#1c1c1e]"
+                  tab === t ? "bg-[#00C2A8] text-[#F5F3EE]" : "text-[#6c6c70] hover:text-[#1c1c1e]"
                 }`}>
                 {t === "login" ? "Sign In" : t === "signup" ? "Sign Up" : "OTP"}
               </button>
@@ -374,7 +374,7 @@ export function AuthModal({ open, onClose, defaultMode = "login" }: AuthModalPro
                 <div className="flex rounded-xl bg-black/5 p-1 mb-5">
                   {(["email", "phone"] as const).map(m => (
                     <button key={m} type="button" onClick={() => { setOtpMethod(m); setError(""); }}
-                      className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${otpMethod === m ? "bg-[#00C2A8] text-[#0D1117]" : "text-[#6c6c70] hover:text-[#1c1c1e]"}`}>
+                      className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${otpMethod === m ? "bg-[#00C2A8] text-[#F5F3EE]" : "text-[#6c6c70] hover:text-[#1c1c1e]"}`}>
                       {m === "email" ? "Email OTP" : "Phone OTP"}
                     </button>
                   ))}
@@ -394,7 +394,7 @@ export function AuthModal({ open, onClose, defaultMode = "login" }: AuthModalPro
                       </div>
                       {error && <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-400">{error}</div>}
                       <button type="submit" disabled={loading}
-                        className="w-full py-3 bg-[#00C2A8] hover:bg-[#00D4B8] text-[#0D1117] font-bold rounded-xl transition-all disabled:opacity-60">
+                        className="w-full py-3 bg-[#00C2A8] hover:bg-[#00D4B8] text-[#F5F3EE] font-bold rounded-xl transition-all disabled:opacity-60">
                         {loading ? "Sending OTP…" : "Send OTP"}
                       </button>
                       <p className="text-center text-xs text-[#8e8e93]">A 6-digit code will be sent to your email</p>
@@ -413,7 +413,7 @@ export function AuthModal({ open, onClose, defaultMode = "login" }: AuthModalPro
                       </div>
                       {error && <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-400">{error}</div>}
                       <button type="submit" disabled={loading || otpCode.length !== 6}
-                        className="w-full py-3 bg-[#00C2A8] hover:bg-[#00D4B8] text-[#0D1117] font-bold rounded-xl transition-all disabled:opacity-60">
+                        className="w-full py-3 bg-[#00C2A8] hover:bg-[#00D4B8] text-[#F5F3EE] font-bold rounded-xl transition-all disabled:opacity-60">
                         {loading ? "Verifying…" : "Verify & Login"}
                       </button>
                       <div className="flex items-center justify-between text-xs">
@@ -444,7 +444,7 @@ export function AuthModal({ open, onClose, defaultMode = "login" }: AuthModalPro
                       </div>
                       {error && <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-400">{error}</div>}
                       <button type="button" onClick={handleSendPhoneOtp} disabled={phoneLoading || phoneNumber.length !== 10}
-                        className="w-full py-3 bg-[#00C2A8] hover:bg-[#00D4B8] text-[#0D1117] font-bold rounded-xl transition-all disabled:opacity-60">
+                        className="w-full py-3 bg-[#00C2A8] hover:bg-[#00D4B8] text-[#F5F3EE] font-bold rounded-xl transition-all disabled:opacity-60">
                         {phoneLoading ? "Sending OTP…" : "Send OTP via SMS"}
                       </button>
                       <p className="text-center text-xs text-[#8e8e93]">OTP sent via Firebase · Indian numbers only</p>
@@ -463,7 +463,7 @@ export function AuthModal({ open, onClose, defaultMode = "login" }: AuthModalPro
                       </div>
                       {error && <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-400">{error}</div>}
                       <button type="button" onClick={handleVerifyPhoneOtp} disabled={phoneLoading || phoneOtpCode.length !== 6}
-                        className="w-full py-3 bg-[#00C2A8] hover:bg-[#00D4B8] text-[#0D1117] font-bold rounded-xl transition-all disabled:opacity-60">
+                        className="w-full py-3 bg-[#00C2A8] hover:bg-[#00D4B8] text-[#F5F3EE] font-bold rounded-xl transition-all disabled:opacity-60">
                         {phoneLoading ? "Verifying…" : "Verify & Login"}
                       </button>
                       <div className="flex items-center justify-between text-xs">
@@ -619,7 +619,7 @@ export function AuthModal({ open, onClose, defaultMode = "login" }: AuthModalPro
             {error && <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-400">{error}</div>}
 
             <button type="submit" disabled={loading}
-              className="w-full py-3 bg-[#00C2A8] hover:bg-[#00D4B8] text-[#0D1117] font-bold rounded-xl transition-all disabled:opacity-60 disabled:cursor-not-allowed">
+              className="w-full py-3 bg-[#00C2A8] hover:bg-[#00D4B8] text-[#F5F3EE] font-bold rounded-xl transition-all disabled:opacity-60 disabled:cursor-not-allowed">
               {loading ? "Please wait…" : tab === "login" ? "Sign In" : "Create Account"}
             </button>
 

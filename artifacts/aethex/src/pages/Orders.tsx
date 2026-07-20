@@ -122,7 +122,7 @@ function StepperTracker({ status }: { status: OrderStatus }) {
                 done ? "bg-[#00C2A8]" : active ? "bg-[#00C2A8]/20 border-2 border-[#00C2A8]" : "bg-[#F2F2F7] border border-black/15"
               }`}>
                 <step.icon className={`w-4 h-4 ${done || active ? "text-[#00C2A8]" : "text-[#aeaeb2]"}`}
-                  style={done ? { color: "#0D1117" } : {}} />
+                  style={done ? { color: "#F5F3EE" } : {}} />
               </div>
               <span className={`text-[10px] font-medium text-center max-w-[60px] leading-tight ${
                 done || active ? "text-[#1c1c1e]" : "text-[#aeaeb2]"
@@ -289,7 +289,7 @@ export default function Orders() {
           </div>
           <h2 className="text-xl font-display font-bold text-[#1c1c1e] mb-2">Sign in to view orders</h2>
           <p className="text-[#6c6c70] text-sm mb-6">Access your complete order history and real-time tracking.</p>
-          <Link href="/" className="px-6 py-3 bg-[#00C2A8] text-[#0D1117] font-bold rounded-xl hover:bg-[#00D4B8] transition-colors">
+          <Link href="/" className="px-6 py-3 bg-[#00C2A8] text-[#F5F3EE] font-bold rounded-xl hover:bg-[#00D4B8] transition-colors">
             Sign In
           </Link>
         </div>

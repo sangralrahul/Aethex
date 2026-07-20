@@ -146,10 +146,10 @@ export default function Contact() {
               )}
 
               <button type="submit" disabled={loading}
-                className="w-full py-3.5 bg-[#00C2A8] hover:bg-[#00D4B8] text-[#0D1117] font-bold rounded-xl transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                className="w-full py-3.5 bg-[#00C2A8] hover:bg-[#00D4B8] text-[#F5F3EE] font-bold rounded-xl transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                 {loading ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-[#0D1117]/30 border-t-white rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-[#F5F3EE]/30 border-t-white rounded-full animate-spin" />
                     Cadus AI is thinking…
                   </>
                 ) : (
