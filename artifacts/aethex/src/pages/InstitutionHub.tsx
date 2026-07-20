@@ -553,7 +553,7 @@ export default function InstitutionHub({ mode }: InstitutionHubProps = {}) {
       </section>
 
       {/* ── Built for Institutions (dark) ── */}
-      <section className="py-20" style={{ background: "#0D1117" }}>
+      <section className="py-20" style={{ background: "#F5F3EE" }}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
             <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#AEAEB2" }}>Why Aethex</p>
@@ -568,7 +568,7 @@ export default function InstitutionHub({ mode }: InstitutionHubProps = {}) {
             {benefits.map((b, i) => (
               <motion.div key={b.title} initial="hidden" whileInView="visible" viewport={{ once: true }} custom={i} variants={fadeUp}
                 className="p-6 rounded-2xl"
-                style={{ background: "#161B22", border: "1px solid #21262D" }}>
+                style={{ background: "#FFFFFF", border: "1px solid #E5E1D8" }}>
                 <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-5"
                   style={{ background: `${b.color}18`, border: `1px solid ${b.color}30` }}>
                   <b.icon className="w-5 h-5" style={{ color: b.color }} />

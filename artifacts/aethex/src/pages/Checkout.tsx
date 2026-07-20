@@ -31,7 +31,7 @@ function StepIndicator({ current, step, label, index }: { current: Step; step: S
   return (
     <div className="flex items-center gap-3">
       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-        done ? "bg-[#00C2A8] text-[#0D1117]"
+        done ? "bg-[#00C2A8] text-[#F5F3EE]"
              : active ? "bg-[#00C2A8]/20 border-2 border-[#00C2A8] text-[#00C2A8]"
              : "bg-black/5 border border-black/15 text-[#8e8e93]"
       }`}>
@@ -208,7 +208,7 @@ export default function Checkout() {
         <div className="text-center">
           <h2 className="text-xl font-bold text-[#1c1c1e] mb-2">Your cart is empty</h2>
           <p className="text-[#6c6c70] mb-6">Add some products before checking out.</p>
-          <Link href="/shop" className="px-6 py-3 bg-[#00C2A8] text-[#0D1117] font-bold rounded-xl">Browse Products</Link>
+          <Link href="/shop" className="px-6 py-3 bg-[#00C2A8] text-[#F5F3EE] font-bold rounded-xl">Browse Products</Link>
         </div>
       </div>
     );
@@ -298,7 +298,7 @@ export default function Checkout() {
                   </div>
                 </div>
                 <button type="submit"
-                  className="w-full py-3.5 bg-[#00C2A8] text-[#0D1117] font-bold rounded-xl hover:bg-[#00D4B8] transition-colors">
+                  className="w-full py-3.5 bg-[#00C2A8] text-[#F5F3EE] font-bold rounded-xl hover:bg-[#00D4B8] transition-colors">
                   Continue to Payment →
                 </button>
               </form>
@@ -365,7 +365,7 @@ export default function Checkout() {
                     ← Back
                   </button>
                   <button onClick={() => setStep("confirm")}
-                    className="flex-1 py-3 bg-[#00C2A8] text-[#0D1117] font-bold rounded-xl hover:bg-[#00D4B8] transition-colors">
+                    className="flex-1 py-3 bg-[#00C2A8] text-[#F5F3EE] font-bold rounded-xl hover:bg-[#00D4B8] transition-colors">
                     Review Order →
                   </button>
                 </div>
@@ -424,10 +424,10 @@ export default function Checkout() {
                 </div>
 
                 <button onClick={handlePlaceOrder} disabled={processing}
-                  className="w-full py-4 bg-[#00C2A8] text-[#0D1117] font-bold rounded-xl hover:bg-[#00D4B8] transition-all disabled:opacity-60 disabled:cursor-not-allowed text-lg">
+                  className="w-full py-4 bg-[#00C2A8] text-[#F5F3EE] font-bold rounded-xl hover:bg-[#00D4B8] transition-all disabled:opacity-60 disabled:cursor-not-allowed text-lg">
                   {processing ? (
                     <span className="flex items-center justify-center gap-2">
-                      <span className="w-5 h-5 border-2 border-[#0D1117]/30 border-t-white rounded-full animate-spin" />
+                      <span className="w-5 h-5 border-2 border-[#F5F3EE]/30 border-t-white rounded-full animate-spin" />
                       Processing...
                     </span>
                   ) : (

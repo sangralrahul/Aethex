@@ -234,7 +234,7 @@ export default function Admin() {
             </div>
             {error && <p className="text-sm text-red-400">{error}</p>}
             <button type="submit" disabled={loading}
-              className="w-full py-3 bg-[#00C2A8] text-[#0D1117] font-bold rounded-xl hover:bg-[#00D4B8] transition-colors disabled:opacity-60">
+              className="w-full py-3 bg-[#00C2A8] text-[#F5F3EE] font-bold rounded-xl hover:bg-[#00D4B8] transition-colors disabled:opacity-60">
               {loading ? "Verifying…" : "Access Admin Panel"}
             </button>
           </form>
@@ -543,7 +543,7 @@ export default function Admin() {
             <div className="space-y-5">
               <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-display font-bold text-[#1c1c1e]">Blog</h1>
-                <Link href="/admin/blog" className="px-4 py-2.5 bg-[#00C2A8] text-[#0D1117] text-sm font-bold rounded-xl hover:bg-[#00D4B8] transition-colors">
+                <Link href="/admin/blog" className="px-4 py-2.5 bg-[#00C2A8] text-[#F5F3EE] text-sm font-bold rounded-xl hover:bg-[#00D4B8] transition-colors">
                   Full Blog Editor →
                 </Link>
               </div>

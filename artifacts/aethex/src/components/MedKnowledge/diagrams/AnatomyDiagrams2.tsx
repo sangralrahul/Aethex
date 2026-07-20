@@ -34,11 +34,11 @@ const DEFS = (
    ═══════════════════════════════════════════════════════════ */
 export function LowerLimbBonesDiagram() {
   return (
-    <svg viewBox="0 0 480 800" className="w-full" style={{ background: "#161B22", borderRadius: 12 }}>
+    <svg viewBox="0 0 480 800" className="w-full" style={{ background: "#FFFFFF", borderRadius: 12 }}>
       <title>Bones of the Lower Limb — Anterior View</title>
       {DEFS}
 
-      <text x="190" y="24" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#E6EDF3">Lower Limb Bones — Anterior View</text>
+      <text x="190" y="24" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#0F1729">Lower Limb Bones — Anterior View</text>
       <text x="190" y="38" textAnchor="middle" fontSize="10" fill="#6B7280">(Right side)</text>
 
       {/* ── ILIAC CREST (partial hip bone) ── */}
@@ -96,7 +96,7 @@ export function LowerLimbBonesDiagram() {
       <text x="292" y="125" fontSize="10" fill="#CBD5E1">Greater</text>
       <text x="292" y="137" fontSize="10" fill="#CBD5E1">Trochanter</text>
       <line x1="232" y1="280" x2="272" y2="280" stroke="#4B5563" strokeWidth="0.8" />
-      <text x="274" y="284" fontSize="12" fill="#E6EDF3" fontWeight="bold">Femur</text>
+      <text x="274" y="284" fontSize="12" fill="#0F1729" fontWeight="bold">Femur</text>
       <text x="274" y="297" fontSize="9" fill="#9CA3AF">(thigh bone)</text>
       <line x1="185" y1="398" x2="148" y2="398" stroke="#4B5563" strokeWidth="0.8" />
       <text x="82" y="394" fontSize="10" fill="#CBD5E1">Medial</text>
@@ -140,7 +140,7 @@ export function LowerLimbBonesDiagram() {
                L186,617 Z"
         fill="url(#ad2_boneH)" stroke="#8A6840" strokeWidth="1.2" />
       <line x1="172" y1="545" x2="130" y2="545" stroke="#4B5563" strokeWidth="0.8" />
-      <text x="90" y="549" fontSize="12" fill="#E6EDF3" fontWeight="bold">Tibia</text>
+      <text x="90" y="549" fontSize="12" fill="#0F1729" fontWeight="bold">Tibia</text>
       <line x1="169" y1="618" x2="130" y2="626" stroke="#4B5563" strokeWidth="0.8" />
       <text x="62" y="622" fontSize="10" fill="#CBD5E1">Medial</text>
       <text x="52" y="634" fontSize="10" fill="#CBD5E1">Malleolus</text>
@@ -163,7 +163,7 @@ export function LowerLimbBonesDiagram() {
       <text x="268" y="435" fontSize="10" fill="#CBD5E1">Fibular</text>
       <text x="268" y="447" fontSize="10" fill="#CBD5E1">Head</text>
       <line x1="238" y1="545" x2="270" y2="545" stroke="#4B5563" strokeWidth="0.8" />
-      <text x="272" y="549" fontSize="12" fill="#E6EDF3" fontWeight="bold">Fibula</text>
+      <text x="272" y="549" fontSize="12" fill="#0F1729" fontWeight="bold">Fibula</text>
       <line x1="234" y1="620" x2="268" y2="628" stroke="#4B5563" strokeWidth="0.8" />
       <text x="270" y="626" fontSize="10" fill="#CBD5E1">Lateral</text>
       <text x="270" y="638" fontSize="10" fill="#CBD5E1">Malleolus</text>
@@ -265,13 +265,13 @@ export function VertebralColumnDiagram() {
   }
 
   return (
-    <svg viewBox="0 0 420 780" className="w-full" style={{ background: "#161B22", borderRadius: 12 }}>
+    <svg viewBox="0 0 420 780" className="w-full" style={{ background: "#FFFFFF", borderRadius: 12 }}>
       <title>Vertebral Column — Lateral View</title>
       <defs>
         <filter id="vc_sh"><feDropShadow dx="1" dy="1.5" stdDeviation="2" floodColor="#000" floodOpacity="0.5"/></filter>
       </defs>
 
-      <text x="210" y="22" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#E6EDF3">Vertebral Column — Lateral View</text>
+      <text x="210" y="22" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#0F1729">Vertebral Column — Lateral View</text>
 
       {/* Region backgrounds */}
       <rect x="155" y="48" width="80" height="242" rx="6" fill="#3B82F6" fillOpacity="0.06" stroke="#3B82F6" strokeWidth="0.5" />
@@ -290,7 +290,7 @@ export function VertebralColumnDiagram() {
           <rect x={x} y={y} width={w} height={h} rx="4"
             fill={fill} stroke={stroke} strokeWidth="1.2" />
           <text x={x + w / 2} y={y + h / 2 + 4} textAnchor="middle"
-            fontSize="9" fontWeight="bold" fill="#E6EDF3">{label}</text>
+            fontSize="9" fontWeight="bold" fill="#0F1729">{label}</text>
           {/* Spinous process (pointing posteriorly = right) */}
           <path d={`M${x + w},${y + h / 2 - 5} L${x + w + 16},${y + h / 2} L${x + w},${y + h / 2 + 5}`}
             fill={stroke} fillOpacity="0.5" stroke={stroke} strokeWidth="0.8" />
@@ -305,26 +305,26 @@ export function VertebralColumnDiagram() {
                C198,752 203,747 202,742 C200,737 192,733 183,732
                C173,731 161,735 157,742 Z"
         fill="#400020" stroke="#EC4899" strokeWidth="1.3" />
-      <text x="180" y="748" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#E6EDF3">SACRUM</text>
+      <text x="180" y="748" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#0F1729">SACRUM</text>
       {/* Coccyx */}
       <path d="M162,756 C160,762 162,770 166,774 C170,778 176,778 179,773
                C182,768 181,760 178,756 Z"
         fill="#300018" stroke="#EC4899" strokeWidth="1" />
-      <text x="170" y="770" textAnchor="middle" fontSize="8" fill="#E6EDF3">Coccyx</text>
+      <text x="170" y="770" textAnchor="middle" fontSize="8" fill="#0F1729">Coccyx</text>
 
       {/* Region labels on right side */}
       <text x="252" y="80" fontSize="13" fontWeight="bold" fill="#3B82F6">Cervical</text>
-      <text x="252" y="94" fontSize="10" fill="#8B949E">C1–C7</text>
+      <text x="252" y="94" fontSize="10" fill="#6B7280">C1–C7</text>
       <text x="252" y="107" fontSize="9" fill="#3B82F6">Lordosis</text>
       <line x1="222" y1="90" x2="250" y2="90" stroke="#3B82F6" strokeWidth="0.8" />
 
       <text x="252" y="380" fontSize="13" fontWeight="bold" fill="#22C55E">Thoracic</text>
-      <text x="252" y="394" fontSize="10" fill="#8B949E">T1–T12</text>
+      <text x="252" y="394" fontSize="10" fill="#6B7280">T1–T12</text>
       <text x="252" y="407" fontSize="9" fill="#22C55E">Kyphosis</text>
       <line x1="238" y1="393" x2="250" y2="393" stroke="#22C55E" strokeWidth="0.8" />
 
       <text x="252" y="640" fontSize="13" fontWeight="bold" fill="#F97316">Lumbar</text>
-      <text x="252" y="654" fontSize="10" fill="#8B949E">L1–L5</text>
+      <text x="252" y="654" fontSize="10" fill="#6B7280">L1–L5</text>
       <text x="252" y="667" fontSize="9" fill="#F97316">Lordosis</text>
       <line x1="220" y1="653" x2="250" y2="653" stroke="#F97316" strokeWidth="0.8" />
 
@@ -336,12 +336,12 @@ export function VertebralColumnDiagram() {
       <text x="296" y="430" fontSize="10" fill="#6B7280" transform="rotate(90,296,430)">Posterior →</text>
 
       {/* Key */}
-      <rect x="22" y="580" width="120" height="80" rx="6" fill="#161B22" stroke="#21262D" strokeWidth="1" />
-      <text x="82" y="598" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#8B949E">Vertebrae: 33</text>
+      <rect x="22" y="580" width="120" height="80" rx="6" fill="#FFFFFF" stroke="#E5E1D8" strokeWidth="1" />
+      <text x="82" y="598" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#6B7280">Vertebrae: 33</text>
       {[["7 Cervical","#3B82F6"], ["12 Thoracic","#22C55E"], ["5 Lumbar","#F97316"], ["5+4 Sacral/Coccyx","#EC4899"]].map(([t,c], i) => (
         <g key={t}>
           <circle cx="32" cy={612 + i * 14} r="4" fill={c} />
-          <text x="40" y={616 + i * 14} fontSize="9" fill="#8B949E">{t}</text>
+          <text x="40" y={616 + i * 14} fontSize="9" fill="#6B7280">{t}</text>
         </g>
       ))}
     </svg>
@@ -354,11 +354,11 @@ export function VertebralColumnDiagram() {
    ═══════════════════════════════════════════════════════════ */
 export function ThoraxSkeletonDiagram() {
   return (
-    <svg viewBox="0 0 580 500" className="w-full" style={{ background: "#161B22", borderRadius: 12 }}>
+    <svg viewBox="0 0 580 500" className="w-full" style={{ background: "#FFFFFF", borderRadius: 12 }}>
       <title>Thorax Skeleton — Anterior View</title>
       {DEFS}
 
-      <text x="290" y="24" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#E6EDF3">Thorax Skeleton — Anterior View</text>
+      <text x="290" y="24" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#0F1729">Thorax Skeleton — Anterior View</text>
 
       {/* ── STERNUM (center) ── */}
       {/* Manubrium */}
@@ -477,9 +477,9 @@ export function ThoraxSkeletonDiagram() {
           {i + 1}
         </text>
       ))}
-      <text x="444" y="460" fontSize="9" fill="#8B949E">Rib #</text>
+      <text x="444" y="460" fontSize="9" fill="#6B7280">Rib #</text>
 
-      <text x="290" y="486" textAnchor="middle" fontSize="10" fill="#8B949E">12 pairs of ribs protect thoracic viscera</text>
+      <text x="290" y="486" textAnchor="middle" fontSize="10" fill="#6B7280">12 pairs of ribs protect thoracic viscera</text>
     </svg>
   );
 }
@@ -490,7 +490,7 @@ export function ThoraxSkeletonDiagram() {
    ═══════════════════════════════════════════════════════════ */
 export function SkullDiagram() {
   return (
-    <svg viewBox="0 0 580 480" className="w-full" style={{ background: "#161B22", borderRadius: 12 }}>
+    <svg viewBox="0 0 580 480" className="w-full" style={{ background: "#FFFFFF", borderRadius: 12 }}>
       <title>Skull — Lateral View (Right Side)</title>
       <defs>
         <linearGradient id="skull_bone" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -501,7 +501,7 @@ export function SkullDiagram() {
         <filter id="skull_sh"><feDropShadow dx="2" dy="2" stdDeviation="3" floodColor="#000" floodOpacity="0.5"/></filter>
       </defs>
 
-      <text x="290" y="24" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#E6EDF3">Skull — Lateral View (Right Side)</text>
+      <text x="290" y="24" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#0F1729">Skull — Lateral View (Right Side)</text>
 
       {/* ── NEUROCRANIUM ── */}
       {/* Frontal bone (forehead) */}
@@ -549,7 +549,7 @@ export function SkullDiagram() {
       <text x="148" y="359" fontSize="10" fill="#CBD5E1">Process</text>
 
       {/* External auditory meatus */}
-      <ellipse cx="280" cy="278" rx="10" ry="8" fill="#0D1117" stroke="#8A6840" strokeWidth="1.2" />
+      <ellipse cx="280" cy="278" rx="10" ry="8" fill="#F5F3EE" stroke="#8A6840" strokeWidth="1.2" />
       <line x1="292" y1="274" x2="330" y2="258" stroke="#4B5563" strokeWidth="0.8" />
       <text x="332" y="255" fontSize="9" fill="#CBD5E1">Ext. Auditory</text>
       <text x="336" y="267" fontSize="9" fill="#CBD5E1">Meatus</text>
@@ -587,7 +587,7 @@ export function SkullDiagram() {
       <path d="M160,180 C162,168 168,158 178,152 C188,146 200,148 210,156
                C220,162 224,172 220,184 C216,194 206,200 194,200
                C182,200 170,194 162,186 Z"
-        fill="#0D1117" stroke="#8A6840" strokeWidth="1.2" />
+        fill="#F5F3EE" stroke="#8A6840" strokeWidth="1.2" />
       <line x1="183" y1="150" x2="150" y2="130" stroke="#4B5563" strokeWidth="0.8" />
       <text x="72" y="127" fontSize="10" fill="#CBD5E1">Orbit</text>
       <text x="65" y="139" fontSize="10" fill="#CBD5E1">(Eye socket)</text>
@@ -633,7 +633,7 @@ export function SkullDiagram() {
       <text x="315" y="205" fontSize="9" fill="#6A5030">Lambda</text>
       <text x="315" y="216" fontSize="9" fill="#6A5030">Suture</text>
 
-      <text x="290" y="465" textAnchor="middle" fontSize="10" fill="#8B949E">Skull = 22 bones (8 cranial + 14 facial)</text>
+      <text x="290" y="465" textAnchor="middle" fontSize="10" fill="#6B7280">Skull = 22 bones (8 cranial + 14 facial)</text>
     </svg>
   );
 }
@@ -644,7 +644,7 @@ export function SkullDiagram() {
    ═══════════════════════════════════════════════════════════ */
 export function BrainLateralDiagram() {
   return (
-    <svg viewBox="0 0 620 460" className="w-full" style={{ background: "#161B22", borderRadius: 12 }}>
+    <svg viewBox="0 0 620 460" className="w-full" style={{ background: "#FFFFFF", borderRadius: 12 }}>
       <title>Brain — Lateral View (Left Hemisphere)</title>
       <defs>
         <linearGradient id="brain_base" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -655,7 +655,7 @@ export function BrainLateralDiagram() {
         <filter id="brain_sh"><feDropShadow dx="2" dy="2" stdDeviation="4" floodColor="#000" floodOpacity="0.6"/></filter>
       </defs>
 
-      <text x="310" y="24" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#E6EDF3">Brain — Left Hemisphere (Lateral View)</text>
+      <text x="310" y="24" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#0F1729">Brain — Left Hemisphere (Lateral View)</text>
 
       {/* ── CEREBRAL HEMISPHERE outline ── */}
       <path d="M120,280 C112,260 105,230 108,200 C110,170 120,142 138,120
@@ -705,14 +705,14 @@ export function BrainLateralDiagram() {
       {/* ── FISSURES ── */}
       {/* Central sulcus (Rolandic) */}
       <path d="M248,108 C245,122 240,138 232,152 C224,166 214,180 206,194"
-        fill="none" stroke="#E6EDF3" strokeWidth="1.5" opacity="0.6" />
-      <text x="252" y="138" fontSize="9" fill="#E6EDF3" opacity="0.8">Central</text>
-      <text x="252" y="150" fontSize="9" fill="#E6EDF3" opacity="0.8">Sulcus</text>
+        fill="none" stroke="#0F1729" strokeWidth="1.5" opacity="0.6" />
+      <text x="252" y="138" fontSize="9" fill="#0F1729" opacity="0.8">Central</text>
+      <text x="252" y="150" fontSize="9" fill="#0F1729" opacity="0.8">Sulcus</text>
 
       {/* Lateral fissure (Sylvian) */}
       <path d="M150,236 C168,228 192,222 218,218 C244,214 268,216 288,224"
-        fill="none" stroke="#E6EDF3" strokeWidth="1.5" opacity="0.6" />
-      <text x="186" y="228" fontSize="9" fill="#E6EDF3" opacity="0.8">Lateral Fissure</text>
+        fill="none" stroke="#0F1729" strokeWidth="1.5" opacity="0.6" />
+      <text x="186" y="228" fontSize="9" fill="#0F1729" opacity="0.8">Lateral Fissure</text>
 
       {/* ── CEREBELLUM ── */}
       <path d="M340,340 C345,328 356,320 370,320 C390,320 408,332 414,350
@@ -752,7 +752,7 @@ export function BrainLateralDiagram() {
       <text x="382" y="81" fontSize="9" fill="#FCD34D">Visual</text>
       <text x="382" y="93" fontSize="9" fill="#FCD34D">Cortex</text>
 
-      <text x="310" y="446" textAnchor="middle" fontSize="10" fill="#8B949E">Four lobes: Frontal · Parietal · Temporal · Occipital</text>
+      <text x="310" y="446" textAnchor="middle" fontSize="10" fill="#6B7280">Four lobes: Frontal · Parietal · Temporal · Occipital</text>
     </svg>
   );
 }
@@ -763,7 +763,7 @@ export function BrainLateralDiagram() {
    ═══════════════════════════════════════════════════════════ */
 export function HeartAnatomyDiagram() {
   return (
-    <svg viewBox="0 0 580 500" className="w-full" style={{ background: "#161B22", borderRadius: 12 }}>
+    <svg viewBox="0 0 580 500" className="w-full" style={{ background: "#FFFFFF", borderRadius: 12 }}>
       <title>Heart Anatomy — Anterior Cross Section</title>
       <defs>
         <linearGradient id="ht_muscle" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -782,7 +782,7 @@ export function HeartAnatomyDiagram() {
         <filter id="ht_sh"><feDropShadow dx="2" dy="3" stdDeviation="4" floodColor="#000" floodOpacity="0.6"/></filter>
       </defs>
 
-      <text x="290" y="24" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#E6EDF3">Heart — Anterior Cross Section</text>
+      <text x="290" y="24" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#0F1729">Heart — Anterior Cross Section</text>
 
       {/* ── HEART OUTLINE ── */}
       <path d="M180,100 C165,88 145,82 128,88 C105,96 90,120 88,148
@@ -834,7 +834,7 @@ export function HeartAnatomyDiagram() {
 
       {/* Interventricular septum */}
       <path d="M258,200 C260,220 262,255 262,290 C262,310 260,330 258,345"
-        fill="none" stroke="#E6EDF3" strokeWidth="2" opacity="0.4" />
+        fill="none" stroke="#0F1729" strokeWidth="2" opacity="0.4" />
 
       {/* ── GREAT VESSELS ── */}
       {/* Aorta (ascending) */}
@@ -883,8 +883,8 @@ export function HeartAnatomyDiagram() {
       <text x="100" y="107" fontSize="9" fill="#F97316">Arteries</text>
 
       {/* Legend */}
-      <rect x="420" y="360" width="145" height="105" rx="6" fill="#1C2128" stroke="#21262D" strokeWidth="1" />
-      <text x="492" y="378" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#8B949E">Legend</text>
+      <rect x="420" y="360" width="145" height="105" rx="6" fill="#1C2128" stroke="#E5E1D8" strokeWidth="1" />
+      <text x="492" y="378" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#6B7280">Legend</text>
       {([
         ["Oxygenated blood","#EF4444"],
         ["Deoxygenated blood","#3B82F6"],
@@ -893,11 +893,11 @@ export function HeartAnatomyDiagram() {
       ] as [string, string][]).map(([l, c], i) => (
         <g key={l}>
           <rect x="428" y={384 + i * 18} width="12" height="10" rx="2" fill={c} />
-          <text x="446" y={393 + i * 18} fontSize="8" fill="#8B949E">{l}</text>
+          <text x="446" y={393 + i * 18} fontSize="8" fill="#6B7280">{l}</text>
         </g>
       ))}
 
-      <text x="290" y="486" textAnchor="middle" fontSize="10" fill="#8B949E">4 chambers · 4 valves · Average 70 bpm</text>
+      <text x="290" y="486" textAnchor="middle" fontSize="10" fill="#6B7280">4 chambers · 4 valves · Average 70 bpm</text>
     </svg>
   );
 }
@@ -908,10 +908,10 @@ export function HeartAnatomyDiagram() {
    ═══════════════════════════════════════════════════════════ */
 export function AbdomenRegionsDiagram() {
   return (
-    <svg viewBox="0 0 560 500" className="w-full" style={{ background: "#161B22", borderRadius: 12 }}>
+    <svg viewBox="0 0 560 500" className="w-full" style={{ background: "#FFFFFF", borderRadius: 12 }}>
       <title>Abdominal Regions — 9 Regions & Quadrants</title>
 
-      <text x="280" y="24" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#E6EDF3">Abdomen — 9 Regions & Key Organs</text>
+      <text x="280" y="24" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#0F1729">Abdomen — 9 Regions & Key Organs</text>
 
       {/* Abdominal outline */}
       <path d="M120,60 C105,65 92,80 86,100 C80,120 80,160 82,200
@@ -946,11 +946,11 @@ export function AbdomenRegionsDiagram() {
           <rect x={x} y={y} width={w} height={h} fill={fill} opacity="0.7" />
           {name.split("\n").map((line, i) => (
             <text key={i} x={x + w / 2} y={y + 20 + i * 14} textAnchor="middle"
-              fontSize="10" fontWeight="bold" fill="#E6EDF3">{line}</text>
+              fontSize="10" fontWeight="bold" fill="#0F1729">{line}</text>
           ))}
           {organ.split("\n").map((line, i) => (
             <text key={`org-${i}`} x={x + w / 2} y={y + h - 36 + i * 14}
-              textAnchor="middle" fontSize="9" fill="#8B949E">{line}</text>
+              textAnchor="middle" fontSize="9" fill="#6B7280">{line}</text>
           ))}
         </g>
       ))}
@@ -962,10 +962,10 @@ export function AbdomenRegionsDiagram() {
       <text x="414" y="385" textAnchor="middle" fontSize="11" fontWeight="bold" fill="#F59E0B" opacity="0.4">LLQ</text>
 
       {/* Umbilicus */}
-      <circle cx="280" cy="254" r="8" fill="#0D1117" stroke="#8B949E" strokeWidth="1.2" />
-      <text x="280" y="276" textAnchor="middle" fontSize="9" fill="#8B949E">Umbilicus</text>
+      <circle cx="280" cy="254" r="8" fill="#F5F3EE" stroke="#6B7280" strokeWidth="1.2" />
+      <text x="280" y="276" textAnchor="middle" fontSize="9" fill="#6B7280">Umbilicus</text>
 
-      <text x="280" y="472" textAnchor="middle" fontSize="10" fill="#8B949E">9 regions (3×3 grid) for clinical localization of abdominal pain</text>
+      <text x="280" y="472" textAnchor="middle" fontSize="10" fill="#6B7280">9 regions (3×3 grid) for clinical localization of abdominal pain</text>
     </svg>
   );
 }
@@ -991,41 +991,41 @@ export function CranialNervesDiagram() {
   ];
 
   return (
-    <svg viewBox="0 0 660 530" className="w-full" style={{ background: "#161B22", borderRadius: 12 }}>
+    <svg viewBox="0 0 660 530" className="w-full" style={{ background: "#FFFFFF", borderRadius: 12 }}>
       <title>Cranial Nerves I–XII</title>
 
-      <text x="330" y="24" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#E6EDF3">12 Cranial Nerves</text>
+      <text x="330" y="24" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#0F1729">12 Cranial Nerves</text>
 
       {/* Headers */}
       {(["CN #", "Name", "Type", "Function"] as string[]).map((h, i) => (
-        <text key={h} x={[38, 80, 282, 390][i]} y="42" fontSize="11" fontWeight="bold" fill="#8B949E">{h}</text>
+        <text key={h} x={[38, 80, 282, 390][i]} y="42" fontSize="11" fontWeight="bold" fill="#6B7280">{h}</text>
       ))}
-      <line x1="20" y1="48" x2="640" y2="48" stroke="#21262D" strokeWidth="1.5" />
+      <line x1="20" y1="48" x2="640" y2="48" stroke="#E5E1D8" strokeWidth="1.5" />
 
       {nerves.map(([num, name, type, y, fn]) => {
         const typeColor = type === "Sensory" ? "#3B82F6" : type === "Motor" ? "#22C55E" : "#F59E0B";
         const isEven = parseInt(num) % 2 === 0;
         return (
           <g key={num}>
-            {isEven && <rect x="20" y={y - 16} width="620" height="36" fill="#21262D" fillOpacity="0.3" />}
+            {isEven && <rect x="20" y={y - 16} width="620" height="36" fill="#E5E1D8" fillOpacity="0.3" />}
             {/* CN number */}
             <circle cx="38" cy={y + 2} r="13" fill={typeColor} fillOpacity="0.2" stroke={typeColor} strokeWidth="1.2" />
             <text x="38" y={y + 7} textAnchor="middle" fontSize="11" fontWeight="bold" fill={typeColor}>{num}</text>
             {/* Name */}
-            <text x="80" y={y + 7} fontSize="11" fontWeight="bold" fill="#E6EDF3">{name}</text>
+            <text x="80" y={y + 7} fontSize="11" fontWeight="bold" fill="#0F1729">{name}</text>
             {/* Type badge */}
             <rect x="280" y={y - 10} width="80" height="22" rx="6" fill={typeColor} fillOpacity="0.15" stroke={typeColor} strokeWidth="1" />
             <text x="320" y={y + 5} textAnchor="middle" fontSize="10" fill={typeColor}>{type}</text>
             {/* Function */}
-            <text x="380" y={y + 7} fontSize="10" fill="#8B949E">{fn}</text>
+            <text x="380" y={y + 7} fontSize="10" fill="#6B7280">{fn}</text>
           </g>
         );
       })}
 
       {/* Mnemonic */}
-      <rect x="20" y="476" width="620" height="42" rx="6" fill="#1C2128" stroke="#21262D" strokeWidth="1" />
+      <rect x="20" y="476" width="620" height="42" rx="6" fill="#1C2128" stroke="#E5E1D8" strokeWidth="1" />
       <text x="330" y="492" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#00C2A8">Mnemonic:</text>
-      <text x="330" y="507" textAnchor="middle" fontSize="9" fill="#8B949E">"Oh Oh Oh To Touch And Feel Very Good Velvet. Ah Heaven!"</text>
+      <text x="330" y="507" textAnchor="middle" fontSize="9" fill="#6B7280">"Oh Oh Oh To Touch And Feel Very Good Velvet. Ah Heaven!"</text>
     </svg>
   );
 }

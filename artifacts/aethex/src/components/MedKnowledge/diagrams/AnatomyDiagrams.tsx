@@ -1,6 +1,6 @@
 export function UpperLimbBonesDiagram() {
   return (
-    <svg viewBox="0 0 560 780" className="w-full" style={{ background: "#161B22", borderRadius: 12 }}>
+    <svg viewBox="0 0 560 780" className="w-full" style={{ background: "#FFFFFF", borderRadius: 12 }}>
       <title>Bones of the Upper Limb — Anterior View</title>
       <defs>
         <linearGradient id="boneH" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -28,7 +28,7 @@ export function UpperLimbBonesDiagram() {
       </defs>
 
       {/* ── TITLE ── */}
-      <text x="200" y="24" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#E6EDF3">Upper Limb Bones — Anterior View</text>
+      <text x="200" y="24" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#0F1729">Upper Limb Bones — Anterior View</text>
       <text x="200" y="38" textAnchor="middle" fontSize="10" fill="#6B7280">(Right side)</text>
 
       {/* ══════ CLAVICLE ══════ */}
@@ -104,7 +104,7 @@ export function UpperLimbBonesDiagram() {
       <text x="350" y="89" fontSize="10" fill="#CBD5E1" fontStyle="italic">Humeral</text>
       <text x="350" y="101" fontSize="10" fill="#CBD5E1" fontStyle="italic">Head</text>
       <line x1="283" y1="250" x2="325" y2="250" stroke="#4B5563" strokeWidth="0.8" />
-      <text x="327" y="254" fontSize="12" fill="#E6EDF3" fontWeight="bold">Humerus</text>
+      <text x="327" y="254" fontSize="12" fill="#0F1729" fontWeight="bold">Humerus</text>
       <text x="327" y="267" fontSize="9" fill="#9CA3AF">(arm bone)</text>
       <line x1="222" y1="362" x2="175" y2="362" stroke="#4B5563" strokeWidth="0.8" />
       <text x="110" y="358" fontSize="10" fill="#CBD5E1">Medial</text>
@@ -146,7 +146,7 @@ export function UpperLimbBonesDiagram() {
       <text x="132" y="384" fontSize="10" fill="#CBD5E1">Radial</text>
       <text x="138" y="396" fontSize="10" fill="#CBD5E1">Head</text>
       <line x1="231" y1="505" x2="190" y2="505" stroke="#4B5563" strokeWidth="0.8" />
-      <text x="145" y="509" fontSize="12" fill="#E6EDF3" fontWeight="bold">Radius</text>
+      <text x="145" y="509" fontSize="12" fill="#0F1729" fontWeight="bold">Radius</text>
       <line x1="226" y1="578" x2="190" y2="590" stroke="#4B5563" strokeWidth="0.8" />
       <text x="130" y="588" fontSize="9" fill="#CBD5E1">Styloid</text>
       <text x="128" y="599" fontSize="9" fill="#CBD5E1">Process</text>
@@ -184,7 +184,7 @@ export function UpperLimbBonesDiagram() {
       <text x="342" y="347" fontSize="10" fill="#CBD5E1">Olecranon</text>
       <text x="342" y="359" fontSize="9" fill="#9CA3AF">Process</text>
       <line x1="292" y1="505" x2="335" y2="505" stroke="#4B5563" strokeWidth="0.8" />
-      <text x="337" y="509" fontSize="12" fill="#E6EDF3" fontWeight="bold">Ulna</text>
+      <text x="337" y="509" fontSize="12" fill="#0F1729" fontWeight="bold">Ulna</text>
       <line x1="285" y1="584" x2="320" y2="592" stroke="#4B5563" strokeWidth="0.8" />
       <text x="322" y="592" fontSize="9" fill="#CBD5E1">Ulnar</text>
       <text x="322" y="603" fontSize="9" fill="#CBD5E1">Styloid</text>
@@ -291,7 +291,7 @@ export function UpperLimbBonesDiagram() {
 
 export function BrachialPlexusDiagram() {
   return (
-    <svg viewBox="0 0 800 560" className="w-full" style={{ background: "#161B22", borderRadius: 12 }}>
+    <svg viewBox="0 0 800 560" className="w-full" style={{ background: "#FFFFFF", borderRadius: 12 }}>
       <title>Brachial Plexus — Roots, Trunks, Divisions, Cords, Branches</title>
       <defs>
         <linearGradient id="nerveBlue" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -308,11 +308,11 @@ export function BrachialPlexusDiagram() {
 
       {/* Column headers */}
       {(["Roots","Trunks","Div","Cords","Branches"] as string[]).map((h,i) => (
-        <text key={h} x={110+i*148} y={22} textAnchor="middle" fontSize="12" fontWeight="bold" fill="#8B949E">{h}</text>
+        <text key={h} x={110+i*148} y={22} textAnchor="middle" fontSize="12" fontWeight="bold" fill="#6B7280">{h}</text>
       ))}
       {/* Column dividers */}
       {[185,333,481,629].map(x => (
-        <line key={x} x1={x} y1={30} x2={x} y2={530} stroke="#21262D" strokeWidth="1" />
+        <line key={x} x1={x} y1={30} x2={x} y2={530} stroke="#E5E1D8" strokeWidth="1" />
       ))}
 
       {/* ─── Roots C5–T1 with nerve-like shapes ─── */}
@@ -405,13 +405,13 @@ export function BrachialPlexusDiagram() {
             stroke={col} strokeWidth="1.8" fill="none" strokeDasharray="4,2" />
           <rect x="636" y={y-15} width="142" height="30" rx="8"
             fill={col} fillOpacity="0.1" stroke={col} strokeWidth="1.2" />
-          <text x="707" y={y+5} textAnchor="middle" fontSize="10" fill="#E6EDF3">{name}</text>
+          <text x="707" y={y+5} textAnchor="middle" fontSize="10" fill="#0F1729">{name}</text>
         </g>
       ))}
 
       {/* Legend */}
       <g transform="translate(30,455)">
-        <text x="0" y="0" fontSize="11" fontWeight="bold" fill="#8B949E">Legend</text>
+        <text x="0" y="0" fontSize="11" fontWeight="bold" fill="#6B7280">Legend</text>
         {([
           ["Upper (C5–C6)", "#3B82F6"],
           ["Middle (C7)",   "#8B5CF6"],
@@ -420,7 +420,7 @@ export function BrachialPlexusDiagram() {
         ] as [string,string][]).map(([l,c],i) => (
           <g key={l} transform={`translate(0,${16+i*18})`}>
             <rect x="0" y="-11" width="20" height="12" rx="3" fill={c} fillOpacity="0.45" />
-            <text x="26" y="0" fontSize="10" fill="#8B949E">{l}</text>
+            <text x="26" y="0" fontSize="10" fill="#6B7280">{l}</text>
           </g>
         ))}
       </g>
@@ -434,17 +434,17 @@ export function ActionPotentialDiagram() {
     <svg viewBox="0 0 600 360" className="w-full" style={{ background: "#1C2128", borderRadius: 12 }}>
       <title>Nerve Action Potential — Phases</title>
       {/* Grid */}
-      {[0,1,2,3,4,5].map(i => <line key={`h${i}`} x1="60" y1={60+i*50} x2="560" y2={60+i*50} stroke="#21262D" strokeWidth="1" />)}
+      {[0,1,2,3,4,5].map(i => <line key={`h${i}`} x1="60" y1={60+i*50} x2="560" y2={60+i*50} stroke="#E5E1D8" strokeWidth="1" />)}
       {/* Y-axis */}
-      <line x1="80" y1="40" x2="80" y2="340" stroke="#8B949E" strokeWidth="2" />
+      <line x1="80" y1="40" x2="80" y2="340" stroke="#6B7280" strokeWidth="2" />
       {/* X-axis */}
-      <line x1="80" y1="220" x2="560" y2="220" stroke="#8B949E" strokeWidth="2" />
+      <line x1="80" y1="220" x2="560" y2="220" stroke="#6B7280" strokeWidth="2" />
       {/* Y labels */}
       {([["+40","100"],["+20","140"],["0","180"],["-20","220"],["-40","260"],["-65","300"],["-90","340"]] as [string,string][]).map(([v,y]) => (
-        <text key={v} x="68" y={Number(y)+5} fontSize="10" textAnchor="end" fill="#8B949E">{v}</text>
+        <text key={v} x="68" y={Number(y)+5} fontSize="10" textAnchor="end" fill="#6B7280">{v}</text>
       ))}
-      <text x="30" y="190" fontSize="11" fontWeight="bold" fill="#8B949E" transform="rotate(-90,30,190)">mV</text>
-      <text x="320" y="355" fontSize="11" textAnchor="middle" fill="#8B949E">Time (ms)</text>
+      <text x="30" y="190" fontSize="11" fontWeight="bold" fill="#6B7280" transform="rotate(-90,30,190)">mV</text>
+      <text x="320" y="355" fontSize="11" textAnchor="middle" fill="#6B7280">Time (ms)</text>
       {/* Resting potential line */}
       <line x1="80" y1="300" x2="560" y2="300" stroke="#3B82F6" strokeWidth="1" strokeDasharray="5,3" />
       {/* Action Potential curve */}
@@ -455,18 +455,18 @@ export function ActionPotentialDiagram() {
       <text x="150" y="38" textAnchor="middle" fontSize="10" fill="#F59E0B">Threshold</text>
       <line x1="192" y1="40" x2="192" y2="100" stroke="#EC4899" strokeWidth="1" strokeDasharray="3,2" />
       <text x="192" y="38" textAnchor="middle" fontSize="10" fill="#EC4899">Peak</text>
-      <text x="192" y="50" textAnchor="middle" fontSize="9" fill="#8B949E">+40mV</text>
+      <text x="192" y="50" textAnchor="middle" fontSize="9" fill="#6B7280">+40mV</text>
       {/* Annotations */}
       {([
         [130,250,"Depolarization","#00C2A8"],
         [205,170,"Repolarization","#3B82F6"],
         [240,320,"Hyperpolarization","#F59E0B"],
-        [320,290,"Resting (-65mV)","#8B949E"],
+        [320,290,"Resting (-65mV)","#6B7280"],
       ] as [number,number,string,string][]).map(([x,y,label,color]) => (
         <text key={label} x={x} y={y} fontSize="10" fill={color}>{label}</text>
       ))}
-      <text x="170" y="130" fontSize="9" fill="#8B949E">Na⁺ influx</text>
-      <text x="205" y="200" fontSize="9" fill="#8B949E">K⁺ efflux</text>
+      <text x="170" y="130" fontSize="9" fill="#6B7280">Na⁺ influx</text>
+      <text x="205" y="200" fontSize="9" fill="#6B7280">K⁺ efflux</text>
       <rect x="200" y="280" width="60" height="20" rx="4" fill="#F59E0B" fillOpacity="0.1" stroke="#F59E0B" strokeWidth="1" />
       <text x="230" y="294" textAnchor="middle" fontSize="9" fill="#F59E0B">Absolute Ref.</text>
       <rect x="260" y="280" width="50" height="20" rx="4" fill="#EC4899" fillOpacity="0.1" stroke="#EC4899" strokeWidth="1" />
@@ -479,20 +479,20 @@ export function CardiacCycleDiagram() {
   return (
     <svg viewBox="0 0 650 380" className="w-full" style={{ background: "#1C2128", borderRadius: 12 }}>
       <title>Cardiac Cycle — Pressure Volume Relationships</title>
-      <line x1="80" y1="40" x2="80" y2="340" stroke="#8B949E" strokeWidth="2" />
-      <line x1="80" y1="340" x2="600" y2="340" stroke="#8B949E" strokeWidth="2" />
-      <text x="30" y="200" fontSize="11" fill="#8B949E" transform="rotate(-90,30,200)">Pressure (mmHg)</text>
-      <text x="340" y="365" fontSize="11" textAnchor="middle" fill="#8B949E">Volume (mL)</text>
+      <line x1="80" y1="40" x2="80" y2="340" stroke="#6B7280" strokeWidth="2" />
+      <line x1="80" y1="340" x2="600" y2="340" stroke="#6B7280" strokeWidth="2" />
+      <text x="30" y="200" fontSize="11" fill="#6B7280" transform="rotate(-90,30,200)">Pressure (mmHg)</text>
+      <text x="340" y="365" fontSize="11" textAnchor="middle" fill="#6B7280">Volume (mL)</text>
       {[40,80,120,160,200].map(v => (
         <g key={v}>
-          <line x1="80" y1={340-v*1.2} x2="600" y2={340-v*1.2} stroke="#21262D" strokeWidth="1" />
-          <text x="72" y={344-v*1.2} textAnchor="end" fontSize="9" fill="#8B949E">{v}</text>
+          <line x1="80" y1={340-v*1.2} x2="600" y2={340-v*1.2} stroke="#E5E1D8" strokeWidth="1" />
+          <text x="72" y={344-v*1.2} textAnchor="end" fontSize="9" fill="#6B7280">{v}</text>
         </g>
       ))}
       {[50,100,150].map(v => (
         <g key={v}>
-          <line x1={80+v*2.8} y1="40" x2={80+v*2.8} y2="340" stroke="#21262D" strokeWidth="1" />
-          <text x={80+v*2.8} y="352" textAnchor="middle" fontSize="9" fill="#8B949E">{v}</text>
+          <line x1={80+v*2.8} y1="40" x2={80+v*2.8} y2="340" stroke="#E5E1D8" strokeWidth="1" />
+          <text x={80+v*2.8} y="352" textAnchor="middle" fontSize="9" fill="#6B7280">{v}</text>
         </g>
       ))}
       <path d="M220,330 L220,190 C220,180 240,180 260,180 C300,180 360,200 380,180 C400,175 420,170 420,100 C420,90 380,88 360,90 C300,95 240,160 220,180 Z"
@@ -503,10 +503,10 @@ export function CardiacCycleDiagram() {
       <text x="235" y="270" fontSize="10" fill="#3B82F6">Isovolumetric</text>
       <text x="235" y="283" fontSize="10" fill="#3B82F6">Relaxation</text>
       <text x="290" y="200" fontSize="10" fill="#F59E0B">Filling</text>
-      <text x="218" y="342" textAnchor="middle" fontSize="10" fill="#8B949E">ESV</text>
-      <text x="420" y="342" textAnchor="middle" fontSize="10" fill="#8B949E">EDV</text>
-      <line x1="218" y1="338" x2="218" y2="330" stroke="#8B949E" strokeWidth="1" />
-      <line x1="420" y1="338" x2="420" y2="330" stroke="#8B949E" strokeWidth="1" />
+      <text x="218" y="342" textAnchor="middle" fontSize="10" fill="#6B7280">ESV</text>
+      <text x="420" y="342" textAnchor="middle" fontSize="10" fill="#6B7280">EDV</text>
+      <line x1="218" y1="338" x2="218" y2="330" stroke="#6B7280" strokeWidth="1" />
+      <line x1="420" y1="338" x2="420" y2="330" stroke="#6B7280" strokeWidth="1" />
       <line x1="218" y1="355" x2="420" y2="355" stroke="#00C2A8" strokeWidth="1.5" />
       <text x="319" y="368" textAnchor="middle" fontSize="10" fill="#00C2A8">Stroke Volume ~70mL</text>
     </svg>

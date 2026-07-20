@@ -30,27 +30,27 @@ export function EnzymeKineticsDiagram() {
   });
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ background: "#161B22", borderRadius: 12 }}>
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ background: "#FFFFFF", borderRadius: 12 }}>
       <title>Enzyme Kinetics — Michaelis-Menten</title>
       <defs>
         <marker id="ek_arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-          <path d="M0,0 L0,6 L8,3 Z" fill="#8B949E" />
+          <path d="M0,0 L0,6 L8,3 Z" fill="#6B7280" />
         </marker>
       </defs>
-      <text x="280" y="22" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#E6EDF3">Enzyme Kinetics — Michaelis-Menten</text>
+      <text x="280" y="22" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#0F1729">Enzyme Kinetics — Michaelis-Menten</text>
 
       {/* Axes */}
       <line x1="60" y1={H-60} x2={W-30} y2={H-60} stroke="#4B5563" strokeWidth="1.5" markerEnd="url(#ek_arrow)" />
       <line x1="60" y1={H-60} x2="60" y2="35" stroke="#4B5563" strokeWidth="1.5" markerEnd="url(#ek_arrow)" />
-      <text x="295" y={H-20} textAnchor="middle" fontSize="11" fill="#8B949E">[S] Substrate concentration (mM)</text>
-      <text x="22" y="230" textAnchor="middle" fontSize="11" fill="#8B949E" transform="rotate(-90,22,230)">Reaction velocity (V)</text>
+      <text x="295" y={H-20} textAnchor="middle" fontSize="11" fill="#6B7280">[S] Substrate concentration (mM)</text>
+      <text x="22" y="230" textAnchor="middle" fontSize="11" fill="#6B7280" transform="rotate(-90,22,230)">Reaction velocity (V)</text>
 
       {/* Vmax line */}
       <line x1="60" y1={py(vmax, vmax)} x2={W-30} y2={py(vmax, vmax)} stroke="#22C55E" strokeWidth="1" strokeDasharray="6,4" />
       <text x={W-28} y={py(vmax, vmax)-4} fontSize="10" fill="#22C55E" textAnchor="end">Vmax</text>
       {/* Vmax/2 line */}
-      <line x1="60" y1={py(vmax/2, vmax)} x2={px(km)} y2={py(vmax/2, vmax)} stroke="#8B949E" strokeWidth="0.8" strokeDasharray="4,3" />
-      <line x1={px(km)} y1={py(vmax/2, vmax)} x2={px(km)} y2={H-60} stroke="#8B949E" strokeWidth="0.8" strokeDasharray="4,3" />
+      <line x1="60" y1={py(vmax/2, vmax)} x2={px(km)} y2={py(vmax/2, vmax)} stroke="#6B7280" strokeWidth="0.8" strokeDasharray="4,3" />
+      <line x1={px(km)} y1={py(vmax/2, vmax)} x2={px(km)} y2={H-60} stroke="#6B7280" strokeWidth="0.8" strokeDasharray="4,3" />
       <text x={px(km)} y={H-48} textAnchor="middle" fontSize="10" fill="#F59E0B">Km</text>
       <text x="58" y={py(vmax/2, vmax)+4} textAnchor="end" fontSize="10" fill="#F59E0B">Vmax/2</text>
 
@@ -64,20 +64,20 @@ export function EnzymeKineticsDiagram() {
       <polyline points={ptsNoncomp.join(" ")} fill="none" stroke="#F59E0B" strokeWidth="2" strokeDasharray="4,4" />
 
       {/* Legend */}
-      <rect x="300" y="50" width="220" height="80" rx="6" fill="#1C2128" stroke="#21262D" strokeWidth="1" />
+      <rect x="300" y="50" width="220" height="80" rx="6" fill="#1C2128" stroke="#E5E1D8" strokeWidth="1" />
       <line x1="310" y1="70" x2="340" y2="70" stroke="#00C2A8" strokeWidth="2.5" />
-      <text x="346" y="74" fontSize="10" fill="#8B949E">Normal (no inhibitor)</text>
+      <text x="346" y="74" fontSize="10" fill="#6B7280">Normal (no inhibitor)</text>
       <line x1="310" y1="90" x2="340" y2="90" stroke="#EF4444" strokeWidth="2" strokeDasharray="7,3" />
-      <text x="346" y="94" fontSize="10" fill="#8B949E">Competitive inhibition</text>
+      <text x="346" y="94" fontSize="10" fill="#6B7280">Competitive inhibition</text>
       <line x1="310" y1="110" x2="340" y2="110" stroke="#F59E0B" strokeWidth="2" strokeDasharray="4,4" />
-      <text x="346" y="114" fontSize="10" fill="#8B949E">Non-competitive inhibition</text>
+      <text x="346" y="114" fontSize="10" fill="#6B7280">Non-competitive inhibition</text>
 
       {/* Key fact */}
       <rect x="55" y="38" width="230" height="38" rx="5" fill="#1A3A2A" stroke="#22C55E" strokeWidth="0.8" />
       <text x="170" y="55" textAnchor="middle" fontSize="9" fill="#86EFAC">Km = substrate conc. at ½ Vmax</text>
       <text x="170" y="68" textAnchor="middle" fontSize="9" fill="#86EFAC">Low Km = high enzyme affinity</text>
 
-      <text x="280" y={H-4} textAnchor="middle" fontSize="10" fill="#8B949E">Competitive inhibitor: ↑Km, Vmax unchanged · Non-competitive: ↓Vmax, Km unchanged</text>
+      <text x="280" y={H-4} textAnchor="middle" fontSize="10" fill="#6B7280">Competitive inhibitor: ↑Km, Vmax unchanged · Non-competitive: ↓Vmax, Km unchanged</text>
     </svg>
   );
 }
@@ -101,9 +101,9 @@ export function DNAStructureDiagram() {
   }
 
   return (
-    <svg viewBox="0 0 560 530" className="w-full" style={{ background: "#161B22", borderRadius: 12 }}>
+    <svg viewBox="0 0 560 530" className="w-full" style={{ background: "#FFFFFF", borderRadius: 12 }}>
       <title>DNA Double Helix & Base Pairing</title>
-      <text x="280" y="22" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#E6EDF3">DNA Structure & Base Pairing</text>
+      <text x="280" y="22" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#0F1729">DNA Structure & Base Pairing</text>
 
       {/* Backbone strands */}
       <polyline points={helixPoints.map(p => `${p.x},${p.y}`).join(" ")} fill="none" stroke="#3B82F6" strokeWidth="4" strokeLinecap="round" />
@@ -140,8 +140,8 @@ export function DNAStructureDiagram() {
       <text x="285" y="470" textAnchor="middle" fontSize="11" fill="#EF4444">5' →</text>
 
       {/* Information panel */}
-      <rect x="340" y="40" width="200" height="200" rx="8" fill="#1C2128" stroke="#21262D" strokeWidth="1" />
-      <text x="440" y="60" textAnchor="middle" fontSize="11" fontWeight="bold" fill="#E6EDF3">Base Pairs</text>
+      <rect x="340" y="40" width="200" height="200" rx="8" fill="#1C2128" stroke="#E5E1D8" strokeWidth="1" />
+      <text x="440" y="60" textAnchor="middle" fontSize="11" fontWeight="bold" fill="#0F1729">Base Pairs</text>
       {([
         ["Purines", "A, G (double ring)", "#F59E0B"],
         ["Pyrimidines", "C, T, U (single ring)", "#8B5CF6"],
@@ -154,13 +154,13 @@ export function DNAStructureDiagram() {
         <g key={k}>
           <circle cx="350" cy={80 + i * 22} r="3" fill={c} />
           <text x="358" y={84 + i * 22} fontSize="9" fontWeight="bold" fill={c}>{k}:</text>
-          <text x="358" y={96 + i * 22} fontSize="9" fill="#8B949E">{v}</text>
+          <text x="358" y={96 + i * 22} fontSize="9" fill="#6B7280">{v}</text>
         </g>
       ))}
 
       {/* Nucleotide structure */}
-      <rect x="340" y="260" width="200" height="145" rx="8" fill="#1C2128" stroke="#21262D" strokeWidth="1" />
-      <text x="440" y="278" textAnchor="middle" fontSize="11" fontWeight="bold" fill="#E6EDF3">Nucleotide = 3 parts</text>
+      <rect x="340" y="260" width="200" height="145" rx="8" fill="#1C2128" stroke="#E5E1D8" strokeWidth="1" />
+      <text x="440" y="278" textAnchor="middle" fontSize="11" fontWeight="bold" fill="#0F1729">Nucleotide = 3 parts</text>
       {([
         ["1. Phosphate group", "#F97316"],
         ["2. Pentose sugar (deoxyribose/ribose)", "#22C55E"],
@@ -171,9 +171,9 @@ export function DNAStructureDiagram() {
           <text x="440" y={307 + i * 34} textAnchor="middle" fontSize="9" fill={c}>{t}</text>
         </g>
       ))}
-      <text x="440" y="395" textAnchor="middle" fontSize="9" fill="#8B949E">DNA vs RNA: thymine vs uracil</text>
+      <text x="440" y="395" textAnchor="middle" fontSize="9" fill="#6B7280">DNA vs RNA: thymine vs uracil</text>
 
-      <text x="130" y="516" textAnchor="middle" fontSize="10" fill="#8B949E">Watson-Crick double helix model (1953)</text>
+      <text x="130" y="516" textAnchor="middle" fontSize="10" fill="#6B7280">Watson-Crick double helix model (1953)</text>
     </svg>
   );
 }
@@ -223,31 +223,31 @@ export function PharmacokineticsDiagram() {
   const scaleY = (c: number) => margin.top + plotH - (c / maxC) * plotH;
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ background: "#161B22", borderRadius: 12 }}>
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ background: "#FFFFFF", borderRadius: 12 }}>
       <title>Pharmacokinetics — Drug Concentration Curves</title>
       <defs>
         <marker id="pk_arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-          <path d="M0,0 L0,6 L8,3 Z" fill="#8B949E" />
+          <path d="M0,0 L0,6 L8,3 Z" fill="#6B7280" />
         </marker>
       </defs>
-      <text x="280" y="22" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#E6EDF3">Pharmacokinetics — Drug Concentration vs Time</text>
+      <text x="280" y="22" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#0F1729">Pharmacokinetics — Drug Concentration vs Time</text>
 
       {/* Axes */}
       <line x1={margin.left} y1={margin.top + plotH} x2={W - margin.right} y2={margin.top + plotH} stroke="#4B5563" strokeWidth="1.5" markerEnd="url(#pk_arrow)" />
       <line x1={margin.left} y1={margin.top + plotH} x2={margin.left} y2={margin.top} stroke="#4B5563" strokeWidth="1.5" markerEnd="url(#pk_arrow)" />
-      <text x="280" y={H - 8} textAnchor="middle" fontSize="11" fill="#8B949E">Time (hours)</text>
-      <text x="20" y="220" textAnchor="middle" fontSize="11" fill="#8B949E" transform="rotate(-90,20,220)">Plasma [Drug] (µg/mL)</text>
+      <text x="280" y={H - 8} textAnchor="middle" fontSize="11" fill="#6B7280">Time (hours)</text>
+      <text x="20" y="220" textAnchor="middle" fontSize="11" fill="#6B7280" transform="rotate(-90,20,220)">Plasma [Drug] (µg/mL)</text>
 
       {/* Grid lines */}
       {[0, 25, 50, 75, 100].map(c => (
         <g key={c}>
-          <line x1={margin.left} y1={scaleY(c)} x2={W - margin.right} y2={scaleY(c)} stroke="#21262D" strokeWidth="0.8" />
+          <line x1={margin.left} y1={scaleY(c)} x2={W - margin.right} y2={scaleY(c)} stroke="#E5E1D8" strokeWidth="0.8" />
           <text x={margin.left - 8} y={scaleY(c) + 4} textAnchor="end" fontSize="9" fill="#6B7280">{c}</text>
         </g>
       ))}
       {[0, 2, 4, 6, 8, 10, 12].map(t => (
         <g key={t}>
-          <line x1={scaleX(t)} y1={margin.top + plotH} x2={scaleX(t)} y2={margin.top} stroke="#21262D" strokeWidth="0.8" />
+          <line x1={scaleX(t)} y1={margin.top + plotH} x2={scaleX(t)} y2={margin.top} stroke="#E5E1D8" strokeWidth="0.8" />
           <text x={scaleX(t)} y={margin.top + plotH + 14} textAnchor="middle" fontSize="9" fill="#6B7280">{t}</text>
         </g>
       ))}
@@ -287,13 +287,13 @@ export function PharmacokineticsDiagram() {
       <text x={scaleX(4.8)} y={scaleY(42)} fontSize="9" fill="#FCA5A5">t½</text>
 
       {/* Legend */}
-      <rect x={margin.left + 5} y={margin.top + 5} width="195" height="75" rx="5" fill="#1C2128" stroke="#21262D" strokeWidth="1" />
+      <rect x={margin.left + 5} y={margin.top + 5} width="195" height="75" rx="5" fill="#1C2128" stroke="#E5E1D8" strokeWidth="1" />
       <line x1={margin.left + 15} y1={margin.top + 22} x2={margin.left + 45} y2={margin.top + 22} stroke="#EF4444" strokeWidth="2" strokeDasharray="6,3" />
-      <text x={margin.left + 50} y={margin.top + 26} fontSize="10" fill="#8B949E">IV Bolus</text>
+      <text x={margin.left + 50} y={margin.top + 26} fontSize="10" fill="#6B7280">IV Bolus</text>
       <line x1={margin.left + 15} y1={margin.top + 42} x2={margin.left + 45} y2={margin.top + 42} stroke="#3B82F6" strokeWidth="2.5" />
-      <text x={margin.left + 50} y={margin.top + 46} fontSize="10" fill="#8B949E">Oral (single dose)</text>
+      <text x={margin.left + 50} y={margin.top + 46} fontSize="10" fill="#6B7280">Oral (single dose)</text>
       <line x1={margin.left + 15} y1={margin.top + 62} x2={margin.left + 45} y2={margin.top + 62} stroke="#8B5CF6" strokeWidth="2" strokeDasharray="4,3" />
-      <text x={margin.left + 50} y={margin.top + 66} fontSize="10" fill="#8B949E">Multiple doses</text>
+      <text x={margin.left + 50} y={margin.top + 66} fontSize="10" fill="#6B7280">Multiple doses</text>
     </svg>
   );
 }
@@ -331,14 +331,14 @@ export function LungVolumesDiagram() {
   }
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ background: "#161B22", borderRadius: 12 }}>
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ background: "#FFFFFF", borderRadius: 12 }}>
       <title>Lung Volumes & Capacities — Spirometry</title>
       <defs>
         <marker id="lv_arrow" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
-          <path d="M0,0 L0,6 L7,3 Z" fill="#8B949E" />
+          <path d="M0,0 L0,6 L7,3 Z" fill="#6B7280" />
         </marker>
       </defs>
-      <text x="280" y="22" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#E6EDF3">Lung Volumes & Capacities — Spirometry</text>
+      <text x="280" y="22" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#0F1729">Lung Volumes & Capacities — Spirometry</text>
 
       {/* Background zones */}
       {/* IRV */}
@@ -399,7 +399,7 @@ export function LungVolumesDiagram() {
         [140, 248, "IC", "#3B82F6"],  // Inspiratory capacity (IRV+TV)
         [248, 412, "FRC", "#F97316"], // FRC (ERV+RV)
         [140, 360, "VC", "#22C55E"],  // Vital capacity
-        [140, 412, "TLC", "#E6EDF3"], // TLC
+        [140, 412, "TLC", "#0F1729"], // TLC
       ] as [number, number, string, string][]).map(([y1, y2, label, c]) => (
         <g key={label}>
           <line x1="52" y1={y1} x2="52" y2={y2} stroke={c} strokeWidth="1.5" />
@@ -410,10 +410,10 @@ export function LungVolumesDiagram() {
       ))}
 
       {/* X-axis label */}
-      <text x="280" y="425" textAnchor="middle" fontSize="10" fill="#8B949E">Time (seconds)</text>
+      <text x="280" y="425" textAnchor="middle" fontSize="10" fill="#6B7280">Time (seconds)</text>
       <line x1="55" y1="415" x2="535" y2="415" stroke="#4B5563" strokeWidth="1" />
 
-      <text x="280" y={H - 4} textAnchor="middle" fontSize="10" fill="#8B949E">TLC ≈ 6L · VC ≈ 4.8L · FRC ≈ 2.4L · RV ≈ 1.2L (average adult male)</text>
+      <text x="280" y={H - 4} textAnchor="middle" fontSize="10" fill="#6B7280">TLC ≈ 6L · VC ≈ 4.8L · FRC ≈ 2.4L · RV ≈ 1.2L (average adult male)</text>
     </svg>
   );
 }
@@ -431,10 +431,10 @@ export function InflammationDiagram() {
   ];
 
   return (
-    <svg viewBox="0 0 560 460" className="w-full" style={{ background: "#161B22", borderRadius: 12 }}>
+    <svg viewBox="0 0 560 460" className="w-full" style={{ background: "#FFFFFF", borderRadius: 12 }}>
       <title>Inflammation — Acute to Chronic Progression</title>
 
-      <text x="280" y="22" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#E6EDF3">Acute Inflammation — Phases</text>
+      <text x="280" y="22" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#0F1729">Acute Inflammation — Phases</text>
 
       {/* Timeline arrow */}
       <line x1="55" y1="75" x2="505" y2="75" stroke="#374151" strokeWidth="2" />
@@ -442,7 +442,7 @@ export function InflammationDiagram() {
         <circle key={i} cx={55 + i * 112.5} cy="75" r="6" fill={i < 4 ? phases[Math.min(i, 3)].color : "#374151"} />
       ))}
       <path d="M497,68 L509,75 L497,82 Z" fill="#374151" />
-      <text x="510" y="79" fontSize="10" fill="#8B949E">Chronic</text>
+      <text x="510" y="79" fontSize="10" fill="#6B7280">Chronic</text>
 
       {/* Time markers */}
       {(["0h", "2-4h", "24-48h", "Days", "Weeks+"] as string[]).map((t, i) => (
@@ -457,7 +457,7 @@ export function InflammationDiagram() {
             <text key={li} x={x + 55} y={128 + li * 14} textAnchor="middle" fontSize="10" fontWeight="bold" fill={color}>{line}</text>
           ))}
           {events.map((e, ei) => (
-            <text key={ei} x={x + 55} y={158 + ei * 28} textAnchor="middle" fontSize="8" fill="#8B949E">{e}</text>
+            <text key={ei} x={x + 55} y={158 + ei * 28} textAnchor="middle" fontSize="8" fill="#6B7280">{e}</text>
           ))}
           {i < 3 && <path d={`M${x + 114},175 L${x + 125},175`} fill="none" stroke={color} strokeWidth="1.5" />}
           {i < 3 && <path d={`M${x + 121},169 L${x + 129},175 L${x + 121},181 Z`} fill={color} />}
@@ -465,8 +465,8 @@ export function InflammationDiagram() {
       ))}
 
       {/* Mediators */}
-      <rect x="55" y="260" width="230" height="150" rx="8" fill="#1C2128" stroke="#21262D" strokeWidth="1" />
-      <text x="170" y="278" textAnchor="middle" fontSize="11" fontWeight="bold" fill="#E6EDF3">Key Mediators</text>
+      <rect x="55" y="260" width="230" height="150" rx="8" fill="#1C2128" stroke="#E5E1D8" strokeWidth="1" />
+      <text x="170" y="278" textAnchor="middle" fontSize="11" fontWeight="bold" fill="#0F1729">Key Mediators</text>
       {([
         ["Histamine", "↑permeability, vasodilate", "#EF4444"],
         ["Prostaglandins (PGE2)", "Pain, fever, vasodilation", "#F97316"],
@@ -477,13 +477,13 @@ export function InflammationDiagram() {
         <g key={med}>
           <circle cx="66" cy={294 + i * 22} r="3" fill={c} />
           <text x="74" y={298 + i * 22} fontSize="9" fontWeight="bold" fill={c}>{med}:</text>
-          <text x="74" y={310 + i * 22} fontSize="8" fill="#8B949E">{action}</text>
+          <text x="74" y={310 + i * 22} fontSize="8" fill="#6B7280">{action}</text>
         </g>
       ))}
 
       {/* Cardinal signs */}
-      <rect x="305" y="260" width="230" height="150" rx="8" fill="#1C2128" stroke="#21262D" strokeWidth="1" />
-      <text x="420" y="278" textAnchor="middle" fontSize="11" fontWeight="bold" fill="#E6EDF3">Cardinal Signs (Celsus)</text>
+      <rect x="305" y="260" width="230" height="150" rx="8" fill="#1C2128" stroke="#E5E1D8" strokeWidth="1" />
+      <text x="420" y="278" textAnchor="middle" fontSize="11" fontWeight="bold" fill="#0F1729">Cardinal Signs (Celsus)</text>
       {([
         ["Rubor", "Redness", "↑blood flow", "#EF4444"],
         ["Calor", "Heat", "↑metabolic activity", "#F97316"],
@@ -493,12 +493,12 @@ export function InflammationDiagram() {
       ] as [string, string, string, string][]).map(([latin, eng, mech, c], i) => (
         <g key={latin}>
           <text x="316" y={296 + i * 22} fontSize="10" fontWeight="bold" fill={c} fontStyle="italic">{latin}</text>
-          <text x="380" y={296 + i * 22} fontSize="9" fill="#8B949E">({eng})</text>
+          <text x="380" y={296 + i * 22} fontSize="9" fill="#6B7280">({eng})</text>
           <text x="316" y={308 + i * 22} fontSize="8" fill="#6B7280">{mech}</text>
         </g>
       ))}
 
-      <text x="280" y={450} textAnchor="middle" fontSize="10" fill="#8B949E">Acute ≤2 weeks · Subacute 2-6 weeks · Chronic 6+ weeks</text>
+      <text x="280" y={450} textAnchor="middle" fontSize="10" fill="#6B7280">Acute ≤2 weeks · Subacute 2-6 weeks · Chronic 6+ weeks</text>
     </svg>
   );
 }
@@ -510,10 +510,10 @@ export function InflammationDiagram() {
    ═══════════════════════════════════════════════════════════ */
 export function BacterialClassificationDiagram() {
   return (
-    <svg viewBox="0 0 620 480" className="w-full" style={{ background: "#161B22", borderRadius: 12 }}>
+    <svg viewBox="0 0 620 480" className="w-full" style={{ background: "#FFFFFF", borderRadius: 12 }}>
       <title>Bacterial Cell Structure — Gram +ve vs −ve</title>
 
-      <text x="310" y="22" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#E6EDF3">Gram +ve vs Gram −ve Cell Wall</text>
+      <text x="310" y="22" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#0F1729">Gram +ve vs Gram −ve Cell Wall</text>
 
       {/* Gram Positive */}
       <rect x="20" y="38" width="280" height="260" rx="10" fill="#3B82F612" stroke="#3B82F6" strokeWidth="1.5" />
@@ -534,7 +534,7 @@ export function BacterialClassificationDiagram() {
       ))}
 
       {/* Cytoplasm */}
-      <rect x="40" y="160" width="240" height="80" rx="5" fill="#0D1117" stroke="#374151" strokeWidth="1" />
+      <rect x="40" y="160" width="240" height="80" rx="5" fill="#F5F3EE" stroke="#374151" strokeWidth="1" />
       <text x="160" y="196" textAnchor="middle" fontSize="11" fill="#6B7280">CYTOPLASM</text>
       {/* Ribosome dots */}
       {Array.from({ length: 8 }, (_, i) => <circle key={i} cx={60 + i * 26} cy="208" r="4" fill="#8B5CF6" fillOpacity="0.6" />)}
@@ -543,7 +543,7 @@ export function BacterialClassificationDiagram() {
       {/* G+ examples */}
       <rect x="40" y="250" width="240" height="36" rx="5" fill="#1A3A2A" stroke="#22C55E" strokeWidth="0.8" />
       <text x="160" y="265" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#86EFAC">Examples:</text>
-      <text x="160" y="279" textAnchor="middle" fontSize="9" fill="#8B949E">Staph, Strep, Clostridium, Bacillus, Listeria</text>
+      <text x="160" y="279" textAnchor="middle" fontSize="9" fill="#6B7280">Staph, Strep, Clostridium, Bacillus, Listeria</text>
 
       {/* Gram Negative */}
       <rect x="320" y="38" width="280" height="260" rx="10" fill="#EF444412" stroke="#EF4444" strokeWidth="1.5" />
@@ -568,18 +568,18 @@ export function BacterialClassificationDiagram() {
       <text x="290" y="93" fontSize="8" fill="#EF4444" textAnchor="middle">LPS /</text>
       <text x="290" y="104" fontSize="8" fill="#EF4444" textAnchor="middle">Endotoxin</text>
 
-      <rect x="340" y="160" width="240" height="80" rx="5" fill="#0D1117" stroke="#374151" strokeWidth="1" />
+      <rect x="340" y="160" width="240" height="80" rx="5" fill="#F5F3EE" stroke="#374151" strokeWidth="1" />
       <text x="460" y="196" textAnchor="middle" fontSize="11" fill="#6B7280">CYTOPLASM</text>
       {Array.from({ length: 8 }, (_, i) => <circle key={i} cx={360 + i * 26} cy="208" r="4" fill="#8B5CF6" fillOpacity="0.6" />)}
       <text x="460" y="225" textAnchor="middle" fontSize="9" fill="#8B5CF6">70S ribosomes</text>
 
       <rect x="340" y="250" width="240" height="36" rx="5" fill="#3A1010" stroke="#EF4444" strokeWidth="0.8" />
       <text x="460" y="265" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#FCA5A5">Examples:</text>
-      <text x="460" y="279" textAnchor="middle" fontSize="9" fill="#8B949E">E. coli, Klebsiella, Pseudomonas, Salmonella, H. pylori</text>
+      <text x="460" y="279" textAnchor="middle" fontSize="9" fill="#6B7280">E. coli, Klebsiella, Pseudomonas, Salmonella, H. pylori</text>
 
       {/* Clinical significance table */}
-      <rect x="20" y="315" width="580" height="130" rx="8" fill="#1C2128" stroke="#21262D" strokeWidth="1" />
-      <text x="310" y="333" textAnchor="middle" fontSize="11" fontWeight="bold" fill="#E6EDF3">Clinical Significance</text>
+      <rect x="20" y="315" width="580" height="130" rx="8" fill="#1C2128" stroke="#E5E1D8" strokeWidth="1" />
+      <text x="310" y="333" textAnchor="middle" fontSize="11" fontWeight="bold" fill="#0F1729">Clinical Significance</text>
       {([
         ["Feature", "Gram +ve", "Gram −ve"],
         ["Antibiotic sensitivity", "Penicillins (thin PG)", "Broader spectrum needed"],
@@ -591,7 +591,7 @@ export function BacterialClassificationDiagram() {
           {row.map((cell, j) => (
             <text key={j} x={30 + j * 192} y={352 + i * 18} fontSize={i === 0 ? "10" : "9"}
               fontWeight={i === 0 ? "bold" : "normal"}
-              fill={i === 0 ? "#8B949E" : j === 1 ? "#60A5FA" : j === 2 ? "#FCA5A5" : "#8B949E"}>{cell}</text>
+              fill={i === 0 ? "#6B7280" : j === 1 ? "#60A5FA" : j === 2 ? "#FCA5A5" : "#6B7280"}>{cell}</text>
           ))}
         </g>
       ))}
@@ -608,7 +608,7 @@ export function MetabolicPathwaysDiagram() {
     <g>
       <rect x={x - 55} y={y - 20} width="110" height="40" rx="8" fill={`${c}18`} stroke={c} strokeWidth="1.4" />
       <text x={x} y={y - 2} textAnchor="middle" fontSize="10" fontWeight="bold" fill={c}>{label}</text>
-      <text x={x} y={y + 13} textAnchor="middle" fontSize="8" fill="#8B949E">{sub}</text>
+      <text x={x} y={y + 13} textAnchor="middle" fontSize="8" fill="#6B7280">{sub}</text>
     </g>
   );
   const arrow = (x1: number, y1: number, x2: number, y2: number, label: string, c: string) => (
@@ -619,14 +619,14 @@ export function MetabolicPathwaysDiagram() {
   );
 
   return (
-    <svg viewBox="0 0 620 500" className="w-full" style={{ background: "#161B22", borderRadius: 12 }}>
+    <svg viewBox="0 0 620 500" className="w-full" style={{ background: "#FFFFFF", borderRadius: 12 }}>
       <title>Metabolic Pathways Overview</title>
       <defs>
         <marker id="mp_arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
           <path d="M0,0 L0,6 L8,3 Z" fill="#6B7280" />
         </marker>
       </defs>
-      <text x="310" y="22" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#E6EDF3">Core Metabolic Pathways — Overview</text>
+      <text x="310" y="22" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#0F1729">Core Metabolic Pathways — Overview</text>
 
       {/* Input nodes */}
       {box(100, 70, "Carbohydrates", "Glucose, Glycogen", "#3B82F6")}
@@ -678,8 +678,8 @@ export function MetabolicPathwaysDiagram() {
       <text x="450" y="305" fontSize="9" fill="#F97316">Ketogenesis</text>
 
       {/* Legend */}
-      <rect x="480" y="415" width="130" height="72" rx="6" fill="#1C2128" stroke="#21262D" strokeWidth="1" />
-      <text x="545" y="432" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#8B949E">Location</text>
+      <rect x="480" y="415" width="130" height="72" rx="6" fill="#1C2128" stroke="#E5E1D8" strokeWidth="1" />
+      <text x="545" y="432" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#6B7280">Location</text>
       {(["Glycolysis: cytoplasm", "TCA: mitochondria", "β-ox.: mitochondria", "Synth.: cytoplasm"] as string[]).map((t, i) => (
         <text key={t} x="488" y={448 + i * 12} fontSize="8" fill="#6B7280">{t}</text>
       ))}
@@ -693,15 +693,15 @@ export function MetabolicPathwaysDiagram() {
    ═══════════════════════════════════════════════════════════ */
 export function NephronDiagram() {
   return (
-    <svg viewBox="0 0 620 500" className="w-full" style={{ background: "#161B22", borderRadius: 12 }}>
+    <svg viewBox="0 0 620 500" className="w-full" style={{ background: "#FFFFFF", borderRadius: 12 }}>
       <title>Nephron — Structure & Function</title>
 
-      <text x="310" y="22" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#E6EDF3">Nephron — Structure & Function</text>
+      <text x="310" y="22" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#0F1729">Nephron — Structure & Function</text>
 
       {/* Glomerulus */}
       <circle cx="120" cy="85" r="30" fill="none" stroke="#EF4444" strokeWidth="2" />
       <text x="120" y="80" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#FCA5A5">Glomerulus</text>
-      <text x="120" y="93" textAnchor="middle" fontSize="8" fill="#8B949E">Filtration</text>
+      <text x="120" y="93" textAnchor="middle" fontSize="8" fill="#6B7280">Filtration</text>
       {/* Afferent / Efferent */}
       <path d="M80,72 C60,65 45,60 35,55" fill="none" stroke="#EF4444" strokeWidth="3" />
       <text x="30" y="50" fontSize="9" fill="#FCA5A5" textAnchor="middle">Afferent</text>
@@ -718,17 +718,17 @@ export function NephronDiagram() {
       <path d="M120,129 C140,150 200,150 220,130 C240,110 260,120 270,145 C280,170 240,185 220,165 C200,145 160,145 140,165 C120,185 120,210 140,215"
         fill="none" stroke="#22C55E" strokeWidth="7" strokeLinecap="round" />
       <text x="245" y="102" fontSize="10" fontWeight="bold" fill="#86EFAC">PCT</text>
-      <text x="245" y="115" fontSize="9" fill="#8B949E">Proximal</text>
-      <text x="245" y="127" fontSize="9" fill="#8B949E">Convoluted</text>
-      <text x="245" y="139" fontSize="9" fill="#8B949E">Tubule</text>
+      <text x="245" y="115" fontSize="9" fill="#6B7280">Proximal</text>
+      <text x="245" y="127" fontSize="9" fill="#6B7280">Convoluted</text>
+      <text x="245" y="139" fontSize="9" fill="#6B7280">Tubule</text>
       <line x1="245" y1="103" x2="215" y2="115" stroke="#4B5563" strokeWidth="0.8" />
 
       {/* PCT absorption label */}
       <rect x="295" y="90" width="150" height="60" rx="5" fill="#1A3A2A" stroke="#22C55E" strokeWidth="0.8" />
       <text x="370" y="107" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#86EFAC">PCT reabsorbs:</text>
-      <text x="370" y="122" textAnchor="middle" fontSize="8" fill="#8B949E">67% of Na+, K+, Cl−, H2O</text>
-      <text x="370" y="135" textAnchor="middle" fontSize="8" fill="#8B949E">All glucose, amino acids</text>
-      <text x="370" y="148" textAnchor="middle" fontSize="8" fill="#8B949E">HCO3−, urea, phosphate</text>
+      <text x="370" y="122" textAnchor="middle" fontSize="8" fill="#6B7280">67% of Na+, K+, Cl−, H2O</text>
+      <text x="370" y="135" textAnchor="middle" fontSize="8" fill="#6B7280">All glucose, amino acids</text>
+      <text x="370" y="148" textAnchor="middle" fontSize="8" fill="#6B7280">HCO3−, urea, phosphate</text>
 
       {/* Loop of Henle */}
       {/* Descending limb */}
@@ -742,8 +742,8 @@ export function NephronDiagram() {
         fill="none" stroke="#60A5FA" strokeWidth="7" strokeLinecap="round" />
       <text x="105" y="310" fontSize="10" fontWeight="bold" fill="#93C5FD">Loop of</text>
       <text x="105" y="323" fontSize="10" fontWeight="bold" fill="#93C5FD">Henle</text>
-      <text x="45" y="346" fontSize="9" fill="#8B949E">↓ Limb: H2O</text>
-      <text x="45" y="358" fontSize="9" fill="#8B949E">(permeable)</text>
+      <text x="45" y="346" fontSize="9" fill="#6B7280">↓ Limb: H2O</text>
+      <text x="45" y="358" fontSize="9" fill="#6B7280">(permeable)</text>
       <text x="45" y="380" fontSize="9" fill="#60A5FA">↑ Limb: NaCl</text>
       <text x="45" y="392" fontSize="9" fill="#60A5FA">(impermeable</text>
       <text x="45" y="404" fontSize="9" fill="#60A5FA">to water)</text>
@@ -752,13 +752,13 @@ export function NephronDiagram() {
       <path d="M252,175 C270,160 300,155 320,165 C340,175 360,170 375,155 C390,140 395,125 385,115"
         fill="none" stroke="#F59E0B" strokeWidth="7" strokeLinecap="round" />
       <text x="340" y="200" fontSize="10" fontWeight="bold" fill="#FCD34D">DCT</text>
-      <text x="340" y="213" fontSize="9" fill="#8B949E">Distal</text>
-      <text x="340" y="225" fontSize="9" fill="#8B949E">Convoluted</text>
+      <text x="340" y="213" fontSize="9" fill="#6B7280">Distal</text>
+      <text x="340" y="225" fontSize="9" fill="#6B7280">Convoluted</text>
 
       <rect x="420" y="155" width="170" height="55" rx="5" fill="#2A2810" stroke="#F59E0B" strokeWidth="0.8" />
       <text x="505" y="172" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#FCD34D">DCT regulated by:</text>
-      <text x="505" y="187" textAnchor="middle" fontSize="8" fill="#8B949E">Aldosterone → ↑Na+ reabs</text>
-      <text x="505" y="200" textAnchor="middle" fontSize="8" fill="#8B949E">PTH → ↑Ca2+ reabs</text>
+      <text x="505" y="187" textAnchor="middle" fontSize="8" fill="#6B7280">Aldosterone → ↑Na+ reabs</text>
+      <text x="505" y="200" textAnchor="middle" fontSize="8" fill="#6B7280">PTH → ↑Ca2+ reabs</text>
 
       {/* Collecting Duct */}
       <path d="M385,115 C395,95 400,75 405,55 C408,42 416,38 425,40"
@@ -767,13 +767,13 @@ export function NephronDiagram() {
       <text x="445" y="68" fontSize="10" fontWeight="bold" fill="#A78BFA">Duct</text>
       <rect x="490" y="44" width="120" height="42" rx="5" fill="#1A1040" stroke="#8B5CF6" strokeWidth="0.8" />
       <text x="550" y="60" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#A78BFA">ADH → ↑H2O</text>
-      <text x="550" y="75" textAnchor="middle" fontSize="8" fill="#8B949E">Aldosterone → Na+</text>
+      <text x="550" y="75" textAnchor="middle" fontSize="8" fill="#6B7280">Aldosterone → Na+</text>
 
       {/* Urine arrow */}
       <path d="M425,40 C435,30 445,28 455,25" fill="none" stroke="#6B7280" strokeWidth="2" />
       <text x="472" y="22" fontSize="9" fill="#6B7280">→ Ureter</text>
 
-      <text x="310" y="486" textAnchor="middle" fontSize="10" fill="#8B949E">Each kidney has ~1 million nephrons · Filters ~180 L/day · Excretes ~1.5 L urine</text>
+      <text x="310" y="486" textAnchor="middle" fontSize="10" fill="#6B7280">Each kidney has ~1 million nephrons · Filters ~180 L/day · Excretes ~1.5 L urine</text>
     </svg>
   );
 }
@@ -792,10 +792,10 @@ export function AcidBaseDiagram() {
   ];
 
   return (
-    <svg viewBox="0 0 630 420" className="w-full" style={{ background: "#161B22", borderRadius: 12 }}>
+    <svg viewBox="0 0 630 420" className="w-full" style={{ background: "#FFFFFF", borderRadius: 12 }}>
       <title>Acid-Base Balance Disorders</title>
 
-      <text x="315" y="22" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#E6EDF3">Acid-Base Balance — Disorders & Compensation</text>
+      <text x="315" y="22" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#0F1729">Acid-Base Balance — Disorders & Compensation</text>
 
       {/* pH scale */}
       <defs>
@@ -812,8 +812,8 @@ export function AcidBaseDiagram() {
         const x = 30 + ((ph - 6.8) / 1.0) * 570;
         return (
           <g key={ph}>
-            <line x1={x} y1="58" x2={x} y2="68" stroke="#E6EDF3" strokeWidth="1" />
-            <text x={x} y="80" textAnchor="middle" fontSize="9" fill="#8B949E">{ph}</text>
+            <line x1={x} y1="58" x2={x} y2="68" stroke="#0F1729" strokeWidth="1" />
+            <text x={x} y="80" textAnchor="middle" fontSize="9" fill="#6B7280">{ph}</text>
           </g>
         );
       })}
@@ -830,17 +830,17 @@ export function AcidBaseDiagram() {
             <text key={li} x={x} y={134 + li * 14} textAnchor="middle" fontSize="11" fontWeight="bold" fill={color}>{line}</text>
           ))}
           <line x1={x - 45} y1="168" x2={x + 45} y2="168" stroke={color} strokeWidth="0.6" strokeOpacity="0.4" />
-          <text x={x} y="184" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#E6EDF3">pH: {pH}</text>
-          <text x={x} y="200" textAnchor="middle" fontSize="9" fill="#8B949E">HCO3: {HCO3}</text>
-          <text x={x} y="215" textAnchor="middle" fontSize="9" fill="#8B949E">PCO2: {PCO2}</text>
+          <text x={x} y="184" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#0F1729">pH: {pH}</text>
+          <text x={x} y="200" textAnchor="middle" fontSize="9" fill="#6B7280">HCO3: {HCO3}</text>
+          <text x={x} y="215" textAnchor="middle" fontSize="9" fill="#6B7280">PCO2: {PCO2}</text>
           <text x={x} y="234" textAnchor="middle" fontSize="8" fill="#6B7280" style={{ maxWidth: "100px" }}>{cause.slice(0, 22)}</text>
           <text x={x} y="247" textAnchor="middle" fontSize="8" fill="#6B7280">{cause.slice(22)}</text>
         </g>
       ))}
 
       {/* Compensation rules */}
-      <rect x="30" y="285" width="570" height="118" rx="8" fill="#1C2128" stroke="#21262D" strokeWidth="1" />
-      <text x="315" y="302" textAnchor="middle" fontSize="11" fontWeight="bold" fill="#E6EDF3">Compensation Rules (Winter's Formula etc.)</text>
+      <rect x="30" y="285" width="570" height="118" rx="8" fill="#1C2128" stroke="#E5E1D8" strokeWidth="1" />
+      <text x="315" y="302" textAnchor="middle" fontSize="11" fontWeight="bold" fill="#0F1729">Compensation Rules (Winter's Formula etc.)</text>
       {([
         ["Metabolic Acidosis", "Expected PCO2 = 1.5 × HCO3 + 8 ± 2 (Winter's formula)", "#EF4444"],
         ["Metabolic Alkalosis", "Expected PCO2 = 0.7 × HCO3 + 21 ± 2", "#8B5CF6"],
@@ -850,7 +850,7 @@ export function AcidBaseDiagram() {
         <g key={d}>
           <circle cx="42" cy={318 + i * 20} r="4" fill={c} />
           <text x="52" y={322 + i * 20} fontSize="9" fontWeight="bold" fill={c}>{d}:</text>
-          <text x="52" y={334 + i * 20} fontSize="8" fill="#8B949E">{r}</text>
+          <text x="52" y={334 + i * 20} fontSize="8" fill="#6B7280">{r}</text>
         </g>
       ))}
     </svg>
@@ -874,10 +874,10 @@ export function CellDeathDiagram() {
   ];
 
   return (
-    <svg viewBox="0 0 640 480" className="w-full" style={{ background: "#161B22", borderRadius: 12 }}>
+    <svg viewBox="0 0 640 480" className="w-full" style={{ background: "#FFFFFF", borderRadius: 12 }}>
       <title>Cell Death — Necrosis vs Apoptosis</title>
 
-      <text x="320" y="22" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#E6EDF3">Cell Death — Necrosis vs Apoptosis</text>
+      <text x="320" y="22" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#0F1729">Cell Death — Necrosis vs Apoptosis</text>
 
       {/* Column headers */}
       <rect x="20" y="36" width="200" height="32" rx="6" fill="#EF444420" stroke="#EF4444" strokeWidth="1.3" />
@@ -890,20 +890,20 @@ export function CellDeathDiagram() {
       {/* Table rows */}
       {features.map(([feat, nec, apo], i) => (
         <g key={feat}>
-          <rect x="20" y={76 + i * 44} width="200" height="40" rx="4" fill={i % 2 === 0 ? "#1C2128" : "#161B22"} stroke="#21262D" strokeWidth="0.8" />
-          <rect x="220" y={76 + i * 44} width="200" height="40" rx="4" fill={i % 2 === 0 ? "#21262D" : "#1C2128"} stroke="#21262D" strokeWidth="0.8" />
-          <rect x="420" y={76 + i * 44} width="200" height="40" rx="4" fill={i % 2 === 0 ? "#1C2128" : "#161B22"} stroke="#21262D" strokeWidth="0.8" />
+          <rect x="20" y={76 + i * 44} width="200" height="40" rx="4" fill={i % 2 === 0 ? "#1C2128" : "#FFFFFF"} stroke="#E5E1D8" strokeWidth="0.8" />
+          <rect x="220" y={76 + i * 44} width="200" height="40" rx="4" fill={i % 2 === 0 ? "#E5E1D8" : "#1C2128"} stroke="#E5E1D8" strokeWidth="0.8" />
+          <rect x="420" y={76 + i * 44} width="200" height="40" rx="4" fill={i % 2 === 0 ? "#1C2128" : "#FFFFFF"} stroke="#E5E1D8" strokeWidth="0.8" />
           {nec.split(" / ").map((t, ti) => (
             <text key={ti} x="120" y={92 + i * 44 + ti * 14} textAnchor="middle" fontSize="8.5" fill="#FCA5A5">{t}</text>
           ))}
-          <text x="320" y={96 + i * 44} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#E6EDF3">{feat}</text>
+          <text x="320" y={96 + i * 44} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#0F1729">{feat}</text>
           {apo.split(" / ").map((t, ti) => (
             <text key={ti} x="520" y={92 + i * 44 + ti * 14} textAnchor="middle" fontSize="8.5" fill="#86EFAC">{t}</text>
           ))}
         </g>
       ))}
 
-      <text x="320" y={76 + features.length * 44 + 20} textAnchor="middle" fontSize="10" fill="#8B949E">
+      <text x="320" y={76 + features.length * 44 + 20} textAnchor="middle" fontSize="10" fill="#6B7280">
         Apoptosis: regulated by p53 (promoter), Bcl-2 (suppressor), Caspase cascade
       </text>
     </svg>
