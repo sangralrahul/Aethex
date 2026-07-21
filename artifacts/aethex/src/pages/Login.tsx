@@ -77,12 +77,11 @@ export default function Login() {
   const handleSendEmailOtp = async (e: React.FormEvent) => {
     e.preventDefault(); setError(""); setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/auth/send-otp`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: otpEmail }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error || "Failed to send OTP."); return; }
+      const { data, error } = await supabase.functions.invoke("send-otp", { body: { email: otpEmail } });
+      if (error || (data && (data as any).error)) {
+        setError(((data as any)?.error) || error?.message || "Failed to send OTP.");
+        return;
+      }
       setEmailMode("otp-verify"); setOtpTimer(60);
     } catch { setError("Network error. Please try again."); }
     finally { setLoading(false); }
@@ -91,16 +90,25 @@ export default function Login() {
   const handleVerifyEmailOtp = async (e: React.FormEvent) => {
     e.preventDefault(); setError(""); setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/auth/verify-otp`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: otpEmail, otp: otpCode }),
+      const { data, error } = await supabase.functions.invoke("verify-otp", {
+        body: { email: otpEmail, otp: otpCode },
       });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error || "Verification failed."); return; }
-      otpLogin(otpEmail, data.token);
+      if (error || !data || (data as any).error) {
+        setError(((data as any)?.error) || error?.message || "Verification failed.");
+        return;
+      }
+      const payload = data as { hashed_token?: string; email: string };
+      if (payload.hashed_token) {
+        const { error: verifyErr } = await supabase.auth.verifyOtp({
+          type: "magiclink",
+          token_hash: payload.hashed_token,
+        });
+        if (verifyErr) { setError(verifyErr.message); return; }
+      }
+      otpLogin(otpEmail, "supabase");
       setSuccess(true);
       setTimeout(() => setLocation("/"), 1000);
-    } catch { setError("Network error. Please try again."); }
+    } catch (err) { setError((err as Error).message || "Network error. Please try again."); }
     finally { setLoading(false); }
   };
 
