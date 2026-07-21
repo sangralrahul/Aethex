@@ -282,9 +282,8 @@ export default function Login() {
                                 if (otpTimer > 0) return;
                                 setLoading(true);
                                 try {
-                                  const res = await fetch(`${API_BASE}/api/auth/send-otp`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: otpEmail }) });
-                                  const data = await res.json();
-                                  if (res.ok) { setOtpCode(""); setOtpTimer(60); } else setError(data.error || "Failed.");
+                                  const { data, error: fnErr } = await supabase.functions.invoke("send-otp", { body: { email: otpEmail } });
+                                  if (!fnErr && !(data as any)?.error) { setOtpCode(""); setOtpTimer(60); } else setError(((data as any)?.error) || fnErr?.message || "Failed.");
                                 } catch { setError("Network error."); } finally { setLoading(false); }
                               }}
                               style={{ background: "none", border: "none", color: otpTimer > 0 ? "#AEAEB2" : "#007AFF", cursor: otpTimer > 0 ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 4 }}>
