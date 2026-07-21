@@ -4,8 +4,8 @@ import { Eye, EyeOff, RefreshCw, ShieldCheck, Sparkles, GraduationCap, ShoppingB
 import { useUserAuth } from "@/hooks/use-user-auth";
 import { auth } from "@/lib/firebase";
 import { signInWithPhoneNumber, RecaptchaVerifier, type ConfirmationResult } from "firebase/auth";
+import { supabase } from "@/integrations/supabase/client";
 
-const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const LOGO = `${import.meta.env.BASE_URL}aethex-logo.jpg`;
 
 type AuthTab = "email" | "phone";
@@ -77,12 +77,11 @@ export default function Login() {
   const handleSendEmailOtp = async (e: React.FormEvent) => {
     e.preventDefault(); setError(""); setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/auth/send-otp`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: otpEmail }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error || "Failed to send OTP."); return; }
+      const { data, error } = await supabase.functions.invoke("send-otp", { body: { email: otpEmail } });
+      if (error || (data && (data as any).error)) {
+        setError(((data as any)?.error) || error?.message || "Failed to send OTP.");
+        return;
+      }
       setEmailMode("otp-verify"); setOtpTimer(60);
     } catch { setError("Network error. Please try again."); }
     finally { setLoading(false); }
@@ -91,16 +90,25 @@ export default function Login() {
   const handleVerifyEmailOtp = async (e: React.FormEvent) => {
     e.preventDefault(); setError(""); setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/auth/verify-otp`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: otpEmail, otp: otpCode }),
+      const { data, error } = await supabase.functions.invoke("verify-otp", {
+        body: { email: otpEmail, otp: otpCode },
       });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error || "Verification failed."); return; }
-      otpLogin(otpEmail, data.token);
+      if (error || !data || (data as any).error) {
+        setError(((data as any)?.error) || error?.message || "Verification failed.");
+        return;
+      }
+      const payload = data as { hashed_token?: string; email: string };
+      if (payload.hashed_token) {
+        const { error: verifyErr } = await supabase.auth.verifyOtp({
+          type: "magiclink",
+          token_hash: payload.hashed_token,
+        });
+        if (verifyErr) { setError(verifyErr.message); return; }
+      }
+      otpLogin(otpEmail, "supabase");
       setSuccess(true);
       setTimeout(() => setLocation("/"), 1000);
-    } catch { setError("Network error. Please try again."); }
+    } catch (err) { setError((err as Error).message || "Network error. Please try again."); }
     finally { setLoading(false); }
   };
 
@@ -274,9 +282,8 @@ export default function Login() {
                                 if (otpTimer > 0) return;
                                 setLoading(true);
                                 try {
-                                  const res = await fetch(`${API_BASE}/api/auth/send-otp`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: otpEmail }) });
-                                  const data = await res.json();
-                                  if (res.ok) { setOtpCode(""); setOtpTimer(60); } else setError(data.error || "Failed.");
+                                  const { data, error: fnErr } = await supabase.functions.invoke("send-otp", { body: { email: otpEmail } });
+                                  if (!fnErr && !(data as any)?.error) { setOtpCode(""); setOtpTimer(60); } else setError(((data as any)?.error) || fnErr?.message || "Failed.");
                                 } catch { setError("Network error."); } finally { setLoading(false); }
                               }}
                               style={{ background: "none", border: "none", color: otpTimer > 0 ? "#AEAEB2" : "#007AFF", cursor: otpTimer > 0 ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 4 }}>
