@@ -96,6 +96,9 @@ importers:
 
   artifacts/aethex:
     dependencies:
+      '@supabase/supabase-js':
+        specifier: 2.108.0
+        version: 2.108.0
       '@types/dompurify':
         specifier: ^3.2.0
         version: 3.2.0
