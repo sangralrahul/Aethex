@@ -14,7 +14,75 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      otp_codes: {
+        Row: {
+          attempts: number
+          code_hash: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          used: boolean
+        }
+        Insert: {
+          attempts?: number
+          code_hash: string
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          used?: boolean
+        }
+        Update: {
+          attempts?: number
+          code_hash?: string
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          used?: boolean
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar: string | null
+          college: string | null
+          created_at: string
+          email: string
+          hospital: string | null
+          id: string
+          name: string | null
+          role: string | null
+          updated_at: string
+          verified: boolean
+        }
+        Insert: {
+          avatar?: string | null
+          college?: string | null
+          created_at?: string
+          email: string
+          hospital?: string | null
+          id: string
+          name?: string | null
+          role?: string | null
+          updated_at?: string
+          verified?: boolean
+        }
+        Update: {
+          avatar?: string | null
+          college?: string | null
+          created_at?: string
+          email?: string
+          hospital?: string | null
+          id?: string
+          name?: string | null
+          role?: string | null
+          updated_at?: string
+          verified?: boolean
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
