@@ -1,9 +1,10 @@
-import { useState } from "react";
 import { Link } from "wouter";
 import { ShoppingCart, Heart, Star } from "lucide-react";
 import { type Product } from "@workspace/api-client-react";
 import { formatINR, cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useWishlist } from "@/hooks/use-wishlist";
+import { useToast } from "@/hooks/use-toast";
 
 interface ProductCardProps {
   product: Product;
@@ -13,7 +14,15 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, onAddToCart, isAdding, viewMode = "grid" }: ProductCardProps) {
-  const [wishlisted, setWishlisted] = useState(false);
+  const { has, toggle } = useWishlist();
+  const { toast } = useToast();
+  const wishlisted = has(product.id);
+  const handleWishlist = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const added = toggle(product.id);
+    toast({ title: added ? "Added to wishlist" : "Removed from wishlist" });
+  };
 
   const discount = product.originalPrice
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
@@ -50,7 +59,7 @@ export function ProductCard({ product, onAddToCart, isAdding, viewMode = "grid" 
               <p className="text-xs mt-0.5" style={{ color: "#8E8E93" }}>{product.brand}</p>
             </div>
             <button
-              onClick={() => setWishlisted(v => !v)}
+              onClick={handleWishlist}
               className="shrink-0 p-1.5 rounded-full hover:bg-red-50 transition-colors"
             >
               <Heart className={cn("w-4 h-4 transition-colors", wishlisted ? "fill-red-500 text-red-500" : "text-slate-300")} />
@@ -107,7 +116,7 @@ export function ProductCard({ product, onAddToCart, isAdding, viewMode = "grid" 
     >
       {/* Wishlist */}
       <button
-        onClick={() => setWishlisted(v => !v)}
+        onClick={handleWishlist}
         className="absolute top-3 right-3 z-20 p-1.5 rounded-full transition-all"
         style={{ background: "rgba(255,255,255,0.9)", border: "1px solid rgba(0,0,0,0.08)", boxShadow: "0 1px 4px rgba(0,0,0,0.1)" }}
       >

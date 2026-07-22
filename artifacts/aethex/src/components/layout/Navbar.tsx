@@ -1,5 +1,6 @@
 import { Link, useLocation } from "wouter";
-import { ShoppingCart, Search, Menu, Sparkles, User, Star, MapPin, ShieldCheck, ChevronDown, Store, BookOpen, Newspaper, Crown, GraduationCap, LogOut, Settings, Package, X, Brain, Stethoscope, FlaskConical, Pill, Activity, Building2, GraduationCap as University, HeartPulse, Microscope, FileText, Syringe, Database, BadgeCheck, Calculator, Briefcase, MessageSquare, Smartphone, Bell, HeadphonesIcon, Megaphone, Download, Gift, ClipboardList, MoreHorizontal, Mic, MicOff } from "lucide-react";
+import { ShoppingCart, Search, Menu, Sparkles, User, Star, MapPin, ShieldCheck, ChevronDown, Store, BookOpen, Newspaper, Crown, GraduationCap, LogOut, Settings, Package, X, Brain, Stethoscope, FlaskConical, Pill, Activity, Building2, GraduationCap as University, HeartPulse, Microscope, FileText, Syringe, Database, BadgeCheck, Calculator, Briefcase, MessageSquare, Smartphone, Bell, HeadphonesIcon, Megaphone, Download, Gift, ClipboardList, MoreHorizontal, Mic, MicOff, Heart } from "lucide-react";
+import { useWishlist } from "@/hooks/use-wishlist";
 
 function useVoiceSearch(onResult: (text: string) => void) {
   const [listening, setListening] = useState(false);
@@ -525,6 +526,9 @@ export function Navbar() {
                 )}
               </div>
 
+              {/* Wishlist */}
+              <WishlistNavIcon />
+
               {/* Cart */}
               <Link href="/cart"
                 className="flex items-center gap-2 px-3 py-2 rounded-full transition-all hover:bg-black/5 relative"
@@ -702,5 +706,24 @@ export function Navbar() {
         </div>
       )}
     </>
+  );
+}
+
+function WishlistNavIcon() {
+  const { count } = useWishlist();
+  return (
+    <Link href="/wishlist"
+      className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-full transition-all hover:bg-black/5 relative"
+      style={{ color: "rgba(0,0,0,0.7)" }}>
+      <div className="relative">
+        <Heart className="w-5 h-5" />
+        {count > 0 && (
+          <span className="absolute -top-2 -right-2 min-w-[17px] h-[17px] px-0.5 text-[9px] font-bold text-white rounded-full flex items-center justify-center leading-none" style={{ background: "#EF4444" }}>
+            {count}
+          </span>
+        )}
+      </div>
+      <span className="hidden lg:inline text-sm font-semibold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: "rgba(0,0,0,0.7)" }}>Wishlist</span>
+    </Link>
   );
 }

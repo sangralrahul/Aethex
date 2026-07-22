@@ -24,6 +24,7 @@ import Products from "@/pages/Products";
 import ProductDetail from "@/pages/ProductDetail";
 import BookDetail from "@/pages/BookDetail";
 import Cart from "@/pages/Cart";
+import Wishlist from "@/pages/Wishlist";
 import AiAssistant from "@/pages/AiAssistant";
 import OrderTracking from "@/pages/OrderTracking";
 import Orders from "@/pages/Orders";
@@ -194,6 +195,7 @@ function Router() {
 
                 {/* Cart & Checkout */}
                 <Route path="/cart" component={Cart} />
+                <Route path="/wishlist" component={Wishlist} />
                 <Route path="/checkout" component={Checkout} />
 
                 {/* Orders */}
