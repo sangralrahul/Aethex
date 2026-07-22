@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Scan, ChevronDown, ChevronUp, AlertTriangle, CheckCircle } from "lucide-react";
+import { ArrowLeft, Scan, ChevronDown, ChevronUp, AlertTriangle, CheckCircle, Sparkles, Loader2, Upload, X, Activity, ClipboardList, Lightbulb } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 type Modality = "xray" | "ct" | "mri";
 type Region = string;
@@ -63,10 +64,53 @@ export default function RadiologyAssistant() {
   const [modality, setModality] = useState<Modality>("xray");
   const [region, setRegion] = useState<Region>("");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
+  const [imageMime, setImageMime] = useState<string>("image/png");
+  const [clinicalContext, setClinicalContext] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiReport, setAiReport] = useState<any | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const findings = region ? (FINDINGS[region] || []) : [];
 
   const toggle = (i: number) => setExpanded(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; });
+
+  const onPickFile = () => fileRef.current?.click();
+  const onFile = (f: File | null) => {
+    if (!f) return;
+    if (!f.type.startsWith("image/")) { setAiError("Please upload an image file (JPG/PNG)."); return; }
+    if (f.size > 8 * 1024 * 1024) { setAiError("Image is larger than 8 MB. Please compress it."); return; }
+    setAiError(null);
+    const reader = new FileReader();
+    reader.onload = () => { setImageDataUrl(String(reader.result)); setImageMime(f.type); };
+    reader.readAsDataURL(f);
+  };
+  const clearImage = () => { setImageDataUrl(null); setAiReport(null); setAiError(null); if (fileRef.current) fileRef.current.value = ""; };
+
+  const runAiAnalysis = async () => {
+    if (!imageDataUrl) { setAiError("Upload an image first."); return; }
+    setAiLoading(true); setAiError(null); setAiReport(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("analyze-radiology", {
+        body: {
+          imageBase64: imageDataUrl,
+          mimeType: imageMime,
+          modality: modality === "xray" ? "X-ray" : modality.toUpperCase(),
+          region: region || "unspecified",
+          clinicalContext: clinicalContext.trim() || undefined,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      setAiReport((data as any).report);
+    } catch (e: any) {
+      setAiError(e?.message || "AI analysis failed. Please try again.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
 
   return (
     <div className="min-h-screen" style={{ background: "#F2F2F7" }}>
@@ -114,6 +158,172 @@ export default function RadiologyAssistant() {
             ))}
           </div>
         </div>
+
+        {/* AI Image Analysis */}
+        <div className="rounded-2xl p-6 bg-white space-y-4" style={{ border: "1.5px solid rgba(16,185,129,0.3)", boxShadow: "0 4px 16px rgba(16,185,129,0.08)" }}>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(16,185,129,0.15)" }}>
+              <Sparkles className="w-4 h-4" style={{ color: "#10B981" }} />
+            </div>
+            <div>
+              <h2 className="font-semibold text-sm" style={{ color: "#1C1C1E" }}>AI Image Analysis</h2>
+              <p className="text-xs" style={{ color: "#AEAEB2" }}>Upload a radiology image for AI-assisted structured interpretation</p>
+            </div>
+          </div>
+
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => onFile(e.target.files?.[0] || null)} />
+
+          {!imageDataUrl ? (
+            <button onClick={onPickFile} className="w-full rounded-xl p-8 text-center transition-all hover:opacity-90"
+              style={{ background: "#F0FDF4", border: "1.5px dashed rgba(16,185,129,0.4)", color: "#065F46" }}>
+              <Upload className="w-6 h-6 mx-auto mb-2" style={{ color: "#10B981" }} />
+              <p className="text-sm font-semibold">Click to upload image</p>
+              <p className="text-xs mt-1" style={{ color: "#059669" }}>JPG or PNG · up to 8 MB</p>
+            </button>
+          ) : (
+            <div className="relative rounded-xl overflow-hidden" style={{ border: "1px solid rgba(60,60,67,0.15)", background: "#000" }}>
+              <img src={imageDataUrl} alt="Uploaded scan" className="w-full max-h-80 object-contain" />
+              <button onClick={clearImage} className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center"
+                style={{ background: "rgba(0,0,0,0.6)", color: "#fff" }} aria-label="Remove image">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-semibold mb-1.5" style={{ color: "#636366" }}>Clinical context (optional)</label>
+            <textarea value={clinicalContext} onChange={e => setClinicalContext(e.target.value)} rows={2}
+              placeholder="e.g. 45M with acute chest pain and dyspnoea, smoker"
+              className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none"
+              style={{ border: "1.5px solid rgba(60,60,67,0.2)", color: "#1C1C1E" }} />
+          </div>
+
+          <button onClick={runAiAnalysis} disabled={aiLoading || !imageDataUrl}
+            className="w-full py-3 rounded-xl font-semibold text-sm text-white transition-all hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
+            style={{ background: "linear-gradient(135deg,#10B981,#0EA5A4)" }}>
+            {aiLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Analysing image…</> : <><Sparkles className="w-4 h-4" /> Run AI Analysis</>}
+          </button>
+
+          {aiError && (
+            <div className="rounded-xl p-3 text-sm" style={{ background: "#FEF2F2", color: "#B91C1C", border: "1px solid rgba(239,68,68,0.25)" }}>
+              {aiError}
+            </div>
+          )}
+
+          {aiReport && (
+            <div className="space-y-4 pt-2">
+              {aiReport.image_quality === "not-a-medical-image" && (
+                <div className="rounded-xl p-3 text-sm" style={{ background: "#FEF2F2", color: "#B91C1C", border: "1px solid rgba(239,68,68,0.25)" }}>
+                  The uploaded image doesn't appear to be a medical image. Please upload a valid radiology study.
+                </div>
+              )}
+
+              {aiReport.modality_confirmed && (
+                <div className="rounded-xl p-3" style={{ background: "#F0FDF4", border: "1px solid rgba(16,185,129,0.2)" }}>
+                  <p className="text-xs uppercase tracking-wide font-semibold mb-1" style={{ color: "#059669" }}>Modality Detected</p>
+                  <p className="text-sm font-medium" style={{ color: "#065F46" }}>{aiReport.modality_confirmed}
+                    {aiReport.image_quality && <span className="ml-2 text-xs" style={{ color: "#047857" }}>· {aiReport.image_quality} quality</span>}
+                  </p>
+                </div>
+              )}
+
+              {aiReport.impression && (
+                <div>
+                  <p className="text-xs uppercase tracking-wide font-semibold mb-1.5" style={{ color: "#636366" }}>Impression</p>
+                  <p className="text-sm" style={{ color: "#1C1C1E" }}>{aiReport.impression}</p>
+                </div>
+              )}
+
+              {Array.isArray(aiReport.red_flags) && aiReport.red_flags.length > 0 && (
+                <div className="rounded-xl p-4" style={{ background: "#FEF2F2", border: "1px solid rgba(239,68,68,0.25)" }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertTriangle className="w-4 h-4" style={{ color: "#B91C1C" }} />
+                    <p className="text-sm font-semibold" style={{ color: "#B91C1C" }}>Red Flags</p>
+                  </div>
+                  <ul className="text-sm space-y-1" style={{ color: "#7F1D1D" }}>
+                    {aiReport.red_flags.map((r: string, i: number) => <li key={i}>• {r}</li>)}
+                  </ul>
+                </div>
+              )}
+
+              {Array.isArray(aiReport.key_findings) && aiReport.key_findings.length > 0 && (
+                <div>
+                  <p className="text-xs uppercase tracking-wide font-semibold mb-2" style={{ color: "#636366" }}>Key Findings</p>
+                  <div className="space-y-2">
+                    {aiReport.key_findings.map((k: any, i: number) => {
+                      const uc = urgencyConfig[(k.urgency && k.urgency[0].toUpperCase() + k.urgency.slice(1)) as keyof typeof urgencyConfig] || urgencyConfig.Incidental;
+                      return (
+                        <div key={i} className="rounded-xl p-3" style={{ background: "#FAFAFA", border: `1px solid ${uc.color}33` }}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-semibold" style={{ color: "#1C1C1E" }}>{k.finding}</span>
+                            <div className="flex items-center gap-1.5">
+                              {k.confidence && <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase" style={{ background: "#EEF2FF", color: "#4338CA" }}>{k.confidence}</span>}
+                              {k.urgency && <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase" style={{ background: uc.bg, color: uc.color }}>{k.urgency}</span>}
+                            </div>
+                          </div>
+                          {k.location && <p className="text-xs mb-1" style={{ color: "#636366" }}>Location: {k.location}</p>}
+                          {k.description && <p className="text-sm" style={{ color: "#3C3C43" }}>{k.description}</p>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {Array.isArray(aiReport.systematic_review) && aiReport.systematic_review.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Activity className="w-4 h-4" style={{ color: "#7C3AED" }} />
+                    <p className="text-xs uppercase tracking-wide font-semibold" style={{ color: "#636366" }}>Systematic Review</p>
+                  </div>
+                  <ul className="text-sm space-y-1" style={{ color: "#1C1C1E" }}>
+                    {aiReport.systematic_review.map((s: string, i: number) => <li key={i}>• {s}</li>)}
+                  </ul>
+                </div>
+              )}
+
+              {Array.isArray(aiReport.differentials) && aiReport.differentials.length > 0 && (
+                <div>
+                  <p className="text-xs uppercase tracking-wide font-semibold mb-1.5" style={{ color: "#636366" }}>Differentials</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {aiReport.differentials.map((d: string, i: number) => (
+                      <span key={i} className="px-2.5 py-1 rounded-md text-xs" style={{ background: "#EEF2FF", color: "#4338CA" }}>{d}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {Array.isArray(aiReport.recommended_next_steps) && aiReport.recommended_next_steps.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <ClipboardList className="w-4 h-4" style={{ color: "#007AFF" }} />
+                    <p className="text-xs uppercase tracking-wide font-semibold" style={{ color: "#636366" }}>Recommended Next Steps</p>
+                  </div>
+                  <ul className="text-sm space-y-1" style={{ color: "#1C1C1E" }}>
+                    {aiReport.recommended_next_steps.map((r: string, i: number) => <li key={i}>• {r}</li>)}
+                  </ul>
+                </div>
+              )}
+
+              {Array.isArray(aiReport.teaching_points) && aiReport.teaching_points.length > 0 && (
+                <div className="rounded-xl p-3" style={{ background: "#FFFBEB", border: "1px solid rgba(245,158,11,0.25)" }}>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Lightbulb className="w-4 h-4" style={{ color: "#B45309" }} />
+                    <p className="text-xs uppercase tracking-wide font-semibold" style={{ color: "#92400E" }}>Teaching Points</p>
+                  </div>
+                  <ul className="text-sm space-y-1" style={{ color: "#78350F" }}>
+                    {aiReport.teaching_points.map((t: string, i: number) => <li key={i}>• {t}</li>)}
+                  </ul>
+                </div>
+              )}
+
+              <p className="text-[11px]" style={{ color: "#AEAEB2" }}>
+                AI-assisted decision support. All imaging must be formally reported by a qualified radiologist.
+              </p>
+            </div>
+          )}
+        </div>
+
 
         {/* Findings */}
         {region && (
