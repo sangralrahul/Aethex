@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, FlaskConical, RefreshCw, AlertTriangle, CheckCircle, TrendingUp, TrendingDown } from "lucide-react";
+import { ArrowLeft, FlaskConical, RefreshCw, AlertTriangle, CheckCircle, TrendingUp, TrendingDown, Sparkles, Loader2, Activity, ClipboardList, Lightbulb } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 type Panel = "cbc" | "lft" | "rft" | "lipid" | "thyroid";
 
@@ -74,9 +75,12 @@ export default function LabValueInterpreter() {
   const [panel, setPanel] = useState<Panel>("cbc");
   const [values, setValues] = useState<Record<string, string>>({});
   const [interpreted, setInterpreted] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiReport, setAiReport] = useState<any | null>(null);
 
   const interpret = () => setInterpreted(true);
-  const reset = () => { setValues({}); setInterpreted(false); };
+  const reset = () => { setValues({}); setInterpreted(false); setAiReport(null); setAiError(null); };
 
   const currentPanel = PANELS[panel];
 
@@ -84,6 +88,38 @@ export default function LabValueInterpreter() {
     if (val < test.normalMin) return "low";
     if (val > test.normalMax) return "high";
     return "normal";
+  };
+
+  const runAiAnalysis = async () => {
+    const entered = currentPanel.tests
+      .map(t => ({ test: t, raw: values[t.key] }))
+      .filter(x => x.raw && !isNaN(parseFloat(x.raw)));
+    if (entered.length === 0) {
+      setAiError("Enter at least one value before running AI analysis.");
+      return;
+    }
+    setAiLoading(true); setAiError(null); setAiReport(null);
+    try {
+      const payload = {
+        panel: currentPanel.label,
+        values: entered.map(({ test, raw }) => {
+          const v = parseFloat(raw);
+          return {
+            name: test.name, value: v, unit: test.unit,
+            normalMin: test.normalMin, normalMax: test.normalMax,
+            status: getStatus(test, v),
+          };
+        }),
+      };
+      const { data, error } = await supabase.functions.invoke("interpret-labs", { body: payload });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      setAiReport((data as any).report);
+    } catch (e: any) {
+      setAiError(e?.message || "AI analysis failed. Please try again.");
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   return (
@@ -137,16 +173,26 @@ export default function LabValueInterpreter() {
               </div>
             ))}
           </div>
-          <div className="flex gap-3">
-            <button onClick={interpret} className="flex-1 py-3 rounded-xl font-semibold text-sm text-white transition-all hover:opacity-90"
+          <div className="flex gap-3 flex-wrap">
+            <button onClick={interpret} className="flex-1 min-w-[160px] py-3 rounded-xl font-semibold text-sm text-white transition-all hover:opacity-90"
               style={{ background: "linear-gradient(135deg,#7C3AED,#007AFF)" }}>
               Interpret Results
+            </button>
+            <button onClick={runAiAnalysis} disabled={aiLoading}
+              className="flex-1 min-w-[160px] py-3 rounded-xl font-semibold text-sm text-white transition-all hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
+              style={{ background: "linear-gradient(135deg,#10B981,#0EA5A4)" }}>
+              {aiLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Analysing…</> : <><Sparkles className="w-4 h-4" /> AI Deep Analysis</>}
             </button>
             <button onClick={reset} className="px-4 py-3 rounded-xl transition-all hover:opacity-70"
               style={{ border: "1.5px solid rgba(60,60,67,0.2)", color: "#636366" }}>
               <RefreshCw className="w-4 h-4" />
             </button>
           </div>
+          {aiError && (
+            <div className="mt-3 rounded-xl p-3 text-sm" style={{ background: "#FEF2F2", color: "#B91C1C", border: "1px solid rgba(239,68,68,0.25)" }}>
+              {aiError}
+            </div>
+          )}
         </div>
 
         {/* Results */}
@@ -193,6 +239,136 @@ export default function LabValueInterpreter() {
             )}
             <p className="text-xs text-center" style={{ color: "#AEAEB2" }}>
               Reference ranges may vary by laboratory. Always interpret in clinical context.
+            </p>
+          </div>
+        )}
+
+        {/* AI Deep Analysis Report */}
+        {aiReport && (
+          <div className="rounded-2xl p-6 bg-white space-y-5"
+            style={{ border: "1.5px solid rgba(16,185,129,0.3)", boxShadow: "0 4px 16px rgba(16,185,129,0.08)" }}>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(16,185,129,0.15)" }}>
+                <Sparkles className="w-4 h-4" style={{ color: "#10B981" }} />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm" style={{ color: "#1C1C1E" }}>AI Deep Analysis</h3>
+                <p className="text-xs" style={{ color: "#AEAEB2" }}>Integrated interpretation powered by Lovable AI</p>
+              </div>
+            </div>
+
+            {aiReport.pattern && (
+              <div className="rounded-xl p-3" style={{ background: "#F0FDF4", border: "1px solid rgba(16,185,129,0.2)" }}>
+                <p className="text-xs uppercase tracking-wide font-semibold mb-1" style={{ color: "#059669" }}>Pattern</p>
+                <p className="text-sm font-medium" style={{ color: "#065F46" }}>{aiReport.pattern}</p>
+              </div>
+            )}
+
+            {aiReport.overall_impression && (
+              <div>
+                <p className="text-xs uppercase tracking-wide font-semibold mb-1.5" style={{ color: "#636366" }}>Clinical Impression</p>
+                <p className="text-sm" style={{ color: "#1C1C1E" }}>{aiReport.overall_impression}</p>
+                {aiReport.urgency && (
+                  <span className="inline-block mt-2 px-2.5 py-1 rounded-full text-xs font-semibold uppercase"
+                    style={{
+                      background: aiReport.urgency === "critical" ? "#FEF2F2" : aiReport.urgency === "urgent" ? "#FFF7ED" : aiReport.urgency === "routine" ? "#EFF6FF" : "#F0FDF4",
+                      color: aiReport.urgency === "critical" ? "#B91C1C" : aiReport.urgency === "urgent" ? "#C2410C" : aiReport.urgency === "routine" ? "#1D4ED8" : "#059669",
+                    }}>
+                    {aiReport.urgency}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {Array.isArray(aiReport.critical_alerts) && aiReport.critical_alerts.length > 0 && (
+              <div className="rounded-xl p-4" style={{ background: "#FEF2F2", border: "1px solid rgba(239,68,68,0.25)" }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="w-4 h-4" style={{ color: "#B91C1C" }} />
+                  <p className="text-sm font-semibold" style={{ color: "#B91C1C" }}>Critical Alerts</p>
+                </div>
+                <ul className="text-sm space-y-1" style={{ color: "#7F1D1D" }}>
+                  {aiReport.critical_alerts.map((a: string, i: number) => <li key={i}>• {a}</li>)}
+                </ul>
+              </div>
+            )}
+
+            {Array.isArray(aiReport.abnormalities) && aiReport.abnormalities.length > 0 && (
+              <div>
+                <p className="text-xs uppercase tracking-wide font-semibold mb-2" style={{ color: "#636366" }}>Abnormalities</p>
+                <div className="space-y-2">
+                  {aiReport.abnormalities.map((a: any, i: number) => (
+                    <div key={i} className="rounded-xl p-3" style={{ background: "#FAFAFA", border: "1px solid rgba(60,60,67,0.1)" }}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-semibold" style={{ color: "#1C1C1E" }}>{a.test} <span className="font-normal" style={{ color: "#636366" }}>· {a.value}</span></span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase"
+                          style={{
+                            background: a.severity === "critical" ? "#FEF2F2" : a.severity === "severe" ? "#FFF7ED" : "#EFF6FF",
+                            color: a.severity === "critical" ? "#B91C1C" : a.severity === "severe" ? "#C2410C" : "#1D4ED8",
+                          }}>
+                          {a.severity} · {a.status}
+                        </span>
+                      </div>
+                      <p className="text-sm mb-1.5" style={{ color: "#3C3C43" }}>{a.interpretation}</p>
+                      {Array.isArray(a.differentials) && a.differentials.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {a.differentials.map((d: string, di: number) => (
+                            <span key={di} className="px-2 py-0.5 rounded-md text-[11px]" style={{ background: "#EEF2FF", color: "#4338CA" }}>{d}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {Array.isArray(aiReport.correlations) && aiReport.correlations.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Activity className="w-4 h-4" style={{ color: "#7C3AED" }} />
+                  <p className="text-xs uppercase tracking-wide font-semibold" style={{ color: "#636366" }}>Cross-Value Correlations</p>
+                </div>
+                <ul className="text-sm space-y-1" style={{ color: "#1C1C1E" }}>
+                  {aiReport.correlations.map((c: string, i: number) => <li key={i}>• {c}</li>)}
+                </ul>
+              </div>
+            )}
+
+            {Array.isArray(aiReport.recommended_workup) && aiReport.recommended_workup.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <ClipboardList className="w-4 h-4" style={{ color: "#007AFF" }} />
+                  <p className="text-xs uppercase tracking-wide font-semibold" style={{ color: "#636366" }}>Recommended Workup</p>
+                </div>
+                <ul className="text-sm space-y-1" style={{ color: "#1C1C1E" }}>
+                  {aiReport.recommended_workup.map((w: string, i: number) => <li key={i}>• {w}</li>)}
+                </ul>
+              </div>
+            )}
+
+            {Array.isArray(aiReport.management_pearls) && aiReport.management_pearls.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Lightbulb className="w-4 h-4" style={{ color: "#F59E0B" }} />
+                  <p className="text-xs uppercase tracking-wide font-semibold" style={{ color: "#636366" }}>Management Pearls</p>
+                </div>
+                <ul className="text-sm space-y-1" style={{ color: "#1C1C1E" }}>
+                  {aiReport.management_pearls.map((m: string, i: number) => <li key={i}>• {m}</li>)}
+                </ul>
+              </div>
+            )}
+
+            {Array.isArray(aiReport.patient_advice) && aiReport.patient_advice.length > 0 && (
+              <div className="rounded-xl p-3" style={{ background: "#F5F3FF", border: "1px solid rgba(124,58,237,0.2)" }}>
+                <p className="text-xs uppercase tracking-wide font-semibold mb-1.5" style={{ color: "#6D28D9" }}>Patient Advice</p>
+                <ul className="text-sm space-y-1" style={{ color: "#4C1D95" }}>
+                  {aiReport.patient_advice.map((p: string, i: number) => <li key={i}>• {p}</li>)}
+                </ul>
+              </div>
+            )}
+
+            <p className="text-[11px]" style={{ color: "#AEAEB2" }}>
+              AI-assisted decision support. Not a substitute for clinical judgement.
             </p>
           </div>
         )}
