@@ -1,6 +1,34 @@
 import { useState, useMemo } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Stethoscope, X, ChevronRight, AlertTriangle, Info } from "lucide-react";
+import { ArrowLeft, Stethoscope, X, ChevronRight, AlertTriangle, Info, Sparkles } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+
+interface AiDifferential {
+  condition: string;
+  icd10?: string;
+  probability: "high" | "moderate" | "low";
+  triage: "emergency" | "urgent" | "semi-urgent" | "routine";
+  rationale?: string;
+  supporting_features?: string[];
+  against_features?: string[];
+}
+interface AiReport {
+  overall_triage?: "emergency" | "urgent" | "semi-urgent" | "routine";
+  summary?: string;
+  red_flags?: string[];
+  differentials?: AiDifferential[];
+  recommended_workup?: string[];
+  immediate_actions?: string[];
+  patient_advice?: string[];
+}
+
+const AI_TRIAGE_COLOR: Record<string, { color: string; bg: string }> = {
+  emergency: { color: "#D70015", bg: "rgba(255,59,48,0.1)" },
+  urgent: { color: "#C45000", bg: "rgba(255,149,0,0.1)" },
+  "semi-urgent": { color: "#0060C9", bg: "rgba(0,122,255,0.1)" },
+  routine: { color: "#248A3D", bg: "rgba(52,199,89,0.1)" },
+};
+const AI_PROB_COLOR: Record<string, string> = { high: "#EF4444", moderate: "#F59E0B", low: "#10B981" };
 
 interface Diagnosis {
   name: string;
