@@ -7,6 +7,7 @@ import {
   BookOpen, TriangleAlert,
 } from "lucide-react";
 import { checkInteractions, type DrugPair, type Severity } from "@/data/drugInteractions";
+import { supabase } from "@/integrations/supabase/client";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 const MAX_DRUGS = 5;
