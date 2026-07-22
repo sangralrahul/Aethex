@@ -24,7 +24,7 @@ export default function Wishlist() {
   return (
     <div style={{ background: "#F5F3EE", minHeight: "100vh" }}>
       <PageHero
-        icon={Heart}
+        icon={<Heart className="w-6 h-6" />}
         title="My Wishlist"
         subtitle={`${items.length} ${items.length === 1 ? "item" : "items"} saved`}
       />
