@@ -173,6 +173,12 @@ export default function SymptomChecker() {
   const [selected, setSelected] = useState<string[]>([]);
   const [custom, setCustom] = useState("");
   const [checked, setChecked] = useState(false);
+  const [aiReport, setAiReport] = useState<AiReport | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [age, setAge] = useState("");
+  const [sex, setSex] = useState("");
+  const [duration, setDuration] = useState("");
 
   const allSymptoms = useMemo(() => {
     const set = new Set<string>();
