@@ -39,7 +39,24 @@ const COMMON_DRUGS = [
   "Amlodipine", "Metoprolol", "Omeprazole", "Ciprofloxacin", "Digoxin",
   "Lithium", "Ibuprofen", "Fluconazole", "Metronidazole", "Sildenafil",
   "SSRIs", "Tramadol", "Clopidogrel", "Clarithromycin", "Carbamazepine",
-];
+type AiInteraction = {
+  drug1: string;
+  drug2: string;
+  severity: Severity;
+  mechanism?: string;
+  clinical_effect?: string;
+  management?: string;
+  onset?: string;
+};
+type AiReport = {
+  overall_risk?: "low" | "moderate" | "high";
+  summary?: string;
+  interactions?: AiInteraction[];
+  monitoring?: string[];
+  alternatives?: string[];
+  patient_counseling?: string[];
+};
+
 
 function SeverityBadge({ severity }: { severity: Severity }) {
   const cfg = SEVERITY_CONFIG[severity];
