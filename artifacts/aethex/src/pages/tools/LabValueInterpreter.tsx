@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, FlaskConical, RefreshCw, AlertTriangle, CheckCircle, TrendingUp, TrendingDown, Sparkles, Loader2, Activity, ClipboardList, Lightbulb } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 
 type Panel = "cbc" | "lft" | "rft" | "lipid" | "thyroid";
 
