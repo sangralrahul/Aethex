@@ -39,6 +39,8 @@ const COMMON_DRUGS = [
   "Amlodipine", "Metoprolol", "Omeprazole", "Ciprofloxacin", "Digoxin",
   "Lithium", "Ibuprofen", "Fluconazole", "Metronidazole", "Sildenafil",
   "SSRIs", "Tramadol", "Clopidogrel", "Clarithromycin", "Carbamazepine",
+];
+
 type AiInteraction = {
   drug1: string;
   drug2: string;
