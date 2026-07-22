@@ -292,19 +292,164 @@ export default function SymptomChecker() {
             </div>
           )}
 
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            <input type="text" placeholder="Age (e.g. 42)" value={age} onChange={e => setAge(e.target.value)}
+              className="px-3 py-2 rounded-xl text-sm outline-none"
+              style={{ border: "1.5px solid rgba(60,60,67,0.2)", color: "#1C1C1E" }} />
+            <select value={sex} onChange={e => setSex(e.target.value)}
+              className="px-3 py-2 rounded-xl text-sm outline-none bg-white"
+              style={{ border: "1.5px solid rgba(60,60,67,0.2)", color: sex ? "#1C1C1E" : "#8E8E93" }}>
+              <option value="">Sex</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+            </select>
+            <input type="text" placeholder="Duration (e.g. 3 days)" value={duration} onChange={e => setDuration(e.target.value)}
+              className="px-3 py-2 rounded-xl text-sm outline-none"
+              style={{ border: "1.5px solid rgba(60,60,67,0.2)", color: "#1C1C1E" }} />
+          </div>
+
           <div className="flex gap-3">
             <button onClick={() => setChecked(true)} disabled={selected.length === 0}
-              className="flex-1 py-3 rounded-xl font-semibold text-sm text-white transition-all hover:opacity-90 disabled:opacity-40"
-              style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)" }}>
-              Check Symptoms ({selected.length})
+              className="py-3 px-4 rounded-xl font-semibold text-sm transition-all hover:opacity-90 disabled:opacity-40"
+              style={{ background: "#F2F2F7", color: "#1C1C1E", border: "1.5px solid rgba(60,60,67,0.15)" }}>
+              Quick Check ({selected.length})
             </button>
-            <button onClick={() => { setSelected([]); setChecked(false); }}
+            <button onClick={handleAiPredict} disabled={selected.length === 0 || aiLoading}
+              className="flex-1 py-3 rounded-xl font-semibold text-sm text-white transition-all hover:opacity-90 disabled:opacity-40 inline-flex items-center justify-center gap-2"
+              style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)" }}>
+              <Sparkles className="w-4 h-4" />
+              {aiLoading ? "AI analyzing…" : "AI Predict"}
+            </button>
+            <button onClick={() => { setSelected([]); setChecked(false); setAiReport(null); setAiError(null); }}
               className="px-4 py-3 rounded-xl text-sm font-medium transition-all"
               style={{ border: "1.5px solid rgba(60,60,67,0.2)", color: "#636366" }}>
               Clear
             </button>
           </div>
+
+          {aiError && (
+            <div className="mt-3 p-3 rounded-xl text-xs" style={{ background: "rgba(255,59,48,0.08)", border: "1px solid rgba(255,59,48,0.2)", color: "#B91C1C" }}>
+              {aiError}
+            </div>
+          )}
         </div>
+
+        {aiReport && (
+          <div className="rounded-2xl overflow-hidden"
+            style={{ background: "linear-gradient(135deg, rgba(0,122,255,0.05) 0%, rgba(0,194,168,0.05) 100%)", border: "1px solid rgba(0,122,255,0.2)" }}>
+            <div className="px-5 py-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: "linear-gradient(135deg, #007AFF, #00C2A8)" }}>
+                  <Sparkles className="w-4 h-4 text-white" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-sm" style={{ color: "#1C1C1E" }}>
+                    AI Differential Diagnosis <span className="text-xs font-normal" style={{ color: "#8E8E93" }}>· powered by Cadus AI</span>
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: "#636366" }}>
+                    Evidence-based ranked DDx with triage, workup, and safety-net advice.
+                  </p>
+                </div>
+                {aiReport.overall_triage && (
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full shrink-0"
+                    style={{
+                      background: AI_TRIAGE_COLOR[aiReport.overall_triage]?.bg,
+                      color: AI_TRIAGE_COLOR[aiReport.overall_triage]?.color,
+                    }}>
+                    {aiReport.overall_triage}
+                  </span>
+                )}
+              </div>
+
+              {aiReport.summary && (
+                <div className="p-3 rounded-xl" style={{ background: "#FFFFFF", border: "1px solid rgba(60,60,67,0.1)" }}>
+                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#8E8E93" }}>Clinical impression</span>
+                  <p className="text-sm mt-1 leading-relaxed" style={{ color: "#1C1C1E" }}>{aiReport.summary}</p>
+                </div>
+              )}
+
+              {aiReport.red_flags && aiReport.red_flags.length > 0 && (
+                <div className="p-3 rounded-xl" style={{ background: "#FEF2F2", border: "1px solid rgba(239,68,68,0.25)" }}>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <AlertTriangle className="w-3.5 h-3.5" style={{ color: "#EF4444" }} />
+                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#EF4444" }}>Red flags</span>
+                  </div>
+                  <ul className="text-xs space-y-0.5" style={{ color: "#991B1B" }}>
+                    {aiReport.red_flags.map((r, i) => <li key={i}>• {r}</li>)}
+                  </ul>
+                </div>
+              )}
+
+              {aiReport.differentials && aiReport.differentials.length > 0 && (
+                <div className="space-y-2">
+                  {aiReport.differentials.map((d, i) => {
+                    const tc = AI_TRIAGE_COLOR[d.triage] ?? AI_TRIAGE_COLOR.routine;
+                    return (
+                      <div key={i} className="p-3 rounded-xl" style={{ background: "#FFFFFF", border: "1px solid rgba(60,60,67,0.1)" }}>
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <div className="min-w-0">
+                            <p className="font-semibold text-sm" style={{ color: "#1C1C1E" }}>
+                              {i + 1}. {d.condition}
+                              {d.icd10 && <span className="ml-2 text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: "rgba(60,60,67,0.08)", color: "#636366" }}>{d.icd10}</span>}
+                            </p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-[11px] font-medium" style={{ color: AI_PROB_COLOR[d.probability] }}>{d.probability} probability</span>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0"
+                            style={{ background: tc.bg, color: tc.color }}>{d.triage}</span>
+                        </div>
+                        {d.rationale && <p className="text-xs mt-1" style={{ color: "#636366" }}>{d.rationale}</p>}
+                        {d.supporting_features && d.supporting_features.length > 0 && (
+                          <div className="flex gap-1 flex-wrap mt-2">
+                            {d.supporting_features.map((s, j) => (
+                              <span key={j} className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "rgba(0,194,168,0.1)", color: "#00806E" }}>+ {s}</span>
+                            ))}
+                          </div>
+                        )}
+                        {d.against_features && d.against_features.length > 0 && (
+                          <div className="flex gap-1 flex-wrap mt-1">
+                            {d.against_features.map((s, j) => (
+                              <span key={j} className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "rgba(60,60,67,0.06)", color: "#636366" }}>− {s}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {aiReport.recommended_workup && aiReport.recommended_workup.length > 0 && (
+                <div className="p-3 rounded-xl" style={{ background: "rgba(0,122,255,0.06)", border: "1px solid rgba(0,122,255,0.15)" }}>
+                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#0060C9" }}>Recommended workup</span>
+                  <ul className="text-xs mt-1 space-y-0.5" style={{ color: "#1C1C1E" }}>
+                    {aiReport.recommended_workup.map((w, i) => <li key={i}>• {w}</li>)}
+                  </ul>
+                </div>
+              )}
+              {aiReport.immediate_actions && aiReport.immediate_actions.length > 0 && (
+                <div className="p-3 rounded-xl" style={{ background: "rgba(255,149,0,0.06)", border: "1px solid rgba(255,149,0,0.2)" }}>
+                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#C45000" }}>Immediate actions</span>
+                  <ul className="text-xs mt-1 space-y-0.5" style={{ color: "#1C1C1E" }}>
+                    {aiReport.immediate_actions.map((w, i) => <li key={i}>• {w}</li>)}
+                  </ul>
+                </div>
+              )}
+              {aiReport.patient_advice && aiReport.patient_advice.length > 0 && (
+                <div className="p-3 rounded-xl" style={{ background: "rgba(175,82,222,0.06)", border: "1px solid rgba(175,82,222,0.2)" }}>
+                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#AF52DE" }}>Patient advice</span>
+                  <ul className="text-xs mt-1 space-y-0.5" style={{ color: "#1C1C1E" }}>
+                    {aiReport.patient_advice.map((w, i) => <li key={i}>• {w}</li>)}
+                  </ul>
+                </div>
+              )}
+              <p className="text-[10px]" style={{ color: "#8E8E93" }}>Decision support only — not a substitute for clinician judgment.</p>
+            </div>
+          </div>
+        )}
 
         {checked && (
           <>
