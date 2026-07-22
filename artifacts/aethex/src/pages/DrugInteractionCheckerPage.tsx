@@ -400,7 +400,7 @@ export default function DrugInteractionCheckerPage() {
               </p>
             </div>
 
-            {/* Ask Cadus AI */}
+            {/* AI Deep Analysis */}
             <div className="rounded-2xl overflow-hidden"
               style={{ background: "linear-gradient(135deg, rgba(0,122,255,0.05) 0%, rgba(0,194,168,0.05) 100%)", border: "1px solid rgba(0,122,255,0.15)" }}>
               <div className="px-5 py-4">
@@ -411,23 +411,95 @@ export default function DrugInteractionCheckerPage() {
                   </div>
                   <div className="flex-1">
                     <p className="font-bold text-sm" style={{ color: "#1C1C1E" }}>
-                      Ask Cadus AI about these interactions
+                      AI Deep Analysis {aiReport && <span className="text-xs font-normal" style={{ color: "#8E8E93" }}>· powered by Cadus AI</span>}
                     </p>
                     <p className="text-xs mt-0.5 mb-3" style={{ color: "#636366" }}>
-                      Get an in-depth clinical analysis, mechanism of action, and personalised management recommendations for this drug combination.
+                      Evidence-based pairwise analysis with mechanism, management, monitoring plan, safer alternatives, and patient counseling points.
                     </p>
-                    <a
-                      href={`${BASE_URL}/ai-assistant?context=${buildCadusContext()}`}
-                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all"
-                      style={{
-                        background: "linear-gradient(135deg, #007AFF 0%, #00C2A8 100%)",
-                        color: "#FFFFFF",
-                        boxShadow: "0 4px 16px rgba(0,122,255,0.25)",
-                      }}>
-                      <Sparkles className="w-3.5 h-3.5" />
-                      Discuss with Cadus AI
-                      <ChevronRight className="w-4 h-4" />
-                    </a>
+
+                    {!aiReport && (
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={handleAiAnalyze}
+                          disabled={aiLoading}
+                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all disabled:opacity-60"
+                          style={{
+                            background: "linear-gradient(135deg, #007AFF 0%, #00C2A8 100%)",
+                            color: "#FFFFFF",
+                            boxShadow: "0 4px 16px rgba(0,122,255,0.25)",
+                          }}>
+                          <Sparkles className="w-3.5 h-3.5" />
+                          {aiLoading ? "Analyzing…" : "Run AI Analysis"}
+                        </button>
+                        <a
+                          href={`${BASE_URL}/ai-assistant?context=${buildCadusContext()}`}
+                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm"
+                          style={{ background: "rgba(0,122,255,0.1)", color: "#007AFF", border: "1px solid rgba(0,122,255,0.2)" }}>
+                          Open in Chat <ChevronRight className="w-4 h-4" />
+                        </a>
+                      </div>
+                    )}
+
+                    {aiError && (
+                      <div className="mt-3 p-3 rounded-xl text-xs" style={{ background: "rgba(255,59,48,0.08)", border: "1px solid rgba(255,59,48,0.2)", color: "#B91C1C" }}>
+                        {aiError}
+                      </div>
+                    )}
+
+                    {aiReport && (
+                      <div className="mt-2 space-y-3">
+                        {aiReport.summary && (
+                          <div className="p-3 rounded-xl" style={{ background: "#FFFFFF", border: "1px solid rgba(60,60,67,0.1)" }}>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#8E8E93" }}>Executive summary</span>
+                              {aiReport.overall_risk && (
+                                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{
+                                  background: aiReport.overall_risk === "high" ? "rgba(255,59,48,0.1)" : aiReport.overall_risk === "moderate" ? "rgba(255,149,0,0.1)" : "rgba(52,199,89,0.1)",
+                                  color: aiReport.overall_risk === "high" ? "#D70015" : aiReport.overall_risk === "moderate" ? "#C45000" : "#248A3D",
+                                }}>{aiReport.overall_risk} risk</span>
+                              )}
+                            </div>
+                            <p className="text-sm leading-relaxed" style={{ color: "#1C1C1E" }}>{aiReport.summary}</p>
+                          </div>
+                        )}
+
+                        {aiReport.interactions && aiReport.interactions.length > 0 && (
+                          <div className="space-y-2">
+                            {aiReport.interactions.map((it, i) => {
+                              const cfg = SEVERITY_CONFIG[it.severity] ?? SEVERITY_CONFIG.none;
+                              return (
+                                <div key={i} className="p-3 rounded-xl" style={{ background: "#FFFFFF", border: `1px solid ${cfg.border}` }}>
+                                  <div className="flex items-center gap-2 flex-wrap mb-2">
+                                    <span className="text-sm font-bold" style={{ color: "#1C1C1E" }}>{it.drug1} + {it.drug2}</span>
+                                    <SeverityBadge severity={it.severity} />
+                                    {it.onset && <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: "rgba(60,60,67,0.08)", color: "#636366" }}>onset: {it.onset}</span>}
+                                  </div>
+                                  {it.mechanism && <p className="text-xs mb-1" style={{ color: "#636366" }}><b style={{ color: "#1C1C1E" }}>Mechanism:</b> {it.mechanism}</p>}
+                                  {it.clinical_effect && <p className="text-xs mb-1" style={{ color: "#636366" }}><b style={{ color: "#1C1C1E" }}>Effect:</b> {it.clinical_effect}</p>}
+                                  {it.management && <p className="text-xs" style={{ color: "#636366" }}><b style={{ color: "#1C1C1E" }}>Management:</b> {it.management}</p>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {aiReport.monitoring && aiReport.monitoring.length > 0 && (
+                          <ListBlock title="Monitor" items={aiReport.monitoring} color="#007AFF" bg="rgba(0,122,255,0.06)" />
+                        )}
+                        {aiReport.alternatives && aiReport.alternatives.length > 0 && (
+                          <ListBlock title="Safer alternatives" items={aiReport.alternatives} color="#34C759" bg="rgba(52,199,89,0.06)" />
+                        )}
+                        {aiReport.patient_counseling && aiReport.patient_counseling.length > 0 && (
+                          <ListBlock title="Patient counseling" items={aiReport.patient_counseling} color="#AF52DE" bg="rgba(175,82,222,0.06)" />
+                        )}
+
+                        <button
+                          onClick={() => { setAiReport(null); handleAiAnalyze(); }}
+                          className="text-xs font-semibold underline" style={{ color: "#007AFF" }}>
+                          Re-run analysis
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
