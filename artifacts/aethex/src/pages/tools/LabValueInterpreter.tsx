@@ -90,6 +90,38 @@ export default function LabValueInterpreter() {
     return "normal";
   };
 
+  const runAiAnalysis = async () => {
+    const entered = currentPanel.tests
+      .map(t => ({ test: t, raw: values[t.key] }))
+      .filter(x => x.raw && !isNaN(parseFloat(x.raw)));
+    if (entered.length === 0) {
+      setAiError("Enter at least one value before running AI analysis.");
+      return;
+    }
+    setAiLoading(true); setAiError(null); setAiReport(null);
+    try {
+      const payload = {
+        panel: currentPanel.label,
+        values: entered.map(({ test, raw }) => {
+          const v = parseFloat(raw);
+          return {
+            name: test.name, value: v, unit: test.unit,
+            normalMin: test.normalMin, normalMax: test.normalMax,
+            status: getStatus(test, v),
+          };
+        }),
+      };
+      const { data, error } = await supabase.functions.invoke("interpret-labs", { body: payload });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      setAiReport((data as any).report);
+    } catch (e: any) {
+      setAiError(e?.message || "AI analysis failed. Please try again.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen" style={{ background: "#F2F2F7" }}>
       <div className="relative overflow-hidden" >
