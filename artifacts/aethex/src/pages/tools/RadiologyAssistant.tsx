@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Scan, ChevronDown, ChevronUp, AlertTriangle, CheckCircle } from "lucide-react";
+import { ArrowLeft, Scan, ChevronDown, ChevronUp, AlertTriangle, CheckCircle, Sparkles, Loader2, Upload, X, Activity, ClipboardList, Lightbulb } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 type Modality = "xray" | "ct" | "mri";
 type Region = string;
