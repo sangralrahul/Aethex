@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      abandoned_carts: {
+        Row: {
+          created_at: string
+          email: string
+          item_count: number
+          items: Json
+          notified_at: string | null
+          total: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          item_count?: number
+          items?: Json
+          notified_at?: string | null
+          total?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          item_count?: number
+          items?: Json
+          notified_at?: string | null
+          total?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       otp_codes: {
         Row: {
           attempts: number
