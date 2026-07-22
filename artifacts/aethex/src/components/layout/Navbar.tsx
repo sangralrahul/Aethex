@@ -336,6 +336,7 @@ export function Navbar() {
     { sessionId },
     { query: { enabled: !!sessionId, staleTime: 1000 * 60 } }
   );
+  useAbandonedCartTracker(cart as any);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
