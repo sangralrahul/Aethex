@@ -25,6 +25,7 @@ function useVoiceSearch(onResult: (text: string) => void) {
 import { useGetCart } from "@workspace/api-client-react";
 import { useSession } from "@/hooks/use-session";
 import { useUserAuth } from "@/hooks/use-user-auth";
+import { useAbandonedCartTracker } from "@/hooks/use-abandoned-cart-tracker";
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/NotificationBell";
