@@ -173,16 +173,26 @@ export default function LabValueInterpreter() {
               </div>
             ))}
           </div>
-          <div className="flex gap-3">
-            <button onClick={interpret} className="flex-1 py-3 rounded-xl font-semibold text-sm text-white transition-all hover:opacity-90"
+          <div className="flex gap-3 flex-wrap">
+            <button onClick={interpret} className="flex-1 min-w-[160px] py-3 rounded-xl font-semibold text-sm text-white transition-all hover:opacity-90"
               style={{ background: "linear-gradient(135deg,#7C3AED,#007AFF)" }}>
               Interpret Results
+            </button>
+            <button onClick={runAiAnalysis} disabled={aiLoading}
+              className="flex-1 min-w-[160px] py-3 rounded-xl font-semibold text-sm text-white transition-all hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
+              style={{ background: "linear-gradient(135deg,#10B981,#0EA5A4)" }}>
+              {aiLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Analysing…</> : <><Sparkles className="w-4 h-4" /> AI Deep Analysis</>}
             </button>
             <button onClick={reset} className="px-4 py-3 rounded-xl transition-all hover:opacity-70"
               style={{ border: "1.5px solid rgba(60,60,67,0.2)", color: "#636366" }}>
               <RefreshCw className="w-4 h-4" />
             </button>
           </div>
+          {aiError && (
+            <div className="mt-3 rounded-xl p-3 text-sm" style={{ background: "#FEF2F2", color: "#B91C1C", border: "1px solid rgba(239,68,68,0.25)" }}>
+              {aiError}
+            </div>
+          )}
         </div>
 
         {/* Results */}
