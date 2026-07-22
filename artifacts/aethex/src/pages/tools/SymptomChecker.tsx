@@ -210,6 +210,28 @@ export default function SymptomChecker() {
       .slice(0, 6);
   }, [checked, selected]);
 
+  const handleAiPredict = async () => {
+    if (selected.length === 0) return;
+    setAiLoading(true); setAiError(null); setAiReport(null);
+    try {
+      const ctx: Record<string, string> = {};
+      if (age.trim()) ctx.age = age.trim();
+      if (sex.trim()) ctx.sex = sex.trim();
+      if (duration.trim()) ctx.duration = duration.trim();
+      const { data, error } = await supabase.functions.invoke("predict-symptoms", {
+        body: { symptoms: selected, context: Object.keys(ctx).length ? ctx : undefined },
+      });
+      if (error) throw new Error(error.message || "AI request failed");
+      if (!data?.ok) throw new Error(data?.error || "AI request failed");
+      setAiReport(data.report as AiReport);
+      setChecked(true);
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen" style={{ background: "#F2F2F7" }}>
       <div className="relative overflow-hidden" >
