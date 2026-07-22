@@ -59,7 +59,7 @@ export function ProductCard({ product, onAddToCart, isAdding, viewMode = "grid" 
               <p className="text-xs mt-0.5" style={{ color: "#8E8E93" }}>{product.brand}</p>
             </div>
             <button
-              onClick={() => setWishlisted(v => !v)}
+              onClick={handleWishlist}
               className="shrink-0 p-1.5 rounded-full hover:bg-red-50 transition-colors"
             >
               <Heart className={cn("w-4 h-4 transition-colors", wishlisted ? "fill-red-500 text-red-500" : "text-slate-300")} />
@@ -116,7 +116,7 @@ export function ProductCard({ product, onAddToCart, isAdding, viewMode = "grid" 
     >
       {/* Wishlist */}
       <button
-        onClick={() => setWishlisted(v => !v)}
+        onClick={handleWishlist}
         className="absolute top-3 right-3 z-20 p-1.5 rounded-full transition-all"
         style={{ background: "rgba(255,255,255,0.9)", border: "1px solid rgba(0,0,0,0.08)", boxShadow: "0 1px 4px rgba(0,0,0,0.1)" }}
       >
