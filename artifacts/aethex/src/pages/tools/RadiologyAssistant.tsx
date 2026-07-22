@@ -64,10 +64,53 @@ export default function RadiologyAssistant() {
   const [modality, setModality] = useState<Modality>("xray");
   const [region, setRegion] = useState<Region>("");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
+  const [imageMime, setImageMime] = useState<string>("image/png");
+  const [clinicalContext, setClinicalContext] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiReport, setAiReport] = useState<any | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const findings = region ? (FINDINGS[region] || []) : [];
 
   const toggle = (i: number) => setExpanded(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; });
+
+  const onPickFile = () => fileRef.current?.click();
+  const onFile = (f: File | null) => {
+    if (!f) return;
+    if (!f.type.startsWith("image/")) { setAiError("Please upload an image file (JPG/PNG)."); return; }
+    if (f.size > 8 * 1024 * 1024) { setAiError("Image is larger than 8 MB. Please compress it."); return; }
+    setAiError(null);
+    const reader = new FileReader();
+    reader.onload = () => { setImageDataUrl(String(reader.result)); setImageMime(f.type); };
+    reader.readAsDataURL(f);
+  };
+  const clearImage = () => { setImageDataUrl(null); setAiReport(null); setAiError(null); if (fileRef.current) fileRef.current.value = ""; };
+
+  const runAiAnalysis = async () => {
+    if (!imageDataUrl) { setAiError("Upload an image first."); return; }
+    setAiLoading(true); setAiError(null); setAiReport(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("analyze-radiology", {
+        body: {
+          imageBase64: imageDataUrl,
+          mimeType: imageMime,
+          modality: modality === "xray" ? "X-ray" : modality.toUpperCase(),
+          region: region || "unspecified",
+          clinicalContext: clinicalContext.trim() || undefined,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      setAiReport((data as any).report);
+    } catch (e: any) {
+      setAiError(e?.message || "AI analysis failed. Please try again.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
 
   return (
     <div className="min-h-screen" style={{ background: "#F2F2F7" }}>
