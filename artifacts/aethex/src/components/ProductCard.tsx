@@ -1,9 +1,10 @@
-import { useState } from "react";
 import { Link } from "wouter";
 import { ShoppingCart, Heart, Star } from "lucide-react";
 import { type Product } from "@workspace/api-client-react";
 import { formatINR, cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useWishlist } from "@/hooks/use-wishlist";
+import { useToast } from "@/hooks/use-toast";
 
 interface ProductCardProps {
   product: Product;
@@ -13,7 +14,15 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, onAddToCart, isAdding, viewMode = "grid" }: ProductCardProps) {
-  const [wishlisted, setWishlisted] = useState(false);
+  const { has, toggle } = useWishlist();
+  const { toast } = useToast();
+  const wishlisted = has(product.id);
+  const handleWishlist = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const added = toggle(product.id);
+    toast({ title: added ? "Added to wishlist" : "Removed from wishlist" });
+  };
 
   const discount = product.originalPrice
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
