@@ -121,7 +121,17 @@ export default function DrugInteractionCheckerPage() {
   const [drugs, setDrugs] = useState<string[]>([]);
   const [results, setResults] = useState<DrugPair[] | null>(null);
   const [checked, setChecked] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiReport, setAiReport] = useState<AiReport | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const resetAll = () => {
+    setChecked(false);
+    setResults(null);
+    setAiReport(null);
+    setAiError(null);
+  };
 
   const addDrug = (name: string) => {
     const trimmed = name.trim();
@@ -131,16 +141,14 @@ export default function DrugInteractionCheckerPage() {
     const next = [...drugs, trimmed];
     setDrugs(next);
     setInputValue("");
-    setChecked(false);
-    setResults(null);
+    resetAll();
     inputRef.current?.focus();
   };
 
   const removeDrug = (idx: number) => {
     const next = drugs.filter((_, i) => i !== idx);
     setDrugs(next);
-    setChecked(false);
-    setResults(null);
+    resetAll();
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -158,6 +166,27 @@ export default function DrugInteractionCheckerPage() {
     const found = checkInteractions(drugs);
     setResults(found);
     setChecked(true);
+    setAiReport(null);
+    setAiError(null);
+  };
+
+  const handleAiAnalyze = async () => {
+    if (drugs.length < 2) return;
+    setAiLoading(true);
+    setAiError(null);
+    setAiReport(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("analyze-drug-interactions", {
+        body: { drugs },
+      });
+      if (error) throw new Error(error.message);
+      if (!data?.ok) throw new Error(data?.error || "AI analysis failed");
+      setAiReport(data.report as AiReport);
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : "Something went wrong");
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   const buildCadusContext = () => {
