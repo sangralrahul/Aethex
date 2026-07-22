@@ -25,6 +25,7 @@ import ProductDetail from "@/pages/ProductDetail";
 import BookDetail from "@/pages/BookDetail";
 import Cart from "@/pages/Cart";
 import Wishlist from "@/pages/Wishlist";
+import Flashcards from "@/pages/Flashcards";
 import AiAssistant from "@/pages/AiAssistant";
 import OrderTracking from "@/pages/OrderTracking";
 import Orders from "@/pages/Orders";
@@ -196,6 +197,8 @@ function Router() {
                 {/* Cart & Checkout */}
                 <Route path="/cart" component={Cart} />
                 <Route path="/wishlist" component={Wishlist} />
+                <Route path="/flashcards" component={Flashcards} />
+                <Route path="/flashcards/:deckId" component={Flashcards} />
                 <Route path="/checkout" component={Checkout} />
 
                 {/* Orders */}
