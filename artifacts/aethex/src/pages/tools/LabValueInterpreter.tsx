@@ -75,9 +75,12 @@ export default function LabValueInterpreter() {
   const [panel, setPanel] = useState<Panel>("cbc");
   const [values, setValues] = useState<Record<string, string>>({});
   const [interpreted, setInterpreted] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiReport, setAiReport] = useState<any | null>(null);
 
   const interpret = () => setInterpreted(true);
-  const reset = () => { setValues({}); setInterpreted(false); };
+  const reset = () => { setValues({}); setInterpreted(false); setAiReport(null); setAiError(null); };
 
   const currentPanel = PANELS[panel];
 
