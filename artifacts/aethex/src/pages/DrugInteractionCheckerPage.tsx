@@ -135,6 +135,21 @@ function InteractionCard({ pair }: { pair: DrugPair }) {
   );
 }
 
+function ListBlock({ title, items, color, bg }: { title: string; items: string[]; color: string; bg: string }) {
+  return (
+    <div className="p-3 rounded-xl" style={{ background: bg, border: `1px solid ${color}33` }}>
+      <p className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color }}>{title}</p>
+      <ul className="space-y-1">
+        {items.map((it, i) => (
+          <li key={i} className="text-xs flex gap-2" style={{ color: "#1C1C1E" }}>
+            <span style={{ color }}>•</span><span>{it}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export default function DrugInteractionCheckerPage() {
   const [inputValue, setInputValue] = useState("");
   const [drugs, setDrugs] = useState<string[]>([]);
