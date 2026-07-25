@@ -1026,35 +1026,28 @@ export default function AiAssistant() {
     setResearchStage("idle");
     setIsGeneratingResearch(true);
     try {
-      const apiBase = import.meta.env.BASE_URL.replace(/\/$/, "");
       if (mode === "quick") {
-        const resp = await fetch(`${apiBase}/api/ai/chat`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        const { data, error } = await supabase.functions.invoke("groq-ai", {
+          body: {
+            action: "chat",
             message: `Provide a concise clinical summary (3–5 paragraphs) on: ${query}. Cover key facts, clinical relevance, and management highlights.`,
-            agent: activeModel, mode: "normal",
-          }),
+          },
         });
-        const data = await resp.json();
-        if (data.message) {
-          updateSession(sessionId, [...newMsgs, {
-            role: ChatMessageRole.assistant, content: data.message,
-          }]);
-        } else throw new Error("No response returned.");
+        if (error || !data?.message) throw new Error(error?.message || "No response returned.");
+        updateSession(sessionId, [...newMsgs, {
+          role: ChatMessageRole.assistant, content: data.message,
+        }]);
       } else {
-        const resp = await fetch(`${apiBase}/api/ai/deep-research`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query, agent: activeModel }),
+        const { data, error } = await supabase.functions.invoke("groq-ai", {
+          body: { action: "deep-research", query },
         });
-        const data = await resp.json();
-        if (data.report) {
-          updateSession(sessionId, [...newMsgs, {
-            role: ChatMessageRole.assistant, content: "",
-            isDeepResearch: true, researchReport: data.report,
-            researchSources: data.sources ?? [], researchQueries: data.searchQueries ?? [],
-            hasGoogleSearch: data.hasGoogleSearch ?? false,
-          }]);
-        } else throw new Error(data.error ?? "Research failed");
+        if (error || !data?.report) throw new Error(error?.message || data?.error || "Research failed");
+        updateSession(sessionId, [...newMsgs, {
+          role: ChatMessageRole.assistant, content: "",
+          isDeepResearch: true, researchReport: data.report,
+          researchSources: data.sources ?? [], researchQueries: data.searchQueries ?? [],
+          hasGoogleSearch: data.hasGoogleSearch ?? false,
+        }]);
       }
     } catch {
       toast({ title: "Research failed", description: "Please try again.", variant: "destructive" });

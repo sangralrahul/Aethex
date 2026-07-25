@@ -11,9 +11,9 @@ import { MCQQuiz } from "@/components/MedKnowledge/MCQQuiz";
 import { FlashCard } from "@/components/MedKnowledge/FlashCard";
 import { DiagramCarousel } from "@/components/MedKnowledge/DiagramCarousel";
 import { RichContent } from "@/components/MedKnowledge/RichContent";
+import { supabase } from "@/integrations/supabase/client";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-const API_BASE = BASE.replace(/\/[^/]*$/, "");
 
 const SUBJECT_BG: Record<string, string> = {
   "anatomy":               "https://images.unsplash.com/photo-1530026405186-ed1f139313f4?w=1400&q=80",
@@ -69,13 +69,10 @@ function useMedContent(section: string, params: Record<string, string>, eager = 
     setLoading(true);
     setError(false);
     try {
-      const res = await fetch(`${API_BASE}/api/med-knowledge/content`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ section, ...params }),
+      const { data, error } = await supabase.functions.invoke("groq-ai", {
+        body: { action: "med-knowledge", section, ...params },
       });
-      if (!res.ok) throw new Error("API error");
-      const data = await res.json();
+      if (error || !data?.content) throw new Error(error?.message || "AI error");
       sessionStorage.setItem(cacheKey, data.content);
       setContent(data.content);
     } catch {
