@@ -143,9 +143,10 @@ export function DailyMCQWidget() {
                   <p className="text-xs font-semibold" style={{ color: "rgba(255,255,255,0.9)" }}>
                     Sign up to reveal the explanation
                   </p>
-                  <Link href="/signup">
+                  <a href={loginUrl("/signup")}>
                     <span className="text-xs underline" style={{ color: "#00C2A8" }}>Create free account →</span>
-                  </Link>
+                  </a>
+
                 </div>
               </div>
             )}
