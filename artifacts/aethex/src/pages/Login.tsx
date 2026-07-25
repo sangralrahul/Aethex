@@ -151,7 +151,8 @@ export default function Login() {
       const u = result.user;
       phoneLogin(u.phoneNumber || phone, "");
       setSuccess(true);
-      setTimeout(() => setLocation("/"), 1000);
+      setTimeout(() => goHome(), 1000);
+
     } catch { setError("Invalid OTP. Please check and try again."); }
     finally { setLoading(false); }
   };
