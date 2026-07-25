@@ -448,7 +448,7 @@ export function Navbar() {
             <div className="flex items-center gap-2 shrink-0">
 
               {/* Try Cadus AI — teal CTA */}
-              <Link href="/ai-assistant"
+              <a href={cadusUrl("/")}
                 className="hidden md:flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all hover:opacity-90 active:scale-[0.97] shrink-0"
                 style={{
                   background: "#00C2A8",
@@ -456,10 +456,12 @@ export function Navbar() {
                   letterSpacing: "0.01em",
                   boxShadow: "0 2px 12px rgba(0,194,168,0.28)",
                   fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  textDecoration: "none",
                 }}>
                 <Sparkles className="w-3.5 h-3.5" />
                 Try Cadus AI
-              </Link>
+              </a>
+
 
               {/* Notification bell */}
               <div className="hidden sm:block">
