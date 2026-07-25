@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
 import { PageHero } from "@/components/PageHero";
 import { ThumbsUp, ThumbsDown, MessageSquare, Sparkles, TrendingUp, Search, Plus, Clock, ChevronUp, ChevronDown, BookOpen, Stethoscope, GraduationCap, FlaskConical, Building2, Pill, Tag, X, Send } from "lucide-react";
+import { cadusUrl } from "@/lib/host";
+
 
 interface Comment {
   id: number;
@@ -347,9 +349,10 @@ function PostCard({ post }: { post: Post }) {
               <button onClick={() => setExpanded(e => !e)} className="flex items-center gap-1.5 text-xs" style={{ color: "#636366" }}>
                 <MessageSquare className="w-3.5 h-3.5" />{comments.length} comments
               </button>
-              <a href="/ai-assistant" className="flex items-center gap-1.5 text-xs transition-all hover:opacity-80" style={{ color: "#007AFF" }}>
+              <a href={cadusUrl("/")} className="flex items-center gap-1.5 text-xs transition-all hover:opacity-80" style={{ color: "#007AFF", textDecoration: "none" }}>
                 <Sparkles className="w-3.5 h-3.5" />Ask Cadus AI
               </a>
+
             </div>
           </div>
         </div>

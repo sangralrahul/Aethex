@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { Monitor, Star, Clock, Globe, ArrowRight, Sparkles, CheckCircle, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
+import { cadusUrl } from "@/lib/host";
+
 
 const PLATFORMS = [
   { id: 1, name: "eSanjeevani", govt: true, logo: "🏥", fees: "Free", specialties: ["General Medicine", "Psychiatry", "Dermatology", "Paediatrics", "All Specialties"], wait: "15–45 min", languages: ["Hindi", "English", "Tamil", "Telugu", "Bengali", "Marathi", "Gujarati"], rating: 4.3, reviews: 18200, patients: "20M+", register: "https://esanjeevaniopd.in", desc: "India's national telemedicine service by MoHFW. Free consultations for patients. Open to all registered doctors.", forDoctors: ["Aadhaar-based verification", "NMC registration required", "Simple web interface", "Available pan-India"], highlight: "Government of India initiative — largest telemedicine network" },
@@ -45,9 +47,10 @@ export default function TelemedicineDirectory() {
         <div className="rounded-2xl p-4 mb-6 flex items-center gap-4" style={{ background: "rgba(124,58,237,0.05)", border: "1px solid rgba(124,58,237,0.15)" }}>
           <Sparkles className="w-5 h-5 shrink-0" style={{ color: "#7C3AED" }} />
           <p className="text-sm flex-1" style={{ color: "#636366" }}>Not sure which platform to join? Let Cadus AI help you set up your telemedicine practice based on your specialty and location.</p>
-          <Link href="/ai-assistant" className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap" style={{ background: "#7C3AED", color: "#FFFFFF" }}>
+          <a href={cadusUrl("/")} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap" style={{ background: "#7C3AED", color: "#FFFFFF", textDecoration: "none" }}>
             Ask Cadus AI <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
+          </a>
+
         </div>
 
         {/* Platforms */}

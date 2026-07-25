@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { Copy, CheckCheck, Users, Gift, Link as LinkIcon, Crown } from "lucide-react";
 import { useUserAuth } from "@/hooks/use-user-auth";
+import { loginUrl } from "@/lib/host";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-const APP_URL = window.location.origin;
+const APP_URL = loginUrl("").replace(/\/$/, "");
 
 interface Referral {
   id: number;

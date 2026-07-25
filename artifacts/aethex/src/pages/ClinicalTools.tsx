@@ -7,6 +7,8 @@ import {
   GraduationCap, Heart, Search, X,
   Zap, Lock, ArrowUpRight, Sparkles, ChevronRight,
 } from "lucide-react";
+import { cadusUrl } from "@/lib/host";
+
 
 const CALC_SUITE = [
   { id: "bmi", name: "Body Mass Index (BMI)", short: "General" },
@@ -90,7 +92,8 @@ const TOOLS: Tool[] = [
     badge: "AI",
     badgeColor: "#7C3AED",
     action: "ai-chat",
-    href: "/ai-assistant",
+    href: cadusUrl("/"),
+
   },
   {
     id: "symptom-checker",
@@ -424,12 +427,13 @@ export default function ClinicalTools() {
             <p className="text-white/75 text-sm mb-6 max-w-md mx-auto">
               Ask Cadus AI anything — diagnosis, drug dosing, patient education, SOAP notes and more.
             </p>
-            <Link href="/ai-assistant"
+            <a href={cadusUrl("/")}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all hover:opacity-90 hover:scale-105"
-              style={{ background: "#FFFFFF", color: "#007AFF" }}>
+              style={{ background: "#FFFFFF", color: "#007AFF", textDecoration: "none" }}>
               <Sparkles className="w-4 h-4" />
               Open Cadus AI
-            </Link>
+            </a>
+
           </div>
         </div>
       </div>

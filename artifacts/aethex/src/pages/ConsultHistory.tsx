@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, MessageSquare, Trash2, ChevronDown, ChevronUp, Brain, Clock, Search } from "lucide-react";
 import { useUserAuth } from "@/hooks/use-user-auth";
+import { loginUrl } from "@/lib/host";
+
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -76,11 +78,12 @@ export default function ConsultHistory() {
           <div className="rounded-2xl p-10 text-center bg-white" style={{ border: "1px solid rgba(60,60,67,0.1)" }}>
             <MessageSquare className="w-12 h-12 mx-auto mb-4" style={{ color: "#00C2A8" }} />
             <h2 className="text-xl font-bold mb-2" style={{ color: "#1c1c1e" }}>Sign in to view your consult history</h2>
-            <Link href="/login">
+            <a href={loginUrl("/")}>
               <button className="px-6 py-3 rounded-xl font-semibold text-sm text-white mt-4" style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)" }}>
                 Sign In
               </button>
-            </Link>
+            </a>
+
           </div>
         ) : (
           <>

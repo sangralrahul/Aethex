@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { BookOpen, Lock, CheckCircle2, XCircle } from "lucide-react";
 import { Link } from "wouter";
 import { useUserAuth } from "@/hooks/use-user-auth";
+import { loginUrl } from "@/lib/host";
+
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -141,9 +143,10 @@ export function DailyMCQWidget() {
                   <p className="text-xs font-semibold" style={{ color: "rgba(255,255,255,0.9)" }}>
                     Sign up to reveal the explanation
                   </p>
-                  <Link href="/signup">
+                  <a href={loginUrl("/signup")}>
                     <span className="text-xs underline" style={{ color: "#00C2A8" }}>Create free account →</span>
-                  </Link>
+                  </a>
+
                 </div>
               </div>
             )}

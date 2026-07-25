@@ -4,6 +4,8 @@ import { Eye, EyeOff, Sparkles, GraduationCap, ShoppingBag, BrainCircuit, Shield
 import { useUserAuth } from "@/hooks/use-user-auth";
 import { auth } from "@/lib/firebase";
 import { signInWithPhoneNumber, RecaptchaVerifier, type ConfirmationResult } from "firebase/auth";
+import { isLoginHost, mainUrl, loginUrl } from "@/lib/host";
+
 
 type Role = "Doctor" | "Medical Student" | "Patient";
 const ROLES: Role[] = ["Doctor", "Medical Student", "Patient"];
@@ -49,7 +51,12 @@ export default function Signup() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  useEffect(() => { if (isLoggedIn) setLocation("/"); }, [isLoggedIn]);
+  const goHome = () => {
+    if (isLoginHost()) window.location.href = mainUrl("/");
+    else setLocation("/");
+  };
+
+  useEffect(() => { if (isLoggedIn) goHome(); }, [isLoggedIn]);
 
   useEffect(() => {
     if (phoneTimer <= 0) return;
@@ -67,8 +74,10 @@ export default function Signup() {
       const res = signup(name.trim(), email, password);
       if (!res.success) { setError(res.error || "Signup failed. Please try again."); return; }
       localStorage.removeItem("aethex_onboarded");
-      setLocation("/onboarding");
+      if (isLoginHost()) window.location.href = mainUrl("/onboarding");
+      else setLocation("/onboarding");
     } finally { setLoading(false); }
+
   };
 
   const formatPhone = (raw: string) => {
@@ -132,10 +141,11 @@ export default function Signup() {
         <div style={{ position: "absolute", top: "5%", right: "-10%", width: 320, height: 320, borderRadius: "50%", background: "rgba(0,122,255,0.08)", filter: "blur(90px)", pointerEvents: "none" }} />
         <div style={{ position: "absolute", bottom: "10%", left: "-5%", width: 250, height: 250, borderRadius: "50%", background: "rgba(0,194,168,0.07)", filter: "blur(80px)", pointerEvents: "none" }} />
 
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", position: "relative", zIndex: 1 }}>
+        <a href={mainUrl("/")} style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", position: "relative", zIndex: 1 }}>
           <img src={LOGO} alt="aethex" style={{ width: 40, height: 40, borderRadius: 10, objectFit: "contain", background: "#FFFFFF" }} />
           <span style={{ color: "#1C1C1E", fontWeight: 700, fontSize: 20, letterSpacing: "-0.03em" }}>aethex</span>
-        </Link>
+        </a>
+
 
         <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", position: "relative", zIndex: 1 }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 99, background: "rgba(0,194,168,0.1)", border: "1px solid rgba(0,194,168,0.25)", marginBottom: 20, width: "fit-content" }}>
@@ -258,7 +268,7 @@ export default function Signup() {
                       <span style={{ fontSize: 11, color: "#AEAEB2" }}>or</span>
                       <div style={{ flex: 1, height: 1, background: "rgba(60,60,67,0.12)" }} />
                     </div>
-                    <button type="button" style={ghostBtnStyle} onClick={() => window.location.href = "/login"}>
+                    <button type="button" style={ghostBtnStyle} onClick={() => window.location.href = isLoginHost() ? "/login" : loginUrl("/")}>
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
                         <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                         <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -352,8 +362,13 @@ export default function Signup() {
 
                 <p style={{ fontSize: 12, color: "#AEAEB2", textAlign: "center", margin: "20px 0 4px" }}>
                   Already have an account?{" "}
-                  <Link href="/login" style={{ color: "#007AFF", textDecoration: "none", fontWeight: 600 }}>Sign in</Link>
+                  {isLoginHost() ? (
+                    <Link href="/login" style={{ color: "#007AFF", textDecoration: "none", fontWeight: 600 }}>Sign in</Link>
+                  ) : (
+                    <a href={loginUrl("/")} style={{ color: "#007AFF", textDecoration: "none", fontWeight: 600 }}>Sign in</a>
+                  )}
                 </p>
+
                 <p style={{ fontSize: 10, color: "#AEAEB2", textAlign: "center", margin: 0, lineHeight: 1.5 }}>
                   By creating an account, you agree to our{" "}
                   <a href="#" style={{ color: "#007AFF", textDecoration: "none" }}>Terms</a> and{" "}

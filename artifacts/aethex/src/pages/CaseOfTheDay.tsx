@@ -8,10 +8,10 @@ import {
   BookOpen, Clock,
 } from "lucide-react";
 import { clinicalCases, getTodaysCase, type ClinicalCase } from "@/data/clinicalCases";
-
-const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
+import { cadusUrl } from "@/lib/host";
 
 const SPECIALTY_COLORS: Record<string, string> = {
+
   "Cardiology":              "#FF3B30",
   "Neurology":               "#AF52DE",
   "Medicine / Cardiology":   "#FF3B30",
@@ -322,7 +322,8 @@ export default function CaseOfTheDay() {
             {/* Discuss with Cadus AI */}
             <div className="px-5 pb-5">
               <a
-                href={`${BASE_URL}/ai-assistant?context=${buildCadusContext()}`}
+                href={cadusUrl("/", { context: buildCadusContext() })}
+
                 className="flex items-center justify-center gap-2.5 w-full py-3.5 rounded-xl font-bold text-sm transition-all"
                 style={{
                   background: "linear-gradient(135deg, #007AFF 0%, #00C2A8 100%)",
@@ -353,7 +354,8 @@ export default function CaseOfTheDay() {
               <p className="text-xs" style={{ color: "#636366" }}>Get a step-by-step clinical reasoning walkthrough</p>
             </div>
             <a
-              href={`${BASE_URL}/ai-assistant?context=${buildCadusContext()}`}
+              href={cadusUrl("/", { context: buildCadusContext() })}
+
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0"
               style={{ background: "#007AFF", color: "#FFFFFF" }}>
               Ask AI

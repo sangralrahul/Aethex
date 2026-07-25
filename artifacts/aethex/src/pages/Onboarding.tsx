@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useUserAuth } from "@/hooks/use-user-auth";
 import { Check } from "lucide-react";
+import { loginUrl, cadusUrl } from "@/lib/host";
+
+
 
 /* ── Step definitions ─────────────────────────────────────────── */
 const STEPS = [
@@ -72,8 +75,9 @@ export default function Onboarding() {
 
   /* Redirect if not logged in */
   useEffect(() => {
-    if (!isLoggedIn) setLocation("/signup");
+    if (!isLoggedIn) window.location.href = loginUrl("/signup");
   }, [isLoggedIn]);
+
 
   /* If already onboarded, skip */
   useEffect(() => {
@@ -132,7 +136,8 @@ export default function Onboarding() {
     localStorage.setItem("aethex_onboarded", "true");
     localStorage.setItem("aethex_onboarding_data", JSON.stringify(answers));
     setDone(true);
-    setTimeout(() => setLocation("/ai-assistant"), 2200);
+    setTimeout(() => { window.location.href = cadusUrl("/"); }, 2200);
+
   }
 
   /* ── Done screen ── */

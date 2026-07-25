@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { Link } from "wouter";
 import { AlertTriangle, ChevronRight, Stethoscope, Brain, Phone } from "lucide-react";
+import { cadusUrl } from "@/lib/host";
+
 
 function useSEO(title: string, description: string) {
   useEffect(() => {
@@ -142,10 +144,11 @@ export default function MedicalDisclaimer() {
               style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)", color: "#FFFFFF" }}>
               Explore Tools
             </Link>
-            <Link href="/ai-assistant" className="px-5 py-2.5 rounded-full text-sm font-bold transition-all"
-              style={{ background: "rgba(120,120,128,0.12)", color: "#1C1C1E" }}>
+            <a href={cadusUrl("/")} className="px-5 py-2.5 rounded-full text-sm font-bold transition-all"
+              style={{ background: "rgba(120,120,128,0.12)", color: "#1C1C1E", textDecoration: "none" }}>
               Open Cadus AI
-            </Link>
+            </a>
+
           </div>
         </div>
 

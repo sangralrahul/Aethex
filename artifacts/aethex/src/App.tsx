@@ -6,6 +6,15 @@ import { useState, useEffect } from "react";
 import { auth } from "@/lib/firebase";
 import { getRedirectResult } from "firebase/auth";
 import { useUserAuth } from "@/hooks/use-user-auth";
+import { isLoginHost, isCadusHost, isMainHost, loginUrl, cadusUrl } from "@/lib/host";
+
+function ExternalRedirect({ to }: { to: string }) {
+  useEffect(() => { window.location.href = to; }, [to]);
+  return null;
+}
+
+
+
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -140,15 +149,45 @@ function Router() {
 
   const sellerProps = { seller: sellerSession, onLogout: handleSellerLogout };
 
+  const isLoginSubdomain = typeof window !== "undefined" && isLoginHost();
+  const isCadusSubdomain = typeof window !== "undefined" && isCadusHost();
+
   return (
     <Switch>
+      {/* ── Subdomain: login.aethex.in ── */}
+      {isLoginSubdomain && (
+        <>
+          <Route path="/" component={Login} />
+          <Route path="/signup" component={Signup} />
+          <Route path="/onboarding" component={Onboarding} />
+        </>
+      )}
+
+      {/* ── Subdomain: cadus.aethex.in ── */}
+      {isCadusSubdomain && (
+        <>
+          <Route path="/" component={AiAssistant} />
+          <Route path="/ai-assistant" component={AiAssistant} />
+        </>
+      )}
+
+      {/* On the main domain, auth pages live on login.aethex.in */}
+      {isMainHost() && (
+        <>
+          <Route path="/login"><ExternalRedirect to={loginUrl("/")} /></Route>
+          <Route path="/signup"><ExternalRedirect to={loginUrl("/signup")} /></Route>
+        </>
+      )}
+
       {/* Full-screen pages (no Navbar/Footer) */}
-      <Route path="/ai-assistant" component={AiAssistant} />
-      <Route path="/cadus-standalone" component={AiAssistant} />
+      <Route path="/ai-assistant"><ExternalRedirect to={cadusUrl("/")} /></Route>
+      <Route path="/cadus-standalone"><ExternalRedirect to={cadusUrl("/")} /></Route>
+
       <Route path="/settings" component={SettingsPage} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
       <Route path="/onboarding" component={Onboarding} />
+
       <Route path="/seller/register" component={SellerRegister} />
       <Route path="/seller/login">{() => <SellerLogin onLogin={handleSellerLogin} />}</Route>
 
@@ -163,11 +202,13 @@ function Router() {
       {/* HOME — with full Navbar */}
       <Route path="/">
         {() => {
-          if (typeof window !== "undefined" && window.location.hostname.toLowerCase() === "cadus.aethex.in") {
-            window.location.replace("/ai-assistant");
+          if (typeof window !== "undefined" && isCadusHost()) {
+            window.location.replace(cadusUrl("/"));
             return null;
           }
+
           return (
+
             <div className="flex flex-col min-h-screen" style={{ background: "#FAFAF8" }}>
               <div className="fixed top-0 left-0 right-0 z-[60]">
                 <BrandSwitcherBar />

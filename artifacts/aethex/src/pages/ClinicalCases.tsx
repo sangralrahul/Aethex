@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
 import { PageHero } from "@/components/PageHero";
 import { Eye, EyeOff, Sparkles, ChevronDown, ChevronUp, Search, BookOpen, Stethoscope, AlertCircle, CheckCircle, Lightbulb, ClipboardList, FlaskConical, Tag, Filter } from "lucide-react";
+import { cadusUrl } from "@/lib/host";
+
 
 interface Investigation {
   name: string;
@@ -554,9 +556,10 @@ function CaseCard({ c }: { c: ClinicalCase }) {
             </>
           )}
 
-          <a href="/ai-assistant" className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-90" style={{ background: "#007AFF", color: "#FFFFFF" }}>
+          <a href={cadusUrl("/")} className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-90" style={{ background: "#007AFF", color: "#FFFFFF", textDecoration: "none" }}>
             <Sparkles className="w-4 h-4" />Discuss this case with Cadus AI
           </a>
+
         </div>
       )}
     </div>

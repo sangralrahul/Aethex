@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { AlertTriangle, CheckCircle, Info, X, Search, Bell, Sparkles, ExternalLink, Calendar, Filter } from "lucide-react";
+import { cadusUrl } from "@/lib/host";
+
 
 const ALERTS = [
   { id: 1, type: "recall", title: "Voluntary Recall: Metformin HCl 500mg Tablets — Batch No. MF-2024-0311", drug: "Metformin HCl", category: "Antidiabetic", source: "CDSCO", date: "Apr 02, 2026", severity: "high", summary: "Contamination with NDMA (N-Nitrosodimethylamine) above acceptable limits detected in Batch MF-2024-0311. Patients on this batch should be shifted to alternative brands immediately.", action: "Recall all units of Batch MF-2024-0311 from market and hospital pharmacies." },
@@ -129,9 +131,10 @@ export default function DrugAlerts() {
                   </div>
                 )}
                 <div className="flex gap-2">
-                  <Link href="/ai-assistant" className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold" style={{ background: "rgba(124,58,237,0.08)", color: "#7C3AED" }}>
+                  <a href={cadusUrl("/")} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold" style={{ background: "rgba(124,58,237,0.08)", color: "#7C3AED", textDecoration: "none" }}>
                     <Sparkles className="w-3.5 h-3.5" /> Ask Cadus AI
-                  </Link>
+                  </a>
+
                   <button className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold" style={{ background: "#F2F2F7", color: "#636366" }}>
                     <ExternalLink className="w-3.5 h-3.5" /> CDSCO Source
                   </button>

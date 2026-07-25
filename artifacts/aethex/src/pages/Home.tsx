@@ -22,6 +22,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { DailyMCQWidget } from "@/components/DailyMCQWidget";
 import { formatINR } from "@/lib/utils";
 import { HeroMarketplace } from "@/components/HeroMarketplace";
+import { cadusUrl } from "@/lib/host";
+
 
 function HeroAIInput() {
   const [query, setQuery] = useState("");
@@ -29,7 +31,8 @@ function HeroAIInput() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim()) {
-      window.location.href = `/ai-assistant?q=${encodeURIComponent(query.trim())}`;
+      window.location.href = cadusUrl("/", { q: query.trim() });
+
     }
   };
 
@@ -473,12 +476,13 @@ function AIChatPreview() {
               <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 10, color: "rgba(0,0,0,0.4)", marginTop: 2 }}>● Clinical Mode</p>
             </div>
           </div>
-          <Link href="/ai-assistant"
-            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 10, letterSpacing: "0.1em", fontWeight: 700, textTransform: "uppercase", color: "rgba(0,0,0,0.35)", transition: "color 0.2s" }}
+          <a href={cadusUrl("/")}
+            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 10, letterSpacing: "0.1em", fontWeight: 700, textTransform: "uppercase", color: "rgba(0,0,0,0.35)", transition: "color 0.2s", textDecoration: "none" }}
             onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "rgba(0,0,0,0.8)"}
             onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "rgba(0,0,0,0.35)"}>
             Full Experience →
-          </Link>
+          </a>
+
         </div>
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-5 space-y-3" style={{ background: "#F8F7F4" }}>
@@ -824,7 +828,8 @@ export default function Home() {
               name: "Cadus AI",
               headline: "Clinical Intelligence",
               desc: "Instant DDx, drug interactions, SOAP notes, and evidence-based answers — powered by medical AI built for Indian physicians.",
-              href: "/ai-assistant",
+              href: cadusUrl("/"),
+
               cta: "Start Consulting",
               color: "#00C2A8",
             },
@@ -929,11 +934,12 @@ export default function Home() {
                 ))}
               </div>
 
-              <Link href="/ai-assistant"
+              <a href={cadusUrl("/")}
                 className="inline-flex items-center gap-2.5 transition-all hover:opacity-90 active:scale-[0.98]"
-                style={{ background: "#00C2A8", color: "#000", borderRadius: 2, padding: "13px 28px", fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                style={{ background: "#00C2A8", color: "#000", borderRadius: 2, padding: "13px 28px", fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "'Plus Jakarta Sans', sans-serif", textDecoration: "none" }}>
                 <Sparkles className="w-3.5 h-3.5" /> Try Free — 20 queries/day
-              </Link>
+              </a>
+
             </div>
 
             {/* Right — live chat widget */}
@@ -1191,11 +1197,12 @@ export default function Home() {
       {/* ══ MOBILE STICKY CTA ══ */}
       <div className="fixed bottom-0 left-0 right-0 z-40 sm:hidden p-4"
         style={{ background: "rgba(250,249,246,0.97)", backdropFilter: "blur(20px)", borderTop: "1px solid rgba(0,0,0,0.08)" }}>
-        <Link href="/ai-assistant"
+        <a href={cadusUrl("/")}
           className="flex items-center justify-center gap-2 w-full py-3.5 rounded-full font-bold"
-          style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)", color: "#FFFFFF", fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 14, boxShadow: "0 4px 20px rgba(0,122,255,0.3)", whiteSpace: "nowrap" }}>
+          style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)", color: "#FFFFFF", fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 14, boxShadow: "0 4px 20px rgba(0,122,255,0.3)", whiteSpace: "nowrap", textDecoration: "none" }}>
           <Sparkles className="w-4 h-4" /> Start AI Consultation
-        </Link>
+        </a>
+
       </div>
     </div>
   );

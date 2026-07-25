@@ -30,6 +30,8 @@ import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/NotificationBell";
 import { AuthModal } from "@/components/AuthModal";
+import { loginUrl, cadusUrl, isCadusHost } from "@/lib/host";
+
 
 const TICKER_ITEMS = [
   "🇮🇳  India's No. 1 Medical Platform",
@@ -270,7 +272,7 @@ const categories = [
   { href: "/cme-hub", icon: Crown, label: "CME Hub" },
   { href: "/neet-pg", icon: FileText, label: "NEET-PG" },
   { href: "/drug-reference", icon: Pill, label: "Drug Ref" },
-  { href: "/ai-assistant", icon: Brain, label: "Cadus AI" },
+  { href: cadusUrl("/"), icon: Brain, label: "Cadus AI", external: true },
   { href: "/pricing", icon: Crown, label: "Pricing" },
   { href: "/calculator", icon: Calculator, label: "Calculators" },
   { href: "/cases", icon: Activity, label: "Cases" },
@@ -345,8 +347,17 @@ export function Navbar() {
     }
   };
 
-  const openLogin = () => { setAccountOpen(false); setMobileOpen(false); setLocation("/login"); };
-  const openSignup = () => { setAccountOpen(false); setMobileOpen(false); setLocation("/signup"); };
+  const openLogin = () => {
+    setAccountOpen(false);
+    setMobileOpen(false);
+    window.location.href = loginUrl("/");
+  };
+  const openSignup = () => {
+    setAccountOpen(false);
+    setMobileOpen(false);
+    window.location.href = loginUrl("/signup");
+  };
+
 
   const cartCount = cart?.itemCount ?? 0;
 
@@ -437,7 +448,7 @@ export function Navbar() {
             <div className="flex items-center gap-2 shrink-0">
 
               {/* Try Cadus AI — teal CTA */}
-              <Link href="/ai-assistant"
+              <a href={cadusUrl("/")}
                 className="hidden md:flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all hover:opacity-90 active:scale-[0.97] shrink-0"
                 style={{
                   background: "#00C2A8",
@@ -445,10 +456,12 @@ export function Navbar() {
                   letterSpacing: "0.01em",
                   boxShadow: "0 2px 12px rgba(0,194,168,0.28)",
                   fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  textDecoration: "none",
                 }}>
                 <Sparkles className="w-3.5 h-3.5" />
                 Try Cadus AI
-              </Link>
+              </a>
+
 
               {/* Notification bell */}
               <div className="hidden sm:block">
@@ -587,26 +600,34 @@ export function Navbar() {
           )}
 
           {categories.map((cat) => {
-            const active = cat.exact
+            const active = !cat.external && (cat.exact
               ? location === cat.href
-              : location === cat.href || location.startsWith(cat.href + "/");
+              : location === cat.href || location.startsWith(cat.href + "/"));
             const Icon = cat.icon;
-            return (
-              <Link key={cat.href} href={cat.href}
-                data-active-tab={active ? "true" : "false"}
-                className="flex items-center gap-1.5 px-3 h-full shrink-0 text-[11px] font-semibold transition-colors whitespace-nowrap"
-                style={{
-                  color: active ? "rgba(0,0,0,0.92)" : "rgba(0,0,0,0.42)",
-                  letterSpacing: "0.03em",
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
-                }}
-                onMouseEnter={e => { if (!active) (e.currentTarget as HTMLAnchorElement).style.color = "rgba(0,0,0,0.72)"; }}
-                onMouseLeave={e => { if (!active) (e.currentTarget as HTMLAnchorElement).style.color = "rgba(0,0,0,0.42)"; }}>
+            const linkStyle = {
+              color: active ? "rgba(0,0,0,0.92)" : "rgba(0,0,0,0.42)",
+              letterSpacing: "0.03em",
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+            } as React.CSSProperties;
+            const commonClasses = "flex items-center gap-1.5 px-3 h-full shrink-0 text-[11px] font-semibold transition-colors whitespace-nowrap";
+            const commonProps = {
+              "data-active-tab": active ? "true" : "false",
+              onMouseEnter: (e: React.MouseEvent<HTMLElement>) => { if (!active) (e.currentTarget as HTMLElement).style.color = "rgba(0,0,0,0.72)"; },
+              onMouseLeave: (e: React.MouseEvent<HTMLElement>) => { if (!active) (e.currentTarget as HTMLElement).style.color = "rgba(0,0,0,0.42)"; },
+            };
+            return cat.external ? (
+              <a key={cat.href} href={cat.href} className={commonClasses} style={{ ...linkStyle, textDecoration: "none" }} {...commonProps}>
+                <Icon className="w-3.5 h-3.5 shrink-0" />
+                <span>{cat.label}</span>
+              </a>
+            ) : (
+              <Link key={cat.href} href={cat.href} className={commonClasses} style={linkStyle} {...commonProps}>
                 <Icon className="w-3.5 h-3.5 shrink-0" />
                 <span>{cat.label}</span>
               </Link>
             );
           })}
+
 
           {isLoggedIn && <div className="h-4 w-px mx-2 shrink-0" style={{ background: "rgba(0,0,0,0.1)" }} />}
 
@@ -632,11 +653,12 @@ export function Navbar() {
                 placeholder="Search drugs, products, books…" />
             </form>
 
-            <Link href="/ai-assistant" onClick={() => setMobileOpen(false)}
+            <a href={cadusUrl("/")} onClick={() => setMobileOpen(false)}
               className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl text-sm font-bold mb-3"
-              style={{ background: "#00C2A8", color: "#FFFFFF", boxShadow: "0 4px 16px rgba(0,194,168,0.28)", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+              style={{ background: "#00C2A8", color: "#FFFFFF", boxShadow: "0 4px 16px rgba(0,194,168,0.28)", fontFamily: "'Plus Jakarta Sans', sans-serif", textDecoration: "none" }}>
               <Sparkles className="w-4 h-4" /> Try Cadus AI
-            </Link>
+            </a>
+
 
             <p className="text-[10px] font-bold uppercase tracking-widest px-1 pt-1 pb-1.5" style={{ color: "rgba(0,0,0,0.3)", letterSpacing: "0.14em", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Navigation</p>
             {[

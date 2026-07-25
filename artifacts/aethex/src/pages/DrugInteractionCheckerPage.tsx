@@ -8,9 +8,10 @@ import {
 } from "lucide-react";
 import { checkInteractions, type DrugPair, type Severity } from "@/data/drugInteractions";
 import { supabase } from "@/integrations/supabase/client";
+import { cadusUrl } from "@/lib/host";
 
-const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 const MAX_DRUGS = 5;
+
 
 const SEVERITY_CONFIG: Record<Severity, {
   label: string; color: string; bg: string; border: string;
@@ -447,7 +448,8 @@ export default function DrugInteractionCheckerPage() {
                           {aiLoading ? "Analyzing…" : "Run AI Analysis"}
                         </button>
                         <a
-                          href={`${BASE_URL}/ai-assistant?context=${buildCadusContext()}`}
+                          href={cadusUrl("/", { context: buildCadusContext() })}
+
                           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm"
                           style={{ background: "rgba(0,122,255,0.1)", color: "#007AFF", border: "1px solid rgba(0,122,255,0.2)" }}>
                           Open in Chat <ChevronRight className="w-4 h-4" />

@@ -9,8 +9,10 @@ import {
   HeartHandshake, AlertTriangle, Scan, Gauge, TestTube2, BrainCircuit,
 } from "lucide-react";
 import { formatINR } from "@/lib/utils";
+import { cadusUrl } from "@/lib/host";
 
 const iconMap: Record<string, React.ElementType> = {
+
   Shirt, Shield, BookOpen, Stethoscope, Scissors, Thermometer, HeartPulse,
   Bone, Brain, FlaskConical, Droplets, Wind, Eye, Baby, ScanLine, Waves,
   HeartHandshake, Dna, AlertTriangle, Scan, Microscope, Pipette, Dumbbell,
@@ -96,7 +98,8 @@ const SLIDES = [
     title: "Diagnose faster.",
     subtitle: "20+ AI clinical modes — differentials, drug checks, prescriptions.",
     cta: "Try Cadus AI Free",
-    href: "/ai-assistant",
+    href: cadusUrl("/"),
+
     bg: "linear-gradient(120deg, #0F1729 0%, #17325C 55%, #1E4A8C 100%)",
     accent: "#FFB84A",
     illustration: (
@@ -229,7 +232,8 @@ function AskCadusBar() {
   const [q, setQ] = useState("");
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (q.trim()) window.location.href = `/ai-assistant?q=${encodeURIComponent(q.trim())}`;
+    if (q.trim()) window.location.href = cadusUrl("/", { q: q.trim() });
+
   };
   return (
     <form onSubmit={submit}
@@ -249,7 +253,7 @@ function AskCadusBar() {
           style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#0F1729" }} />
         <div className="hidden md:flex items-center gap-1.5">
           {["Diabetic DDx", "NEET PG 2026", "Drug interactions"].map((s) => (
-            <button key={s} type="button" onClick={() => (window.location.href = `/ai-assistant?q=${encodeURIComponent(s)}`)}
+            <button key={s} type="button" onClick={() => (window.location.href = cadusUrl("/", { q: s }))}
               className="px-2.5 py-1 rounded-full text-[11px] font-medium transition-all"
               style={{ background: "rgba(0,194,168,0.08)", color: "#009E87", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
               {s}
