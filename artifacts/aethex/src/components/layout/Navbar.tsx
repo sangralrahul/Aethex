@@ -347,8 +347,17 @@ export function Navbar() {
     }
   };
 
-  const openLogin = () => { setAccountOpen(false); setMobileOpen(false); setLocation("/login"); };
-  const openSignup = () => { setAccountOpen(false); setMobileOpen(false); setLocation("/signup"); };
+  const openLogin = () => {
+    setAccountOpen(false);
+    setMobileOpen(false);
+    window.location.href = loginUrl("/");
+  };
+  const openSignup = () => {
+    setAccountOpen(false);
+    setMobileOpen(false);
+    window.location.href = loginUrl("/signup");
+  };
+
 
   const cartCount = cart?.itemCount ?? 0;
 
