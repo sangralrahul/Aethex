@@ -30,6 +30,8 @@ import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/NotificationBell";
 import { AuthModal } from "@/components/AuthModal";
+import { loginUrl, cadusUrl, isCadusHost } from "@/lib/host";
+
 
 const TICKER_ITEMS = [
   "🇮🇳  India's No. 1 Medical Platform",
