@@ -9,8 +9,30 @@ import {
   Pill, Calculator, TestTube2, ClipboardList, HelpCircle,
   Brain, Languages, Mic, MicOff, SlidersHorizontal, Zap, ExternalLink,
 } from "lucide-react";
-import { useAiChat } from "@workspace/api-client-react";
+import { useAiChat as useAiChatOriginal } from "@workspace/api-client-react";
 import { type ChatMessage, ChatMessageRole } from "@workspace/api-client-react";
+import { useMutation } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+
+// Groq-backed replacement for the original REST chat hook.
+// Keeps the same mutation shape: { data: { message, conversationHistory, ... } } -> { message }
+function useAiChat() {
+  return useMutation({
+    mutationFn: async (vars: { data: { message: string; conversationHistory?: any[]; agent?: string; language?: string; mode?: string; specialty?: string } }) => {
+      const history = (vars.data.conversationHistory ?? [])
+        .filter((m: any) => m && typeof m.content === "string" && (m.role === "user" || m.role === "assistant"))
+        .map((m: any) => ({ role: m.role, content: m.content }));
+      const { data, error } = await supabase.functions.invoke("groq-ai", {
+        body: { action: "chat", message: vars.data.message, history },
+      });
+      if (error) throw new Error(error.message || "Cadus AI request failed");
+      if (!data?.message) throw new Error(data?.error || "Cadus AI returned an empty response");
+      return { message: data.message as string };
+    },
+  });
+}
+// Keep original import referenced to avoid unused-import lint churn.
+void useAiChatOriginal;
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import ringAnimImg from "@assets/photo_2026-03-29_15-00-52_1774776666332.jpg";
@@ -1026,35 +1048,28 @@ export default function AiAssistant() {
     setResearchStage("idle");
     setIsGeneratingResearch(true);
     try {
-      const apiBase = import.meta.env.BASE_URL.replace(/\/$/, "");
       if (mode === "quick") {
-        const resp = await fetch(`${apiBase}/api/ai/chat`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        const { data, error } = await supabase.functions.invoke("groq-ai", {
+          body: {
+            action: "chat",
             message: `Provide a concise clinical summary (3–5 paragraphs) on: ${query}. Cover key facts, clinical relevance, and management highlights.`,
-            agent: activeModel, mode: "normal",
-          }),
+          },
         });
-        const data = await resp.json();
-        if (data.message) {
-          updateSession(sessionId, [...newMsgs, {
-            role: ChatMessageRole.assistant, content: data.message,
-          }]);
-        } else throw new Error("No response returned.");
+        if (error || !data?.message) throw new Error(error?.message || "No response returned.");
+        updateSession(sessionId, [...newMsgs, {
+          role: ChatMessageRole.assistant, content: data.message,
+        }]);
       } else {
-        const resp = await fetch(`${apiBase}/api/ai/deep-research`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query, agent: activeModel }),
+        const { data, error } = await supabase.functions.invoke("groq-ai", {
+          body: { action: "deep-research", query },
         });
-        const data = await resp.json();
-        if (data.report) {
-          updateSession(sessionId, [...newMsgs, {
-            role: ChatMessageRole.assistant, content: "",
-            isDeepResearch: true, researchReport: data.report,
-            researchSources: data.sources ?? [], researchQueries: data.searchQueries ?? [],
-            hasGoogleSearch: data.hasGoogleSearch ?? false,
-          }]);
-        } else throw new Error(data.error ?? "Research failed");
+        if (error || !data?.report) throw new Error(error?.message || data?.error || "Research failed");
+        updateSession(sessionId, [...newMsgs, {
+          role: ChatMessageRole.assistant, content: "",
+          isDeepResearch: true, researchReport: data.report,
+          researchSources: data.sources ?? [], researchQueries: data.searchQueries ?? [],
+          hasGoogleSearch: data.hasGoogleSearch ?? false,
+        }]);
       }
     } catch {
       toast({ title: "Research failed", description: "Please try again.", variant: "destructive" });
