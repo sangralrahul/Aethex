@@ -184,10 +184,11 @@ export default function Login() {
         <div style={{ position: "absolute", top: "5%", right: "-10%", width: 320, height: 320, borderRadius: "50%", background: "rgba(0,122,255,0.08)", filter: "blur(90px)", pointerEvents: "none" }} />
         <div style={{ position: "absolute", bottom: "10%", left: "-5%", width: 250, height: 250, borderRadius: "50%", background: "rgba(0,194,168,0.07)", filter: "blur(80px)", pointerEvents: "none" }} />
 
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", position: "relative", zIndex: 1 }}>
+        <a href={mainUrl("/")} style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", position: "relative", zIndex: 1 }}>
           <img src={LOGO} alt="aethex" style={{ width: 40, height: 40, borderRadius: 10, objectFit: "contain", background: "#FFFFFF" }} />
           <span style={{ color: "#1C1C1E", fontWeight: 700, fontSize: 20, letterSpacing: "-0.03em" }}>aethex</span>
-        </Link>
+        </a>
+
 
         <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", position: "relative", zIndex: 1 }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 99, background: "rgba(0,194,168,0.1)", border: "1px solid rgba(0,194,168,0.25)", marginBottom: 20, width: "fit-content" }}>
