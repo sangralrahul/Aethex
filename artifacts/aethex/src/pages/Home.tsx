@@ -31,7 +31,8 @@ function HeroAIInput() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim()) {
-      window.location.href = `/ai-assistant?q=${encodeURIComponent(query.trim())}`;
+      window.location.href = cadusUrl("/", { q: query.trim() });
+
     }
   };
 
@@ -827,7 +828,8 @@ export default function Home() {
               name: "Cadus AI",
               headline: "Clinical Intelligence",
               desc: "Instant DDx, drug interactions, SOAP notes, and evidence-based answers — powered by medical AI built for Indian physicians.",
-              href: "/ai-assistant",
+              href: cadusUrl("/"),
+
               cta: "Start Consulting",
               color: "#00C2A8",
             },
