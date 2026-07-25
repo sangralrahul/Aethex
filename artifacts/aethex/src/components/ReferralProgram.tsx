@@ -4,7 +4,7 @@ import { useUserAuth } from "@/hooks/use-user-auth";
 import { loginUrl } from "@/lib/host";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-const APP_URL = window.location.origin;
+const APP_URL = loginUrl("").replace(/\/$/, "");
 
 interface Referral {
   id: number;
