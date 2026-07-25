@@ -142,8 +142,28 @@ function Router() {
 
   const sellerProps = { seller: sellerSession, onLogout: handleSellerLogout };
 
+  const isLoginSubdomain = typeof window !== "undefined" && isLoginHost();
+  const isCadusSubdomain = typeof window !== "undefined" && isCadusHost();
+
   return (
     <Switch>
+      {/* ── Subdomain: login.aethex.in ── */}
+      {isLoginSubdomain && (
+        <>
+          <Route path="/" component={Login} />
+          <Route path="/signup" component={Signup} />
+          <Route path="/onboarding" component={Onboarding} />
+        </>
+      )}
+
+      {/* ── Subdomain: cadus.aethex.in ── */}
+      {isCadusSubdomain && (
+        <>
+          <Route path="/" component={AiAssistant} />
+          <Route path="/ai-assistant" component={AiAssistant} />
+        </>
+      )}
+
       {/* Full-screen pages (no Navbar/Footer) */}
       <Route path="/ai-assistant" component={AiAssistant} />
       <Route path="/cadus-standalone" component={AiAssistant} />
@@ -165,11 +185,12 @@ function Router() {
       {/* HOME — with full Navbar */}
       <Route path="/">
         {() => {
-          if (typeof window !== "undefined" && window.location.hostname.toLowerCase() === "cadus.aethex.in") {
+          if (typeof window !== "undefined" && isCadusHost()) {
             window.location.replace("/ai-assistant");
             return null;
           }
           return (
+
             <div className="flex flex-col min-h-screen" style={{ background: "#FAFAF8" }}>
               <div className="fixed top-0 left-0 right-0 z-[60]">
                 <BrandSwitcherBar />
