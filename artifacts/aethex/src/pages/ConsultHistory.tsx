@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, MessageSquare, Trash2, ChevronDown, ChevronUp, Brain, Clock, Search } from "lucide-react";
 import { useUserAuth } from "@/hooks/use-user-auth";
+import { loginUrl } from "@/lib/host";
+
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
