@@ -1,4 +1,4 @@
-import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,7 +6,8 @@ import { useState, useEffect } from "react";
 import { auth } from "@/lib/firebase";
 import { getRedirectResult } from "firebase/auth";
 import { useUserAuth } from "@/hooks/use-user-auth";
-import { isLoginHost, isCadusHost } from "@/lib/host";
+import { isLoginHost, isCadusHost, isMainHost, loginUrl } from "@/lib/host";
+
 
 
 function ScrollToTop() {
