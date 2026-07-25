@@ -203,9 +203,10 @@ function Router() {
       <Route path="/">
         {() => {
           if (typeof window !== "undefined" && isCadusHost()) {
-            window.location.replace("/ai-assistant");
+            window.location.replace(cadusUrl("/"));
             return null;
           }
+
           return (
 
             <div className="flex flex-col min-h-screen" style={{ background: "#FAFAF8" }}>
