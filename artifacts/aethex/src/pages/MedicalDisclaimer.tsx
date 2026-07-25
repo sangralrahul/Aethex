@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { Link } from "wouter";
 import { AlertTriangle, ChevronRight, Stethoscope, Brain, Phone } from "lucide-react";
+import { cadusUrl } from "@/lib/host";
+
 
 function useSEO(title: string, description: string) {
   useEffect(() => {
