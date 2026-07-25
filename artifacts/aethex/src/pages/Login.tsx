@@ -5,6 +5,8 @@ import { useUserAuth } from "@/hooks/use-user-auth";
 import { auth } from "@/lib/firebase";
 import { signInWithPhoneNumber, RecaptchaVerifier, type ConfirmationResult } from "firebase/auth";
 import { supabase } from "@/integrations/supabase/client";
+import { isLoginHost, mainUrl } from "@/lib/host";
+
 
 const LOGO = `${import.meta.env.BASE_URL}aethex-logo.jpg`;
 
