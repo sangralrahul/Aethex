@@ -448,7 +448,8 @@ export default function DrugInteractionCheckerPage() {
                           {aiLoading ? "Analyzing…" : "Run AI Analysis"}
                         </button>
                         <a
-                          href={`${BASE_URL}/ai-assistant?context=${buildCadusContext()}`}
+                          href={cadusUrl("/", { context: buildCadusContext() })}
+
                           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm"
                           style={{ background: "rgba(0,122,255,0.1)", color: "#007AFF", border: "1px solid rgba(0,122,255,0.2)" }}>
                           Open in Chat <ChevronRight className="w-4 h-4" />
