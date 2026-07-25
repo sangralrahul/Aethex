@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import { auth } from "@/lib/firebase";
 import { getRedirectResult } from "firebase/auth";
 import { useUserAuth } from "@/hooks/use-user-auth";
-import { isLoginHost, isCadusHost, isMainHost, loginUrl } from "@/lib/host";
+import { isLoginHost, isCadusHost, isMainHost, loginUrl, cadusUrl } from "@/lib/host";
 
 function ExternalRedirect({ to }: { to: string }) {
   useEffect(() => { window.location.href = to; }, [to]);
