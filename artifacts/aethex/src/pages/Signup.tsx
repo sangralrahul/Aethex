@@ -74,8 +74,10 @@ export default function Signup() {
       const res = signup(name.trim(), email, password);
       if (!res.success) { setError(res.error || "Signup failed. Please try again."); return; }
       localStorage.removeItem("aethex_onboarded");
-      setLocation("/onboarding");
+      if (isLoginHost()) window.location.href = mainUrl("/onboarding");
+      else setLocation("/onboarding");
     } finally { setLoading(false); }
+
   };
 
   const formatPhone = (raw: string) => {
