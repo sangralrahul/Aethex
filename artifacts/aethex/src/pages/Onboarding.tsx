@@ -74,8 +74,9 @@ export default function Onboarding() {
 
   /* Redirect if not logged in */
   useEffect(() => {
-    if (!isLoggedIn) setLocation("/signup");
+    if (!isLoggedIn) window.location.href = loginUrl("/signup");
   }, [isLoggedIn]);
+
 
   /* If already onboarded, skip */
   useEffect(() => {
