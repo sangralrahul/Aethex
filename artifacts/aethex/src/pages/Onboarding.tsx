@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useUserAuth } from "@/hooks/use-user-auth";
 import { Check } from "lucide-react";
-import { loginUrl } from "@/lib/host";
+import { loginUrl, cadusUrl } from "@/lib/host";
+
 
 
 /* ── Step definitions ─────────────────────────────────────────── */
@@ -135,7 +136,8 @@ export default function Onboarding() {
     localStorage.setItem("aethex_onboarded", "true");
     localStorage.setItem("aethex_onboarding_data", JSON.stringify(answers));
     setDone(true);
-    setTimeout(() => setLocation("/ai-assistant"), 2200);
+    setTimeout(() => { window.location.href = cadusUrl("/"); }, 2200);
+
   }
 
   /* ── Done screen ── */
