@@ -4,6 +4,8 @@ import { Eye, EyeOff, Sparkles, GraduationCap, ShoppingBag, BrainCircuit, Shield
 import { useUserAuth } from "@/hooks/use-user-auth";
 import { auth } from "@/lib/firebase";
 import { signInWithPhoneNumber, RecaptchaVerifier, type ConfirmationResult } from "firebase/auth";
+import { isLoginHost, mainUrl } from "@/lib/host";
+
 
 type Role = "Doctor" | "Medical Student" | "Patient";
 const ROLES: Role[] = ["Doctor", "Medical Student", "Patient"];
