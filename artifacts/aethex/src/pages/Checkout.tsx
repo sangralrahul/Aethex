@@ -189,10 +189,11 @@ export default function Checkout() {
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
-          <Link href="/ai-assistant" className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-semibold text-sm border border-black/10 bg-white text-[#007AFF] transition-all hover:bg-[#007AFF]/5">
+          <a href={cadusUrl("/")} className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-semibold text-sm border border-black/10 bg-white text-[#007AFF] transition-all hover:bg-[#007AFF]/5" style={{ textDecoration: "none" }}>
             <Sparkles className="w-4 h-4" />
             Ask Cadus AI a clinical question
-          </Link>
+          </a>
+
 
           {/* Support note */}
           <div className="text-center pt-2 pb-6">
