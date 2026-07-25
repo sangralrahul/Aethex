@@ -5,6 +5,8 @@ import {
   Trophy, TrendingUp, Brain, AlertCircle, Sparkles, ArrowRight,
   BarChart3, Medal, Star,
 } from "lucide-react";
+import { cadusUrl } from "@/lib/host";
+
 
 const SUBJECTS_BREAKDOWN = [
   { name: "Anatomy", total: 35, correct: 24, color: "#007AFF" },
