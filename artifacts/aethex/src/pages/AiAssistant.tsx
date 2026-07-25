@@ -9,8 +9,30 @@ import {
   Pill, Calculator, TestTube2, ClipboardList, HelpCircle,
   Brain, Languages, Mic, MicOff, SlidersHorizontal, Zap, ExternalLink,
 } from "lucide-react";
-import { useAiChat } from "@workspace/api-client-react";
+import { useAiChat as useAiChatOriginal } from "@workspace/api-client-react";
 import { type ChatMessage, ChatMessageRole } from "@workspace/api-client-react";
+import { useMutation } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+
+// Groq-backed replacement for the original REST chat hook.
+// Keeps the same mutation shape: { data: { message, conversationHistory, ... } } -> { message }
+function useAiChat() {
+  return useMutation({
+    mutationFn: async (vars: { data: { message: string; conversationHistory?: any[]; agent?: string; language?: string; mode?: string; specialty?: string } }) => {
+      const history = (vars.data.conversationHistory ?? [])
+        .filter((m: any) => m && typeof m.content === "string" && (m.role === "user" || m.role === "assistant"))
+        .map((m: any) => ({ role: m.role, content: m.content }));
+      const { data, error } = await supabase.functions.invoke("groq-ai", {
+        body: { action: "chat", message: vars.data.message, history },
+      });
+      if (error) throw new Error(error.message || "Cadus AI request failed");
+      if (!data?.message) throw new Error(data?.error || "Cadus AI returned an empty response");
+      return { message: data.message as string };
+    },
+  });
+}
+// Keep original import referenced to avoid unused-import lint churn.
+void useAiChatOriginal;
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import ringAnimImg from "@assets/photo_2026-03-29_15-00-52_1774776666332.jpg";
