@@ -600,26 +600,34 @@ export function Navbar() {
           )}
 
           {categories.map((cat) => {
-            const active = cat.exact
+            const active = !cat.external && (cat.exact
               ? location === cat.href
-              : location === cat.href || location.startsWith(cat.href + "/");
+              : location === cat.href || location.startsWith(cat.href + "/"));
             const Icon = cat.icon;
-            return (
-              <Link key={cat.href} href={cat.href}
-                data-active-tab={active ? "true" : "false"}
-                className="flex items-center gap-1.5 px-3 h-full shrink-0 text-[11px] font-semibold transition-colors whitespace-nowrap"
-                style={{
-                  color: active ? "rgba(0,0,0,0.92)" : "rgba(0,0,0,0.42)",
-                  letterSpacing: "0.03em",
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
-                }}
-                onMouseEnter={e => { if (!active) (e.currentTarget as HTMLAnchorElement).style.color = "rgba(0,0,0,0.72)"; }}
-                onMouseLeave={e => { if (!active) (e.currentTarget as HTMLAnchorElement).style.color = "rgba(0,0,0,0.42)"; }}>
+            const linkStyle = {
+              color: active ? "rgba(0,0,0,0.92)" : "rgba(0,0,0,0.42)",
+              letterSpacing: "0.03em",
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+            } as React.CSSProperties;
+            const commonClasses = "flex items-center gap-1.5 px-3 h-full shrink-0 text-[11px] font-semibold transition-colors whitespace-nowrap";
+            const commonProps = {
+              "data-active-tab": active ? "true" : "false",
+              onMouseEnter: (e: React.MouseEvent<HTMLElement>) => { if (!active) (e.currentTarget as HTMLElement).style.color = "rgba(0,0,0,0.72)"; },
+              onMouseLeave: (e: React.MouseEvent<HTMLElement>) => { if (!active) (e.currentTarget as HTMLElement).style.color = "rgba(0,0,0,0.42)"; },
+            };
+            return cat.external ? (
+              <a key={cat.href} href={cat.href} className={commonClasses} style={{ ...linkStyle, textDecoration: "none" }} {...commonProps}>
+                <Icon className="w-3.5 h-3.5 shrink-0" />
+                <span>{cat.label}</span>
+              </a>
+            ) : (
+              <Link key={cat.href} href={cat.href} className={commonClasses} style={linkStyle} {...commonProps}>
                 <Icon className="w-3.5 h-3.5 shrink-0" />
                 <span>{cat.label}</span>
               </Link>
             );
           })}
+
 
           {isLoggedIn && <div className="h-4 w-px mx-2 shrink-0" style={{ background: "rgba(0,0,0,0.1)" }} />}
 
