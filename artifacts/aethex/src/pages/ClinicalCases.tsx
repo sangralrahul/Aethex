@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
 import { PageHero } from "@/components/PageHero";
 import { Eye, EyeOff, Sparkles, ChevronDown, ChevronUp, Search, BookOpen, Stethoscope, AlertCircle, CheckCircle, Lightbulb, ClipboardList, FlaskConical, Tag, Filter } from "lucide-react";
+import { cadusUrl } from "@/lib/host";
+
 
 interface Investigation {
   name: string;
