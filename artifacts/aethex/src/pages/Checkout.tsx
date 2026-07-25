@@ -3,7 +3,9 @@ import { Link, useLocation } from "wouter";
 import { useGetCart } from "@workspace/api-client-react";
 import { useSession } from "@/hooks/use-session";
 import { formatINR } from "@/lib/utils";
+import { cadusUrl } from "@/lib/host";
 import { ChevronRight, MapPin, CreditCard, Smartphone, Landmark, PackageCheck, ShieldCheck, Truck, CheckCircle2, Lock, Sparkles, Heart, Package, ArrowRight, Copy, Check, MessageSquare } from "lucide-react";
+
 
 type Step = "address" | "payment" | "confirm";
 
