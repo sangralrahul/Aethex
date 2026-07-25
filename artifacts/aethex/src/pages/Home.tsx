@@ -1195,11 +1195,12 @@ export default function Home() {
       {/* ══ MOBILE STICKY CTA ══ */}
       <div className="fixed bottom-0 left-0 right-0 z-40 sm:hidden p-4"
         style={{ background: "rgba(250,249,246,0.97)", backdropFilter: "blur(20px)", borderTop: "1px solid rgba(0,0,0,0.08)" }}>
-        <Link href="/ai-assistant"
+        <a href={cadusUrl("/")}
           className="flex items-center justify-center gap-2 w-full py-3.5 rounded-full font-bold"
-          style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)", color: "#FFFFFF", fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 14, boxShadow: "0 4px 20px rgba(0,122,255,0.3)", whiteSpace: "nowrap" }}>
+          style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)", color: "#FFFFFF", fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 14, boxShadow: "0 4px 20px rgba(0,122,255,0.3)", whiteSpace: "nowrap", textDecoration: "none" }}>
           <Sparkles className="w-4 h-4" /> Start AI Consultation
-        </Link>
+        </a>
+
       </div>
     </div>
   );
