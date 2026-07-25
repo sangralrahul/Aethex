@@ -180,8 +180,9 @@ function Router() {
       )}
 
       {/* Full-screen pages (no Navbar/Footer) */}
-      <Route path="/ai-assistant" component={AiAssistant} />
-      <Route path="/cadus-standalone" component={AiAssistant} />
+      <Route path="/ai-assistant"><ExternalRedirect to={cadusUrl("/")} /></Route>
+      <Route path="/cadus-standalone"><ExternalRedirect to={cadusUrl("/")} /></Route>
+
       <Route path="/settings" component={SettingsPage} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
