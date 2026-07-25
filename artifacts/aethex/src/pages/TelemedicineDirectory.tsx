@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { Monitor, Star, Clock, Globe, ArrowRight, Sparkles, CheckCircle, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
+import { cadusUrl } from "@/lib/host";
+
 
 const PLATFORMS = [
   { id: 1, name: "eSanjeevani", govt: true, logo: "🏥", fees: "Free", specialties: ["General Medicine", "Psychiatry", "Dermatology", "Paediatrics", "All Specialties"], wait: "15–45 min", languages: ["Hindi", "English", "Tamil", "Telugu", "Bengali", "Marathi", "Gujarati"], rating: 4.3, reviews: 18200, patients: "20M+", register: "https://esanjeevaniopd.in", desc: "India's national telemedicine service by MoHFW. Free consultations for patients. Open to all registered doctors.", forDoctors: ["Aadhaar-based verification", "NMC registration required", "Simple web interface", "Available pan-India"], highlight: "Government of India initiative — largest telemedicine network" },
