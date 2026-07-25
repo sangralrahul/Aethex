@@ -498,8 +498,15 @@ function ResearchReportCard({
   );
 }
 
+function makeSessionId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `cadus-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 function makeSession(modelId: ModelId): ChatSession {
-  return { id: crypto.randomUUID(), modelId, messages: [], title: "New chat", createdAt: Date.now() };
+  return { id: makeSessionId(), modelId, messages: [], title: "New chat", createdAt: Date.now() };
 }
 
 const SESSIONS_LS_KEY = "cadus_sessions_v2";

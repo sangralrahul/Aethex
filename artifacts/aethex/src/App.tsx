@@ -152,18 +152,30 @@ function Router() {
   const isLoginSubdomain = typeof window !== "undefined" && isLoginHost();
   const isCadusSubdomain = typeof window !== "undefined" && isCadusHost();
 
+  if (isLoginSubdomain) {
+    return (
+      <Switch>
+        <Route path="/signup" component={Signup} />
+        <Route path="/onboarding" component={Onboarding} />
+        <Route path="/" component={Login} />
+        <Route component={Login} />
+      </Switch>
+    );
+  }
+
+  if (isCadusSubdomain) {
+    return (
+      <Switch>
+        <Route path="/" component={AiAssistant} />
+        <Route path="/ai-assistant" component={AiAssistant} />
+        <Route path="/cadus-standalone" component={AiAssistant} />
+        <Route component={AiAssistant} />
+      </Switch>
+    );
+  }
+
   return (
     <Switch>
-      {/* ── Subdomain: login.aethex.in ──
-          Fragments are invisible to wouter's <Switch>, so render Routes directly. */}
-      {isLoginSubdomain && <Route path="/" component={Login} />}
-      {isLoginSubdomain && <Route path="/signup" component={Signup} />}
-      {isLoginSubdomain && <Route path="/onboarding" component={Onboarding} />}
-
-      {/* ── Subdomain: cadus.aethex.in ── */}
-      {isCadusSubdomain && <Route path="/" component={AiAssistant} />}
-      {isCadusSubdomain && <Route path="/ai-assistant" component={AiAssistant} />}
-
       {/* On the main domain, auth pages live on login.aethex.in */}
       {isMainHost() && <Route path="/login">{() => <ExternalRedirect to={loginUrl("/")} />}</Route>}
       {isMainHost() && <Route path="/signup">{() => <ExternalRedirect to={loginUrl("/signup")} />}</Route>}
