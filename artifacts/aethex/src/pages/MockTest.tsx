@@ -152,9 +152,10 @@ export default function MockTest() {
           <p className="text-sm mb-3" style={{ color: "#636366" }}>
             Your weakest area is <strong style={{ color: "#EF4444" }}>Pharmacology (55%)</strong>. You're spending too long on Pathology questions — averaging 72 sec vs recommended 36 sec. Focus on autonomic drugs and antibiotics this week.
           </p>
-          <Link href="/ai-assistant" className="flex items-center gap-1.5 text-sm font-semibold" style={{ color: "#7C3AED" }}>
+          <a href={cadusUrl("/")} className="flex items-center gap-1.5 text-sm font-semibold" style={{ color: "#7C3AED", textDecoration: "none" }}>
             Get personalised revision plan <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
+          </a>
+
         </div>
 
         {/* Leaderboard teaser */}
