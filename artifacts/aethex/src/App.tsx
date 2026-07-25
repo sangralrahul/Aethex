@@ -154,30 +154,19 @@ function Router() {
 
   return (
     <Switch>
-      {/* ── Subdomain: login.aethex.in ── */}
-      {isLoginSubdomain && (
-        <>
-          <Route path="/" component={Login} />
-          <Route path="/signup" component={Signup} />
-          <Route path="/onboarding" component={Onboarding} />
-        </>
-      )}
+      {/* ── Subdomain: login.aethex.in ──
+          Fragments are invisible to wouter's <Switch>, so render Routes directly. */}
+      {isLoginSubdomain && <Route path="/" component={Login} />}
+      {isLoginSubdomain && <Route path="/signup" component={Signup} />}
+      {isLoginSubdomain && <Route path="/onboarding" component={Onboarding} />}
 
       {/* ── Subdomain: cadus.aethex.in ── */}
-      {isCadusSubdomain && (
-        <>
-          <Route path="/" component={AiAssistant} />
-          <Route path="/ai-assistant" component={AiAssistant} />
-        </>
-      )}
+      {isCadusSubdomain && <Route path="/" component={AiAssistant} />}
+      {isCadusSubdomain && <Route path="/ai-assistant" component={AiAssistant} />}
 
       {/* On the main domain, auth pages live on login.aethex.in */}
-      {isMainHost() && (
-        <>
-          <Route path="/login"><ExternalRedirect to={loginUrl("/")} /></Route>
-          <Route path="/signup"><ExternalRedirect to={loginUrl("/signup")} /></Route>
-        </>
-      )}
+      {isMainHost() && <Route path="/login">{() => <ExternalRedirect to={loginUrl("/")} />}</Route>}
+      {isMainHost() && <Route path="/signup">{() => <ExternalRedirect to={loginUrl("/signup")} />}</Route>}
 
       {/* Full-screen pages (no Navbar/Footer) */}
       <Route path="/ai-assistant"><ExternalRedirect to={cadusUrl("/")} /></Route>
