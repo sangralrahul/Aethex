@@ -354,7 +354,8 @@ export default function CaseOfTheDay() {
               <p className="text-xs" style={{ color: "#636366" }}>Get a step-by-step clinical reasoning walkthrough</p>
             </div>
             <a
-              href={`${BASE_URL}/ai-assistant?context=${buildCadusContext()}`}
+              href={cadusUrl("/", { context: buildCadusContext() })}
+
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0"
               style={{ background: "#007AFF", color: "#FFFFFF" }}>
               Ask AI
