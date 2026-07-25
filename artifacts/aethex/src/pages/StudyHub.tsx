@@ -2,7 +2,9 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { PageHero } from "@/components/PageHero";
 import { Link, useLocation } from "wouter";
 import { Star, ExternalLink, BookOpen, PlayCircle, CheckCircle2, Filter, Crown, GraduationCap, Award, Zap, Clock, Globe, Users, Sparkles, ArrowUpRight, Brain, FlaskConical, Stethoscope, ArrowRight, Search, X, ChevronRight } from "lucide-react";
+import { cadusUrl } from "@/lib/host";
 import { medicalSubjects } from "@/data/medicalSubjects";
+
 import { medicalDepartments } from "@/data/medicalDepartments";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -997,12 +999,13 @@ export default function StudyHub() {
                 Generate MCQs, get DDx lists, analyze lab values, and get instant clinical references — all powered by AI specialized for Indian medical education.
               </p>
               <div className="flex flex-wrap gap-4 justify-center">
-                <Link href="/ai-assistant"
+                <a href={cadusUrl("/")}
                   className="inline-flex items-center gap-2 px-7 py-3 rounded-xl font-semibold text-sm transition-all hover:opacity-90 hover:scale-105"
-                  style={{ background: "#FFFFFF", color: "#007AFF" }}>
+                  style={{ background: "#FFFFFF", color: "#007AFF", textDecoration: "none" }}>
                   <Sparkles className="w-4 h-4" />
                   Try Cadus AI Free
-                </Link>
+                </a>
+
                 <Link href="/account"
                   className="inline-flex items-center gap-2 px-7 py-3 rounded-xl font-semibold text-sm transition-all hover:opacity-90"
                   style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)", color: "#FFFFFF" }}>
