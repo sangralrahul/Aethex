@@ -30,10 +30,14 @@ export function loginUrl(path = "/"): string {
   return `https://login.aethex.in${suffix}`;
 }
 
-export function cadusUrl(path = "/"): string {
+export function cadusUrl(path = "/", query?: Record<string, string>): string {
   const suffix = path.startsWith("/") ? path : `/${path}`;
-  return `https://cadus.aethex.in${suffix}`;
+  const url = `https://cadus.aethex.in${suffix}`;
+  if (!query || Object.keys(query).length === 0) return url;
+  const qs = new URLSearchParams(query).toString();
+  return `${url}?${qs}`;
 }
+
 
 export function mainUrl(path = "/"): string {
   const suffix = path.startsWith("/") ? path : `/${path}`;
