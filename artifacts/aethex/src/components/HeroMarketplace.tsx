@@ -9,8 +9,10 @@ import {
   HeartHandshake, AlertTriangle, Scan, Gauge, TestTube2, BrainCircuit,
 } from "lucide-react";
 import { formatINR } from "@/lib/utils";
+import { cadusUrl } from "@/lib/host";
 
 const iconMap: Record<string, React.ElementType> = {
+
   Shirt, Shield, BookOpen, Stethoscope, Scissors, Thermometer, HeartPulse,
   Bone, Brain, FlaskConical, Droplets, Wind, Eye, Baby, ScanLine, Waves,
   HeartHandshake, Dna, AlertTriangle, Scan, Microscope, Pipette, Dumbbell,
