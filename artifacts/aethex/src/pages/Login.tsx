@@ -77,9 +77,10 @@ export default function Login() {
     try {
       const res = login(email, password);
       if (!res.success) { setError(res.error || "Invalid email or password."); return; }
-      setLocation("/");
+      goHome();
     } finally { setLoading(false); }
   };
+
 
   const handleSendEmailOtp = async (e: React.FormEvent) => {
     e.preventDefault(); setError(""); setLoading(true);
