@@ -428,8 +428,13 @@ export default function Login() {
 
                 <p style={{ fontSize: 12, color: "#AEAEB2", textAlign: "center", margin: "20px 0 0" }}>
                   No account?{" "}
-                  <Link href="/signup" style={{ color: "#007AFF", textDecoration: "none", fontWeight: 600 }}>Create one free</Link>
+                  {isLoginHost() ? (
+                    <Link href="/signup" style={{ color: "#007AFF", textDecoration: "none", fontWeight: 600 }}>Create one free</Link>
+                  ) : (
+                    <a href={loginUrl("/signup")} style={{ color: "#007AFF", textDecoration: "none", fontWeight: 600 }}>Create one free</a>
+                  )}
                 </p>
+
               </>
             )}
           </div>
