@@ -8,10 +8,10 @@ import {
   BookOpen, Clock,
 } from "lucide-react";
 import { clinicalCases, getTodaysCase, type ClinicalCase } from "@/data/clinicalCases";
-
-const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
+import { cadusUrl } from "@/lib/host";
 
 const SPECIALTY_COLORS: Record<string, string> = {
+
   "Cardiology":              "#FF3B30",
   "Neurology":               "#AF52DE",
   "Medicine / Cardiology":   "#FF3B30",
