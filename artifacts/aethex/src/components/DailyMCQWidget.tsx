@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { BookOpen, Lock, CheckCircle2, XCircle } from "lucide-react";
 import { Link } from "wouter";
 import { useUserAuth } from "@/hooks/use-user-auth";
+import { loginUrl } from "@/lib/host";
+
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
