@@ -8,9 +8,10 @@ import {
 } from "lucide-react";
 import { checkInteractions, type DrugPair, type Severity } from "@/data/drugInteractions";
 import { supabase } from "@/integrations/supabase/client";
+import { cadusUrl } from "@/lib/host";
 
-const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 const MAX_DRUGS = 5;
+
 
 const SEVERITY_CONFIG: Record<Severity, {
   label: string; color: string; bg: string; border: string;
