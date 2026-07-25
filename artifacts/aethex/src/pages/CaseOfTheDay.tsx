@@ -322,7 +322,8 @@ export default function CaseOfTheDay() {
             {/* Discuss with Cadus AI */}
             <div className="px-5 pb-5">
               <a
-                href={`${BASE_URL}/ai-assistant?context=${buildCadusContext()}`}
+                href={cadusUrl("/", { context: buildCadusContext() })}
+
                 className="flex items-center justify-center gap-2.5 w-full py-3.5 rounded-xl font-bold text-sm transition-all"
                 style={{
                   background: "linear-gradient(135deg, #007AFF 0%, #00C2A8 100%)",
