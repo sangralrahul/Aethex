@@ -93,7 +93,7 @@ export function Footer() {
               <li><Link href="/study-hub" className="hover:text-white transition-colors">NEET PG Prep</Link></li>
               <li><Link href="/study-hub" className="hover:text-white transition-colors">USMLE Resources</Link></li>
               <li><Link href="/study-hub" className="hover:text-white transition-colors">FMGE Study</Link></li>
-              <li><Link href="/ai-assistant" className="hover:text-white transition-colors">Cadus AI</Link></li>
+              <li><a href={cadusUrl("/")} className="hover:text-white transition-colors" style={{ textDecoration: "none" }}>Cadus AI</a></li>
               <li><Link href="/tools" className="hover:text-white transition-colors">Clinical Tools</Link></li>
               <li><Link href="/blog" className="hover:text-white transition-colors">Medical Blog</Link></li>
             </ul>
