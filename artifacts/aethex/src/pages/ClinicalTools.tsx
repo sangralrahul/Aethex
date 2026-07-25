@@ -427,12 +427,13 @@ export default function ClinicalTools() {
             <p className="text-white/75 text-sm mb-6 max-w-md mx-auto">
               Ask Cadus AI anything — diagnosis, drug dosing, patient education, SOAP notes and more.
             </p>
-            <Link href="/ai-assistant"
+            <a href={cadusUrl("/")}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all hover:opacity-90 hover:scale-105"
-              style={{ background: "#FFFFFF", color: "#007AFF" }}>
+              style={{ background: "#FFFFFF", color: "#007AFF", textDecoration: "none" }}>
               <Sparkles className="w-4 h-4" />
               Open Cadus AI
-            </Link>
+            </a>
+
           </div>
         </div>
       </div>
