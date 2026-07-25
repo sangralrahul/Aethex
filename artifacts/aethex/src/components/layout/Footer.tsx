@@ -1,8 +1,10 @@
 import { Link, useLocation } from "wouter";
 import { Heart, ShieldCheck, Truck, Twitter, Linkedin, Send, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
+import { cadusUrl } from "@/lib/host";
 
 const apiBase = () => import.meta.env.BASE_URL.replace(/\/$/, "");
+
 
 function FooterNewsletter() {
   const [email, setEmail] = useState("");
