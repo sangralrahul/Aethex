@@ -162,18 +162,24 @@ function Router() {
 
       {/* HOME — with full Navbar */}
       <Route path="/">
-        {() => (
-          <div className="flex flex-col min-h-screen" style={{ background: "#FAFAF8" }}>
-            <div className="fixed top-0 left-0 right-0 z-[60]">
-              <BrandSwitcherBar />
-              <Navbar />
+        {() => {
+          if (typeof window !== "undefined" && window.location.hostname.toLowerCase() === "cadus.aethex.in") {
+            window.location.replace("/ai-assistant");
+            return null;
+          }
+          return (
+            <div className="flex flex-col min-h-screen" style={{ background: "#FAFAF8" }}>
+              <div className="fixed top-0 left-0 right-0 z-[60]">
+                <BrandSwitcherBar />
+                <Navbar />
+              </div>
+              <main className="flex-1 pt-[141px] relative z-[1]">
+                <Home />
+              </main>
+              <Footer />
             </div>
-            <main className="flex-1 pt-[141px] relative z-[1]">
-              <Home />
-            </main>
-            <Footer />
-          </div>
-        )}
+          );
+        }}
       </Route>
 
       {/* All inner pages — NO Navbar, NO fixed header */}

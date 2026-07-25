@@ -503,6 +503,20 @@ function savePinned(pins: string[]): void {
 
 export default function AiAssistant() {
   const { user } = useUserAuth();
+
+  /* Canonical subdomain redirect: aethex.in/ai-assistant → cadus.aethex.in */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const host = window.location.hostname.toLowerCase();
+    const path = window.location.pathname.toLowerCase();
+    const isMainDomain = host === "aethex.in" || host === "www.aethex.in";
+    const isAiPath = path === "/ai-assistant" || path === "/cadus-standalone" ||
+      path.startsWith("/ai-assistant/") || path.startsWith("/cadus-standalone/");
+    if (isMainDomain && isAiPath) {
+      window.location.replace("https://cadus.aethex.in/");
+    }
+  }, []);
+
   const [sessions, setSessions] = useState<ChatSession[]>(loadSessions);
   const [activeSessionId, setActiveSessionId] = useState<string>(() => loadSessions()[0]?.id ?? "");
   const [pinnedPrompts, setPinnedPrompts] = useState<string[]>(loadPinned);
