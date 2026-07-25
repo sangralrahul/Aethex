@@ -7,6 +7,8 @@ import {
   GraduationCap, Heart, Search, X,
   Zap, Lock, ArrowUpRight, Sparkles, ChevronRight,
 } from "lucide-react";
+import { cadusUrl } from "@/lib/host";
+
 
 const CALC_SUITE = [
   { id: "bmi", name: "Body Mass Index (BMI)", short: "General" },
@@ -90,7 +92,8 @@ const TOOLS: Tool[] = [
     badge: "AI",
     badgeColor: "#7C3AED",
     action: "ai-chat",
-    href: "/ai-assistant",
+    href: cadusUrl("/"),
+
   },
   {
     id: "symptom-checker",
