@@ -51,7 +51,12 @@ export default function Signup() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  useEffect(() => { if (isLoggedIn) setLocation("/"); }, [isLoggedIn]);
+  const goHome = () => {
+    if (isLoginHost()) window.location.href = mainUrl("/");
+    else setLocation("/");
+  };
+
+  useEffect(() => { if (isLoggedIn) goHome(); }, [isLoggedIn]);
 
   useEffect(() => {
     if (phoneTimer <= 0) return;
