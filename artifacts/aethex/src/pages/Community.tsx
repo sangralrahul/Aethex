@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
 import { PageHero } from "@/components/PageHero";
 import { ThumbsUp, ThumbsDown, MessageSquare, Sparkles, TrendingUp, Search, Plus, Clock, ChevronUp, ChevronDown, BookOpen, Stethoscope, GraduationCap, FlaskConical, Building2, Pill, Tag, X, Send } from "lucide-react";
+import { cadusUrl } from "@/lib/host";
+
 
 interface Comment {
   id: number;
