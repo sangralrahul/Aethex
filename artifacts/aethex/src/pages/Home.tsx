@@ -22,6 +22,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { DailyMCQWidget } from "@/components/DailyMCQWidget";
 import { formatINR } from "@/lib/utils";
 import { HeroMarketplace } from "@/components/HeroMarketplace";
+import { cadusUrl } from "@/lib/host";
+
 
 function HeroAIInput() {
   const [query, setQuery] = useState("");
