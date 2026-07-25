@@ -272,7 +272,7 @@ const categories = [
   { href: "/cme-hub", icon: Crown, label: "CME Hub" },
   { href: "/neet-pg", icon: FileText, label: "NEET-PG" },
   { href: "/drug-reference", icon: Pill, label: "Drug Ref" },
-  { href: "/ai-assistant", icon: Brain, label: "Cadus AI" },
+  { href: cadusUrl("/"), icon: Brain, label: "Cadus AI", external: true },
   { href: "/pricing", icon: Crown, label: "Pricing" },
   { href: "/calculator", icon: Calculator, label: "Calculators" },
   { href: "/cases", icon: Activity, label: "Cases" },
