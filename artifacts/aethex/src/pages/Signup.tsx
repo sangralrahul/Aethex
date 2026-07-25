@@ -362,8 +362,13 @@ export default function Signup() {
 
                 <p style={{ fontSize: 12, color: "#AEAEB2", textAlign: "center", margin: "20px 0 4px" }}>
                   Already have an account?{" "}
-                  <Link href="/login" style={{ color: "#007AFF", textDecoration: "none", fontWeight: 600 }}>Sign in</Link>
+                  {isLoginHost() ? (
+                    <Link href="/login" style={{ color: "#007AFF", textDecoration: "none", fontWeight: 600 }}>Sign in</Link>
+                  ) : (
+                    <a href={loginUrl("/")} style={{ color: "#007AFF", textDecoration: "none", fontWeight: 600 }}>Sign in</a>
+                  )}
                 </p>
+
                 <p style={{ fontSize: 10, color: "#AEAEB2", textAlign: "center", margin: 0, lineHeight: 1.5 }}>
                   By creating an account, you agree to our{" "}
                   <a href="#" style={{ color: "#007AFF", textDecoration: "none" }}>Terms</a> and{" "}
