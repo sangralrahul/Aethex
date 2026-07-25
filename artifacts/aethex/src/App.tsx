@@ -6,6 +6,8 @@ import { useState, useEffect } from "react";
 import { auth } from "@/lib/firebase";
 import { getRedirectResult } from "firebase/auth";
 import { useUserAuth } from "@/hooks/use-user-auth";
+import { isLoginHost, isCadusHost } from "@/lib/host";
+
 
 function ScrollToTop() {
   const [location] = useLocation();
