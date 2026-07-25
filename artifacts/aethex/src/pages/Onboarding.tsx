@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useUserAuth } from "@/hooks/use-user-auth";
 import { Check } from "lucide-react";
+import { loginUrl } from "@/lib/host";
+
 
 /* ── Step definitions ─────────────────────────────────────────── */
 const STEPS = [
