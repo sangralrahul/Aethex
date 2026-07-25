@@ -86,11 +86,12 @@ export default function ProgressTracker() {
             <BookOpen className="w-12 h-12 mx-auto mb-4" style={{ color: "#00C2A8" }} />
             <h2 className="text-xl font-bold mb-2" style={{ color: "#1c1c1e" }}>Sign in to track your progress</h2>
             <p className="text-sm mb-6" style={{ color: "#636366" }}>Your NEET-PG MCQ scores are saved to your account.</p>
-            <Link href="/login">
+            <a href={loginUrl("/")}>
               <button className="px-6 py-3 rounded-xl font-semibold text-sm text-white" style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)" }}>
                 Sign In
               </button>
-            </Link>
+            </a>
+
           </div>
         ) : (
           <>
