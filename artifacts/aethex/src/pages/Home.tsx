@@ -475,12 +475,13 @@ function AIChatPreview() {
               <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 10, color: "rgba(0,0,0,0.4)", marginTop: 2 }}>● Clinical Mode</p>
             </div>
           </div>
-          <Link href="/ai-assistant"
-            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 10, letterSpacing: "0.1em", fontWeight: 700, textTransform: "uppercase", color: "rgba(0,0,0,0.35)", transition: "color 0.2s" }}
+          <a href={cadusUrl("/")}
+            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 10, letterSpacing: "0.1em", fontWeight: 700, textTransform: "uppercase", color: "rgba(0,0,0,0.35)", transition: "color 0.2s", textDecoration: "none" }}
             onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "rgba(0,0,0,0.8)"}
             onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "rgba(0,0,0,0.35)"}>
             Full Experience →
-          </Link>
+          </a>
+
         </div>
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-5 space-y-3" style={{ background: "#F8F7F4" }}>
