@@ -115,7 +115,8 @@ export default function Login() {
       }
       otpLogin(otpEmail, "supabase");
       setSuccess(true);
-      setTimeout(() => setLocation("/"), 1000);
+      setTimeout(() => goHome(), 1000);
+
     } catch (err) { setError((err as Error).message || "Network error. Please try again."); }
     finally { setLoading(false); }
   };
