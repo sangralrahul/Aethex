@@ -1,5 +1,7 @@
 import { Link } from "wouter";
 import { Home, ArrowLeft } from "lucide-react";
+import { cadusUrl } from "@/lib/host";
+
 
 export default function NotFound() {
   return (
@@ -134,7 +136,8 @@ export default function NotFound() {
           <div className="flex flex-wrap justify-center gap-2">
             {[
               { label: "Shop", href: "/shop" },
-              { label: "Cadus AI", href: "/ai-assistant" },
+              { label: "Cadus AI", href: cadusUrl("/") },
+
               { label: "Study Hub", href: "/study-hub" },
               { label: "Drug Reference", href: "/drug-reference" },
               { label: "NEET-PG", href: "/neet-pg" },
