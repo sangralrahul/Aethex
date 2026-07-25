@@ -932,11 +932,12 @@ export default function Home() {
                 ))}
               </div>
 
-              <Link href="/ai-assistant"
+              <a href={cadusUrl("/")}
                 className="inline-flex items-center gap-2.5 transition-all hover:opacity-90 active:scale-[0.98]"
-                style={{ background: "#00C2A8", color: "#000", borderRadius: 2, padding: "13px 28px", fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                style={{ background: "#00C2A8", color: "#000", borderRadius: 2, padding: "13px 28px", fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "'Plus Jakarta Sans', sans-serif", textDecoration: "none" }}>
                 <Sparkles className="w-3.5 h-3.5" /> Try Free — 20 queries/day
-              </Link>
+              </a>
+
             </div>
 
             {/* Right — live chat widget */}
