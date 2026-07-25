@@ -645,11 +645,12 @@ export function Navbar() {
                 placeholder="Search drugs, products, books…" />
             </form>
 
-            <Link href="/ai-assistant" onClick={() => setMobileOpen(false)}
+            <a href={cadusUrl("/")} onClick={() => setMobileOpen(false)}
               className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl text-sm font-bold mb-3"
-              style={{ background: "#00C2A8", color: "#FFFFFF", boxShadow: "0 4px 16px rgba(0,194,168,0.28)", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+              style={{ background: "#00C2A8", color: "#FFFFFF", boxShadow: "0 4px 16px rgba(0,194,168,0.28)", fontFamily: "'Plus Jakarta Sans', sans-serif", textDecoration: "none" }}>
               <Sparkles className="w-4 h-4" /> Try Cadus AI
-            </Link>
+            </a>
+
 
             <p className="text-[10px] font-bold uppercase tracking-widest px-1 pt-1 pb-1.5" style={{ color: "rgba(0,0,0,0.3)", letterSpacing: "0.14em", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Navigation</p>
             {[
