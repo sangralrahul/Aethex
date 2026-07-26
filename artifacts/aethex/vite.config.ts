@@ -1,4 +1,5 @@
-import { defineConfig } from "vite";
+import fs from "node:fs";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
@@ -7,6 +8,26 @@ import { VitePWA } from "vite-plugin-pwa";
 
 const port = Number(process.env.PORT) || 5173;
 const basePath = process.env.BASE_PATH || "/";
+const buildOutDir = path.resolve(import.meta.dirname, "..", "..", "dist");
+
+function spaRouteFallbacks(): Plugin {
+  const routes = ["login", "signup", "onboarding", "ai-assistant", "cadus-standalone"];
+
+  return {
+    name: "aethex-spa-route-fallbacks",
+    closeBundle() {
+      const indexFile = path.join(buildOutDir, "index.html");
+      if (!fs.existsSync(indexFile)) return;
+
+      fs.copyFileSync(indexFile, path.join(buildOutDir, "404.html"));
+      for (const route of routes) {
+        const routeDir = path.join(buildOutDir, route);
+        fs.mkdirSync(routeDir, { recursive: true });
+        fs.copyFileSync(indexFile, path.join(routeDir, "index.html"));
+      }
+    },
+  };
+}
 
 export default defineConfig({
   base: basePath,
@@ -51,6 +72,7 @@ export default defineConfig({
         ],
       },
     }),
+    spaRouteFallbacks(),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [
@@ -75,7 +97,7 @@ export default defineConfig({
   root: path.resolve(import.meta.dirname),
   envDir: path.resolve(import.meta.dirname, "..", ".."),
   build: {
-    outDir: path.resolve(import.meta.dirname, "..", "..", "dist"),
+    outDir: buildOutDir,
     emptyOutDir: true,
   },
   server: {
