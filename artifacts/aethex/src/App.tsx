@@ -176,13 +176,9 @@ function Router() {
 
   return (
     <Switch>
-      {/* On the main domain, auth pages live on login.aethex.in */}
-      {isMainHost() && <Route path="/login">{() => <ExternalRedirect to={loginUrl("/")} />}</Route>}
-      {isMainHost() && <Route path="/signup">{() => <ExternalRedirect to={loginUrl("/signup")} />}</Route>}
-
       {/* Full-screen pages (no Navbar/Footer) */}
-      <Route path="/ai-assistant"><ExternalRedirect to={cadusUrl("/")} /></Route>
-      <Route path="/cadus-standalone"><ExternalRedirect to={cadusUrl("/")} /></Route>
+      <Route path="/ai-assistant" component={AiAssistant} />
+      <Route path="/cadus-standalone" component={AiAssistant} />
 
       <Route path="/settings" component={SettingsPage} />
       <Route path="/login" component={Login} />

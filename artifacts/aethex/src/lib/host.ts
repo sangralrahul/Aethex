@@ -27,12 +27,14 @@ export function isCadusHost(): boolean {
 
 export function loginUrl(path = "/"): string {
   const suffix = path.startsWith("/") ? path : `/${path}`;
-  return `https://login.aethex.in${suffix}`;
+  const routedSuffix = suffix === "/" ? "/login" : suffix;
+  return `https://login.aethex.in${routedSuffix}`;
 }
 
 export function cadusUrl(path = "/", query?: Record<string, string>): string {
   const suffix = path.startsWith("/") ? path : `/${path}`;
-  const url = `https://cadus.aethex.in${suffix}`;
+  const routedSuffix = suffix === "/" ? "/ai-assistant" : suffix;
+  const url = `https://cadus.aethex.in${routedSuffix}`;
   if (!query || Object.keys(query).length === 0) return url;
   const qs = new URLSearchParams(query).toString();
   return `${url}?${qs}`;
