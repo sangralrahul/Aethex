@@ -151,8 +151,9 @@ function Router() {
 
   const isLoginSubdomain = typeof window !== "undefined" && isLoginHost();
   const isCadusSubdomain = typeof window !== "undefined" && isCadusHost();
+  const forcedApp = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("aethexApp") : null;
 
-  if (isLoginSubdomain) {
+  if (isLoginSubdomain || forcedApp === "login") {
     return (
       <Switch>
         <Route path="/signup" component={Signup} />
@@ -163,7 +164,7 @@ function Router() {
     );
   }
 
-  if (isCadusSubdomain) {
+  if (isCadusSubdomain || forcedApp === "cadus") {
     return (
       <Switch>
         <Route path="/" component={AiAssistant} />
