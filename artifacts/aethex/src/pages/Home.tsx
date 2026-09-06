@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "wouter";
+import { useSeo } from "@/hooks/use-seo";
 import { motion } from "framer-motion";
 import {
   ArrowRight, Activity, BrainCircuit, Sparkles, Shirt, FlaskConical, BookOpen,
@@ -768,6 +769,12 @@ function NewsletterSection() {
 }
 
 export default function Home() {
+  useSeo({
+    title: "Aethex — AI-Powered Medical Education & Clinical Tools in India",
+    description:
+      "Cadus AI clinical assistant, NEET PG study hub, drug references and genuine medical supplies — one platform built for Indian doctors and medical students.",
+    path: "/",
+  });
   const sessionId = useSession();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -816,9 +823,9 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-16">
           {/* Section label */}
           <div className="flex items-center gap-4 pt-20 pb-12" style={{ borderBottom: "1px solid rgba(0,0,0,0.07)" }}>
-            <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 9, letterSpacing: "0.32em", textTransform: "uppercase", color: "rgba(0,0,0,0.28)", fontWeight: 600 }}>
-              The Platform
-            </span>
+            <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 300, fontSize: "clamp(1.6rem, 3vw, 2.4rem)", color: "#0A0A0F", lineHeight: 1.2, margin: 0 }}>
+              Aethex — AI-powered medical platform for Indian doctors and students
+            </h1>
           </div>
 
           {/* Three platform pillars — full-width rows */}
@@ -868,13 +875,13 @@ export default function Home() {
 
                 {/* Service name — large */}
                 <div className="lg:col-span-3">
-                  <div style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 300, fontSize: "clamp(2rem, 4vw, 3.2rem)", color: "#0A0A0F", lineHeight: 1.15, letterSpacing: "-0.01em", transition: "color 0.2s" }}
+                  <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 300, fontSize: "clamp(2rem, 4vw, 3.2rem)", color: "#0A0A0F", lineHeight: 1.15, letterSpacing: "-0.01em", transition: "color 0.2s", margin: 0 }}
                     className="group-hover:text-black">
                     {pillar.name}
-                  </div>
-                  <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: pillar.color, fontWeight: 600, marginTop: 8, opacity: 0.8 }}>
+                  </h2>
+                  <h3 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: pillar.color, fontWeight: 600, marginTop: 8, opacity: 0.8 }}>
                     {pillar.headline}
-                  </div>
+                  </h3>
                 </div>
 
                 {/* Description */}
