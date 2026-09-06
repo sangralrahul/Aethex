@@ -83,18 +83,7 @@ export default function Signup() {
         options: { redirectTo: window.location.origin },
       });
       if (oauthError) { setError(oauthError.message ?? "Google sign-in failed."); return; }
-      return; // browser is navigating to Google
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        googleLogin({
-          uid: user.id,
-          displayName: (user.user_metadata?.full_name as string | undefined) ?? null,
-          email: user.email ?? null,
-          photoURL: (user.user_metadata?.avatar_url as string | undefined) ?? null,
-        });
-      } else {
-        setError("Google sign-in failed. Please try again.");
-      }
+      // browser is navigating to Google
     } catch {
       setError("Google sign-in failed. Please try again.");
     } finally {
