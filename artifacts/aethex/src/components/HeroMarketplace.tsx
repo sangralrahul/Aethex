@@ -161,7 +161,7 @@ function HeroCarousel() {
             style={{ color: s.accent, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             {s.eyebrow}
           </div>
-          <h1 style={{
+          <h2 style={{
             fontFamily: "'Cormorant Garamond', serif",
             fontWeight: 600,
             fontSize: "clamp(2.4rem, 5vw, 3.8rem)",
@@ -171,7 +171,7 @@ function HeroCarousel() {
             marginBottom: 12,
           }}>
             {s.title}
-          </h1>
+          </h2>
           <p style={{
             fontFamily: "'Plus Jakarta Sans', sans-serif",
             fontSize: 15,
