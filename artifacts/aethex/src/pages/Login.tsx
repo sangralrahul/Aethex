@@ -5,7 +5,6 @@ import { useUserAuth } from "@/hooks/use-user-auth";
 import { auth } from "@/lib/firebase";
 import { signInWithPhoneNumber, RecaptchaVerifier, type ConfirmationResult } from "firebase/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { isLoginHost, mainUrl, loginUrl } from "@/lib/host";
 
 
@@ -77,11 +76,12 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: window.location.origin },
       });
-      if (result.error) { setError(result.error.message ?? "Google sign-in failed."); return; }
-      if (result.redirected) return; // browser is navigating to Google
+      if (oauthError) { setError(oauthError.message ?? "Google sign-in failed."); return; }
+      return; // browser is navigating to Google
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         googleLogin({
