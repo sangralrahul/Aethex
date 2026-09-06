@@ -4,6 +4,8 @@ import { Eye, EyeOff, Sparkles, GraduationCap, ShoppingBag, BrainCircuit, Shield
 import { useUserAuth } from "@/hooks/use-user-auth";
 import { auth } from "@/lib/firebase";
 import { signInWithPhoneNumber, RecaptchaVerifier, type ConfirmationResult } from "firebase/auth";
+import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable/index";
 import { isLoginHost, mainUrl, loginUrl } from "@/lib/host";
 
 
@@ -24,7 +26,7 @@ const features = [
 
 export default function Signup() {
   const [, setLocation] = useLocation();
-  const { signup, phoneLogin, isLoggedIn } = useUserAuth();
+  const { signup, phoneLogin, googleLogin, isLoggedIn } = useUserAuth();
 
   const [tab, setTab] = useState<AuthTab>("email");
 
@@ -57,6 +59,48 @@ export default function Signup() {
   };
 
   useEffect(() => { if (isLoggedIn) goHome(); }, [isLoggedIn]);
+
+  // Pick up a returning Google OAuth session (full-page redirect flow).
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user && !isLoggedIn) {
+        googleLogin({
+          uid: user.id,
+          displayName: (user.user_metadata?.full_name as string | undefined) ?? null,
+          email: user.email ?? null,
+          photoURL: (user.user_metadata?.avatar_url as string | undefined) ?? null,
+        });
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleGoogle = async () => {
+    setError("");
+    setLoading(true);
+    try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+      });
+      if (result.error) { setError(result.error.message ?? "Google sign-in failed."); return; }
+      if (result.redirected) return; // browser is navigating to Google
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        googleLogin({
+          uid: user.id,
+          displayName: (user.user_metadata?.full_name as string | undefined) ?? null,
+          email: user.email ?? null,
+          photoURL: (user.user_metadata?.avatar_url as string | undefined) ?? null,
+        });
+      } else {
+        setError("Google sign-in failed. Please try again.");
+      }
+    } catch {
+      setError("Google sign-in failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (phoneTimer <= 0) return;
@@ -268,7 +312,7 @@ export default function Signup() {
                       <span style={{ fontSize: 11, color: "#AEAEB2" }}>or</span>
                       <div style={{ flex: 1, height: 1, background: "rgba(60,60,67,0.12)" }} />
                     </div>
-                    <button type="button" style={ghostBtnStyle} onClick={() => window.location.href = isLoginHost() ? "/login" : loginUrl("/")}>
+                    <button type="button" style={ghostBtnStyle} onClick={handleGoogle} disabled={loading}>
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
                         <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                         <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
