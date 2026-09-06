@@ -83,6 +83,9 @@ importers:
 
   .:
     dependencies:
+      '@lovable.dev/cloud-auth-js':
+        specifier: ^1.1.2
+        version: 1.2.0
       '@supabase/supabase-js':
         specifier: 2.108.0
         version: 2.108.0
@@ -2358,6 +2361,10 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
+
+  '@lovable.dev/cloud-auth-js@1.2.0':
+    resolution: {integrity: sha512-kqBDh8xJpFSXFl3EIyvtpi5/HFYKC+vjlsvjon0H+NC0/rCjOwFlXA/Mtis9LE0zhQ86mTAq7JVWavhVo+ekKg==}
+    deprecated: Deprecated
 
   '@mermaid-js/parser@1.0.1':
     resolution: {integrity: sha512-opmV19kN1JsK0T6HhhokHpcVkqKpF+x2pPDKKM2ThHtZAB5F4PROopk0amuVYK5qMrIA4erzpNm8gmPNJgMDxQ==}
@@ -8143,6 +8150,8 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
+
+  '@lovable.dev/cloud-auth-js@1.2.0': {}
 
   '@mermaid-js/parser@1.0.1':
     dependencies:
