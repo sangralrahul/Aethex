@@ -21,9 +21,7 @@ function spaRouteFallbacks(): Plugin {
 
       fs.copyFileSync(indexFile, path.join(buildOutDir, "404.html"));
       for (const route of routes) {
-        const routeDir = path.join(buildOutDir, route);
-        fs.mkdirSync(routeDir, { recursive: true });
-        fs.copyFileSync(indexFile, path.join(routeDir, "index.html"));
+        fs.copyFileSync(indexFile, path.join(buildOutDir, route));
       }
     },
   };
