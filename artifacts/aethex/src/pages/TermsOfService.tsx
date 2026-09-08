@@ -164,8 +164,8 @@ export default function TermsOfService() {
         ))}
 
         <div className="flex flex-wrap gap-4 text-sm pt-4" style={{ color: "#636366" }}>
-          <Link href="/privacy-policy" className="hover:underline" style={{ color: "#007AFF" }}>Privacy Policy</Link>
-          <Link href="/medical-disclaimer" className="hover:underline" style={{ color: "#007AFF" }}>Medical Disclaimer</Link>
+          <a href="/privacy-policy.html" className="hover:underline" style={{ color: "#007AFF" }}>Privacy Policy</a>
+          <a href="/medical-disclaimer.html" className="hover:underline" style={{ color: "#007AFF" }}>Medical Disclaimer</a>
           <Link href="/contact" className="hover:underline" style={{ color: "#007AFF" }}>Contact Us</Link>
         </div>
       </div>

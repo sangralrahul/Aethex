@@ -105,8 +105,8 @@ export function Footer() {
               <li><a href="https://clavix.in" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">About Us</a></li>
               <li><Link href="/blog" className="hover:text-white transition-colors">Blog</Link></li>
               <li><Link href="/news" className="hover:text-white transition-colors">Medical News</Link></li>
-              <li><Link href="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
-              <li><Link href="/terms-of-service" className="hover:text-white transition-colors">Terms of Service</Link></li>
+              <li><a href="/privacy-policy.html" className="hover:text-white transition-colors">Privacy Policy</a></li>
+              <li><a href="/terms-of-service.html" className="hover:text-white transition-colors">Terms of Service</a></li>
             </ul>
           </div>
 
@@ -115,7 +115,7 @@ export function Footer() {
             <ul className="space-y-3" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 13, color: "rgba(255,255,255,0.35)" }}>
               <li><Link href="/orders/track" className="hover:text-white transition-colors">Track Order</Link></li>
               <li><a href="mailto:email@aethex.in" className="hover:text-white transition-colors">email@aethex.in</a></li>
-              <li><Link href="/medical-disclaimer" className="hover:text-white transition-colors">Medical Disclaimer</Link></li>
+              <li><a href="/medical-disclaimer.html" className="hover:text-white transition-colors">Medical Disclaimer</a></li>
               <li><Link href="/contact" className="hover:text-white transition-colors">Contact Us</Link></li>
             </ul>
           </div>
@@ -127,9 +127,9 @@ export function Footer() {
             © 2026 Clavix Technologies Pvt Ltd. All rights reserved.
           </p>
           <div className="flex flex-wrap gap-5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 11, color: "rgba(255,255,255,0.2)" }}>
-            <Link href="/privacy-policy" className="hover:text-white transition-colors">Privacy</Link>
-            <Link href="/terms-of-service" className="hover:text-white transition-colors">Terms</Link>
-            <Link href="/medical-disclaimer" className="hover:text-white transition-colors">Medical Disclaimer</Link>
+            <a href="/privacy-policy.html" className="hover:text-white transition-colors">Privacy</a>
+            <a href="/terms-of-service.html" className="hover:text-white transition-colors">Terms</a>
+            <a href="/medical-disclaimer.html" className="hover:text-white transition-colors">Medical Disclaimer</a>
           </div>
         </div>
 
