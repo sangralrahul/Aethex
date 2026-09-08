@@ -309,8 +309,11 @@ function Router() {
 
                 {/* Legal */}
                 <Route path="/privacy-policy" component={PrivacyPolicy} />
+                <Route path="/privacy-policy.html" component={PrivacyPolicy} />
                 <Route path="/terms-of-service" component={TermsOfService} />
+                <Route path="/terms-of-service.html" component={TermsOfService} />
                 <Route path="/medical-disclaimer" component={MedicalDisclaimer} />
+                <Route path="/medical-disclaimer.html" component={MedicalDisclaimer} />
 
                 {/* Blog & News */}
                 <Route path="/blog/:slug" component={BlogPost} />

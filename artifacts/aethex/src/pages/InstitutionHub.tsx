@@ -544,7 +544,7 @@ export default function InstitutionHub({ mode }: InstitutionHubProps = {}) {
 
               <p className="text-center text-xs" style={{ color: "#AEAEB2" }}>
                 By submitting, you agree to our{" "}
-                <Link href="/privacy-policy" className="underline">Privacy Policy</Link>.
+                <a href="/privacy-policy.html" className="underline">Privacy Policy</a>.
                 We'll respond within 24 business hours.
               </p>
             </form>
