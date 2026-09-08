@@ -11,7 +11,7 @@ const basePath = process.env.BASE_PATH || "/";
 const buildOutDir = path.resolve(import.meta.dirname, "..", "..", "dist");
 
 function spaRouteFallbacks(): Plugin {
-  const routes = ["login", "signup", "onboarding", "ai-assistant", "cadus-standalone", "privacy-policy", "terms-of-service", "medical-disclaimer"];
+  const routes = ["login", "signup", "onboarding", "ai-assistant", "cadus-standalone"];
 
   return {
     name: "aethex-spa-route-fallbacks",
@@ -21,7 +21,9 @@ function spaRouteFallbacks(): Plugin {
 
       fs.copyFileSync(indexFile, path.join(buildOutDir, "404.html"));
       for (const route of routes) {
-        fs.copyFileSync(indexFile, path.join(buildOutDir, `${route}.html`));
+        const routeDir = path.join(buildOutDir, route);
+        fs.mkdirSync(routeDir, { recursive: true });
+        fs.copyFileSync(indexFile, path.join(routeDir, "index.html"));
       }
     },
   };

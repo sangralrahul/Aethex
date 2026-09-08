@@ -152,6 +152,22 @@ function Router() {
   const isLoginSubdomain = typeof window !== "undefined" && isLoginHost();
   const isCadusSubdomain = typeof window !== "undefined" && isCadusHost();
   const forcedApp = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("aethexApp") : null;
+  const legalPage = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("legal") : null;
+
+  if (legalPage === "privacy-policy" || legalPage === "terms-of-service" || legalPage === "medical-disclaimer") {
+    const LegalPage = legalPage === "privacy-policy"
+      ? PrivacyPolicy
+      : legalPage === "terms-of-service"
+        ? TermsOfService
+        : MedicalDisclaimer;
+    return (
+      <div className="flex flex-col min-h-screen" style={{ background: "#F2F2F7" }}>
+        <main className="flex-1 relative z-[1]">
+          <LegalPage />
+        </main>
+      </div>
+    );
+  }
 
   if (isLoginSubdomain || forcedApp === "login") {
     return (
@@ -309,11 +325,8 @@ function Router() {
 
                 {/* Legal */}
                 <Route path="/privacy-policy" component={PrivacyPolicy} />
-                <Route path="/privacy-policy.html" component={PrivacyPolicy} />
                 <Route path="/terms-of-service" component={TermsOfService} />
-                <Route path="/terms-of-service.html" component={TermsOfService} />
                 <Route path="/medical-disclaimer" component={MedicalDisclaimer} />
-                <Route path="/medical-disclaimer.html" component={MedicalDisclaimer} />
 
                 {/* Blog & News */}
                 <Route path="/blog/:slug" component={BlogPost} />
