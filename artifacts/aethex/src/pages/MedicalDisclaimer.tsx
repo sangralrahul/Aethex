@@ -153,8 +153,8 @@ export default function MedicalDisclaimer() {
         </div>
 
         <div className="flex flex-wrap gap-4 text-sm pt-2" style={{ color: "#636366" }}>
-          <a href="/privacy-policy.html" className="hover:underline" style={{ color: "#007AFF" }}>Privacy Policy</a>
-          <a href="/terms-of-service.html" className="hover:underline" style={{ color: "#007AFF" }}>Terms of Service</a>
+          <a href="/?legal=privacy-policy" className="hover:underline" style={{ color: "#007AFF" }}>Privacy Policy</a>
+          <a href="/?legal=terms-of-service" className="hover:underline" style={{ color: "#007AFF" }}>Terms of Service</a>
           <Link href="/contact" className="hover:underline" style={{ color: "#007AFF" }}>Contact Us</Link>
         </div>
       </div>
