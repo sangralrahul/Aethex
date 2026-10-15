@@ -14,7 +14,7 @@ export function currentHost(): string {
 
 export function isMainHost(): boolean {
   const host = currentHost();
-  return host === "aethex.in" || host === "www.aethex.in" || host === "localhost" || host === "" || host.endsWith(".lovable.app");
+  return host === "aethex.in" || host === "www.aethex.in" || host === "localhost" || host === "" || host.endsWith(".lovable.app") || host.endsWith(".workers.dev");
 }
 
 export function isLoginHost(): boolean {

@@ -253,7 +253,7 @@ export default function LabValueInterpreter() {
               </div>
               <div>
                 <h3 className="font-semibold text-sm" style={{ color: "#1C1C1E" }}>AI Deep Analysis</h3>
-                <p className="text-xs" style={{ color: "#AEAEB2" }}>Integrated interpretation powered by Lovable AI</p>
+                <p className="text-xs" style={{ color: "#AEAEB2" }}>Integrated interpretation powered by Cadus AI</p>
               </div>
             </div>
 
