@@ -3,7 +3,7 @@
  * Backend: `groq-ai` on the site's Cloudflare Worker at /api/fn/groq-ai
  * (Claude Haiku 5.5, Groq fallback). See worker/index.ts.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import {
   AlertTriangle, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ArrowUpRight, Bookmark, BookmarkCheck, BookOpen, BookOpenCheck,
   Camera, Check, ChevronDown, ChevronRight, ChevronsUpDown, CircleQuestionMark, ClipboardList, Copy, CornerDownRight,
@@ -222,15 +222,16 @@ const LIBRARY_KEY = "cadus3.library";
 const PROJECTS_KEY = "cadus3.projects";
 const UI_KEY = "cadus3.ui";
 const FREE_DAILY = 20;
-const DEFAULT_PREFS: Prefs = { theme: "light", accent: "aethex", textSize: "m", style: "balanced", language: "English", enterToSend: true, safetyReview: true, sources: false, answerFont: "serif" };
-/** Bumped when the default look changes, so saved settings move to the new theme and colour once. */
-const PREFS_VERSION = 2;
+const DEFAULT_PREFS: Prefs = { theme: "light", accent: "aethex", textSize: "m", style: "balanced", language: "English", enterToSend: true, safetyReview: true, sources: false, answerFont: "sans" };
+/** Bumped when the default look changes, so saved settings move to the new theme, colour and answer font once. */
+const PREFS_VERSION = 3;
 
 function loadPrefs(): Prefs {
   const { v, ...saved } = readJSON<Partial<Prefs> & { v?: number }>(PREFS_KEY, {});
   if (v !== PREFS_VERSION) {
     delete saved.theme;
     delete saved.accent;
+    delete saved.answerFont;
   }
   return { ...DEFAULT_PREFS, ...saved };
 }
@@ -1336,70 +1337,147 @@ export default function CadusAI() {
     </div>
   );
 
-  const featured: { tone: "navy" | "teal" | "paper"; kicker: string; title: ReactNode; text: string; cta: string; icon: LucideIcon; done?: boolean; go: () => void }[] = [
-    {
-      tone: "navy", kicker: "Lecture decks", title: "Turn any topic into a teaching deck",
-      text: "Eight to ten structured slides, fact-checked before you present.", cta: "Create a deck",
-      icon: Presentation, go: () => startTool("slides"),
-    },
-    {
-      tone: "teal", kicker: "NEET-PG · INI-CET · USMLE", title: <>Practise <span className="nw">high-yield</span> MCQs</>,
-      text: "Clinical vignettes with an explanation for every answer.", cta: "Start practising",
-      icon: GraduationCap, go: () => startTool("mcq"),
-    },
-    {
-      tone: "paper", kicker: "Evidence", title: "Answers that cite their sources",
-      text: "With Sources on, Cadus cites WHO, NICE, ICMR and PubMed.", cta: prefs.sources ? "Sources are on" : "Turn on Sources",
-      icon: Globe, done: prefs.sources, go: () => { setPrefs({ ...prefs, sources: true }); focusComposer(); },
-    },
-  ];
   /** One-line labels for the home page's quick actions. */
   const QUICK_LABEL: Partial<Record<ModeId, string>> = { ddx: "Differentials", drugs: "Interactions", labs: "Lab results", slides: "Lecture slides", mcq: "Exam MCQs" };
+  const recentChats = [...sessions].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 7);
+  const projectName = (id?: string) => (id ? projects.find((p) => p.id === id)?.name : undefined);
+  const todayLabel = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
 
+  /** The home page is a small workspace dashboard: ask, then pick up recent work. */
   const renderHome = () => (
     <section className="cx-home">
-      <div className="cx-home-in">
-        <span className="cx-eyebrow"><i /> Clinical AI · by Aethex</span>
-        <h1>{greeting()}, <em>{firstName || "Doctor"}</em></h1>
-        <p className="cx-sub">
-          Evidence-based answers for clinical practice and exams{prefs.safetyReview ? ", safety-reviewed by a second model." : "."}
-        </p>
+      <div className="cx-dash">
+        <header className="cx-dash-h">
+          <div>
+            <h1>{greeting()}{firstName ? `, ${firstName}` : ""}</h1>
+            <p>Ask a clinical question, or pick up where you left off.</p>
+          </div>
+          <span className="cx-dash-date">{todayLabel}</span>
+        </header>
         {showHeroComposer && <div className="cx-hero-c">{composer("hero")}</div>}
-        <div className="cx-cats">
+        <div className="cx-quick">
           {QUICK.map((id) => {
             const m = MODE[id];
-            return (
-              <button key={id} className="cx-cat" onClick={() => startTool(id)} title={m.desc}>
-                <span className="cx-cat-ic"><m.icon size={21} strokeWidth={1.6} /></span>
-                <span>{QUICK_LABEL[id] ?? m.short}</span>
-              </button>
-            );
+            return <button key={id} className="cx-q" onClick={() => startTool(id)} title={m.desc}><m.icon size={15} /> {QUICK_LABEL[id] ?? m.short}</button>;
           })}
-          <button className="cx-cat ghost" onClick={() => setView("tools")} title="Every clinical tool">
-            <span className="cx-cat-ic"><LayoutGrid size={19} strokeWidth={1.6} /></span>
-            <span>All tools</span>
-          </button>
+          <button className="cx-q more" onClick={() => setView("tools")}><LayoutGrid size={15} /> All tools</button>
         </div>
-      </div>
-      <div className="cx-feat">
-        {featured.map((f) => (
-          <button key={f.kicker} className={`cx-fc ${f.tone} ${f.done ? "done" : ""}`} onClick={f.go}>
-            <span className="cx-fc-top">
-              <span className="cx-fc-ic"><f.icon size={17} strokeWidth={1.7} /></span>
-              <span className="cx-fc-k">{f.kicker}</span>
-            </span>
-            <h3>{f.title}</h3>
-            <p>{f.text}</p>
-            <span className="cx-fc-go">{f.done ? <Check size={15} /> : null}{f.cta}{f.done ? null : <ArrowRight size={15} />}</span>
-          </button>
-        ))}
-      </div>
-      <div className="cx-ticker" aria-label="Why Cadus">
-        <span>Safety-reviewed answers</span>
-        <span>Cited sources</span>
-        <span>NEET-PG ready</span>
-        <span>Built-in medical library</span>
-        <span>Chats stay on this device</span>
+
+        <div className="cx-panels">
+          <div className="cx-panel-col">
+            <section className="cx-panel">
+              <header className="cx-panel-h">
+                <b><History size={15} /> Recent chats</b>
+                {sessions.length > 0 && <button onClick={openPalette}><Search size={13} /> Search</button>}
+              </header>
+              <div className="cx-panel-b">
+                {recentChats.length ? recentChats.map((s) => {
+                  const m = MODE[sessionMode(s)];
+                  const proj = projectName(s.projectId);
+                  return (
+                    <button key={s.id} className="cx-li" onClick={() => openSession(s.id)}>
+                      <span className="cx-li-ic"><m.icon size={14} /></span>
+                      <span className="cx-li-t"><b>{s.title}</b><small>{m.label}{proj ? ` · ${proj}` : ""}</small></span>
+                      <span className="cx-li-m">{relTime(s.updatedAt)}</span>
+                    </button>
+                  );
+                }) : (
+                  <>
+                    <p className="cx-panel-empty">Your chats will appear here. Try a sample case:</p>
+                    {EXAMPLES.slice(0, 3).map((ex) => {
+                      const m = MODE[ex.mode];
+                      return (
+                        <button key={ex.text} className="cx-li" onClick={() => send(ex.text, ex.mode)}>
+                          <span className="cx-li-ic"><m.icon size={14} /></span>
+                          <span className="cx-li-t"><b>{ex.text}</b><small>{m.label}</small></span>
+                          <ArrowRight size={14} className="cx-li-go" />
+                        </button>
+                      );
+                    })}
+                  </>
+                )}
+              </div>
+            </section>
+            <section className="cx-panel">
+              <header className="cx-panel-h">
+                <b><Folder size={15} /> Projects</b>
+                <button onClick={projects.length ? openProjects : () => setProjectDialog({ name: "", instructions: "" })}>{projects.length ? "All projects" : <><Plus size={13} /> New project</>}</button>
+              </header>
+              <div className="cx-panel-b">
+                {sortedProjects.length ? sortedProjects.slice(0, 3).map((p) => {
+                  const st = projectStats[p.id];
+                  const n = st?.chats ?? 0;
+                  return (
+                    <button key={p.id} className="cx-li" onClick={() => openProject(p.id)}>
+                      <span className="cx-li-ic"><Folder size={14} /></span>
+                      <span className="cx-li-t"><b>{p.name}</b><small>{n} chat{n === 1 ? "" : "s"}{p.instructions.trim() ? " · Custom instructions" : ""}</small></span>
+                      <span className="cx-li-m">{relTime(Math.max(p.updatedAt, st?.last ?? 0))}</span>
+                    </button>
+                  );
+                }) : <p className="cx-panel-empty">Group the chats for a rotation, an exam or a thesis, and give Cadus standing instructions for each.</p>}
+              </div>
+            </section>
+          </div>
+
+          <div className="cx-panel-col">
+            <section className="cx-panel">
+              <header className="cx-panel-h">
+                <b><Zap size={15} /> Today</b>
+                <span className="cx-plan">{isPro ? "Pro" : "Free"}</span>
+              </header>
+              <div className="cx-today">
+                <div>
+                  <div className="cx-meter-top"><span>Questions asked</span><b>{isPro ? `${usage.count} · Unlimited` : `${usage.count} of ${FREE_DAILY}`}</b></div>
+                  {!isPro && <div className="cx-meter"><i style={{ width: `${Math.min(100, (usage.count / FREE_DAILY) * 100)}%` }} /></div>}
+                </div>
+                <div className="cx-stat-row">
+                  <span><ShieldCheck size={15} /> Safety review</span>
+                  {prefs.safetyReview ? <em>On</em> : <button onClick={() => setPrefs({ ...prefs, safetyReview: true })}>Turn on</button>}
+                </div>
+                <div className="cx-stat-row">
+                  <span><Globe size={15} /> Cited sources</span>
+                  {prefs.sources ? <em>On</em> : <button onClick={() => setPrefs({ ...prefs, sources: true })}>Turn on</button>}
+                </div>
+              </div>
+            </section>
+            <section className="cx-panel">
+              <header className="cx-panel-h">
+                <b><Bookmark size={15} /> Saved answers</b>
+                {library.length > 0 && <button onClick={() => setView("library")}>Library</button>}
+              </header>
+              <div className="cx-panel-b">
+                {library.length ? library.slice(0, 3).map((x) => {
+                  const m = MODE[x.mode] ?? MODE.general;
+                  return (
+                    <button key={x.id} className="cx-li" onClick={() => setView("library")}>
+                      <span className="cx-li-ic"><m.icon size={14} /></span>
+                      <span className="cx-li-t"><b>{x.question}</b><small>{m.label}</small></span>
+                      <span className="cx-li-m">{relTime(x.at)}</span>
+                    </button>
+                  );
+                }) : <p className="cx-panel-empty">Tap the bookmark under any answer to keep it here for ward rounds and revision.</p>}
+              </div>
+            </section>
+            <section className="cx-panel">
+              <header className="cx-panel-h">
+                <b><Presentation size={15} /> Lecture decks</b>
+                <button onClick={decks.length ? () => setView("decks") : () => startTool("slides")}>{decks.length ? "All decks" : <><Plus size={13} /> New deck</>}</button>
+              </header>
+              <div className="cx-panel-b">
+                {decks.length ? decks.slice(0, 3).map(({ m }) => {
+                  const d = m.deck!;
+                  return (
+                    <button key={m.id} className="cx-li" onClick={() => setDeck(d)} title={`Present ${d.title}`}>
+                      <span className="cx-li-ic"><Play size={13} /></span>
+                      <span className="cx-li-t"><b>{d.title}</b><small>{d.slides.length} slides{m.review ? " · Fact-checked" : ""}</small></span>
+                      <span className="cx-li-m">{relTime(m.at)}</span>
+                    </button>
+                  );
+                }) : <p className="cx-panel-empty">Ask for a lecture on any topic and Cadus builds a fact-checked teaching deck.</p>}
+              </div>
+            </section>
+          </div>
+        </div>
       </div>
       <p className="cx-home-note">
         <ShieldCheck size={13} /> Clinical decision support. {prefs.safetyReview ? "Every answer is checked by a second AI model, but" : "Cadus can make mistakes, so"} always verify before acting.
@@ -1917,7 +1995,7 @@ export default function CadusAI() {
             aria-label="Cadus home"
           >
             <CadusMark size={28} />
-            <span className="cx-wm">Cadus<small>by Aethex</small></span>
+            <span className="cx-wm">Cadus<small>Clinical AI by Aethex</small></span>
           </button>
           <button className="cx-ib cx-collapse cx-dt" title="Collapse sidebar" onClick={() => setCollapsed(true)} aria-label="Collapse sidebar"><PanelLeftClose size={18} /></button>
           <button className="cx-ib cx-m" onClick={() => setSidebarOpen(false)} aria-label="Close menu"><X size={18} /></button>
@@ -2097,7 +2175,6 @@ export default function CadusAI() {
 
       {/* ============================================== main */}
       <main className="cx-main">
-        {isHome && <div className="cx-home-bg" aria-hidden><i className="o1" /><i className="o2" /></div>}
         <header className={`cx-top ${view !== "chat" || messages.length ? "lined" : ""}`}>
           <button className="cx-ib cx-m" onClick={() => setSidebarOpen(true)} aria-label="Open menu"><Menu size={19} /></button>
           <div className="cx-picker-wrap" data-pop="picker">
