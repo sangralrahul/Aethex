@@ -3,7 +3,7 @@
  * Backend: `groq-ai` on the site's Cloudflare Worker at /api/fn/groq-ai
  * (Claude Haiku 5.5, Groq fallback). See worker/index.ts.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import {
   AlertTriangle, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ArrowUpRight, Bookmark, BookmarkCheck, BookOpen, BookOpenCheck,
   Camera, Check, ChevronDown, ChevronRight, ChevronsUpDown, CircleQuestionMark, ClipboardList, Copy, CornerDownRight,
@@ -144,7 +144,7 @@ interface PaletteItem {
 /* ============================================================ constants */
 
 const MODES: ModeDef[] = [
-  { id: "general", cat: "general", label: "General", short: "General", icon: Sparkles, desc: "Any clinical or academic question", placeholder: "Ask Cadus anything about medicine…", busy: "Thinking it through", example: "Explain the mechanism of SGLT2 inhibitors." },
+  { id: "general", cat: "general", label: "General", short: "General", icon: Sparkles, desc: "Any clinical or academic question", placeholder: "Ask a clinical question or describe a case…", busy: "Thinking it through", example: "Explain the mechanism of SGLT2 inhibitors." },
   { id: "ddx", cat: "clinical", label: "Differential diagnosis", short: "Differentials", icon: Stethoscope, desc: "Ranked differentials, red flags and the next best test", placeholder: "Describe the case: age, sex, symptoms, signs, vitals…", busy: "Ranking differentials", example: "28F, fever, joint pain, malar rash and proteinuria." },
   { id: "drugs", cat: "clinical", label: "Drug interactions", short: "Interactions", icon: Pill, desc: "Severity, mechanism and how to manage each interaction", placeholder: "List the medicines, e.g. warfarin, amiodarone, aspirin", busy: "Checking interactions", example: "Warfarin with clarithromycin and omeprazole." },
   { id: "dosage", cat: "clinical", label: "Dose calculator", short: "Dosing", icon: Syringe, desc: "Weight- and renal-adjusted dosing, shown step by step", placeholder: "Drug, indication, weight, age, eGFR…", busy: "Calculating the dose", example: "Vancomycin for a 70 kg adult with eGFR 40." },
@@ -205,6 +205,7 @@ const STYLES: { id: StyleId; label: string; desc: string; icon: LucideIcon }[] =
 ];
 
 const ACCENTS = [
+  { id: "aethex", name: "Aethex teal", light: "#007A6C", dark: "#2DD4BF" },
   { id: "blue", name: "Hospital blue", light: "#1D4ED8", dark: "#60A5FA" },
   { id: "teal", name: "Clinical teal", light: "#0E8F84", dark: "#2DD4BF" },
   { id: "indigo", name: "Indigo", light: "#4F46E5", dark: "#818CF8" },
@@ -221,7 +222,18 @@ const LIBRARY_KEY = "cadus3.library";
 const PROJECTS_KEY = "cadus3.projects";
 const UI_KEY = "cadus3.ui";
 const FREE_DAILY = 20;
-const DEFAULT_PREFS: Prefs = { theme: "light", accent: "blue", textSize: "m", style: "balanced", language: "English", enterToSend: true, safetyReview: true, sources: false, answerFont: "serif" };
+const DEFAULT_PREFS: Prefs = { theme: "light", accent: "aethex", textSize: "m", style: "balanced", language: "English", enterToSend: true, safetyReview: true, sources: false, answerFont: "serif" };
+/** Bumped when the default look changes, so saved settings move to the new theme and colour once. */
+const PREFS_VERSION = 2;
+
+function loadPrefs(): Prefs {
+  const { v, ...saved } = readJSON<Partial<Prefs> & { v?: number }>(PREFS_KEY, {});
+  if (v !== PREFS_VERSION) {
+    delete saved.theme;
+    delete saved.accent;
+  }
+  return { ...DEFAULT_PREFS, ...saved };
+}
 const PROJECT_IDEAS = ["Cardiology rotation", "NEET-PG revision", "Thesis literature review"];
 const INSTRUCTIONS_MAX = 2000;
 
@@ -536,7 +548,7 @@ export default function CadusAI() {
   const systemDark = useMedia("(prefers-color-scheme: dark)");
   const isDesktop = useMedia("(min-width: 900px)");
 
-  const [prefs, setPrefs] = useState<Prefs>(() => ({ ...DEFAULT_PREFS, ...readJSON<Partial<Prefs>>(PREFS_KEY, {}) }));
+  const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
   const [sessions, setSessions] = useState<Session[]>(() =>
     readJSON<Session[]>(SESSIONS_KEY, []).filter((s) => s && typeof s.id === "string" && Array.isArray(s.messages)),
   );
@@ -604,7 +616,7 @@ export default function CadusAI() {
   const styleDef = STYLES.find((s) => s.id === prefs.style) ?? STYLES[1];
   const firstName = (user?.name || "").trim().split(/\s+/)[0] || "";
   const serif = prefs.answerFont !== "sans";
-  // Newsreader has a smaller x-height than Inter, so serif answers are set a little larger to read the same.
+  // Newsreader has a smaller x-height than the sans, so serif answers are set a little larger to read the same.
   const sansSize = prefs.textSize === "s" ? 14 : prefs.textSize === "l" ? 16.5 : 15.5;
   const fontSize = serif ? (prefs.textSize === "s" ? 15.5 : prefs.textSize === "l" ? 18.5 : 17) : sansSize;
   const isHome = view === "chat" && messages.length === 0;
@@ -657,7 +669,7 @@ export default function CadusAI() {
     };
   }, []);
 
-  useEffect(() => writeJSON(PREFS_KEY, prefs), [prefs]);
+  useEffect(() => writeJSON(PREFS_KEY, { ...prefs, v: PREFS_VERSION }), [prefs]);
   useEffect(() => writeJSON(SESSIONS_KEY, sessions.slice(0, 100)), [sessions]);
   useEffect(() => writeJSON(LIBRARY_KEY, library.slice(0, 300)), [library]);
   useEffect(() => writeJSON(USAGE_KEY, usage), [usage]);
@@ -1324,26 +1336,74 @@ export default function CadusAI() {
     </div>
   );
 
+  const featured: { tone: "navy" | "teal" | "paper"; kicker: string; title: ReactNode; text: string; cta: string; icon: LucideIcon; done?: boolean; go: () => void }[] = [
+    {
+      tone: "navy", kicker: "Lecture decks", title: "Turn any topic into a teaching deck",
+      text: "Eight to ten structured slides, fact-checked before you present.", cta: "Create a deck",
+      icon: Presentation, go: () => startTool("slides"),
+    },
+    {
+      tone: "teal", kicker: "NEET-PG · INI-CET · USMLE", title: <>Practise <span className="nw">high-yield</span> MCQs</>,
+      text: "Clinical vignettes with an explanation for every answer.", cta: "Start practising",
+      icon: GraduationCap, go: () => startTool("mcq"),
+    },
+    {
+      tone: "paper", kicker: "Evidence", title: "Answers that cite their sources",
+      text: "With Sources on, Cadus cites WHO, NICE, ICMR and PubMed.", cta: prefs.sources ? "Sources are on" : "Turn on Sources",
+      icon: Globe, done: prefs.sources, go: () => { setPrefs({ ...prefs, sources: true }); focusComposer(); },
+    },
+  ];
+  /** One-line labels for the home page's quick actions. */
+  const QUICK_LABEL: Partial<Record<ModeId, string>> = { ddx: "Differentials", drugs: "Interactions", labs: "Lab results", slides: "Lecture slides", mcq: "Exam MCQs" };
+
   const renderHome = () => (
     <section className="cx-home">
       <div className="cx-home-in">
-        <div className="cx-hero-mark"><CadusMark size={isDesktop ? 40 : 36} /></div>
-        <h1>{greeting()}{firstName ? `, ${firstName}` : ""}</h1>
-        <p className="cx-sub">How can I help with your patients or studies today?</p>
+        <span className="cx-eyebrow"><i /> Clinical AI · by Aethex</span>
+        <h1>{greeting()}, <em>{firstName || "Doctor"}</em></h1>
+        <p className="cx-sub">
+          Evidence-based answers for clinical practice and exams{prefs.safetyReview ? ", safety-reviewed by a second model." : "."}
+        </p>
         {showHeroComposer && <div className="cx-hero-c">{composer("hero")}</div>}
-        <div className="cx-chips">
+        <div className="cx-cats">
           {QUICK.map((id) => {
             const m = MODE[id];
-            return <button key={id} className="cx-chip" onClick={() => startTool(id)}><m.icon size={15} /> {m.label}</button>;
+            return (
+              <button key={id} className="cx-cat" onClick={() => startTool(id)} title={m.desc}>
+                <span className="cx-cat-ic"><m.icon size={21} strokeWidth={1.6} /></span>
+                <span>{QUICK_LABEL[id] ?? m.short}</span>
+              </button>
+            );
           })}
-          <button className="cx-chip ghost" onClick={() => setView("tools")}><LayoutGrid size={15} /> All tools</button>
+          <button className="cx-cat ghost" onClick={() => setView("tools")} title="Every clinical tool">
+            <span className="cx-cat-ic"><LayoutGrid size={19} strokeWidth={1.6} /></span>
+            <span>All tools</span>
+          </button>
         </div>
       </div>
-      {isDesktop && (
-        <p className="cx-home-note">
-          <ShieldCheck size={13} /> Clinical decision support. {prefs.safetyReview ? "Every answer is checked by a second AI model, but" : "Cadus can make mistakes, so"} always verify before acting.
-        </p>
-      )}
+      <div className="cx-feat">
+        {featured.map((f) => (
+          <button key={f.kicker} className={`cx-fc ${f.tone} ${f.done ? "done" : ""}`} onClick={f.go}>
+            <span className="cx-fc-top">
+              <span className="cx-fc-ic"><f.icon size={17} strokeWidth={1.7} /></span>
+              <span className="cx-fc-k">{f.kicker}</span>
+            </span>
+            <h3>{f.title}</h3>
+            <p>{f.text}</p>
+            <span className="cx-fc-go">{f.done ? <Check size={15} /> : null}{f.cta}{f.done ? null : <ArrowRight size={15} />}</span>
+          </button>
+        ))}
+      </div>
+      <div className="cx-ticker" aria-label="Why Cadus">
+        <span>Safety-reviewed answers</span>
+        <span>Cited sources</span>
+        <span>NEET-PG ready</span>
+        <span>Built-in medical library</span>
+        <span>Chats stay on this device</span>
+      </div>
+      <p className="cx-home-note">
+        <ShieldCheck size={13} /> Clinical decision support. {prefs.safetyReview ? "Every answer is checked by a second AI model, but" : "Cadus can make mistakes, so"} always verify before acting.
+      </p>
     </section>
   );
 
@@ -1856,8 +1916,8 @@ export default function CadusAI() {
             onClick={() => (collapsed && isDesktop ? setCollapsed(false) : newChat())}
             aria-label="Cadus home"
           >
-            <CadusMark size={26} />
-            <span className="cx-wm">Cadus</span>
+            <CadusMark size={28} />
+            <span className="cx-wm">Cadus<small>by Aethex</small></span>
           </button>
           <button className="cx-ib cx-collapse cx-dt" title="Collapse sidebar" onClick={() => setCollapsed(true)} aria-label="Collapse sidebar"><PanelLeftClose size={18} /></button>
           <button className="cx-ib cx-m" onClick={() => setSidebarOpen(false)} aria-label="Close menu"><X size={18} /></button>
@@ -2037,6 +2097,7 @@ export default function CadusAI() {
 
       {/* ============================================== main */}
       <main className="cx-main">
+        {isHome && <div className="cx-home-bg" aria-hidden><i className="o1" /><i className="o2" /></div>}
         <header className={`cx-top ${view !== "chat" || messages.length ? "lined" : ""}`}>
           <button className="cx-ib cx-m" onClick={() => setSidebarOpen(true)} aria-label="Open menu"><Menu size={19} /></button>
           <div className="cx-picker-wrap" data-pop="picker">
@@ -2340,7 +2401,7 @@ export default function CadusAI() {
                       </div>
                     </div>
                     <p className={`cx-font-prev ${serif ? "serif" : ""}`}>
-                      <b>Bottom line:</b> Cadus answers are set in {serif ? "Newsreader, a serif designed for long-form reading on screens" : "Inter, a clean sans-serif designed for interfaces"}, so dense clinical detail stays easy to read.
+                      <b>Bottom line:</b> Cadus answers are set in {serif ? "Newsreader, a serif designed for long-form reading on screens" : "Plus Jakarta Sans, the clean sans-serif used across Aethex"}, so dense clinical detail stays easy to read.
                     </p>
                     <div className="cx-set-row">
                       <div><b>Accent colour</b><small>{accent.name}. Used for highlights, links and focus</small></div>
