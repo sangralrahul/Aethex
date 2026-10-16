@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "wouter";
+import CadusMark from "@/components/cadus/CadusMark";
 import { useSeo } from "@/hooks/use-seo";
 import { motion } from "framer-motion";
 import {
@@ -468,10 +469,7 @@ function AIChatPreview() {
         <div className="px-5 py-3.5 flex items-center justify-between shrink-0"
           style={{ borderBottom: "1px solid rgba(0,0,0,0.07)", background: "#FFFFFF" }}>
           <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-full flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)" }}>
-              <Bot className="w-3.5 h-3.5 text-white" />
-            </div>
+            <CadusMark size={30} />
             <div>
               <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 13, fontWeight: 600, color: "#0A0A0F", lineHeight: 1 }}>Cadus AI</p>
               <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 10, color: "rgba(0,0,0,0.4)", marginTop: 2 }}>● Clinical Mode</p>

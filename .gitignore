@@ -47,3 +47,6 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Cadus medical library build staging
+artifacts/aethex/public/library/*.building/

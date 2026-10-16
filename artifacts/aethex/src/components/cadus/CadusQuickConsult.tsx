@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import { X, Send, BotMessageSquare, Sparkles, Brain } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { isCadusHost } from "@/lib/host";
 
 const STORAGE_KEY = "cadus_quick_chat_v2";
-const HIDDEN_ROUTES = ["/ai-assistant"];
+const HIDDEN_ROUTES = ["/ai-assistant", "/ai-assistant-classic", "/cadus-standalone"];
 
 interface Message {
   role: "user" | "assistant";
@@ -49,9 +51,8 @@ export default function CadusQuickConsult() {
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const apiBase = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-  const isHidden = HIDDEN_ROUTES.some(r => location === r || location.startsWith(r + "/"));
+  const isHidden = isCadusHost() || HIDDEN_ROUTES.some(r => location === r || location.startsWith(r + "/"));
 
   useEffect(() => { saveHistory(messages); }, [messages]);
 
@@ -74,18 +75,11 @@ export default function CadusQuickConsult() {
 
     try {
       const history = updated.slice(-10).map(m => ({ role: m.role, content: m.content }));
-      const resp = await fetch(`${apiBase}/api/ai/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: text,
-          conversationHistory: history.slice(0, -1),
-          agent: "pulse45",
-          mode: "normal",
-        }),
+      const { data, error } = await supabase.functions.invoke("groq-ai", {
+        body: { action: "chat", message: text, history: history.slice(0, -1), style: "concise" },
       });
-      const data = await resp.json();
-      const reply = data.message ?? "Sorry, I couldn't process that. Please try again.";
+      if (error) throw error;
+      const reply = data?.message ?? data?.error ?? "Sorry, I couldn't process that. Please try again.";
       setMessages(prev => [...prev, { role: "assistant", content: reply, ts: Date.now() }]);
     } catch {
       setMessages(prev => [...prev, {
@@ -96,7 +90,7 @@ export default function CadusQuickConsult() {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, messages, apiBase]);
+  }, [input, loading, messages]);
 
   const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }

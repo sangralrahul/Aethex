@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { ShoppingCart, Search, Menu, Sparkles, User, Star, MapPin, ShieldCheck, ChevronDown, Store, BookOpen, Newspaper, Crown, GraduationCap, LogOut, Settings, Package, X, Brain, Stethoscope, FlaskConical, Pill, Activity, Building2, GraduationCap as University, HeartPulse, Microscope, FileText, Syringe, Database, BadgeCheck, Calculator, Briefcase, MessageSquare, Smartphone, Bell, HeadphonesIcon, Megaphone, Download, Gift, ClipboardList, MoreHorizontal, Mic, MicOff, Heart } from "lucide-react";
 import { useWishlist } from "@/hooks/use-wishlist";
+import CadusMark from "@/components/cadus/CadusMark";
 
 function useVoiceSearch(onResult: (text: string) => void) {
   const [listening, setListening] = useState(false);
@@ -458,7 +459,7 @@ export function Navbar() {
                   fontFamily: "'Plus Jakarta Sans', sans-serif",
                   textDecoration: "none",
                 }}>
-                <Sparkles className="w-3.5 h-3.5" />
+                <CadusMark size={17} variant="mono" color="#FFFFFF" />
                 Try Cadus AI
               </a>
 

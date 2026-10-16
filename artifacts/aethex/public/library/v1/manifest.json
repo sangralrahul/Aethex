@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "name": "Cadus Medical Library",
+  "builtAt": "2026-10-16T18:47:11.522Z",
+  "articles": 15515,
+  "sections": 50903,
+  "terms": 71428,
+  "postings": 407915,
+  "termShards": 256,
+  "articleShards": 243,
+  "articlesPerShard": 64,
+  "bytes": 8568331,
+  "sources": {
+    "m": {
+      "name": "NIH health information via MedQuAD (Ben Abacha & Demner-Fushman, BMC Bioinformatics 2019)",
+      "license": "CC BY 4.0",
+      "url": "https://github.com/abachaa/MedQuAD",
+      "note": "Answers from cancer.gov, GARD, Genetics Home Reference, MedlinePlus, NIDDK, NINDS, NIHSeniorHealth, NHLBI and CDC.",
+      "articles": 5451
+    },
+    "d": {
+      "name": "Human Disease Ontology",
+      "license": "CC0 1.0",
+      "url": "https://disease-ontology.org",
+      "articles": 10064
+    }
+  }
+}

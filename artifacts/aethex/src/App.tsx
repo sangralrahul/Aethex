@@ -36,6 +36,7 @@ import Cart from "@/pages/Cart";
 import Wishlist from "@/pages/Wishlist";
 import Flashcards from "@/pages/Flashcards";
 import AiAssistant from "@/pages/AiAssistant";
+import CadusAI from "@/pages/CadusAI";
 import OrderTracking from "@/pages/OrderTracking";
 import Orders from "@/pages/Orders";
 import MyReviews from "@/pages/MyReviews";
@@ -183,10 +184,11 @@ function Router() {
   if (isCadusSubdomain || forcedApp === "cadus") {
     return (
       <Switch>
-        <Route path="/" component={AiAssistant} />
-        <Route path="/ai-assistant" component={AiAssistant} />
-        <Route path="/cadus-standalone" component={AiAssistant} />
-        <Route component={AiAssistant} />
+        <Route path="/" component={CadusAI} />
+        <Route path="/ai-assistant" component={CadusAI} />
+        <Route path="/ai-assistant-classic" component={AiAssistant} />
+        <Route path="/cadus-standalone" component={CadusAI} />
+        <Route component={CadusAI} />
       </Switch>
     );
   }
@@ -194,8 +196,9 @@ function Router() {
   return (
     <Switch>
       {/* Full-screen pages (no Navbar/Footer) */}
-      <Route path="/ai-assistant" component={AiAssistant} />
-      <Route path="/cadus-standalone" component={AiAssistant} />
+      <Route path="/ai-assistant" component={CadusAI} />
+      <Route path="/ai-assistant-classic" component={AiAssistant} />
+      <Route path="/cadus-standalone" component={CadusAI} />
 
       <Route path="/settings" component={SettingsPage} />
       <Route path="/login" component={Login} />

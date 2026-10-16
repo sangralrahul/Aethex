@@ -1,0 +1,70 @@
+name: Build Cadus medical library
+
+# Builds the offline Cadus Medical Library that Cadus answers from when the
+# Anthropic API has no credits: every English Wikipedia article assessed by
+# WikiProject Medicine, Pharmacology, Anatomy and Physiology, NIH health answers
+# (MedQuAD) and the Human Disease Ontology. The result is committed to
+# artifacts/aethex/public/library/v1 and Cloudflare deploys it with the site.
+#
+# Run it from GitHub: Actions > Build Cadus medical library > Run workflow.
+# It takes about one to two hours. Pull before your next push (git pull).
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_articles:
+        description: "Maximum Wikipedia articles, most important first (0 = all medical articles)"
+        required: false
+        default: "0"
+      projects:
+        description: "WikiProjects to include"
+        required: false
+        default: "Medicine,Pharmacology,Anatomy,Physiology"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: medical-library
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    env:
+      MAX_ARTICLES: ${{ inputs.max_articles }}
+      PROJECTS: ${{ inputs.projects }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Download NIH answers (MedQuAD)
+        run: git clone --depth 1 https://github.com/abachaa/MedQuAD.git "$RUNNER_TEMP/medquad"
+
+      - name: Install and test the builder
+        working-directory: tools/medical-library
+        run: |
+          npm install --no-audit --no-fund
+          npm test
+
+      - name: Build the library
+        working-directory: tools/medical-library
+        run: node build.mjs --sources=wikipedia,medquad,do --medquad-dir="$RUNNER_TEMP/medquad" --max-articles="$MAX_ARTICLES" --projects="$PROJECTS"
+
+      - name: Commit the library
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add artifacts/aethex/public/library
+          if git diff --cached --quiet; then
+            echo "The library is unchanged."
+            exit 0
+          fi
+          ARTICLES=$(jq -r .articles artifacts/aethex/public/library/v1/manifest.json)
+          git commit -m "Update Cadus medical library (${ARTICLES} articles)"
+          git pull --rebase
+          git push

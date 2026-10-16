@@ -11,7 +11,7 @@ const basePath = process.env.BASE_PATH || "/";
 const buildOutDir = path.resolve(import.meta.dirname, "..", "..", "dist");
 
 function spaRouteFallbacks(): Plugin {
-  const routes = ["login", "signup", "onboarding", "ai-assistant", "cadus-standalone"];
+  const routes = ["login", "signup", "onboarding", "ai-assistant", "ai-assistant-classic", "cadus-standalone"];
 
   return {
     name: "aethex-spa-route-fallbacks",

@@ -1,0 +1,15 @@
+{
+  "name": "cadus-medical-library",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Builds the offline Cadus Medical Library (Wikipedia medicine + NIH MedQuAD + Disease Ontology) used when the AI is unavailable.",
+  "type": "module",
+  "engines": { "node": ">=22.18" },
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node test/run.mjs"
+  },
+  "dependencies": {
+    "wtf_wikipedia": "10.4.2"
+  }
+}
