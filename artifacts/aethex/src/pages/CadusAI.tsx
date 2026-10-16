@@ -6,11 +6,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import {
   AlertTriangle, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ArrowUpRight, Bookmark, BookmarkCheck, BookOpen, BookOpenCheck, Brain, Gauge,
-  Camera, Check, ChevronDown, ChevronRight, ChevronsUpDown, CircleQuestionMark, ClipboardList, Copy, CornerDownRight,
+  Calculator, Camera, Check, ChevronDown, ChevronRight, ChevronsUpDown, CircleQuestionMark, ClipboardCheck, ClipboardList, Copy, CornerDownRight,
+  Flame, Languages, Mail, MessageCircleQuestion, Target, UserCog, UserRound,
   Database, Download, ExternalLink, FileText, FlaskConical, Folder, FolderInput, FolderMinus, FolderPlus, Globe,
   GraduationCap, Grip, History, House, ImagePlus, Info, Keyboard, Laptop, Layers, LayoutGrid, Library, ListFilter, LogIn,
   LogOut, Menu, MessageSquare, Mic, Moon, MoreHorizontal, PanelLeftClose, PanelLeftOpen, Pencil, Pill, Pin, PinOff, Play,
-  Plus, Presentation, RefreshCw, Scale, Search, Settings, ShieldAlert, ShieldCheck, ShoppingBag, SlidersHorizontal,
+  Plus, Presentation, RefreshCw, RotateCcw, Scale, Search, Settings, ShieldAlert, ShieldCheck, ShoppingBag, SlidersHorizontal,
   Sparkles, Square, SquarePen, Stethoscope, Sun, Syringe, Telescope, Trash2, Users, Volume2, VolumeX, X, Zap, Palette,
   type LucideIcon,
 } from "lucide-react";
@@ -27,14 +28,27 @@ import {
 } from "@/lib/medlib/library";
 import { queryTerms } from "@/lib/medlib/text";
 import { isCadusHost, loginUrl, mainUrl } from "@/lib/host";
+import ClinicalCalculators, { InteractionNotice, type ToolsTab } from "@/components/cadus/ClinicalCalculators";
+import PracticeView from "@/components/cadus/PracticeView";
+import ProfileDialog from "@/components/cadus/ProfileDialog";
+import { CADUS_TOOLS_CSS } from "@/components/cadus/cadus-tools-styles";
+import { CALC_BY_ID, CALCULATORS, suggestCalculators } from "@/lib/cadus/calculators";
+import { checkText, type IxMatch } from "@/lib/cadus/interactions";
+import { deidentify, describeHits, KIND_LABEL, stripPlaceholders, type Deidentified, type IdentifierKind } from "@/lib/cadus/deidentify";
+import { accuracy, readPractice, savePractice, streak, totals, type PracticeState } from "@/lib/cadus/practice";
+import {
+  daysToExam, practiceExam, profilePayload, profileSummary, readProfile, saveProfile,
+  type MedicalProfile, type ProfileRole,
+} from "@/lib/cadus/profile";
+import { CASE_MODES, looksLikeCase, WARD_ACTIONS } from "@/lib/cadus/ward";
 
 /* ================================================================ types */
 
 type ModeId =
   | "general" | "ddx" | "drugs" | "dosage" | "labs" | "image" | "procedure"
-  | "soap" | "discharge" | "patient" | "research" | "mcq" | "slides";
+  | "soap" | "discharge" | "referral" | "handover" | "patient" | "research" | "mcq" | "slides" | "viva" | "osce";
 type Provider = "claude" | "groq" | "library";
-type View = "chat" | "tools" | "library" | "projects" | "project" | "decks";
+type View = "chat" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice";
 type ToolTab = "all" | "clinical" | "documentation" | "learning";
 type SettingsTab = "general" | "personal" | "data" | "shortcuts" | "about";
 type StyleId = "concise" | "balanced" | "detailed";
@@ -74,6 +88,10 @@ interface Msg {
   reviewNote?: string;
   /** Answered in Library mode (no AI credits): written by the backup model from library passages, or quoted. */
   library?: { mode: "llm" | "extract"; reason: string; articles: number };
+  /** user message: identifiers the privacy guard hid before sending */
+  privacy?: { total: number; hits: Partial<Record<IdentifierKind, number>> };
+  /** user message: reply language for this message only (e.g. a patient explanation in Hindi) */
+  lang?: string;
 }
 
 interface Session {
@@ -121,6 +139,8 @@ interface Prefs {
   answerFont: "serif" | "sans";
   /** Which Cadus model writes the answers. */
   model: ModelId;
+  /** Hide patient identifiers (names, phone numbers, Aadhaar, UHID...) before a message is sent. */
+  privacyGuard: boolean;
 }
 
 interface ModeDef {
@@ -154,9 +174,13 @@ const MODES: ModeDef[] = [
   { id: "image", cat: "clinical", label: "Image analysis", short: "Imaging", icon: ImagePlus, desc: "Systematic reads of X-rays, ECGs, skin and reports", placeholder: "Attach an image and say what you need…", busy: "Reviewing the image", example: "Upload a chest X-ray and ask for a systematic read." },
   { id: "procedure", cat: "clinical", label: "Procedure guide", short: "Procedures", icon: BookOpenCheck, desc: "Indications, kit, technique and complications", placeholder: "Procedure, e.g. lumbar puncture", busy: "Preparing the guide", example: "Ultrasound-guided central line insertion." },
   { id: "soap", cat: "documentation", label: "SOAP note", short: "SOAP note", icon: ClipboardList, desc: "Turn rough case notes into a clean SOAP note", placeholder: "Paste your case notes…", busy: "Drafting the note", example: "Paste ward-round notes to structure them." },
+  { id: "handover", cat: "documentation", label: "Rounds presentation", short: "Rounds (SBAR)", icon: ClipboardCheck, desc: "SBAR handover with a 60-second spoken version", placeholder: "Paste the case or your notes for the ward round…", busy: "Preparing the presentation", example: "Turn my admission notes into an SBAR for the morning round." },
+  { id: "referral", cat: "documentation", label: "Referral letter", short: "Referral", icon: Mail, desc: "A specialist referral letter from the case", placeholder: "Describe the patient, who you're referring to and why…", busy: "Writing the letter", example: "Refer a 60M with new AF and a CHA₂DS₂-VASc of 3 to cardiology." },
   { id: "discharge", cat: "documentation", label: "Discharge summary", short: "Discharge", icon: FileText, desc: "A structured discharge summary from your notes", placeholder: "Paste admission details, hospital course, procedures and medicines…", busy: "Drafting the summary", example: "Paste the admission and course to draft one." },
   { id: "patient", cat: "documentation", label: "Patient education", short: "Patient info", icon: Users, desc: "Plain-language explainers patients understand", placeholder: "Topic to explain, e.g. starting insulin", busy: "Writing the explainer", example: "Explain starting insulin to a newly diagnosed patient." },
   { id: "research", cat: "learning", label: "Deep research", short: "Research", icon: Telescope, desc: "A structured, guideline-aware evidence review", placeholder: "Research question, e.g. SGLT2 inhibitors in HFpEF", busy: "Reviewing the evidence", example: "Current evidence for SGLT2 inhibitors in HFpEF." },
+  { id: "viva", cat: "learning", label: "Viva practice", short: "Viva", icon: MessageCircleQuestion, desc: "An examiner asks one question at a time, then scores you", placeholder: "Topic for your viva, e.g. heart failure", busy: "The examiner is thinking", example: "Viva on diabetic ketoacidosis." },
+  { id: "osce", cat: "learning", label: "OSCE history station", short: "OSCE", icon: UserRound, desc: "Take a history from a simulated patient, then get scored", placeholder: "Station, e.g. chest pain, or leave it to Cadus", busy: "The patient is answering", example: "Chest pain history station." },
   { id: "mcq", cat: "learning", label: "Exam MCQs", short: "MCQs", icon: GraduationCap, desc: "NEET-PG and USMLE-style practice questions", placeholder: "Topic for 5 practice questions, e.g. nephrotic syndrome", busy: "Writing questions", example: "Five NEET-PG questions on nephrotic syndrome." },
   { id: "slides", cat: "learning", label: "Lecture slides", short: "Slides", icon: Presentation, desc: "A complete teaching deck, ready to present", placeholder: "Deck topic, e.g. acute coronary syndrome for MBBS", busy: "Designing your deck", example: "Acute coronary syndrome for final-year MBBS." },
 ];
@@ -165,8 +189,8 @@ const TOOL_MODES = MODES.filter((m) => m.id !== "general");
 
 const GROUPS: { label: string; ids: ModeId[] }[] = [
   { label: "Clinical", ids: ["ddx", "drugs", "dosage", "labs", "image", "procedure"] },
-  { label: "Documentation", ids: ["soap", "discharge", "patient"] },
-  { label: "Learning and research", ids: ["research", "mcq", "slides"] },
+  { label: "Documentation", ids: ["soap", "handover", "referral", "discharge", "patient"] },
+  { label: "Learning and research", ids: ["viva", "osce", "mcq", "research", "slides"] },
 ];
 
 const TOOL_TABS: { id: ToolTab; label: string }[] = [
@@ -177,6 +201,18 @@ const TOOL_TABS: { id: ToolTab; label: string }[] = [
 ];
 
 const QUICK: ModeId[] = ["ddx", "drugs", "labs", "slides", "mcq"];
+/** Home page quick actions for each kind of user. */
+const QUICK_BY_ROLE: Record<ProfileRole, ModeId[]> = {
+  student: ["viva", "mcq", "slides", "ddx", "labs"],
+  aspirant: ["mcq", "viva", "ddx", "labs", "research"],
+  intern: ["ddx", "drugs", "dosage", "handover", "discharge"],
+  resident: ["ddx", "handover", "referral", "drugs", "research"],
+  doctor: ["ddx", "drugs", "dosage", "labs", "referral"],
+  nurse: ["drugs", "dosage", "patient", "labs", "procedure"],
+  pharmacist: ["drugs", "dosage", "patient", "labs", "research"],
+};
+/** Role-play tools: no safety review, no source search, no profile tailoring and no privacy masking. */
+const ROLEPLAY = new Set<ModeId>(["viva", "osce"]);
 
 const EXAMPLES: { mode: ModeId; text: string }[] = [
   { mode: "ddx", text: "45-year-old man, crushing chest pain for 2 hours, diaphoretic, BP 90/60. Differentials and next step?" },
@@ -193,6 +229,10 @@ const FOLLOW: Record<ModeId, { text: string; mode?: ModeId }[]> = {
   image: [{ text: "What are the main differentials?" }, { text: "Which view or test would help next?" }, { text: "Summarise the key findings" }],
   procedure: [{ text: "List the common complications and how to manage them" }, { text: "What should I cover when taking consent?" }, { text: "Turn this into a checklist" }],
   soap: [{ text: "Shorten this into a handover note" }, { text: "Suggest an assessment and plan" }, { text: "Convert it into a referral letter" }],
+  handover: [{ text: "Shorten it to a 30-second version" }, { text: "Write the referral letter for this case", mode: "referral" }, { text: "List today's jobs for this patient as a checklist" }],
+  referral: [{ text: "Make it more concise" }, { text: "Add the key investigations as a table" }, { text: "Explain the plan to the patient", mode: "patient" }],
+  viva: [],
+  osce: [],
   discharge: [{ text: "Rewrite it in patient-friendly language", mode: "patient" }, { text: "List the follow-up appointments needed" }, { text: "Shorten it for the GP letter" }],
   patient: [{ text: "Translate this into Hindi" }, { text: "Make it even simpler" }, { text: "Add a short FAQ section" }],
   research: [{ text: "Summarise this in five key points" }, { text: "What changed in the latest guidelines?" }, { text: "Turn this into practice questions", mode: "mcq" }],
@@ -232,7 +272,7 @@ const LIBRARY_KEY = "cadus3.library";
 const PROJECTS_KEY = "cadus3.projects";
 const UI_KEY = "cadus3.ui";
 const FREE_DAILY = 20;
-const DEFAULT_PREFS: Prefs = { theme: "light", accent: "aethex", textSize: "m", style: "balanced", language: "English", enterToSend: true, safetyReview: true, sources: false, answerFont: "sans", model: "medius" };
+const DEFAULT_PREFS: Prefs = { theme: "light", accent: "aethex", textSize: "m", style: "balanced", language: "English", enterToSend: true, safetyReview: true, sources: false, answerFont: "sans", model: "medius", privacyGuard: true };
 /** Bumped when the default look changes, so saved settings move to the new theme, colour and answer font once. */
 const PREFS_VERSION = 3;
 
@@ -611,6 +651,12 @@ export default function CadusAI() {
     const u = readJSON(USAGE_KEY, { date: today(), count: 0 });
     return u.date === today() ? u : { date: today(), count: 0 };
   });
+  const [profile, setProfile] = useState<MedicalProfile | null>(readProfile);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [practice, setPracticeState] = useState<PracticeState>(readPractice);
+  const [toolsInit, setToolsInit] = useState<{ calc?: string; tab?: ToolsTab; drugs?: string[]; key: number }>({ key: 0 });
+  const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
+  const [wardLang, setWardLang] = useState("");
 
   const fileRef = useRef<HTMLInputElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
@@ -626,6 +672,12 @@ export default function CadusAI() {
   const active = sessions.find((s) => s.id === activeId);
   const messages = view === "chat" ? active?.messages ?? [] : [];
   const modeDef = MODE[mode];
+  const examDays = daysToExam(profile);
+  const ptot = totals(practice);
+  const liveGuard = useMemo(
+    () => (prefs.privacyGuard && !ROLEPLAY.has(mode) && input.trim().length > 3 ? deidentify(input) : null),
+    [input, prefs.privacyGuard, mode],
+  );
   const styleDef = STYLES.find((s) => s.id === prefs.style) ?? STYLES[1];
   const modelDef = MODEL_DEF[prefs.model] ?? MODEL_DEF.medius;
   const firstName = (user?.name || "").trim().split(/\s+/)[0] || "";
@@ -689,6 +741,7 @@ export default function CadusAI() {
   useEffect(() => writeJSON(USAGE_KEY, usage), [usage]);
   useEffect(() => writeJSON(PROJECTS_KEY, projects), [projects]);
   useEffect(() => writeJSON(UI_KEY, { collapsed, moreOpen }), [collapsed, moreOpen]);
+  useEffect(() => savePractice(practice), [practice]);
   useEffect(() => {
     if (view === "project" && !project) setView("projects");
   }, [view, project]);
@@ -739,6 +792,8 @@ export default function CadusAI() {
       }
       if (e.key === "Escape") {
         if (paletteOpen) setPaletteOpen(false);
+        else if (profileOpen) setProfileOpen(false);
+        else if (editing) setEditing(null);
         else if (projectDialog) setProjectDialog(null);
         else if (settingsOpen) setSettingsOpen(false);
         else if (pop) { setPop(null); setConfirmDelete(""); setMoveFor(""); setConfirmProjectDelete(false); }
@@ -878,6 +933,11 @@ export default function CadusAI() {
     setActiveId(id);
     setSidebarOpen(false);
     setPop(null);
+    setEditing(null);
+    // A viva or OSCE chat carries on in its role-play mode; any other chat leaves it.
+    const lastU = [...(sessions.find((x) => x.id === id)?.messages ?? [])].reverse().find((x) => x.role === "user");
+    if (lastU && ROLEPLAY.has(lastU.mode)) setMode(lastU.mode);
+    else setMode((cur) => (ROLEPLAY.has(cur) ? "general" : cur));
   };
 
   const deleteSession = (id: string) => {
@@ -916,9 +976,14 @@ export default function CadusAI() {
   const runRequest = useCallback(
     async (sid: string, history: Msg[], userMsg: Msg, instructions = "") => {
       const reqId = uid();
-      const search = userMsg.mode === "research" || !!userMsg.search;
-      const doReview = prefs.safetyReview;
+      const roleplay = ROLEPLAY.has(userMsg.mode);
+      const search = !roleplay && (userMsg.mode === "research" || !!userMsg.search);
+      const doReview = prefs.safetyReview && !roleplay;
       const project = instructions.trim() ? { instructions: instructions.trim() } : {};
+      // A message can ask for its own reply language (a patient explanation in Hindi, say).
+      const language = userMsg.lang || prefs.language;
+      const who = profilePayload(profile);
+      const tailored = who ? { profile: who } : {};
       setPending({ id: reqId, sid, mode: userMsg.mode, image: !!userMsg.image, stage: "draft", search, review: doReview });
       setUsage((u) => (u.date === today() ? { ...u, count: u.count + 1 } : { date: today(), count: 1 }));
       const hist = history.filter((m) => !m.error && !m.stopped).slice(-16).map((m) => ({ role: m.role, content: m.content }));
@@ -942,13 +1007,14 @@ export default function CadusAI() {
             image: userMsg.image,
             mode: userMsg.mode,
             style: prefs.style,
-            language: prefs.language,
+            language,
             history: hist,
             search,
             // Cadus can answer from the offline medical library when the AI has no credits.
             library: true,
             model: prefs.model,
             ...project,
+            ...tailored,
           };
           const draft = await invokeCadus(draftBody);
           if (cancelled.current.has(reqId)) return;
@@ -957,7 +1023,7 @@ export default function CadusAI() {
             setPending((p) => (p?.id === reqId ? { ...p, stage: "library", review: false } : p));
             reply = await answerFromLibrary({
               userMsg, hist, reason: String(draft.reason || "credits"), draftBody,
-              style: prefs.style, language: prefs.language, instructions: instructions.trim(),
+              style: prefs.style, language, instructions: instructions.trim(),
             });
           } else {
             if (!draft?.message) throw new Error("Cadus returned an empty answer. Please try again.");
@@ -977,8 +1043,9 @@ export default function CadusAI() {
                   history: hist.slice(-6),
                   sources,
                   image: userMsg.image,
-                  language: prefs.language,
+                  language,
                   ...project,
+                  ...tailored,
                 });
                 if (rv?.message) {
                   content = String(rv.message);
@@ -1007,20 +1074,31 @@ export default function CadusAI() {
       upsert(sid, (m) => [...m, reply]);
       setPending((p) => (p?.id === reqId ? null : p));
     },
-    [prefs.style, prefs.language, prefs.safetyReview, prefs.model, upsert],
+    [prefs.style, prefs.language, prefs.safetyReview, prefs.model, profile, upsert],
   );
 
-  const send = (textOverride?: string, modeOverride?: ModeId) => {
-    const text = (textOverride ?? input).trim();
+  /** The privacy guard: hide patient identifiers before a message is stored or sent. */
+  const guardText = (text: string, m: ModeId): Deidentified =>
+    prefs.privacyGuard && !ROLEPLAY.has(m) ? deidentify(text) : { text, hits: {}, total: 0 };
+
+  const send = (textOverride?: string, modeOverride?: ModeId, extra?: { lang?: string; title?: string }) => {
+    const raw = (textOverride ?? input).trim();
     const m = modeOverride ?? mode;
-    if ((!text && !image) || pending) return;
+    if ((!raw && !image) || pending) return;
+    const guard = guardText(raw, m);
+    const text = guard.text;
     const isNew = !(view === "chat" && activeId);
     const sid = isNew ? uid() : activeId;
     // A chat started from a project page belongs to that project.
     const inProject = isNew && view === "project" && project ? project.id : undefined;
-    const userMsg: Msg = { id: uid(), role: "user", content: text || "Please analyse this image.", mode: m, image: image || undefined, at: Date.now(), search: prefs.sources || m === "research" };
+    const userMsg: Msg = {
+      id: uid(), role: "user", content: text || "Please analyse this image.", mode: m, image: image || undefined, at: Date.now(),
+      search: !ROLEPLAY.has(m) && (prefs.sources || m === "research"),
+      ...(guard.total ? { privacy: { total: guard.total, hits: guard.hits } } : {}),
+      ...(extra?.lang ? { lang: extra.lang } : {}),
+    };
     const history = sessions.find((s) => s.id === sid)?.messages ?? [];
-    upsert(sid, (msgs) => [...msgs, userMsg], clip(text || "Image analysis", 64), inProject);
+    upsert(sid, (msgs) => [...msgs, userMsg], clip(extra?.title || stripPlaceholders(text) || text || "Image analysis", 64), inProject);
     setView("chat");
     setActiveId(sid);
     setMode(m);
@@ -1056,6 +1134,53 @@ export default function CadusAI() {
     cancelled.current.add(pending.id);
     upsert(pending.sid, (m) => [...m, { id: uid(), role: "assistant", mode: pending.mode, at: Date.now(), content: "Response stopped.", stopped: true }]);
     setPending(null);
+  };
+
+  /** Edit a question and ask it again: later messages are replaced, like regenerating. */
+  const resend = (msgId: string, newText: string) => {
+    if (!active || pending) return;
+    const idx = active.messages.findIndex((x) => x.id === msgId);
+    const orig = idx >= 0 ? active.messages[idx] : undefined;
+    if (!orig || orig.role !== "user") return;
+    const guard = guardText(newText.trim(), orig.mode);
+    if (!guard.text) return;
+    const userMsg: Msg = { ...orig, id: uid(), content: guard.text, at: Date.now(), privacy: guard.total ? { total: guard.total, hits: guard.hits } : undefined };
+    setEditing(null);
+    upsert(active.id, (msgs) => [...msgs.slice(0, idx), userMsg]);
+    void runRequest(active.id, active.messages.slice(0, idx), userMsg, instructionsFor(active.id));
+  };
+
+  const copyText = async (id: string, text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(id);
+      window.setTimeout(() => setCopied(""), 1600);
+      toast("Copied to clipboard");
+    } catch {
+      toast("Couldn't copy to the clipboard");
+    }
+  };
+
+  const updateProfile = (p: MedicalProfile | null) => {
+    setProfile(p);
+    saveProfile(p);
+    setProfileOpen(false);
+    toast(p ? "Profile saved. Answers are now tailored to you." : "Profile cleared");
+  };
+
+  const setPractice = useCallback((fn: (s: PracticeState) => PracticeState) => setPracticeState(fn), []);
+
+  const openCalculators = (opts: { calc?: string; tab?: ToolsTab; drugs?: string[] } = {}) => {
+    setToolsInit({ ...opts, key: Date.now() });
+    setView("calculators");
+    setSidebarOpen(false);
+    setPop(null);
+  };
+
+  const openPractice = () => {
+    setView("practice");
+    setSidebarOpen(false);
+    setPop(null);
   };
 
   const regenerate = (assistantId: string) => {
@@ -1196,6 +1321,10 @@ export default function CadusAI() {
       { key: "a:lib", label: "Open Library", icon: Library, run: () => setView("library") },
       { key: "a:decks", label: "Open decks", icon: Presentation, run: () => setView("decks") },
       { key: "a:tools", label: "Browse clinical tools", icon: LayoutGrid, run: () => setView("tools") },
+      { key: "a:calc", label: "Open calculators", icon: Calculator, run: () => openCalculators() },
+      { key: "a:ix", label: "Open the interaction checker", icon: Pill, run: () => openCalculators({ tab: "ix" }) },
+      { key: "a:practice", label: "Open practice", icon: Target, run: () => openPractice() },
+      { key: "a:profile", label: profile ? "Edit your profile" : "Personalise Cadus", icon: UserCog, run: () => setProfileOpen(true) },
       { key: "a:theme", label: dark ? "Switch to light theme" : "Switch to dark theme", icon: dark ? Sun : Moon, run: () => setPrefs((p) => ({ ...p, theme: dark ? "light" : "dark" })) },
       { key: "a:font", label: serif ? "Use sans-serif answers" : "Use serif answers", icon: Palette, run: () => setPrefs((p) => ({ ...p, answerFont: serif ? "sans" : "serif" })) },
       { key: "a:settings", label: "Open settings", icon: Settings, run: () => openSettings() },
@@ -1207,6 +1336,11 @@ export default function CadusAI() {
     const tools: PaletteItem[] = TOOL_MODES.filter((m) => match(m.label) || match(m.desc)).map((m) => ({
       key: `t:${m.id}`, label: m.label, hint: m.desc, icon: m.icon, run: () => startTool(m.id),
     }));
+    const calcItems: PaletteItem[] = q
+      ? CALCULATORS.filter((c) => match(c.name) || match(c.desc)).slice(0, 6).map((c) => ({
+        key: `k:${c.id}`, label: c.name, hint: c.desc, icon: Calculator, run: () => openCalculators({ calc: c.id }),
+      }))
+      : [];
     const chats: PaletteItem[] = sessions
       .filter((s) => match(s.title) || (q.length > 2 && s.messages.some((m) => m.content.toLowerCase().includes(q))))
       .slice(0, 8)
@@ -1215,6 +1349,7 @@ export default function CadusAI() {
       { label: "Chats", items: chats },
       { label: "Projects", items: projectItems },
       { label: "Actions", items: actions },
+      { label: "Calculators", items: calcItems },
       { label: "Clinical tools", items: tools },
     ].filter((s) => s.items.length > 0);
   })();
@@ -1266,11 +1401,25 @@ export default function CadusAI() {
           </div>
         </div>
       )}
+      {liveGuard && liveGuard.total > 0 && (
+        <div className="cx-guard" role="status">
+          <ShieldCheck size={14} />
+          <span>
+            Privacy guard will hide {liveGuard.total === 1 ? "1 identifier" : `${liveGuard.total} identifiers`} before sending:{" "}
+            {(Object.keys(liveGuard.hits) as IdentifierKind[]).map((k) => KIND_LABEL[k]).join(", ")}
+          </span>
+        </div>
+      )}
       <textarea
         ref={taRef}
         value={input}
         rows={1}
-        placeholder={view === "project" && project && mode === "general" ? `Start a new chat in ${project.name}…` : modeDef.placeholder}
+        placeholder={
+          sim === "viva" ? "Type your answer…"
+          : sim === "osce" ? "Ask the patient a question…"
+          : view === "project" && project && mode === "general" ? `Start a new chat in ${project.name}…`
+          : modeDef.placeholder
+        }
         aria-label="Message Cadus"
         onChange={(e) => setInput(e.target.value)}
         onPaste={(e) => {
@@ -1352,7 +1501,16 @@ export default function CadusAI() {
   );
 
   /** One-line labels for the home page's quick actions. */
-  const QUICK_LABEL: Partial<Record<ModeId, string>> = { ddx: "Differentials", drugs: "Interactions", labs: "Lab results", slides: "Lecture slides", mcq: "Exam MCQs" };
+  const QUICK_LABEL: Partial<Record<ModeId, string>> = {
+    ddx: "Differentials", drugs: "Interactions", labs: "Lab results", slides: "Lecture slides", mcq: "Exam MCQs", viva: "Viva practice",
+    osce: "OSCE station", handover: "Rounds (SBAR)", referral: "Referral letter", dosage: "Dosing", patient: "Patient info",
+    research: "Research", discharge: "Discharge", procedure: "Procedures",
+  };
+  const quick = profile ? QUICK_BY_ROLE[profile.role] : QUICK;
+  /** Calculators on the home page, with short labels. */
+  const HOME_CALCS: [string, string][] = [
+    ["crcl", "CrCl"], ["egfr", "eGFR"], ["gcs", "GCS"], ["curb65", "CURB-65"], ["chads", "CHA₂DS₂-VASc"], ["qtc", "QTc"], ["edd", "Due date"], ["pedsdose", "Paediatric dose"],
+  ];
   const recentChats = [...sessions].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 7);
   const projectName = (id?: string) => (id ? projects.find((p) => p.id === id)?.name : undefined);
   const todayLabel = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
@@ -1364,16 +1522,28 @@ export default function CadusAI() {
         <header className="cx-dash-h">
           <div>
             <h1>{greeting()}{firstName ? `, ${firstName}` : ""}</h1>
-            <p>Ask a clinical question, or pick up where you left off.</p>
+            {profile ? (
+              <p>
+                {profileSummary(profile)}
+                {examDays !== null && <> · <b>{examDays} {examDays === 1 ? "day" : "days"}</b> to {practiceExam(profile)}</>}
+                <button className="cx-dash-edit" onClick={() => setProfileOpen(true)}>Edit profile</button>
+              </p>
+            ) : (
+              <p>
+                Ask a clinical question, or pick up where you left off.
+                <button className="cx-dash-edit" onClick={() => setProfileOpen(true)}><UserCog size={13} /> Personalise Cadus</button>
+              </p>
+            )}
           </div>
           <span className="cx-dash-date">{todayLabel}</span>
         </header>
         {showHeroComposer && <div className="cx-hero-c">{composer("hero")}</div>}
         <div className="cx-quick">
-          {QUICK.map((id) => {
+          {quick.map((id) => {
             const m = MODE[id];
             return <button key={id} className="cx-q" onClick={() => startTool(id)} title={m.desc}><m.icon size={15} /> {QUICK_LABEL[id] ?? m.short}</button>;
           })}
+          <button className="cx-q" onClick={() => openCalculators()} title="Bedside scores and formulas"><Calculator size={15} /> Calculators</button>
           <button className="cx-q more" onClick={() => setView("tools")}><LayoutGrid size={15} /> All tools</button>
         </div>
 
@@ -1431,6 +1601,24 @@ export default function CadusAI() {
                 }) : <p className="cx-panel-empty">Group the chats for a rotation, an exam or a thesis, and give Cadus standing instructions for each.</p>}
               </div>
             </section>
+            <section className="cx-panel">
+              <header className="cx-panel-h">
+                <b><Bookmark size={15} /> Saved answers</b>
+                {library.length > 0 && <button onClick={() => setView("library")}>Library</button>}
+              </header>
+              <div className="cx-panel-b">
+                {library.length ? library.slice(0, 3).map((x) => {
+                  const m = MODE[x.mode] ?? MODE.general;
+                  return (
+                    <button key={x.id} className="cx-li" onClick={() => setView("library")}>
+                      <span className="cx-li-ic"><m.icon size={14} /></span>
+                      <span className="cx-li-t"><b>{x.question}</b><small>{m.label}</small></span>
+                      <span className="cx-li-m">{relTime(x.at)}</span>
+                    </button>
+                  );
+                }) : <p className="cx-panel-empty">Tap the bookmark under any answer to keep it here for ward rounds and revision.</p>}
+              </div>
+            </section>
           </div>
 
           <div className="cx-panel-col">
@@ -1452,24 +1640,42 @@ export default function CadusAI() {
                   <span><Globe size={15} /> Cited sources</span>
                   {prefs.sources ? <em>On</em> : <button onClick={() => setPrefs({ ...prefs, sources: true })}>Turn on</button>}
                 </div>
+                <div className="cx-stat-row">
+                  <span><ShieldCheck size={15} /> Privacy guard</span>
+                  {prefs.privacyGuard ? <em>On</em> : <button onClick={() => setPrefs({ ...prefs, privacyGuard: true })}>Turn on</button>}
+                </div>
               </div>
             </section>
             <section className="cx-panel">
               <header className="cx-panel-h">
-                <b><Bookmark size={15} /> Saved answers</b>
-                {library.length > 0 && <button onClick={() => setView("library")}>Library</button>}
+                <b><Target size={15} /> Practice</b>
+                <button onClick={openPractice}>{ptot.attempted ? "Open" : <><Plus size={13} /> Start</>}</button>
               </header>
-              <div className="cx-panel-b">
-                {library.length ? library.slice(0, 3).map((x) => {
-                  const m = MODE[x.mode] ?? MODE.general;
-                  return (
-                    <button key={x.id} className="cx-li" onClick={() => setView("library")}>
-                      <span className="cx-li-ic"><m.icon size={14} /></span>
-                      <span className="cx-li-t"><b>{x.question}</b><small>{m.label}</small></span>
-                      <span className="cx-li-m">{relTime(x.at)}</span>
-                    </button>
-                  );
-                }) : <p className="cx-panel-empty">Tap the bookmark under any answer to keep it here for ward rounds and revision.</p>}
+              {ptot.attempted ? (
+                <div className="cx-mini">
+                  <div className="cx-mini-stats">
+                    <div><b>{ptot.attempted}</b><small>Answered</small></div>
+                    <div><b>{accuracy(ptot) ?? 0}%</b><small>Accuracy</small></div>
+                    <div><b><Flame size={14} /> {streak(practice.days)}</b><small>Day streak</small></div>
+                  </div>
+                  {practice.mistakes.length > 0 && (
+                    <button className="cx-mini-rev" onClick={openPractice}><RotateCcw size={13} /> {practice.mistakes.length} question{practice.mistakes.length === 1 ? "" : "s"} to revise</button>
+                  )}
+                </div>
+              ) : (
+                <p className="cx-panel-empty">{practiceExam(profile)}-style questions by subject with explanations, accuracy tracking and revision of your mistakes, plus viva and OSCE practice.</p>
+              )}
+            </section>
+            <section className="cx-panel">
+              <header className="cx-panel-h">
+                <b><Calculator size={15} /> Bedside tools</b>
+                <button onClick={() => openCalculators()}>All calculators</button>
+              </header>
+              <div className="cx-tool-grid">
+                {HOME_CALCS.map(([id, label]) => (
+                  <button key={id} onClick={() => openCalculators({ calc: id })} title={CALC_BY_ID[id]?.name}>{label}</button>
+                ))}
+                <button className="ix" onClick={() => openCalculators({ tab: "ix" })}><Pill size={13} /> Interaction checker</button>
               </div>
             </section>
             <section className="cx-panel">
@@ -1502,7 +1708,7 @@ export default function CadusAI() {
   const renderTools = () => (
     <section className="cx-page">
       <header className="cx-page-h">
-        <div><h1>Clinical tools</h1><p>Twelve specialised modes. Each one changes how Cadus structures its answer, from ranked differentials to ready-to-present lecture decks.</p></div>
+        <div><h1>Clinical tools</h1><p>{TOOL_MODES.length} specialised modes. Each one changes how Cadus structures its answer, from ranked differentials and referral letters to viva practice and ready-to-present lecture decks.</p></div>
         {toolTabs}
       </header>
       <div className="cx-grid">{toolsFiltered.map((m) => toolCard(m, true))}</div>
@@ -1774,6 +1980,20 @@ export default function CadusAI() {
   );
 
   const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+  /** For each answer: the question it answers and any interactions between the drugs it names. */
+  const answerContext = useMemo(() => {
+    const out: Record<string, { q: string; ix: IxMatch[] }> = {};
+    let q = "";
+    for (const m of messages) {
+      if (m.role === "user") { q = m.content; continue; }
+      const checkable = !m.error && !m.stopped && !["mcq", "slides", "research", "viva", "osce", "patient"].includes(m.mode);
+      out[m.id] = { q, ix: checkable ? checkText(q).matches : [] };
+    }
+    return out;
+  }, [messages]);
+  const lastUser = [...messages].reverse().find((m) => m.role === "user");
+  /** A viva or OSCE that hasn't been scored yet. */
+  const sim = lastUser && ROLEPLAY.has(lastUser.mode) && !/##\s*(Scorecard|Examiner feedback)/i.test(lastAssistant?.content ?? "") ? lastUser.mode : null;
 
   const renderThread = () => (
     <div className="cx-thread">
@@ -1782,7 +2002,43 @@ export default function CadusAI() {
           <div key={m.id} className="cx-u">
             {m.mode !== "general" && (() => { const I = MODE[m.mode].icon; return <span className="cx-u-mode"><I size={13} /> {MODE[m.mode].label}</span>; })()}
             {m.image && <img src={m.image} alt="Attached by you" className="cx-u-img" />}
-            <div className="cx-u-b">{m.content}</div>
+            {editing?.id === m.id ? (
+              <div className="cx-u-edit">
+                <textarea
+                  autoFocus
+                  value={editing.text}
+                  onChange={(e) => setEditing({ id: m.id, text: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey && prefs.enterToSend && !e.nativeEvent.isComposing) { e.preventDefault(); resend(m.id, editing.text); }
+                    if (e.key === "Escape") { e.stopPropagation(); setEditing(null); }
+                  }}
+                  aria-label="Edit your message"
+                />
+                <div className="cx-u-edit-f">
+                  <span>Sending replaces the answers after this message.</span>
+                  <button className="cx-btn" onClick={() => setEditing(null)}>Cancel</button>
+                  <button className="cx-btn primary" onClick={() => resend(m.id, editing.text)} disabled={!editing.text.trim() || !!pending}>Send</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="cx-u-b">{m.content}</div>
+                {(m.privacy?.total || (m.lang && m.lang !== "English")) && (
+                  <div className="cx-u-notes">
+                    {m.privacy && m.privacy.total > 0 && (
+                      <span className="cx-u-priv" title="Cadus's privacy guard replaced these details before your message was sent. The originals were not stored.">
+                        <ShieldCheck size={13} /> {describeHits(m.privacy.hits)}
+                      </span>
+                    )}
+                    {m.lang && m.lang !== "English" && <span className="cx-u-priv"><Languages size={13} /> Reply in {m.lang}</span>}
+                  </div>
+                )}
+                <div className="cx-u-acts">
+                  <button className="cx-act cx-tip" data-tip={copied === m.id ? "Copied" : "Copy"} onClick={() => void copyText(m.id, m.content)} aria-label="Copy message">{copied === m.id ? <Check size={15} /> : <Copy size={15} />}</button>
+                  <button className="cx-act cx-tip" data-tip="Edit" onClick={() => setEditing({ id: m.id, text: m.content })} disabled={!!pending} aria-label="Edit message"><Pencil size={15} /></button>
+                </div>
+              </>
+            )}
           </div>
         ) : (
           <div key={m.id} className="cx-a">
@@ -1842,6 +2098,12 @@ export default function CadusAI() {
                   </details>
                 )}
                 {m.reviewNote && <div className="cx-rvwarn"><ShieldAlert size={15} /> {m.reviewNote}</div>}
+                {(answerContext[m.id]?.ix.length ?? 0) > 0 && (
+                  <InteractionNotice
+                    matches={answerContext[m.id].ix}
+                    onOpen={() => openCalculators({ tab: "ix", drugs: checkText(answerContext[m.id].q).drugs.map((d) => d.label) })}
+                  />
+                )}
                 {m.deck && (
                   <div className="cx-deck">
                     <span className="cx-deck-ic"><Presentation size={21} /></span>
@@ -1866,7 +2128,44 @@ export default function CadusAI() {
                     {m.review ? ` · reviewed by ${shortModel(modelLabel(m.review.model, m.review.provider))}` : ""}
                   </span>
                 </div>
-                {m.id === lastAssistant?.id && !pending && (
+                {m.id === lastAssistant?.id && !pending && (() => {
+                  const ctx = answerContext[m.id];
+                  if (!ctx || ROLEPLAY.has(m.mode)) return null;
+                  const calcs = STUDY_MODES.has(m.mode) ? [] : suggestCalculators(ctx.q, m.content);
+                  const ward = CASE_MODES.has(m.mode) || (m.mode === "general" && looksLikeCase(ctx.q));
+                  if (!calcs.length && !ward) return null;
+                  const lang = wardLang || prefs.language;
+                  return (
+                    <div className="cx-next">
+                      {ward && (
+                        <div className="cx-next-row">
+                          <span className="cx-next-l">Next for this patient</span>
+                          {WARD_ACTIONS.filter((w) => w.mode !== m.mode).map((w) => (w.id === "patient" ? (
+                            <span key={w.id} className="cx-ward-lang">
+                              <button className="cx-chip2" onClick={() => send(w.prompt(lang), "patient", { lang })}><Users size={14} /> {w.label}</button>
+                              <select value={lang} onChange={(e) => setWardLang(e.target.value)} aria-label="Language for the patient">
+                                {LANGUAGES.map((l) => <option key={l}>{l}</option>)}
+                              </select>
+                            </span>
+                          ) : (
+                            <button key={w.id} className="cx-chip2" onClick={() => send(w.prompt(prefs.language), w.mode)}>
+                              {w.id === "rounds" ? <ClipboardCheck size={14} /> : w.id === "referral" ? <Mail size={14} /> : <FileText size={14} />} {w.label}
+                            </button>
+                          )))}
+                        </div>
+                      )}
+                      {calcs.length > 0 && (
+                        <div className="cx-next-row">
+                          <span className="cx-next-l">Calculate</span>
+                          {calcs.map((c) => (
+                            <button key={c.id} className="cx-chip2" onClick={() => openCalculators({ calc: c.id })}><Calculator size={14} /> {c.name}</button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+                {m.id === lastAssistant?.id && !pending && FOLLOW[m.mode].length > 0 && (
                   <div className="cx-follow">
                     <p>Suggested follow-ups</p>
                     {FOLLOW[m.mode].map((f) => (
@@ -1996,7 +2295,7 @@ export default function CadusAI() {
       className={`cx ${dark ? "cx-dark" : "cx-light"} ${serif ? "ans-serif" : "ans-sans"} ${collapsed && isDesktop ? "is-collapsed" : ""}`}
       style={{ ["--acc" as string]: dark ? accent.dark : accent.light, ["--fs" as string]: `${fontSize}px`, ["--fs-u" as string]: `${sansSize}px` }}
     >
-      <style>{CADUS_CSS}</style>
+      <style>{CADUS_CSS + CADUS_TOOLS_CSS}</style>
 
       {/* ============================================== sidebar */}
       <div className={`cx-scrim ${sidebarOpen ? "on" : ""}`} onClick={() => setSidebarOpen(false)} />
@@ -2021,6 +2320,8 @@ export default function CadusAI() {
           </button>
           {([
             ["projects", Folder, "Projects", projects.length, openProjects],
+            ["practice", Target, "Practice", 0, openPractice],
+            ["calculators", Calculator, "Calculators", 0, () => openCalculators()],
             ["library", Library, "Library", library.length, () => { setView("library"); setSidebarOpen(false); }],
             ["decks", Presentation, "Decks", decks.length, () => { setView("decks"); setSidebarOpen(false); }],
             ["tools", LayoutGrid, "Clinical tools", 0, () => { setView("tools"); setSidebarOpen(false); }],
@@ -2253,6 +2554,8 @@ export default function CadusAI() {
             {view !== "chat" && (() => {
               const [Icon, label]: [LucideIcon, string] =
                 view === "tools" ? [LayoutGrid, "Clinical tools"]
+                : view === "calculators" ? [Calculator, "Calculators"]
+                : view === "practice" ? [Target, "Practice"]
                 : view === "library" ? [Library, "Library"]
                 : view === "decks" ? [Presentation, "Decks"]
                 : view === "project" && project ? [Folder, project.name]
@@ -2297,7 +2600,27 @@ export default function CadusAI() {
             setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 160);
           }}
         >
-          {view === "tools" ? renderTools()
+          {view === "calculators" ? (
+            <ClinicalCalculators
+              key={toolsInit.key}
+              initialCalc={toolsInit.calc}
+              initialTab={toolsInit.tab}
+              initialDrugs={toolsInit.drugs}
+              onAsk={(t, m) => send(t, m ?? "general")}
+              toast={toast}
+            />
+          ) : view === "practice" ? (
+            <PracticeView
+              profile={profile}
+              practice={practice}
+              setPractice={setPractice}
+              generate={(body) => invokeCadus({ ...body, model: prefs.model })}
+              onChat={(t, m, title) => send(t, m, { title })}
+              onEditProfile={() => setProfileOpen(true)}
+              friendlyError={friendlyError}
+            />
+          )
+            : view === "tools" ? renderTools()
             : view === "library" ? renderLibrary()
             : view === "projects" ? renderProjects()
             : view === "project" ? renderProject()
@@ -2312,11 +2635,22 @@ export default function CadusAI() {
               <button className="cx-scrolldown" onClick={() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" })} aria-label="Scroll to latest"><ArrowDown size={17} /></button>
             )}
             <div className="cx-dock-in">
+              {sim && !pending && (
+                <div className="cx-sim-bar">
+                  <span>
+                    {sim === "viva" ? <MessageCircleQuestion size={15} /> : <UserRound size={15} />}
+                    {sim === "viva" ? "Viva in progress: answer in the box below." : "OSCE station in progress: ask the patient your questions."}
+                  </span>
+                  <button onClick={() => send("Finish and score", sim)}><Target size={14} /> Finish and score</button>
+                </div>
+              )}
               {composer("dock")}
               <p className="cx-fine">
                 {lastAssistant?.library
                   ? "Library mode: AI credits are unavailable, so answers come from the offline medical library without the safety review. Verify clinical decisions."
-                  : prefs.safetyReview
+                  : lastUser && ROLEPLAY.has(lastUser.mode)
+                    ? "Viva and OSCE practice is not safety-reviewed. Check key facts against your textbooks."
+                    : prefs.safetyReview
                     ? "Answers are audited by a second AI model, but Cadus can still make mistakes. Verify clinical decisions."
                     : "Safety review is off. Cadus can make mistakes; verify clinical decisions."}
               </p>
@@ -2494,6 +2828,10 @@ export default function CadusAI() {
                 {settingsTab === "personal" && (
                   <>
                     <div className="cx-set-row">
+                      <div><b>Your profile</b><small>{profile ? `${profileSummary(profile)}. Answers, quick actions and practice questions are tailored to you.` : "Tell Cadus whether you're a student, an exam aspirant, an intern or a doctor, and answers are pitched at your level."}</small></div>
+                      <button className="cx-btn" onClick={() => setProfileOpen(true)}><UserCog size={14} /> {profile ? "Edit" : "Set up"}</button>
+                    </div>
+                    <div className="cx-set-row">
                       <div><b>Answer font</b><small>Serif reads like a well-set textbook and is easier on long answers. Tables and doses always use the sans.</small></div>
                       <div className="cx-seg">
                         <button className={serif ? "on" : ""} onClick={() => setPrefs({ ...prefs, answerFont: "serif" })}><span className="ff serif">Aa</span>Serif</button>
@@ -2532,7 +2870,11 @@ export default function CadusAI() {
                 {settingsTab === "data" && (
                   <>
                     <div className="cx-set-row">
-                      <div><b>Where your data lives</b><small>Chats, projects and Library items are stored only in this browser. Messages and project instructions are sent securely to the AI to generate answers.</small></div>
+                      <div><b>Where your data lives</b><small>Chats, projects, Library items, your profile and practice progress are stored only in this browser. Messages and project instructions are sent securely to the AI to generate answers.</small></div>
+                    </div>
+                    <div className="cx-set-row">
+                      <div><b>Privacy guard</b><small>Before a message is sent, Cadus replaces patient identifiers with placeholders: names, phone numbers, Aadhaar and ABHA numbers, UHID and other record numbers, dates of birth, addresses and email addresses. It is a safety net, so still avoid typing identifiers. Recommended.</small></div>
+                      <button className={`cx-switch ${prefs.privacyGuard ? "on" : ""}`} role="switch" aria-checked={prefs.privacyGuard} aria-label="Privacy guard" onClick={() => setPrefs({ ...prefs, privacyGuard: !prefs.privacyGuard })} />
                     </div>
                     <div className="cx-set-row">
                       <div>
@@ -2610,6 +2952,7 @@ export default function CadusAI() {
                       <div><h4>Cadus 2.0</h4><p>Clinical AI by Aethex</p></div>
                     </div>
                     <div className="cx-set-row"><div><b>How Cadus answers</b><small>1. Cadus Medius 3.1, or Cadus Magnus 3.6 if you pick it, drafts each answer to the Cadus clinical standards: evidence-based, structured, dose-checked and aware of Indian guidance. 2. Cadus Magnus 3.6 audits clinical answers for doses, interactions, red flags and invented facts, and corrects them (Medius 3.1 checks study content). 3. With Sources on, Cadus searches trusted medical sites and cites them. 4. If the AI credits run out, Cadus switches to Library mode: it answers from its offline medical library (Wikipedia, NIH and the Disease Ontology), cites each article and labels the answer. A backup model covers other outages.</small></div></div>
+                    <div className="cx-set-row"><div><b>Built-in tools</b><small>{CALCULATORS.length} clinical calculators and the interaction checker run in your browser from published formulas and a curated drug list, so they are exact and not generated by AI. The practice hub writes exam questions with Cadus and keeps your progress on this device. The privacy guard hides patient identifiers before anything is sent.</small></div></div>
                     <div className="cx-set-row"><div><b>Limitations</b><small>Cadus is decision support for qualified professionals and students. It is not a certified medical device, and the safety review reduces errors without eliminating them. Confirm diagnoses and doses against current guidelines and local protocols.</small></div></div>
                     <div className="cx-set-row">
                       <div><b>Classic Cadus</b><small>The previous version, with its original modes</small></div>
@@ -2623,6 +2966,7 @@ export default function CadusAI() {
         </div>
       )}
 
+      {profileOpen && <ProfileDialog profile={profile} onSave={updateProfile} onClose={() => setProfileOpen(false)} />}
       {toastMsg && <div className="cx-toast" role="status"><Check size={15} /> {toastMsg}</div>}
       {cameraOpen && <CameraModal onClose={() => setCameraOpen(false)} onCapture={(f) => { setCameraOpen(false); void onFile(f); }} />}
       {deck && <PresentationViewer data={deck} onClose={() => setDeck(null)} />}

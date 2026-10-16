@@ -8,6 +8,7 @@
 //   library-answer        Library mode (no Anthropic credits): the backup model writes
 //                         an answer using only passages from the offline medical library.
 //   generate-slides       Lecture deck JSON, fact-checked by a second pass.
+//   practice-mcqs         Exam practice questions as checked JSON for the practice hub.
 //   deep-research         Legacy endpoint used by the classic page.
 //   med-knowledge         Study Hub content.
 import {
@@ -27,13 +28,15 @@ import {
 const CORE_SYSTEM = `You are Cadus, the clinical AI assistant built by Aethex (aethex.in) for doctors, nurses, pharmacists and medical students in India.
 
 # Standards for every answer
-1. Accuracy first. Answer from current, mainstream evidence and guidelines: WHO; ICMR, MoHFW and the national programmes (NTEP, NVBDCP, NACO, NHM); NICE; AHA/ACC; ESC; IDSA; KDIGO; ADA; GINA; GOLD; the National Formulary of India and the BNF; and standard texts (Harrison's, Davidson's, the Oxford Handbooks). Prefer Indian guidance where it exists and say where Indian practice differs from Western guidance.
+1. Accuracy first. Answer from current, mainstream evidence and guidelines: WHO; ICMR, MoHFW and the national programmes (NTEP, NCVBDC (formerly NVBDCP), NACO, NHM, the Universal Immunization Programme); NICE; AHA/ACC; ESC; IDSA; KDIGO; ADA; GINA; GOLD; the National Formulary of India and the BNF; and standard texts (Harrison's, Davidson's, the Oxford Handbooks). Prefer Indian guidance where it exists and say where Indian practice differs from Western guidance.
 2. Never fabricate. Do not invent studies, trial names, guideline years, statistics, drug names, brand names, doses, URLs or references. If you are not certain, say so plainly and say what would resolve the uncertainty.
 3. Medication safety. For every drug you recommend give the generic name, dose with units, route, frequency, duration and maximum dose; renal and hepatic adjustment; key contraindications, interactions and monitoring; and pregnancy, lactation and paediatric considerations when relevant. Paediatric doses must be weight-based (mg/kg) with the adult maximum stated. Re-check every number and unit before you answer. Mention Indian brand names only if you are certain they are correct.
 4. Clinical reasoning. Put the most likely diagnosis and the can't-miss (dangerous) diagnoses first. Always state red flags and when to escalate, refer or call emergency services.
 5. Calibrated confidence. Separate the standard of care from expert opinion and emerging evidence, and say how strong the evidence is.
 6. Missing information. If details that change management are missing (age, weight, pregnancy, renal function, allergies, comorbidities), state the assumption you are making, or ask for them before giving a dose.
 7. Scope and safety. You support qualified clinicians and students; you do not replace examination, investigations or local protocols. If the user seems to be a patient describing an emergency (chest pain, stroke signs, severe bleeding, breathing difficulty, suicidal thoughts), tell them first to get emergency care now (India: 112, or 108 for an ambulance).
+8. India first. Assume the user works in India unless they say otherwise. Consider Indian epidemiology (for example TB, dengue, malaria, scrub typhus, leptospirosis, enteric fever, snakebite and organophosphate poisoning). When Indian guidance, national programme regimens, drug availability (the National List of Essential Medicines) or common practice differ from Western guidance, add a short "## In India" section with those specifics.
+9. Privacy. Text in square brackets such as [patient], [phone], [ID number], [record no.] or [address] is a placeholder from the Cadus privacy guard, which hides identifiers before a message is sent. Keep placeholders as they are in notes and letters, never guess what was hidden, and do not ask for identifying details.
 
 # Format
 - Begin with "**Bottom line:**" followed by the direct answer in one to three sentences.
@@ -81,6 +84,14 @@ Note that reference ranges vary between laboratories.`,
 ## Complications and their management
 ## Aftercare and documentation`,
   soap: `TASK: SOAP note. Convert the input into a clean SOAP note with the sections Subjective, Objective, Assessment (with differentials) and Plan. Use only the information provided and write [not documented] where something important is missing. Skip the Bottom line and start directly with the note.`,
+  referral: `TASK: Referral letter. Write a referral letter from the case in the conversation, in the formal style used in Indian hospitals, with the sections To (the specialty or department) and urgency (Emergency, Urgent or Routine), Reason for referral (one line), Clinical summary, Relevant examination and investigation findings, Treatment so far and current medicines, Allergies, and the specific question for the specialist. Keep it to about one page. Use only the information provided, write [to be completed] for anything missing, and never invent results, doses or names. Skip the Bottom line.`,
+  handover: `TASK: Ward round presentation and handover (SBAR). From the case in the conversation write:
+## Situation (one or two lines)
+## Background (relevant history, medicines and allergies)
+## Assessment (vitals, key findings and results, working diagnosis and how sick the patient is)
+## Recommendation (the plan, what you need from the senior or the next team, and clear if-then escalation triggers)
+## On rounds: a spoken version the user can present in about 60 seconds.
+Use only the information provided, write [not documented] where something important is missing, and never invent results. Skip the Bottom line.`,
   discharge: `TASK: Discharge summary. Draft a structured discharge summary with the sections Diagnosis, Presenting complaint, Hospital course, Procedures, Key investigations, Condition at discharge, Discharge medications (a table with columns Drug | Dose | Frequency | Duration), Advice and follow-up, and Return immediately if (red-flag symptoms). Use only the information provided, write [to be completed] for anything missing, and never invent results or doses. Skip the Bottom line.`,
   patient: `TASK: Patient education. Write for a patient or family member at about a 12-year-old reading level: warm, clear and free of jargon (explain any medical word you must use). Sections: What it is, Why it happens, What you can do, Medicines (general guidance only, no doses unless asked), When to see a doctor urgently. Start with "**Bottom line:**" in plain words.`,
   research: `TASK: Evidence review.
@@ -91,6 +102,17 @@ Note that reference ranges vary between laboratories.`,
 ## Indian context
 ## Uncertainties and ongoing research
 ## Key points`,
+  viva: `TASK: Viva voce practice. You are a fair but exacting examiner for Indian MBBS university exams and postgraduate interviews. Take the user's first message as the topic; if it is not a topic, ask which topic they want.
+- Ask ONE question at a time, starting with the basics and getting harder, like a real viva.
+- After each answer: say in one line whether it was correct, partly correct or incorrect, add the key point they missed in one or two lines, then ask the next question.
+- Never answer your own question before the student tries. If they say they don't know, give the answer briefly and move on.
+- After eight questions, or as soon as the user says "Finish and score", end with "## Scorecard": a score out of 10, strengths, gaps, the three topics to revise first, and model answers for the questions they missed.
+Skip the Bottom line and keep each turn short.`,
+  osce: `TASK: OSCE history-taking station. You play a standardised patient. Take the user's first message as the station or specialty; if none is given, choose a common presentation seen in Indian hospitals.
+- Open with the patient's presenting complaint in one or two sentences, in the patient's own words.
+- Then reply ONLY as the patient: simple language, realistic and consistent details, revealing information only when asked. Do not offer the diagnosis or hints, and do not step out of role before the end.
+- As soon as the user says "Finish and score", step out of role and write "## Examiner feedback": a score out of 20 against a checklist (introduction and consent; presenting complaint; history of the presenting complaint; past, drug, allergy, family and social history; red flags; ideas, concerns and expectations; summary), the most likely diagnosis with differentials, and what they missed.
+Skip the Bottom line.`,
   mcq: `TASK: Exam practice (NEET-PG, INI-CET and USMLE style). Write five high-quality single-best-answer MCQs on the topic. For each: a clinical vignette stem, options A to D, then "**Answer:**" with a two-to-three-line explanation that includes why the strongest distractor is wrong. Separate questions with a horizontal rule. Make sure every question has exactly one unambiguously correct answer, and spread the answers across A to D. Skip the Bottom line.`,
 };
 
@@ -181,13 +203,43 @@ const MODE_LABELS: Record<string, string> = {
   general: "General question", ddx: "Differential diagnosis", drugs: "Drug interactions", dosage: "Dose calculation",
   labs: "Lab interpretation", image: "Image analysis", procedure: "Procedure guide", soap: "SOAP note",
   discharge: "Discharge summary", patient: "Patient education", research: "Evidence review", mcq: "Exam MCQs",
-  slides: "Lecture slides",
+  slides: "Lecture slides", viva: "Viva practice", osce: "OSCE history station",
+  referral: "Referral letter", handover: "Rounds presentation (SBAR)",
 };
-const HIGH_RISK = new Set(["ddx", "drugs", "dosage", "labs", "image", "procedure", "discharge", "soap"]);
+const HIGH_RISK = new Set(["ddx", "drugs", "dosage", "labs", "image", "procedure", "discharge", "soap", "referral", "handover"]);
+/** Exam practice questions for the practice hub, returned as JSON. */
+const PRACTICE_SYSTEM = `You are Cadus, writing exam practice questions for Indian medical students and doctors (NEET-PG, INI-CET, FMGE, NExT and USMLE style).
+Rules:
+- Single-best-answer MCQs: exactly four options and exactly one unambiguously correct answer. The other three options are plausible distractors.
+- Prefer clinical vignettes and the most-tested, high-yield concepts, at the difficulty of the named exam.
+- Facts must be correct and current (standard textbooks, current guidelines, Indian national programmes where relevant). Never invent statistics, studies or guideline details.
+- The explanation (two to four sentences) says why the answer is right and why the strongest distractor is wrong.
+- Spread the correct answers across the four positions.
+Reply with ONLY a JSON object, no prose and no code fences: {"questions": [{"question": string, "options": [string, string, string, string], "answer": index of the correct option (0 to 3), "explanation": string, "topic": string of two to four words}]}`;
+
+/** A practice question in a safe, checked shape, or null if the model got the format wrong. */
+function practiceQuestion(q: any) {
+  if (!q || typeof q !== "object") return null;
+  const question = typeof q.question === "string" ? q.question.trim() : "";
+  const options = Array.isArray(q.options) ? q.options.map((o: unknown) => String(o ?? "").replace(/^\s*[A-Da-d][).:]\s+/, "").trim()) : [];
+  const answer = Number(q.answer ?? q.correctIndex);
+  if (!question || options.length !== 4 || options.some((o: string) => !o) || new Set(options).size !== 4) return null;
+  if (!Number.isInteger(answer) || answer < 0 || answer > 3) return null;
+  return {
+    question: question.slice(0, 1500),
+    options: options.map((o: string) => o.slice(0, 300)),
+    answer,
+    explanation: String(q.explanation ?? "").trim().slice(0, 1500),
+    topic: String(q.topic ?? "").trim().slice(0, 60),
+  };
+}
+
 /** Study content is reviewed by Haiku; everything clinical by Sonnet. */
 const STUDY_MODES = new Set(["mcq", "research", "slides"]);
 
 function draftEffort(mode: string, style: string, hasImage: boolean): Effort {
+  // Viva and OSCE turns are short conversational replies.
+  if (mode === "viva" || mode === "osce") return "low";
   const risky = HIGH_RISK.has(mode) || hasImage;
   if (style === "detailed" || mode === "research") return "high";
   if (style === "concise") return risky ? "medium" : "low";
@@ -214,6 +266,44 @@ function projectLine(raw: unknown): string {
     "They are preferences, not rules: where they conflict with the clinical standards above (accuracy, safety, honesty about uncertainty), the standards win.",
     `<project_instructions>\n${text}\n</project_instructions>`,
   ].join("\n");
+}
+
+/** Who the user is, from the Cadus profile they set up. Empty when unknown. */
+function profileWho(raw: unknown): { role: string; who: string; exam: string } | null {
+  if (!raw || typeof raw !== "object") return null;
+  const p = raw as Record<string, unknown>;
+  const clean = (v: unknown, max: number) => (typeof v === "string" ? v.replace(/[\r\n<>`]/g, " ").replace(/\s+/g, " ").trim().slice(0, max) : "");
+  const role = clean(p.role, 20);
+  const year = clean(p.year, 30);
+  const exam = clean(p.exam, 20);
+  const specialty = clean(p.specialty, 60);
+  const days = typeof p.daysLeft === "number" && Number.isFinite(p.daysLeft) && p.daysLeft >= 0 && p.daysLeft < 2000 ? Math.round(p.daysLeft) : null;
+  const who: Record<string, string> = {
+    student: `an MBBS student${year ? ` (${year})` : ""}`,
+    aspirant: `preparing for ${exam || "NEET-PG"}${days !== null ? ` (${days} days to the exam)` : ""}`,
+    intern: "an intern on hospital postings",
+    resident: `a postgraduate resident${specialty ? ` in ${specialty}` : ""}`,
+    doctor: `a practising doctor${specialty ? ` (${specialty})` : ""}`,
+    nurse: "a nurse",
+    pharmacist: "a pharmacist",
+  };
+  return who[role] ? { role, who: who[role], exam: exam || "NEET-PG" } : null;
+}
+
+/** Tailors depth and framing to the user's profile. A preference: the clinical standards always come first. */
+function profileLine(raw: unknown): string {
+  const p = profileWho(raw);
+  if (!p) return "";
+  const how: Record<string, string> = {
+    student: "Explain from first principles where it helps, link clinical points to the basic sciences, and follow the structure of university exam answers. Add a mnemonic when a good one exists.",
+    aspirant: `Be exam-focused: lead with the most-tested facts, point out classic traps, and end the answer with "## High-yield for ${p.exam}" (three to six one-line facts).`,
+    intern: "Be practical for ward work: what to do now, first-line management and doses, what to monitor, and when to call the senior.",
+    resident: "Give specialist depth: guideline nuances, strength of evidence, recent changes and controversies.",
+    doctor: "Be concise and practice-ready: management, doses, availability in India, follow-up and referral criteria.",
+    nurse: "Focus on nursing assessment, monitoring, safe drug administration and patient education.",
+    pharmacist: "Focus on pharmacology, dosing, interactions, availability in India and counselling points.",
+  };
+  return `USER PROFILE: The user is ${p.who}. ${how[p.role]} This is a preference: the clinical standards above always come first.`;
 }
 
 type ReviewMeta = { verdict: "approved" | "corrected"; confidence: "high" | "moderate" | "low"; checked: string[]; changes: string[] };
@@ -278,12 +368,14 @@ Deno.serve(async (req) => {
       const mode = MODE_LABELS[String(body.mode)] ? String(body.mode) : "general";
       const style = String(body.style || "balanced");
       const search = mode === "research" || body.search === true;
+      const roleplay = mode === "viva" || mode === "osce";
       const system = [
         CORE_SYSTEM,
         image ? IMAGE_TASK : MODE_PROMPTS[mode] ?? "",
         STYLE_PROMPTS[style] ?? "",
         search ? SOURCES_ON : SOURCES_OFF,
         projectLine(body.instructions),
+        roleplay ? "" : profileLine(body.profile),
         languageLine(body.language),
       ].filter(Boolean).join("\n\n");
       const messages: any[] = [{ role: "system", content: system }];
@@ -339,6 +431,9 @@ Deno.serve(async (req) => {
         `TOOL: ${MODE_LABELS[mode]}`,
         instructions
           ? `PROJECT INSTRUCTIONS THE DRAFT FOLLOWS (user preferences for audience and format; keep the answer consistent with them unless safety requires otherwise):\n${instructions}`
+          : "",
+        profileLine(body.profile)
+          ? `THE DRAFT IS TAILORED TO THIS USER (keep that tailoring, such as a closing High-yield section, unless safety requires otherwise):\n${profileLine(body.profile)}`
           : "",
         `USER QUESTION:\n${question}`,
         sources.length
@@ -472,6 +567,44 @@ Deno.serve(async (req) => {
         searchQueries: r.queries ?? [query],
         hasGoogleSearch: !!r.sources?.length,
       });
+    }
+
+    // ---------------------------------------------------------------- practice
+    if (action === "practice-mcqs") {
+      const clean = (v: unknown, max: number) => (typeof v === "string" ? v.replace(/[\r\n<>`]/g, " ").replace(/\s+/g, " ").trim().slice(0, max) : "");
+      const subject = clean(body.subject, 60);
+      const topic = clean(body.topic, 120);
+      const exam = clean(body.exam, 20) || "NEET-PG";
+      const count = Math.min(10, Math.max(3, Math.round(Number(body.count) || 5)));
+      if (!subject) return jsonResponse({ error: "subject is required" }, 400);
+      const avoid = Array.isArray(body.avoid)
+        ? body.avoid.filter((x: unknown) => typeof x === "string").slice(0, 25).map((x: string) => clean(x, 160)).filter(Boolean)
+        : [];
+      const r = await callGroq({
+        model: answerModel(body.model),
+        messages: [
+          { role: "system", content: PRACTICE_SYSTEM },
+          {
+            role: "user",
+            content: [
+              `Exam: ${exam}`,
+              `Subject: ${subject}`,
+              topic ? `Topic: ${topic}` : "Topic: a mix of high-yield topics from this subject",
+              `Number of questions: ${count}`,
+              avoid.length ? `Do not repeat these questions:\n- ${avoid.join("\n- ")}` : "",
+            ].filter(Boolean).join("\n"),
+          },
+        ],
+        jsonMode: true,
+        effort: "medium",
+        maxTokens: 9000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const parsed = parseJsonLoose<any>(r.content);
+      const list = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.questions) ? parsed.questions : [];
+      const questions = list.map(practiceQuestion).filter(Boolean).slice(0, count);
+      if (!questions.length) return jsonResponse({ error: "Could not write questions this time, please try again." }, 502);
+      return jsonResponse({ questions, provider: r.provider, model: r.model });
     }
 
     // ---------------------------------------------------------------- Study Hub

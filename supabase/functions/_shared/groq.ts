@@ -59,6 +59,15 @@ export const TRUSTED_MEDICAL_DOMAINS = [
   "goldcopd.org",
   "msdmanuals.com",
   "aiims.edu",
+  // Indian programmes, regulators and professional bodies
+  "tbcindia.gov.in",
+  "naco.gov.in",
+  "nhm.gov.in",
+  "nmc.org.in",
+  "ipc.gov.in",
+  "nppaindia.nic.in",
+  "iapindia.org",
+  "fogsi.org",
 ];
 
 export type Effort = "low" | "medium" | "high";
