@@ -381,6 +381,6 @@ export function libraryNotFound(question: string): string {
 export function libraryFootnote(mode: "llm" | "extract", sources: string[]): string {
   const from = sources.length ? sources.join(", ") : "the Cadus Medical Library";
   return mode === "llm"
-    ? `> **Library mode.** The main AI is unavailable (no Anthropic credits), so this answer was written by the backup model using only passages from ${from}. It has not been through the safety review. Verify clinical decisions against current guidelines.`
-    : `> **Library mode.** The main AI is unavailable (no Anthropic credits), so this answer is quoted from ${from} without AI reasoning or the safety review. Verify clinical decisions against current guidelines.`;
+    ? `> **Library mode.** The main AI is unavailable (no AI credits), so this answer was written by the backup model using only passages from ${from}. It has not been through the safety review. Verify clinical decisions against current guidelines.`
+    : `> **Library mode.** The main AI is unavailable (no AI credits), so this answer is quoted from ${from} without AI reasoning or the safety review. Verify clinical decisions against current guidelines.`;
 }

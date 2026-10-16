@@ -258,6 +258,9 @@ function normaliseDeck(deck: any, topic: string) {
   return deck;
 }
 
+/** The model a Cadus user picked: Cadus Medius 3.1 runs the fast model, Cadus Magnus 3.6 the deeper one. */
+const answerModel = (choice: unknown) => (choice === "magnus" ? CLAUDE_REVIEW_MODEL : CLAUDE_DRAFT_MODEL);
+
 /* ------------------------------------------------------------------ handler */
 
 Deno.serve(async (req) => {
@@ -294,12 +297,12 @@ Deno.serve(async (req) => {
           ? { role: "user", content: [{ type: "image_url", image_url: { url: image } }, { type: "text", text: message || "Please analyse this image." }] }
           : { role: "user", content: message },
       );
-      // When Claude has no credits, the Cadus workspace (which sends library: true) switches
+      // When the AI has no credits, the Cadus workspace (which sends library: true) switches
       // to the offline medical library. Images (which the library can't read), explicit
       // fallbacks and the other pages on the site keep using the backup model.
       const libraryAware = body.library === true && !image && body.allowFallback !== true;
       const r = await callGroq({
-        model: CLAUDE_DRAFT_MODEL,
+        model: answerModel(body.model),
         messages,
         effort: draftEffort(mode, style, !!image),
         maxTokens: 16000,
@@ -405,7 +408,7 @@ Deno.serve(async (req) => {
       const topic = String(body.topic || body.message || "").trim();
       if (!topic) return jsonResponse({ error: "topic is required" }, 400);
       const r = await callGroq({
-        model: CLAUDE_DRAFT_MODEL,
+        model: answerModel(body.model),
         messages: [
           { role: "system", content: SLIDES_SYSTEM },
           {

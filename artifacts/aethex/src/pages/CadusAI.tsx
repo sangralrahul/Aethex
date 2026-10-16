@@ -5,7 +5,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import {
-  AlertTriangle, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ArrowUpRight, Bookmark, BookmarkCheck, BookOpen, BookOpenCheck,
+  AlertTriangle, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ArrowUpRight, Bookmark, BookmarkCheck, BookOpen, BookOpenCheck, Brain, Gauge,
   Camera, Check, ChevronDown, ChevronRight, ChevronsUpDown, CircleQuestionMark, ClipboardList, Copy, CornerDownRight,
   Database, Download, ExternalLink, FileText, FlaskConical, Folder, FolderInput, FolderMinus, FolderPlus, Globe,
   GraduationCap, Grip, History, House, ImagePlus, Info, Keyboard, Laptop, Layers, LayoutGrid, Library, ListFilter, LogIn,
@@ -119,6 +119,8 @@ interface Prefs {
   sources: boolean;
   /** Typeface for Cadus answers. */
   answerFont: "serif" | "sans";
+  /** Which Cadus model writes the answers. */
+  model: ModelId;
 }
 
 interface ModeDef {
@@ -204,6 +206,14 @@ const STYLES: { id: StyleId; label: string; desc: string; icon: LucideIcon }[] =
   { id: "detailed", label: "Thorough", desc: "Longer answers with more nuance", icon: Layers },
 ];
 
+type ModelId = "medius" | "magnus";
+/** The Cadus models users choose between. Medius runs the fast model, Magnus the deeper one. */
+const MODELS: { id: ModelId; name: string; short: string; desc: string; icon: LucideIcon }[] = [
+  { id: "medius", name: "Cadus Medius 3.1", short: "Medius 3.1", desc: "Fast, accurate answers for everyday clinical questions", icon: Gauge },
+  { id: "magnus", name: "Cadus Magnus 3.6", short: "Magnus 3.6", desc: "Deeper reasoning for complex cases and research", icon: Brain },
+];
+const MODEL_DEF = Object.fromEntries(MODELS.map((m) => [m.id, m])) as Record<ModelId, (typeof MODELS)[number]>;
+
 const ACCENTS = [
   { id: "aethex", name: "Aethex teal", light: "#007A6C", dark: "#2DD4BF" },
   { id: "blue", name: "Hospital blue", light: "#1D4ED8", dark: "#60A5FA" },
@@ -222,7 +232,7 @@ const LIBRARY_KEY = "cadus3.library";
 const PROJECTS_KEY = "cadus3.projects";
 const UI_KEY = "cadus3.ui";
 const FREE_DAILY = 20;
-const DEFAULT_PREFS: Prefs = { theme: "light", accent: "aethex", textSize: "m", style: "balanced", language: "English", enterToSend: true, safetyReview: true, sources: false, answerFont: "sans" };
+const DEFAULT_PREFS: Prefs = { theme: "light", accent: "aethex", textSize: "m", style: "balanced", language: "English", enterToSend: true, safetyReview: true, sources: false, answerFont: "sans", model: "medius" };
 /** Bumped when the default look changes, so saved settings move to the new theme, colour and answer font once. */
 const PREFS_VERSION = 3;
 
@@ -324,17 +334,19 @@ function relTime(t: number): string {
   return new Date(t).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 }
 
-const providerLabel = (p?: Provider) => (p === "library" ? "Cadus Medical Library" : p === "groq" ? "Llama 3.3 (backup)" : "Claude Haiku 5.5");
+const BACKUP_MODEL = "Cadus backup model";
+const providerLabel = (p?: Provider) => (p === "library" ? "Cadus Medical Library" : p === "groq" ? BACKUP_MODEL : MODEL_DEF.medius.name);
+/** The name users see for the model behind an answer. */
 const modelLabel = (model?: string, provider?: Provider) =>
   provider === "library" ? "Cadus Medical Library"
-  : provider === "groq" ? "Llama 3.3 (backup)"
-  : model?.includes("sonnet") ? "Claude Sonnet 5.5" : model?.includes("opus") ? "Claude Opus 5.5" : "Claude Haiku 5.5";
+  : provider === "groq" ? BACKUP_MODEL
+  : model?.includes("sonnet") || model?.includes("opus") ? MODEL_DEF.magnus.name : MODEL_DEF.medius.name;
 const LIBRARY_REASON: Record<string, string> = {
-  credits: "Anthropic credits are used up",
-  auth: "the Anthropic API key was rejected",
-  missing: "no Anthropic API key is set",
+  credits: "the AI credits are used up",
+  auth: "the AI key was rejected",
+  missing: "no AI key is set",
 };
-const shortModel = (label: string) => label.replace(/^Claude /, "");
+const shortModel = (label: string) => label.replace(/^Cadus /, "");
 const hostOf = (u: string) => {
   try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; }
 };
@@ -492,7 +504,7 @@ async function answerFromLibrary(req: LibraryRequest): Promise<Msg> {
     if (!fb?.message) throw new Error("AI credits are used up and the offline medical library isn't installed yet.");
     return {
       ...base, content: String(fb.message), provider: fb.provider, model: fb.model,
-      reviewNote: `Claude is unavailable (${why}) and the offline medical library isn't installed, so the backup model answered without the safety review.`,
+      reviewNote: `The main AI is unavailable (${why}) and the offline medical library isn't installed, so the backup model answered without the safety review.`,
     };
   }
   const prev = [...hist].reverse().find((m) => m.role === "user")?.content;
@@ -615,6 +627,7 @@ export default function CadusAI() {
   const messages = view === "chat" ? active?.messages ?? [] : [];
   const modeDef = MODE[mode];
   const styleDef = STYLES.find((s) => s.id === prefs.style) ?? STYLES[1];
+  const modelDef = MODEL_DEF[prefs.model] ?? MODEL_DEF.medius;
   const firstName = (user?.name || "").trim().split(/\s+/)[0] || "";
   const serif = prefs.answerFont !== "sans";
   // Newsreader has a smaller x-height than the sans, so serif answers are set a little larger to read the same.
@@ -912,7 +925,7 @@ export default function CadusAI() {
       let reply: Msg;
       try {
         if (userMsg.mode === "slides") {
-          const data = await invokeCadus({ action: "generate-slides", topic: userMsg.content, review: doReview, ...project });
+          const data = await invokeCadus({ action: "generate-slides", topic: userMsg.content, review: doReview, model: prefs.model, ...project });
           const d = data?.presentation as PresentationData | undefined;
           if (!d?.slides?.length) throw new Error("No slides were returned. Please try again.");
           reply = {
@@ -932,14 +945,15 @@ export default function CadusAI() {
             language: prefs.language,
             history: hist,
             search,
-            // Cadus can answer from the offline medical library when Claude has no credits.
+            // Cadus can answer from the offline medical library when the AI has no credits.
             library: true,
+            model: prefs.model,
             ...project,
           };
           const draft = await invokeCadus(draftBody);
           if (cancelled.current.has(reqId)) return;
           if (draft?.libraryMode) {
-            // No Anthropic credits (or no valid key): answer from the offline medical library.
+            // No AI credits (or no valid key): answer from the offline medical library.
             setPending((p) => (p?.id === reqId ? { ...p, stage: "library", review: false } : p));
             reply = await answerFromLibrary({
               userMsg, hist, reason: String(draft.reason || "credits"), draftBody,
@@ -993,7 +1007,7 @@ export default function CadusAI() {
       upsert(sid, (m) => [...m, reply]);
       setPending((p) => (p?.id === reqId ? null : p));
     },
-    [prefs.style, prefs.language, prefs.safetyReview, upsert],
+    [prefs.style, prefs.language, prefs.safetyReview, prefs.model, upsert],
   );
 
   const send = (textOverride?: string, modeOverride?: ModeId) => {
@@ -1847,7 +1861,7 @@ export default function CadusAI() {
                   <button className="cx-act cx-tip" data-tip="Export as PDF" onClick={() => exportAnswer(m)} aria-label="Export as PDF"><Download size={16} /></button>
                   <span className="cx-a-by">
                     {m.library
-                      ? `${m.library.mode === "llm" ? "Llama 3.3 (backup)" : "Quoted"} · Cadus Medical Library`
+                      ? `${m.library.mode === "llm" ? BACKUP_MODEL : "Quoted"} · Cadus Medical Library`
                       : shortModel(modelLabel(m.model, m.provider))}
                     {m.review ? ` · reviewed by ${shortModel(modelLabel(m.review.model, m.review.provider))}` : ""}
                   </span>
@@ -1878,7 +1892,7 @@ export default function CadusAI() {
                 <>
                   {pending.stage === "library" ? (
                     <>
-                      <div className="cx-step done"><AlertTriangle size={15} className="warn" /> Claude is unavailable (no AI credits). Switching to Library mode</div>
+                      <div className="cx-step done"><AlertTriangle size={15} className="warn" /> The main AI is unavailable (no AI credits). Switching to Library mode</div>
                       <div className="cx-step on"><i className="cx-spin" /> Searching the Cadus Medical Library and preparing the answer</div>
                     </>
                   ) : (
@@ -1890,7 +1904,7 @@ export default function CadusAI() {
                   {pending.review && (
                     <div className={`cx-step ${pending.stage === "review" ? "on" : "todo"}`}>
                       {pending.stage === "review" ? <i className="cx-spin" /> : <i className="cx-dot" />}
-                      Safety review by {STUDY_MODES.has(pending.mode) ? "Haiku 5.5" : "Sonnet 5.5"}: doses, interactions, red flags
+                      Safety review by {STUDY_MODES.has(pending.mode) ? MODEL_DEF.medius.short : MODEL_DEF.magnus.short}: doses, interactions, red flags
                     </div>
                   )}
                 </>
@@ -2179,11 +2193,20 @@ export default function CadusAI() {
           <button className="cx-ib cx-m" onClick={() => setSidebarOpen(true)} aria-label="Open menu"><Menu size={19} /></button>
           <div className="cx-picker-wrap" data-pop="picker">
             <button className={`cx-picker ${pop === "picker" ? "open" : ""}`} onClick={() => togglePop("picker")} aria-haspopup="menu" aria-expanded={pop === "picker"}>
-              Cadus <span>{styleDef.label}</span> <ChevronDown size={15} />
+              Cadus <span>{modelDef.short}</span> <ChevronDown size={15} />
             </button>
             {pop === "picker" && (
               <div className="cx-pop cx-picker-menu" role="menu">
-                <p className="cx-pop-gl">Response mode</p>
+                <p className="cx-pop-gl">Model</p>
+                {MODELS.map((md) => (
+                  <button key={md.id} className={`cx-pick ${prefs.model === md.id ? "on" : ""}`} onClick={() => { setPrefs((p) => ({ ...p, model: md.id })); setPop(null); }}>
+                    <span className="cx-pick-ic"><md.icon size={16} /></span>
+                    <span><b>{md.name}</b><small>{md.desc}</small></span>
+                    {prefs.model === md.id && <Check size={16} className="ck" />}
+                  </button>
+                ))}
+                <div className="cx-pop-sep" />
+                <p className="cx-pop-gl">Response style</p>
                 {STYLES.map((s) => (
                   <button key={s.id} className={`cx-pick ${prefs.style === s.id ? "on" : ""}`} onClick={() => { setPrefs((p) => ({ ...p, style: s.id })); setPop(null); }}>
                     <span className="cx-pick-ic"><s.icon size={16} /></span>
@@ -2191,7 +2214,7 @@ export default function CadusAI() {
                     {prefs.style === s.id && <Check size={16} className="ck" />}
                   </button>
                 ))}
-                <div className="cx-pick-foot"><ShieldCheck size={13} /> Drafted by Haiku 5.5{prefs.safetyReview ? " · safety review by Sonnet 5.5" : " · safety review off"}</div>
+                <div className="cx-pick-foot"><ShieldCheck size={13} /> {prefs.safetyReview ? `Clinical answers are safety-reviewed by ${MODEL_DEF.magnus.short}` : "Safety review is off"}</div>
               </div>
             )}
           </div>
@@ -2459,7 +2482,7 @@ export default function CadusAI() {
                       <button className={`cx-switch ${prefs.enterToSend ? "on" : ""}`} role="switch" aria-checked={prefs.enterToSend} aria-label="Enter to send" onClick={() => setPrefs({ ...prefs, enterToSend: !prefs.enterToSend })} />
                     </div>
                     <div className="cx-set-row">
-                      <div><b>Safety review</b><small>A second model audits every answer before you see it: Claude Sonnet 5.5 for clinical answers, Haiku 5.5 for study content. Adds about 10 to 20 seconds. Recommended.</small></div>
+                      <div><b>Safety review</b><small>A second model audits every answer before you see it: Cadus Magnus 3.6 for clinical answers, Cadus Medius 3.1 for study content. Adds about 10 to 20 seconds. Recommended.</small></div>
                       <button className={`cx-switch ${prefs.safetyReview ? "on" : ""}`} role="switch" aria-checked={prefs.safetyReview} aria-label="Safety review" onClick={() => setPrefs({ ...prefs, safetyReview: !prefs.safetyReview })} />
                     </div>
                     <div className="cx-set-row">
@@ -2518,8 +2541,8 @@ export default function CadusAI() {
                           {libInfo === undefined
                             ? "Checking…"
                             : libInfo === null
-                              ? "Not installed. If Anthropic credits run out, the backup model answers on its own."
-                              : `${libInfo.articles.toLocaleString("en-IN")} articles from ${Object.values(libInfo.sources).map((x) => x.name.split(" (")[0].split(" via ")[0]).join(", ")}. Built ${new Date(libInfo.builtAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}. Cadus answers from it automatically when Anthropic credits run out.`}
+                              ? "Not installed. If the AI credits run out, the backup model answers on its own."
+                              : `${libInfo.articles.toLocaleString("en-IN")} articles from ${Object.values(libInfo.sources).map((x) => x.name.split(" (")[0].split(" via ")[0]).join(", ")}. Built ${new Date(libInfo.builtAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}. Cadus answers from it automatically when the AI credits run out.`}
                           {libInfo && !libInfo.sources.w && " Wikipedia's medical articles are added by the GitHub workflow “Build Cadus medical library”."}
                         </small>
                       </div>
@@ -2586,7 +2609,7 @@ export default function CadusAI() {
                       <CadusMark size={48} />
                       <div><h4>Cadus 2.0</h4><p>Clinical AI by Aethex</p></div>
                     </div>
-                    <div className="cx-set-row"><div><b>How Cadus answers</b><small>1. Claude Haiku 5.5 drafts each answer to the Cadus clinical standards: evidence-based, structured, dose-checked and aware of Indian guidance. 2. Claude Sonnet 5.5 audits clinical answers for doses, interactions, red flags and invented facts, and corrects them (Haiku 5.5 checks study content). 3. With Sources on, Cadus searches trusted medical sites and cites them. 4. If the Anthropic credits run out, Cadus switches to Library mode: it answers from its offline medical library (Wikipedia, NIH and the Disease Ontology), cites each article and labels the answer. Llama 3.3 is the backup for other outages.</small></div></div>
+                    <div className="cx-set-row"><div><b>How Cadus answers</b><small>1. Cadus Medius 3.1, or Cadus Magnus 3.6 if you pick it, drafts each answer to the Cadus clinical standards: evidence-based, structured, dose-checked and aware of Indian guidance. 2. Cadus Magnus 3.6 audits clinical answers for doses, interactions, red flags and invented facts, and corrects them (Medius 3.1 checks study content). 3. With Sources on, Cadus searches trusted medical sites and cites them. 4. If the AI credits run out, Cadus switches to Library mode: it answers from its offline medical library (Wikipedia, NIH and the Disease Ontology), cites each article and labels the answer. A backup model covers other outages.</small></div></div>
                     <div className="cx-set-row"><div><b>Limitations</b><small>Cadus is decision support for qualified professionals and students. It is not a certified medical device, and the safety review reduces errors without eliminating them. Confirm diagnoses and doses against current guidelines and local protocols.</small></div></div>
                     <div className="cx-set-row">
                       <div><b>Classic Cadus</b><small>The previous version, with its original modes</small></div>

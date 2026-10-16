@@ -233,12 +233,12 @@ async function callClaude(apiKey: string, opts: CallOpts): Promise<AiResult> {
         status: outage === "credits" ? 402 : resp.status === 429 || resp.status === 529 ? 429 : resp.status === 401 ? 401 : resp.status === 400 ? 400 : 502,
         error:
           outage === "credits"
-            ? "The Anthropic account has no credits left."
+            ? "The AI service has no credits left."
             : resp.status === 429 || resp.status === 529
               ? "Cadus is busy right now, please retry in a moment."
               : resp.status === 401
-                ? "Anthropic API key is invalid."
-                : `Claude upstream error ${resp.status}`,
+                ? "The AI service key is invalid."
+                : `The AI service returned an error (${resp.status}).`,
         detail: detail.slice(0, 400),
         ...(outage ? { outage } : {}),
       };
@@ -255,7 +255,7 @@ async function callClaude(apiKey: string, opts: CallOpts): Promise<AiResult> {
   }
 
   const { text, sources, queries } = extractClaudeAnswer(collected);
-  if (!text) return { ok: false, status: 502, error: "Claude returned an empty answer." };
+  if (!text) return { ok: false, status: 502, error: "The AI returned an empty answer. Please try again." };
   return {
     ok: true,
     content: text,
@@ -322,7 +322,7 @@ export async function callAI(opts: CallOpts): Promise<AiResult> {
     const g = await callGroqApi(groqKey, opts);
     return g.ok ? { ...g, fallbackReason: r.error } : r;
   }
-  if (report) return { ok: false, status: 503, outage: "missing", error: "No Anthropic API key is configured." };
+  if (report) return { ok: false, status: 503, outage: "missing", error: "No AI key is configured." };
   if (groqKey) return callGroqApi(groqKey, opts);
   return {
     ok: false,
