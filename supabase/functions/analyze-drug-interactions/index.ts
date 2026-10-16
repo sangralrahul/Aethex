@@ -1,5 +1,5 @@
 // AI-powered drug interaction analysis via Groq.
-import { callGroq, cors, jsonResponse } from "../_shared/groq.ts";
+import { callGroq, cors, jsonResponse, parseJsonLoose } from "../_shared/groq.ts";
 
 const SYSTEM = `You are a clinical pharmacology assistant used by medical students and clinicians in India.
 Given a list of 2–5 drugs, analyze pairwise interactions and produce a structured JSON report.
@@ -42,8 +42,8 @@ Deno.serve(async (req) => {
     });
     if (!result.ok) return jsonResponse({ error: result.error, detail: result.detail }, result.status);
 
-    let parsed: unknown;
-    try { parsed = JSON.parse(result.content || "{}"); } catch {
+    const parsed = parseJsonLoose(result.content || "");
+    if (!parsed || typeof parsed !== "object") {
       return jsonResponse({ error: "AI returned malformed JSON.", raw: result.content }, 502);
     }
     return jsonResponse({ ok: true, drugs: cleaned, report: parsed });

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, FlaskConical, RefreshCw, AlertTriangle, CheckCircle, TrendingUp, TrendingDown, Sparkles, Loader2, Activity, ClipboardList, Lightbulb } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeAi } from "@/lib/ai-functions";
 
 type Panel = "cbc" | "lft" | "rft" | "lipid" | "thyroid";
 
@@ -111,7 +111,7 @@ export default function LabValueInterpreter() {
           };
         }),
       };
-      const { data, error } = await supabase.functions.invoke("interpret-labs", { body: payload });
+      const { data, error } = await invokeAi("interpret-labs", { body: payload });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
       setAiReport((data as any).report);

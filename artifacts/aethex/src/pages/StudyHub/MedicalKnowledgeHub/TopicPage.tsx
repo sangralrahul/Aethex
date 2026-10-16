@@ -11,7 +11,7 @@ import { MCQQuiz } from "@/components/MedKnowledge/MCQQuiz";
 import { FlashCard } from "@/components/MedKnowledge/FlashCard";
 import { DiagramCarousel } from "@/components/MedKnowledge/DiagramCarousel";
 import { RichContent } from "@/components/MedKnowledge/RichContent";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeAi } from "@/lib/ai-functions";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -69,7 +69,7 @@ function useMedContent(section: string, params: Record<string, string>, eager = 
     setLoading(true);
     setError(false);
     try {
-      const { data, error } = await supabase.functions.invoke("groq-ai", {
+      const { data, error } = await invokeAi("groq-ai", {
         body: { action: "med-knowledge", section, ...params },
       });
       if (error || !data?.content) throw new Error(error?.message || "AI error");

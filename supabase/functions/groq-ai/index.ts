@@ -294,17 +294,19 @@ Deno.serve(async (req) => {
           ? { role: "user", content: [{ type: "image_url", image_url: { url: image } }, { type: "text", text: message || "Please analyse this image." }] }
           : { role: "user", content: message },
       );
+      // When Claude has no credits, the Cadus workspace (which sends library: true) switches
+      // to the offline medical library. Images (which the library can't read), explicit
+      // fallbacks and the other pages on the site keep using the backup model.
+      const libraryAware = body.library === true && !image && body.allowFallback !== true;
       const r = await callGroq({
         model: CLAUDE_DRAFT_MODEL,
         messages,
         effort: draftEffort(mode, style, !!image),
         maxTokens: 16000,
         webSearch: search ? { maxUses: mode === "research" ? 5 : 3 } : undefined,
-        // Text questions switch to the offline medical library when Claude has no credits;
-        // images (which the library can't read) and explicit fallbacks use the backup model.
-        onOutage: image || body.allowFallback === true ? "fallback" : "report",
+        onOutage: libraryAware ? "report" : "fallback",
       });
-      if (!r.ok && r.outage) return jsonResponse({ libraryMode: true, reason: r.outage });
+      if (!r.ok && r.outage && libraryAware) return jsonResponse({ libraryMode: true, reason: r.outage });
       if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
       return jsonResponse({
         message: r.content,

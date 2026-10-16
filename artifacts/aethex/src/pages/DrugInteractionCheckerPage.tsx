@@ -7,7 +7,7 @@ import {
   BookOpen, TriangleAlert,
 } from "lucide-react";
 import { checkInteractions, type DrugPair, type Severity } from "@/data/drugInteractions";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeAi } from "@/lib/ai-functions";
 import { cadusUrl } from "@/lib/host";
 
 const MAX_DRUGS = 5;
@@ -211,7 +211,7 @@ export default function DrugInteractionCheckerPage() {
     setAiError(null);
     setAiReport(null);
     try {
-      const { data, error } = await supabase.functions.invoke("analyze-drug-interactions", {
+      const { data, error } = await invokeAi("analyze-drug-interactions", {
         body: { drugs },
       });
       if (error) throw new Error(error.message);

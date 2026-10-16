@@ -1,9 +1,9 @@
 /**
- * Production has no Express API server (Cloudflare serves static assets only),
- * so legacy calls to `/api/ai/chat` are routed to the Supabase `groq-ai`
- * edge function (Claude Haiku 5.5). Response shape stays `{ message }`.
+ * Production has no Express API server, so legacy calls to `/api/ai/chat` are
+ * routed to the `groq-ai` function on the Cloudflare Worker (Claude Haiku 5.5).
+ * Response shape stays `{ message }`.
  */
-import { supabase } from "@/integrations/supabase/client";
+import { invokeAi } from "@/lib/ai-functions";
 
 let installed = false;
 
@@ -28,7 +28,7 @@ export function installAiBridge() {
       body = typeof init?.body === "string" ? JSON.parse(init.body) : {};
     } catch { /* ignore */ }
     const history = Array.isArray(body.conversationHistory) ? body.conversationHistory : Array.isArray(body.history) ? body.history : [];
-    const { data, error } = await supabase.functions.invoke("groq-ai", {
+    const { data, error } = await invokeAi("groq-ai", {
       body: { action: "chat", message: String(body.message ?? ""), history },
     });
     const payload = error ? { error: error.message, message: data?.error } : data;

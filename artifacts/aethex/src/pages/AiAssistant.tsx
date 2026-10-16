@@ -12,7 +12,7 @@ import {
 import { useAiChat as useAiChatOriginal } from "@workspace/api-client-react";
 import { type ChatMessage, ChatMessageRole } from "@workspace/api-client-react";
 import { useMutation } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeAi } from "@/lib/ai-functions";
 
 // Groq-backed replacement for the original REST chat hook.
 // Keeps the same mutation shape: { data: { message, conversationHistory, ... } } -> { message }
@@ -22,7 +22,7 @@ function useAiChat() {
       const history = (vars.data.conversationHistory ?? [])
         .filter((m: any) => m && typeof m.content === "string" && (m.role === "user" || m.role === "assistant"))
         .map((m: any) => ({ role: m.role, content: m.content }));
-      const { data, error } = await supabase.functions.invoke("groq-ai", {
+      const { data, error } = await invokeAi("groq-ai", {
         body: { action: "chat", message: vars.data.message, history },
       });
       if (error) throw new Error(error.message || "Cadus AI request failed");
@@ -1043,7 +1043,7 @@ export default function AiAssistant() {
     setIsGeneratingResearch(true);
     try {
       if (mode === "quick") {
-        const { data, error } = await supabase.functions.invoke("groq-ai", {
+        const { data, error } = await invokeAi("groq-ai", {
           body: {
             action: "chat",
             message: `Provide a concise clinical summary (3–5 paragraphs) on: ${query}. Cover key facts, clinical relevance, and management highlights.`,
@@ -1054,7 +1054,7 @@ export default function AiAssistant() {
           role: ChatMessageRole.assistant, content: data.message,
         }]);
       } else {
-        const { data, error } = await supabase.functions.invoke("groq-ai", {
+        const { data, error } = await invokeAi("groq-ai", {
           body: { action: "deep-research", query },
         });
         if (error || !data?.report) throw new Error(error?.message || data?.error || "Research failed");

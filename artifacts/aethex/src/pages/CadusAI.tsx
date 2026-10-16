@@ -1,6 +1,7 @@
 /**
  * Cadus: the clinical AI workspace inside Aethex.
- * Backend: Supabase edge function `groq-ai` (Claude Haiku 5.5, Groq fallback).
+ * Backend: `groq-ai` on the site's Cloudflare Worker at /api/fn/groq-ai
+ * (Claude Haiku 5.5, Groq fallback). See worker/index.ts.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import {
@@ -13,7 +14,7 @@ import {
   Sparkles, Square, SquarePen, Stethoscope, Sun, Syringe, Telescope, Trash2, Users, Volume2, VolumeX, X, Zap, Palette,
   type LucideIcon,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeAi } from "@/lib/ai-functions";
 import { useUserAuth } from "@/hooks/use-user-auth";
 import CadusMark, { CADUS_ICON_DATA_URL } from "@/components/cadus/CadusMark";
 import CameraModal from "@/components/cadus/CameraModal";
@@ -408,7 +409,7 @@ function downloadJSON(name: string, data: unknown) {
 }
 
 async function invokeCadus(body: Record<string, unknown>): Promise<any> {
-  const { data, error } = await supabase.functions.invoke("groq-ai", { body });
+  const { data, error } = await invokeAi("groq-ai", { body });
   if (error) {
     let detail = "";
     try {
@@ -423,7 +424,7 @@ async function invokeCadus(body: Record<string, unknown>): Promise<any> {
 
 function friendlyError(raw: string): string {
   if (/fetch|network|Failed to send|load failed/i.test(raw)) return "Couldn't reach Cadus. Check your connection and try again.";
-  if (/No AI key|not configured/i.test(raw)) return "Cadus isn't configured yet. The site owner needs to add the AI key in Supabase.";
+  if (/No AI key|not configured/i.test(raw)) return "Cadus isn't configured yet. The site owner needs to add the AI key in Cloudflare.";
   if (/rate|busy|429/i.test(raw)) return "Cadus is busy right now. Please try again in a moment.";
   return raw || "Something went wrong. Please try again.";
 }
@@ -471,7 +472,10 @@ async function answerFromLibrary(req: LibraryRequest): Promise<Msg> {
   const manifest = await medicalLibrary.manifest();
   if (!manifest) {
     // No library deployed yet: the backup model on its own is the last resort.
-    const fb = await invokeCadus({ ...req.draftBody, allowFallback: true });
+    let fb: any = null;
+    try {
+      fb = await invokeCadus({ ...req.draftBody, allowFallback: true });
+    } catch { /* no backup model either: explained below */ }
     if (!fb?.message) throw new Error("AI credits are used up and the offline medical library isn't installed yet.");
     return {
       ...base, content: String(fb.message), provider: fb.provider, model: fb.model,
@@ -915,6 +919,8 @@ export default function CadusAI() {
             language: prefs.language,
             history: hist,
             search,
+            // Cadus can answer from the offline medical library when Claude has no credits.
+            library: true,
             ...project,
           };
           const draft = await invokeCadus(draftBody);

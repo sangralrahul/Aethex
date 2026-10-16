@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, Scan, ChevronDown, ChevronUp, AlertTriangle, CheckCircle, Sparkles, Loader2, Upload, X, Activity, ClipboardList, Lightbulb } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeAi } from "@/lib/ai-functions";
 
 type Modality = "xray" | "ct" | "mri";
 type Region = string;
@@ -92,7 +92,7 @@ export default function RadiologyAssistant() {
     if (!imageDataUrl) { setAiError("Upload an image first."); return; }
     setAiLoading(true); setAiError(null); setAiReport(null);
     try {
-      const { data, error } = await supabase.functions.invoke("analyze-radiology", {
+      const { data, error } = await invokeAi("analyze-radiology", {
         body: {
           imageBase64: imageDataUrl,
           mimeType: imageMime,

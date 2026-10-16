@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, Stethoscope, X, ChevronRight, AlertTriangle, Info, Sparkles } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeAi } from "@/lib/ai-functions";
 
 interface AiDifferential {
   condition: string;
@@ -218,7 +218,7 @@ export default function SymptomChecker() {
       if (age.trim()) ctx.age = age.trim();
       if (sex.trim()) ctx.sex = sex.trim();
       if (duration.trim()) ctx.duration = duration.trim();
-      const { data, error } = await supabase.functions.invoke("predict-symptoms", {
+      const { data, error } = await invokeAi("predict-symptoms", {
         body: { symptoms: selected, context: Object.keys(ctx).length ? ctx : undefined },
       });
       if (error) throw new Error(error.message || "AI request failed");

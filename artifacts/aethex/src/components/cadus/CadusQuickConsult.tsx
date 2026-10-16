@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import { X, Send, BotMessageSquare, Sparkles, Brain } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeAi } from "@/lib/ai-functions";
 import { isCadusHost } from "@/lib/host";
 
 const STORAGE_KEY = "cadus_quick_chat_v2";
@@ -75,7 +75,7 @@ export default function CadusQuickConsult() {
 
     try {
       const history = updated.slice(-10).map(m => ({ role: m.role, content: m.content }));
-      const { data, error } = await supabase.functions.invoke("groq-ai", {
+      const { data, error } = await invokeAi("groq-ai", {
         body: { action: "chat", message: text, history: history.slice(0, -1), style: "concise" },
       });
       if (error) throw error;

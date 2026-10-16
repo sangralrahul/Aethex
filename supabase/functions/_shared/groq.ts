@@ -327,7 +327,8 @@ export async function callAI(opts: CallOpts): Promise<AiResult> {
   return {
     ok: false,
     status: 500,
-    error: "No AI key configured. Add ANTHROPIC_API_KEY (or GROQ_API_KEY) in Supabase secrets.",
+    error:
+      "No AI key configured. Add ANTHROPIC_API_KEY (or GROQ_API_KEY) as a secret in Cloudflare: Workers & Pages → aethex → Settings → Variables and Secrets.",
   };
 }
 

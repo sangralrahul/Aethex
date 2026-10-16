@@ -1,5 +1,5 @@
 // AI-powered radiology image analysis via Groq (multimodal vision).
-import { callGroq, cors, jsonResponse, GROQ_VISION_MODEL } from "../_shared/groq.ts";
+import { callGroq, cors, jsonResponse, GROQ_VISION_MODEL, parseJsonLoose } from "../_shared/groq.ts";
 
 const SYSTEM = `You are a board-certified radiologist assisting medical students and clinicians in India.
 Given a radiology image (X-ray / CT / MRI) plus modality and region context, produce a structured
@@ -61,8 +61,8 @@ Deno.serve(async (req) => {
     });
     if (!result.ok) return jsonResponse({ error: result.error, detail: result.detail }, result.status);
 
-    let parsed: unknown;
-    try { parsed = JSON.parse(result.content || "{}"); } catch {
+    const parsed = parseJsonLoose(result.content || "");
+    if (!parsed || typeof parsed !== "object") {
       return jsonResponse({ error: "AI returned malformed JSON.", raw: result.content }, 502);
     }
     return jsonResponse({ ok: true, report: parsed });
