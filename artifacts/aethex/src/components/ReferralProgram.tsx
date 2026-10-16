@@ -4,7 +4,6 @@ import { useUserAuth } from "@/hooks/use-user-auth";
 import { loginUrl } from "@/lib/host";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-const APP_URL = loginUrl("").replace(/\/$/, "");
 
 interface Referral {
   id: number;
@@ -41,7 +40,7 @@ export function ReferralProgram() {
 
   useEffect(() => { if (isLoggedIn) fetchData(); }, [isLoggedIn]);
 
-  const referralLink = code ? `${APP_URL}/signup?ref=${code}` : "";
+  const referralLink = code ? loginUrl("/signup", { ref: code }) : "";
 
   const copyLink = () => {
     navigator.clipboard.writeText(referralLink).then(() => {

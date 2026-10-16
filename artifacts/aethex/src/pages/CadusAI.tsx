@@ -1004,6 +1004,26 @@ export default function CadusAI() {
     void runRequest(sid, history, userMsg, instructionsFor(sid, inProject));
   };
 
+  // Links from the rest of Aethex open Cadus with a question (?q=), which is asked
+  // straight away, or a case to discuss (?context=), which goes into the composer.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("q")?.trim() ?? "";
+    let context = params.get("context")?.trim() ?? "";
+    if (!q && !context) return;
+    try { context = decodeURIComponent(context); } catch { /* already plain text */ }
+    params.delete("q");
+    params.delete("context");
+    const rest = params.toString();
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}${rest ? `?${rest}` : ""}${window.location.hash}`);
+    if (q) send(q.slice(0, 4000));
+    else {
+      setInput(context.slice(0, 12000));
+      focusComposer();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const stop = () => {
     if (!pending) return;
     cancelled.current.add(pending.id);
