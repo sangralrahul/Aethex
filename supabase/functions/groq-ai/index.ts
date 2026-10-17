@@ -210,6 +210,27 @@ RULES
 const SOURCES_OFF = `SOURCES: You cannot browse in this answer. Do not include URLs. Name a guideline body and year only when you are certain of both.`;
 const SOURCES_RECORDS = `SOURCES: You cannot browse in this answer. Use only the attached PubMed records, cite them as [n], and do not include URLs or a reference list (the app shows the records).`;
 
+/** Clinical answers label their key recommendations with the certainty of the evidence. */
+const EVIDENCE_TAGS = `EVIDENCE LABELS: End each key recommendation (what to do, not background facts) with one label for the certainty of the evidence behind it, written exactly as {{evidence:high}}, {{evidence:moderate}}, {{evidence:low}} or {{evidence:expert}}. High = consistent randomised trials or systematic reviews reflected in major guidelines; moderate = good evidence with limitations; low = observational, small or inconsistent studies; expert = consensus or expert opinion. Use at most one label per recommendation and only where you can judge the evidence; never overstate it. Do not put labels in headings or tables.`;
+
+/** Doses as structured cards the app draws (and the safety review checks). */
+const DOSE_CARD_FORMAT = `DOSE CARDS: For each drug whose dose you give, add a dose card: a fenced \`\`\`dose block with one "key: value" per line, using these keys in this order and leaving out any that don't apply: drug, indication, dose, route, frequency, duration, max, renal, hepatic, children, pregnancy, monitor, notes. Example:
+\`\`\`dose
+drug: Ceftriaxone
+indication: Community-acquired pneumonia (inpatient)
+dose: 1 to 2 g
+route: IV
+frequency: Once daily
+duration: 5 to 7 days
+max: 4 g per day
+renal: No adjustment needed
+monitor: Clinical response; stop or switch to oral when improving
+\`\`\`
+The values must match the answer's text exactly.`;
+const DOSE_CARD_OPTIONAL = `DOSE CARDS: If the answer centres on the dose of one to three specific drugs, add a dose card for each as a fenced \`\`\`dose block with one "key: value" per line (keys in this order, leaving out any that don't apply: drug, indication, dose, route, frequency, duration, max, renal, hepatic, children, pregnancy, monitor, notes). The values must match the answer's text exactly. Otherwise leave dose cards out.`;
+/** Clinical tools whose answers carry evidence labels (not notes, letters, exam questions or role-play). */
+const EVIDENCE_TAG_MODES = new Set(["general", "ddx", "drugs", "dosage", "labs", "image", "procedure", "research"]);
+
 const REVIEW_SYSTEM = `You are Cadus Safety Review: a senior physician and clinical pharmacologist who audits AI-drafted clinical answers before they reach doctors and medical students in India.
 
 You receive the user's question (with any earlier conversation) and a DRAFT answer written by another model. Do the following:
@@ -217,6 +238,7 @@ You receive the user's question (with any earlier conversation) and a DRAFT answ
 2. Check the clinical reasoning: are the can't-miss diagnoses and red flags present? Is anything unsafe, outdated, overconfident or wrongly prioritised?
 3. Check for fabrication: remove or correct any study, statistic, guideline year, brand name or reference you cannot confirm.
 4. Write the FINAL answer. Keep the draft's structure, language and good content; fix every error; add missing safety-critical information; remove anything wrong. Keep citation markers such as [1] that refer to the listed sources and do not add new numbers. Never mention the review, the draft or yourself inside the final answer.
+5. Keep the draft's special formats exactly: {{evidence:...}} labels (change a label that overstates or understates the evidence, remove one you cannot judge) and \`\`\`dose blocks (check every value in them like any other dose, and keep them consistent with the text).
 
 Reply in exactly this format and nothing else:
 <review>{"verdict":"approved or corrected","confidence":"high, moderate or low","checked":["short labels for what you verified, e.g. Doses and units"],"changes":["one short sentence per correction you made; empty list if none"]}</review>
@@ -339,6 +361,19 @@ function projectLine(raw: unknown): string {
 }
 
 /** Who the user is, from the Cadus profile they set up. Empty when unknown. */
+/** Units, formulary and state the user chose in Cadus. Preferences: safety always comes first. */
+function practiceLine(raw: unknown): string {
+  if (!raw || typeof raw !== "object") return "";
+  const p = raw as Record<string, unknown>;
+  const state = typeof p.state === "string" ? p.state.replace(/[^A-Za-z .()-]/g, " ").replace(/\s+/g, " ").trim().slice(0, 60) : "";
+  const lines = [
+    p.units === "si" ? "Units: give SI units first (for example glucose in mmol/L, creatinine in µmol/L), with conventional units in brackets." : "",
+    p.nlem === true ? "Medicines: prefer medicines on India's National List of Essential Medicines (NLEM 2022) and generic names, and say when a drug you recommend is not on the NLEM." : "",
+    state ? `Location: the user works in ${state}, India. Where it matters, mention that state's programmes or common practice (if you are sure of them).` : "",
+  ].filter(Boolean);
+  return lines.length ? `PRACTICE PREFERENCES:\n${lines.map((l) => `- ${l}`).join("\n")}` : "";
+}
+
 function profileWho(raw: unknown): { role: string; who: string; exam: string } | null {
   if (!raw || typeof raw !== "object") return null;
   const p = raw as Record<string, unknown>;
@@ -577,7 +612,11 @@ Deno.serve(async (req) => {
         earlier ? EARLIER_FILES_NOTE : "",
         STYLE_PROMPTS[style] ?? "",
         mode === "evidence" ? SOURCES_RECORDS : search ? SOURCES_ON : SOURCES_OFF,
+        // Spoken answers have no labels or cards.
+        style !== "voice" && EVIDENCE_TAG_MODES.has(mode) ? EVIDENCE_TAGS : "",
+        style !== "voice" ? (mode === "dosage" ? DOSE_CARD_FORMAT : mode === "general" ? DOSE_CARD_OPTIONAL : "") : "",
         projectLine(body.instructions),
+        roleplay ? "" : practiceLine(body.practice),
         roleplay ? "" : profileLine(body.profile),
         roleplay ? "" : personalLine(body.personal),
         improveLine(body.improve),
@@ -647,6 +686,9 @@ Deno.serve(async (req) => {
           : "",
         personalLine(body.personal)
           ? `THE USER'S SAVED PREFERENCES (keep the draft consistent with them unless safety requires otherwise):\n${personalLine(body.personal)}`
+          : "",
+        practiceLine(body.practice)
+          ? `THE USER'S PRACTICE PREFERENCES (keep the draft consistent with them):\n${practiceLine(body.practice)}`
           : "",
         attached.documents ? "The user attached the documents shown above; check the draft against them." : "",
         body.style === "voice"
@@ -848,7 +890,7 @@ Deno.serve(async (req) => {
       const r = await callGroq({
         model: answerModel(body.model),
         messages: [
-          { role: "system", content: [CANVAS_SYSTEM, languageLine(body.language)].filter(Boolean).join("\n\n") },
+          { role: "system", content: [CANVAS_SYSTEM, practiceLine(body.practice), languageLine(body.language)].filter(Boolean).join("\n\n") },
           { role: "user", content: task },
         ],
         effort: "medium",

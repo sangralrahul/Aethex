@@ -63,11 +63,11 @@ export function deidentify(input: string): Deidentified {
   // ABHA (14 digits, 2-4-4-4) and Aadhaar (12 digits, 4-4-4) before phone numbers.
   // The character before a number is captured rather than checked with a lookbehind,
   // which older Safari versions cannot parse.
-  t = t.replace(/(^|[^\d.])\d{2}-\d{4}-\d{4}-\d{4}(?![\d.])/g, (_m, pre: string) => { bump(hits, "aadhaar"); return `${pre}[ID number]`; });
-  t = t.replace(/(^|[^\d.+])[2-9]\d{3}[ -]?\d{4}[ -]?\d{4}(?![\d.])/g, (_m, pre: string) => { bump(hits, "aadhaar"); return `${pre}[ID number]`; });
+  t = t.replace(/(^|[^\d.])\d{2}-\d{4}-\d{4}-\d{4}(?!\d|\.\d)/g, (_m, pre: string) => { bump(hits, "aadhaar"); return `${pre}[ID number]`; });
+  t = t.replace(/(^|[^\d.+])[2-9]\d{3}[ -]?\d{4}[ -]?\d{4}(?!\d|\.\d)/g, (_m, pre: string) => { bump(hits, "aadhaar"); return `${pre}[ID number]`; });
 
   // Indian mobile numbers, with or without +91 / 0
-  t = t.replace(/(^|[^\d.+])(?:\+?91[ -]?|0)?[6-9]\d{4}[ -]?\d{5}(?![\d.])/g, (_m, pre: string) => { bump(hits, "phone"); return `${pre}[phone]`; });
+  t = t.replace(/(^|[^\d.+])(?:\+?91[ -]?|0)?[6-9]\d{4}[ -]?\d{5}(?!\d|\.\d)/g, (_m, pre: string) => { bump(hits, "phone"); return `${pre}[phone]`; });
 
   // Dates of birth
   t = t.replace(/\b(DOB|D\.O\.B\.?|Date of birth)(\s*[:-]?\s*)\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}/gi, (_m, label: string, sep: string) => {

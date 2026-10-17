@@ -157,6 +157,16 @@ th,td{border:1px solid #D1D5DB;padding:5px 7px;text-align:left;vertical-align:to
 blockquote,.md-bl{margin:6px 0 12px;padding:8px 12px;border-left:3px solid #007A6C;background:#F0F7F6}
 code{font-family:Consolas,monospace;font-size:.9em}pre{white-space:pre-wrap;font-size:9pt}
 sup.md-cite{font-size:.75em;color:#007A6C}
+.md-ev{display:inline-block;padding:0 5px;border:1px solid #9CA3AF;border-radius:8px;font-size:.78em;font-weight:600;line-height:1.35;color:#374151;white-space:nowrap}
+.md-ev-high{border-color:#059669;color:#047857}.md-ev-moderate{border-color:#2563EB;color:#1D4ED8}.md-ev-low{border-color:#B45309;color:#92400E}
+.md-dose{margin:6px 0 12px;border:1px solid #D1D5DB;border-radius:6px;break-inside:avoid}
+.md-dose-h{display:flex;align-items:baseline;gap:8px;padding:5px 8px;border-bottom:1px solid #D1D5DB;background:#F0F7F6}
+.md-dose-tag{font-size:.78em;font-weight:700;color:#007A6C}
+.md-dose dl{margin:0}
+.md-dose-r{display:flex;gap:10px;padding:3px 8px;border-bottom:1px solid #E5E7EB}.md-dose-r:last-child{border-bottom:0}
+.md-dose dt{width:30%;flex-shrink:0;font-weight:600;color:#4B5563}.md-dose dd{margin:0}
+.md-kp{margin:6px 0 12px;padding:6px 12px 2px;border:1px solid #D1D5DB;border-radius:6px;background:#F9FAFB;break-inside:avoid}
+.md-kp-h{margin:0 0 4px;font-weight:700;color:#0F1729}
 .md-copy,.md-mermaid-src{display:none}
 .md-mermaid{margin:8px 0 14px;break-inside:avoid}
 .md-mermaid:not([data-state="done"]) .md-mermaid-src{display:block;margin:0;padding:8px 10px;border:1px solid #D1D5DB;border-radius:6px;font:9pt/1.45 Consolas,monospace;white-space:pre-wrap}

@@ -1,7 +1,8 @@
 /** The "Personalise Cadus" dialog: who the user is, so answers fit their level. */
 import { useState } from "react";
-import { Sparkles, X } from "lucide-react";
-import { EXAMS, MBBS_YEARS, ROLES, SPECIALTIES, type MedicalProfile, type ProfileRole } from "@/lib/cadus/profile";
+import { ShieldCheck, Sparkles, X } from "lucide-react";
+import { EXAMS, MBBS_YEARS, REGISTERED_ROLES, ROLES, SPECIALTIES, type MedicalProfile, type ProfileRole } from "@/lib/cadus/profile";
+import { COUNCILS, STATES } from "@/lib/cadus/onboarding";
 
 const EFFECT: Record<ProfileRole, (exam: string) => string> = {
   student: () => "Answers explain from first principles, link to the basic sciences and follow the structure of university exam answers.",
@@ -23,15 +24,25 @@ export default function ProfileDialog({ profile, onSave, onClose }: {
   const [exam, setExam] = useState(profile?.exam ?? "NEET-PG");
   const [examDate, setExamDate] = useState(profile?.examDate ?? "");
   const [specialty, setSpecialty] = useState(profile?.specialty ?? "");
+  const [state, setState] = useState(profile?.state ?? "");
+  const [registration, setRegistration] = useState(profile?.registration ?? "");
+  const [council, setCouncil] = useState(profile?.council ?? "");
+  const [declared, setDeclared] = useState(!!profile?.declared);
+  const reg = role ? REGISTERED_ROLES.has(role) : false;
 
   const save = () => {
     if (!role) return;
+    const r = reg ? registration.trim().slice(0, 40) : "";
     onSave({
       role,
       year: role === "student" && year ? year : undefined,
       exam: role === "aspirant" ? exam : undefined,
       examDate: role === "aspirant" && /^\d{4}-\d{2}-\d{2}$/.test(examDate) ? examDate : undefined,
       specialty: (role === "resident" || role === "doctor") && specialty ? specialty : undefined,
+      state: state || undefined,
+      registration: r || undefined,
+      council: r && council.trim() ? council.trim().slice(0, 80) : undefined,
+      declared: r && declared ? true : undefined,
     });
   };
 
@@ -95,6 +106,32 @@ export default function ProfileDialog({ profile, onSave, onClose }: {
                 {SPECIALTIES.map((s) => <option key={s}>{s}</option>)}
               </select>
             </label>
+          )}
+          {role && (
+            <label className="cx-field">
+              <span>State or union territory <span className="opt">(optional)</span></span>
+              <select className="cx-input" value={state} onChange={(e) => setState(e.target.value)}>
+                <option value="">Not specified</option>
+                {STATES.map((s) => <option key={s}>{s}</option>)}
+              </select>
+            </label>
+          )}
+          {reg && (
+            <div className="cx-field">
+              <span>Professional registration <span className="opt">(optional, self-declared)</span></span>
+              <div className="cx-ob-two">
+                <input className="cx-input" value={registration} maxLength={40} onChange={(e) => setRegistration(e.target.value)} placeholder="Registration number" aria-label="Registration number" />
+                <input className="cx-input" list="cx-prof-councils" value={council} maxLength={80} onChange={(e) => setCouncil(e.target.value)} placeholder="Council" aria-label="Council" />
+                <datalist id="cx-prof-councils">{COUNCILS.map((c) => <option key={c} value={c} />)}</datalist>
+              </div>
+              {registration.trim() && (
+                <button type="button" className={`cx-tg ${declared ? "on" : ""}`} role="checkbox" aria-checked={declared} onClick={() => setDeclared(!declared)}>
+                  <span className="cx-tg-box" aria-hidden />
+                  <span className="cx-tg-l">These are my registration details and they are correct.<small>Shown on your profile as self-declared. Never sent to the AI.</small></span>
+                </button>
+              )}
+              {registration.trim() && declared && <small className="cx-prof-badge"><ShieldCheck size={13} /> Registered practitioner (self-declared)</small>}
+            </div>
           )}
           {role && <p className="cx-prof-prev"><Sparkles size={15} /> {EFFECT[role](exam)}</p>}
         </div>

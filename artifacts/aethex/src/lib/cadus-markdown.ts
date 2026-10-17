@@ -4,7 +4,10 @@
  * Supports headings, bold/italic, inline + fenced code, lists, tables,
  * blockquotes, horizontal rules and http(s) links. A ```mermaid block becomes a
  * placeholder holding the (escaped) source, which the page draws as a flowchart.
+ * Reference extras: {{evidence:high}} tags become evidence-certainty labels, a
+ * ```dose block becomes a dose card, and a :::keypoints block becomes a card.
  */
+import { EVIDENCE, EVIDENCE_TAG, parseDoseBlock, referenceToPlain, type EvidenceLevel } from "./cadus/reference";
 
 function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -17,13 +20,25 @@ function inline(raw: string): string {
     return `\u0000${codes.length - 1}\u0000`;
   });
   s = esc(s);
-  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, t, u) => `<a href="${u}" target="_blank" rel="noopener noreferrer">${t}</a>`);
+  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s(){}]+)\)/g, (_, t, u) => `<a href="${u}" target="_blank" rel="noopener noreferrer">${t}</a>`);
   s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
   s = s.replace(/__([^_]+)__/g, "<strong>$1</strong>");
   s = s.replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1<em>$2</em>");
   s = s.replace(/~~([^~]+)~~/g, "<del>$1</del>");
+  s = s.replace(EVIDENCE_TAG, (_, l: string) => {
+    const e = EVIDENCE[l.toLowerCase() as EvidenceLevel];
+    return `<span class="md-ev md-ev-${l.toLowerCase()}" title="${esc(`${e.label}: ${e.desc}`)}">${e.label}</span>`;
+  });
   s = s.replace(/\u0000(\d+)\u0000/g, (_, i) => codes[Number(i)]);
   return s;
+}
+
+/** A dose card: the drug, then labelled rows (dose, route, maximum, adjustments...). */
+function doseCard(src: string): string | null {
+  const card = parseDoseBlock(src);
+  if (!card) return null;
+  const rows = card.rows.map((r) => `<div class="md-dose-r k-${r.key.replace(/[^a-z]+/g, "-")}"><dt>${esc(r.label)}</dt><dd>${inline(r.value)}</dd></div>`).join("");
+  return `<div class="md-dose" role="group" aria-label="${esc(`Dose card: ${card.drug}`)}"><div class="md-dose-h"><span class="md-dose-tag">Dose card</span><b>${inline(card.drug)}</b></div><dl>${rows}</dl></div>`;
 }
 
 function splitRow(line: string): string[] {
@@ -47,6 +62,18 @@ export function renderMarkdown(md: string, opts: RenderOptions = {}, nested = fa
   while (i < lines.length) {
     const line = lines[i];
 
+    // :::keypoints containers (an answer's key points, lifted under its bottom line)
+    const box = /^:::\s*([a-z]+)\s*$/i.exec(line.trim());
+    if (box) {
+      const buf: string[] = [];
+      i++;
+      while (i < lines.length && lines[i].trim() !== ":::") buf.push(lines[i++]);
+      i++;
+      const inner = renderMarkdown(buf.join("\n"), { ...opts, copy: false }, true);
+      out.push(box[1].toLowerCase() === "keypoints" ? `<section class="md-kp" aria-label="Key points"><p class="md-kp-h">Key points</p>${inner}</section>` : inner);
+      continue;
+    }
+
     // fenced code
     const fence = /^```\s*([\w-]*)/.exec(line);
     if (fence) {
@@ -54,6 +81,10 @@ export function renderMarkdown(md: string, opts: RenderOptions = {}, nested = fa
       i++;
       while (i < lines.length && !/^```/.test(lines[i])) buf.push(lines[i++]);
       i++;
+      if (fence[1].toLowerCase() === "dose") {
+        const card = doseCard(buf.join("\n"));
+        if (card) { out.push(card); continue; }
+      }
       if (fence[1].toLowerCase() === "mermaid") {
         out.push(`<div class="md-mermaid" data-state="new"><pre class="md-mermaid-src">${esc(buf.join("\n"))}</pre><div class="md-mermaid-fig" role="img" aria-label="Flowchart"></div></div>`);
         continue;
@@ -117,7 +148,7 @@ export function renderMarkdown(md: string, opts: RenderOptions = {}, nested = fa
     while (
       i < lines.length &&
       lines[i].trim() &&
-      !/^(#{1,6}\s|```|>|\s*[-*+•]\s+|\s*\d+[.)]\s+)/.test(lines[i]) &&
+      !/^(#{1,6}\s|```|:::|>|\s*[-*+•]\s+|\s*\d+[.)]\s+)/.test(lines[i]) &&
       !(lines[i].includes("|") && i + 1 < lines.length && /-{2,}/.test(lines[i + 1]) && lines[i + 1].includes("|"))
     ) buf.push(lines[i++]);
     out.push(`<p>${buf.map(inline).join("<br/>")}</p>`);
@@ -125,18 +156,21 @@ export function renderMarkdown(md: string, opts: RenderOptions = {}, nested = fa
   let html = out.join("");
   const max = opts.cites ?? 0;
   if (max > 0) {
-    html = html.replace(/\[(\d{1,2})\](?!\()/g, (m, n) => {
+    // Only in text: a marker inside an attribute (a dose card's label, say) is left alone.
+    html = html.replace(/(<[^>]*>)|\[(\d{1,2})\](?!\()/g, (m, tag: string | undefined, n: string) => {
+      if (tag) return tag;
       const k = Number(n);
-      return k >= 1 && k <= max ? `<sup class="md-cite">${k}</sup>` : m;
+      return k >= 1 && k <= max ? `<sup class="md-cite" data-n="${k}" role="button" tabindex="0" aria-label="Source ${k}">${k}</sup>` : m;
     });
   }
-  if (!nested) html = html.replace(/^<p><strong>Bottom line:<\/strong>/, '<p class="md-bl"><strong>Bottom line:</strong>');
+  if (!nested) html = html.replace(/^((?:<h[2-4]>(?:(?!<\/h[2-4]>).)*<\/h[2-4]>)?)<p>(?=<strong>\s*Bottom line\b)/i, '$1<p class="md-bl">');
   return html;
 }
 
 /** Strip markdown to readable plain text (for copy-as-text / PDF). */
 export function markdownToText(md: string): string {
-  return md
+  return referenceToPlain(md)
+    .replace(/^:::.*$/gm, "")
     .replace(/```mermaid[\s\S]*?(```|$)/gi, "")
     .replace(/```[\w-]*\n?/g, "")
     .replace(/^#{1,6}\s+/gm, "")

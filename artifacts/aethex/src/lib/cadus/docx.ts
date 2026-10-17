@@ -5,6 +5,7 @@
  * signature block. Opens in Word, Google Docs, LibreOffice and WPS.
  */
 import { hasLetterhead, letterheadLines, type Letterhead } from "./letterhead";
+import { referenceForDocument } from "./reference";
 
 /* ------------------------------------------------------------------ zip (store) */
 
@@ -306,7 +307,7 @@ export function markdownToDocx(
     lh ? letterheadXml(lh) : "",
     para(run(title), "Title"),
     para(run(opts.subtitle ?? `Cadus · ${date.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}`), "Subtitle"),
-    markdownToWordXml(md.replace(/^#\s+.+\n+/, (m) => (m.replace(/^#\s+/, "").trim() === title.trim() ? "" : m))),
+    markdownToWordXml(referenceForDocument(md).replace(/^#\s+.+\n+/, (m) => (m.replace(/^#\s+/, "").trim() === title.trim() ? "" : m))),
     opts.signature ? signatureXml(lh, date) : "",
     para(run(opts.note ?? (opts.signature ? "Draft prepared with Cadus. Check every detail before signing." : "Prepared with Cadus, clinical AI by Aethex. Verify against current guidelines and local protocols before clinical use.")), "Small"),
   ].join("");

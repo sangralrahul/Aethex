@@ -10,6 +10,7 @@ import {
 import { renderMarkdown, markdownToText } from "@/lib/cadus-markdown";
 import { downloadBlob, fileSlug } from "@/lib/cadus/docx";
 import { useFlowcharts } from "@/lib/cadus/flowchart";
+import { referenceForDocument } from "@/lib/cadus/reference";
 
 export interface CanvasDoc {
   id: string;
@@ -106,7 +107,8 @@ export default function CanvasPanel({ doc, onChange, onClose, aiEdit, exportPdf,
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(doc.text);
+      // Evidence labels and dose cards become plain words and tables in other apps.
+      await navigator.clipboard.writeText(referenceForDocument(doc.text));
       toast("Document copied");
     } catch {
       toast("Couldn't copy to the clipboard");

@@ -7,6 +7,7 @@ import { memo, useEffect, useMemo, useRef, useSyncExternalStore, type ReactNode 
 import { renderMarkdown } from "@/lib/cadus-markdown";
 import { closePartialMarkdown } from "@/lib/cadus/stream";
 import { useFlowcharts } from "@/lib/cadus/flowchart";
+import { liftKeyPoints } from "@/lib/cadus/reference";
 
 export interface TextStore {
   get: () => string;
@@ -15,7 +16,8 @@ export interface TextStore {
 
 export const MdBlock = memo(function MdBlock({ text, cites, className = "" }: { text: string; cites?: number; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
-  const html = useMemo(() => renderMarkdown(text, { cites, copy: true }), [text, cites]);
+  // The answer's key points sit under its bottom line, as a card.
+  const html = useMemo(() => renderMarkdown(liftKeyPoints(text), { cites, copy: true }), [text, cites]);
   // The same object between renders, so React 19 doesn't reset the HTML and wipe drawn flowcharts.
   const inner = useMemo(() => ({ __html: html }), [html]);
   // Flowcharts are drawn once the answer is on screen.

@@ -77,6 +77,9 @@ It provides an intelligent interface for medical and educational assistance.
 - Patient education
 - Procedure guidance
 - Educational learning assistance
+- Reference-style answers: key points, evidence-certainty labels and dose cards, with numbered sources
+- A safety review of every clinical answer, and an on-device answer history that exports to CSV
+- A privacy guard that hides patient identifiers before anything is sent
 
 > CADUS AI is intended as an educational and informational assistant and is not a replacement for qualified medical professionals.
 

@@ -17,6 +17,13 @@ export interface MedicalProfile {
   examDate?: string;
   /** Specialty, for residents and doctors. */
   specialty?: string;
+  /** Indian state or union territory where they work (for local programmes and guidance). */
+  state?: string;
+  /** Professional registration, self-declared (never sent to the AI). */
+  registration?: string;
+  council?: string;
+  /** They confirmed the registration details are theirs and correct. */
+  declared?: boolean;
 }
 
 export const PROFILE_KEY = "cadus3.profile";
@@ -37,8 +44,11 @@ export const SPECIALTIES = [
   "General Medicine", "General Surgery", "Paediatrics", "Obstetrics and Gynaecology", "Orthopaedics",
   "Anaesthesiology", "Emergency Medicine", "Family Medicine", "Radiology", "Dermatology", "Psychiatry",
   "ENT", "Ophthalmology", "Cardiology", "Pulmonology", "Nephrology", "Neurology", "Pathology",
-  "Pharmacology", "Community Medicine",
+  "Pharmacology", "Community Medicine", "Gastroenterology", "Critical Care",
 ];
+
+/** Roles that hold a professional registration. */
+export const REGISTERED_ROLES = new Set<ProfileRole>(["intern", "resident", "doctor", "nurse", "pharmacist"]);
 
 const isRole = (v: unknown): v is ProfileRole => ROLES.some((r) => r.id === v);
 
@@ -53,6 +63,10 @@ export function readProfile(): MedicalProfile | null {
       exam: str(raw.exam, 20),
       examDate: typeof raw.examDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(raw.examDate) ? raw.examDate : undefined,
       specialty: str(raw.specialty, 60),
+      state: str(raw.state, 60),
+      registration: str(raw.registration, 40),
+      council: str(raw.council, 80),
+      declared: raw.declared === true ? true : undefined,
     };
   } catch {
     return null;
@@ -101,6 +115,15 @@ export function profileSummary(p: MedicalProfile | null): string {
     case "nurse": return "Nurse";
     case "pharmacist": return "Pharmacist";
   }
+}
+
+/**
+ * The self-declared registration badge, e.g. "Reg. No. 54321 · Karnataka Medical
+ * Council", or null when there is none (or it wasn't confirmed).
+ */
+export function practitionerBadge(p: MedicalProfile | null): string | null {
+  if (!p || !REGISTERED_ROLES.has(p.role) || !p.declared || !p.registration) return null;
+  return `Reg. No. ${p.registration}${p.council ? ` · ${p.council}` : ""}`;
 }
 
 /** The exam an aspirant or student practises for (students default to NEET-PG). */
