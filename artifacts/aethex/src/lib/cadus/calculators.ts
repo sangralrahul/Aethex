@@ -27,15 +27,19 @@ export interface CalcResult {
 }
 
 export type CalcGroup =
-  | "Kidney and liver"
+  | "Emergency and critical care"
   | "Cardiology"
-  | "Emergency and scores"
+  | "Neurology"
+  | "Respiratory and blood gases"
+  | "Kidney, liver and GI"
+  | "Haematology"
   | "Obstetrics and paediatrics"
   | "Fluids and electrolytes"
   | "Body size";
 
 export const CALC_GROUPS: CalcGroup[] = [
-  "Emergency and scores", "Kidney and liver", "Cardiology", "Obstetrics and paediatrics", "Fluids and electrolytes", "Body size",
+  "Emergency and critical care", "Cardiology", "Neurology", "Respiratory and blood gases", "Kidney, liver and GI",
+  "Haematology", "Obstetrics and paediatrics", "Fluids and electrolytes", "Body size",
 ];
 
 export interface Calculator {
@@ -137,13 +141,110 @@ const ALVARADO_IN: CalcInput[] = [
   { id: "shift", kind: "toggle", label: "Neutrophils above 75% (shift to the left)", points: 1 },
 ];
 
+
+const WELLS_DVT_IN: CalcInput[] = [
+  { id: "ca", kind: "toggle", label: "Active cancer (treatment within 6 months, or palliative)", points: 1 },
+  { id: "par", kind: "toggle", label: "Paralysis, paresis or a recent plaster cast on the leg", points: 1 },
+  { id: "bed", kind: "toggle", label: "Bedridden 3 days or more, or major surgery within 12 weeks", points: 1 },
+  { id: "tend", kind: "toggle", label: "Localised tenderness along the deep veins", points: 1 },
+  { id: "leg", kind: "toggle", label: "Entire leg swollen", points: 1 },
+  { id: "calf", kind: "toggle", label: "Calf 3 cm or more bigger than the other leg (10 cm below the tibial tuberosity)", points: 1 },
+  { id: "pit", kind: "toggle", label: "Pitting oedema confined to the symptomatic leg", points: 1 },
+  { id: "coll", kind: "toggle", label: "Collateral superficial (non-varicose) veins", points: 1 },
+  { id: "prev", kind: "toggle", label: "Previously documented DVT", points: 1 },
+  { id: "alt", kind: "toggle", label: "An alternative diagnosis is at least as likely", points: -2 },
+];
+const PERC_IN: CalcInput[] = [
+  { id: "age", kind: "toggle", label: "Age 50 or older", points: 1 },
+  { id: "hr", kind: "toggle", label: "Heart rate 100/min or more", points: 1 },
+  { id: "sat", kind: "toggle", label: "SpO₂ below 95% on room air", points: 1 },
+  { id: "leg", kind: "toggle", label: "Unilateral leg swelling", points: 1 },
+  { id: "hae", kind: "toggle", label: "Haemoptysis", points: 1 },
+  { id: "surg", kind: "toggle", label: "Surgery or trauma needing general anaesthesia in the last 4 weeks", points: 1 },
+  { id: "prev", kind: "toggle", label: "Previous DVT or PE", points: 1 },
+  { id: "horm", kind: "toggle", label: "Oestrogen use (oral contraceptive or HRT)", points: 1 },
+];
+const CENTOR_IN: CalcInput[] = [
+  { id: "exu", kind: "toggle", label: "Tonsillar exudate or swelling", points: 1 },
+  { id: "node", kind: "toggle", label: "Tender or swollen anterior cervical lymph nodes", points: 1 },
+  { id: "fever", kind: "toggle", label: "Temperature above 38 °C", points: 1 },
+  { id: "nocough", kind: "toggle", label: "No cough", points: 1 },
+];
+const BISAP_IN: CalcInput[] = [
+  { id: "bun", kind: "toggle", label: "BUN above 25 mg/dL (blood urea above 53.5 mg/dL)", points: 1 },
+  { id: "ms", kind: "toggle", label: "Impaired mental status (GCS below 15)", points: 1 },
+  { id: "sirs", kind: "toggle", label: "SIRS (2 or more: temperature below 36 or above 38 °C, pulse above 90, RR above 20, WBC below 4,000 or above 12,000)", points: 1 },
+  { id: "age", kind: "toggle", label: "Age above 60", points: 1 },
+  { id: "pe", kind: "toggle", label: "Pleural effusion on imaging", points: 1 },
+];
+const GBS_FLAGS: CalcInput[] = [
+  { id: "hr", kind: "toggle", label: "Pulse 100/min or more", points: 1 },
+  { id: "mel", kind: "toggle", label: "Melaena", points: 1 },
+  { id: "syn", kind: "toggle", label: "Syncope", points: 2 },
+  { id: "hep", kind: "toggle", label: "Liver disease", points: 2 },
+  { id: "hf", kind: "toggle", label: "Heart failure", points: 2 },
+];
+const sel = (id: string, label: string, opts: string[], un?: string): CalcInput => ({
+  id, kind: "select", label,
+  options: [...opts.map((o, i) => ({ value: String(i), label: `${i} ${o}` })), ...(un ? [{ value: "un", label: `UN ${un}` }] : [])],
+});
+const MOTOR_ARM = ["No drift for 10 seconds", "Drift", "Some effort against gravity", "No effort against gravity", "No movement"];
+const MOTOR_LEG = ["No drift for 5 seconds", "Drift", "Some effort against gravity", "No effort against gravity", "No movement"];
+const NIHSS_IN: CalcInput[] = [
+  sel("loc", "1a Level of consciousness", ["Alert", "Not alert, roused by minor stimulation", "Not alert, needs repeated or painful stimulation", "Unresponsive or reflex responses only"]),
+  sel("locq", "1b Questions (month, age)", ["Both correct", "One correct", "Neither correct"]),
+  sel("locc", "1c Commands (open and close eyes, grip and release)", ["Both correct", "One correct", "Neither correct"]),
+  sel("gaze", "2 Best gaze", ["Normal", "Partial gaze palsy", "Forced deviation"]),
+  sel("vis", "3 Visual fields", ["No loss", "Partial hemianopia", "Complete hemianopia", "Bilateral hemianopia (including cortical blindness)"]),
+  sel("face", "4 Facial palsy", ["Normal", "Minor", "Partial (lower face)", "Complete (upper and lower face)"]),
+  sel("arml", "5a Motor, left arm", MOTOR_ARM, "Amputation or joint fusion (not scored)"),
+  sel("armr", "5b Motor, right arm", MOTOR_ARM, "Amputation or joint fusion (not scored)"),
+  sel("legl", "6a Motor, left leg", MOTOR_LEG, "Amputation or joint fusion (not scored)"),
+  sel("legr", "6b Motor, right leg", MOTOR_LEG, "Amputation or joint fusion (not scored)"),
+  sel("atax", "7 Limb ataxia", ["Absent", "Present in one limb", "Present in two limbs"], "Amputation or joint fusion (not scored)"),
+  sel("sens", "8 Sensory", ["Normal", "Mild to moderate loss", "Severe or total loss"]),
+  sel("lang", "9 Best language", ["No aphasia", "Mild to moderate aphasia", "Severe aphasia", "Mute or global aphasia"]),
+  sel("dys", "10 Dysarthria", ["Normal", "Mild to moderate", "Severe (unintelligible or mute)"], "Intubated or other physical barrier (not scored)"),
+  sel("ext", "11 Extinction and inattention", ["None", "In one sensory modality", "Profound, or in more than one modality"]),
+];
+const BURN_FRACTIONS = [
+  { value: "0", label: "Not burned" }, { value: "0.25", label: "About a quarter" }, { value: "0.5", label: "About half" },
+  { value: "0.75", label: "About three quarters" }, { value: "1", label: "All of it" },
+];
+/** Share of body surface by age group: under 1, 1-4, 5-9, 10-14, 15, adult (Lund and Browder). */
+const BURN_REGIONS: { id: string; label: string; pct: number[] }[] = [
+  { id: "head", label: "Head", pct: [19, 17, 13, 11, 9, 7] },
+  { id: "neck", label: "Neck", pct: [2, 2, 2, 2, 2, 2] },
+  { id: "atrunk", label: "Front of trunk", pct: [13, 13, 13, 13, 13, 13] },
+  { id: "ptrunk", label: "Back of trunk", pct: [13, 13, 13, 13, 13, 13] },
+  { id: "butt", label: "Buttocks (both)", pct: [5, 5, 5, 5, 5, 5] },
+  { id: "gen", label: "Genitalia", pct: [1, 1, 1, 1, 1, 1] },
+  { id: "uarm", label: "Upper arms (both)", pct: [8, 8, 8, 8, 8, 8] },
+  { id: "farm", label: "Forearms (both)", pct: [6, 6, 6, 6, 6, 6] },
+  { id: "hands", label: "Hands (both)", pct: [5, 5, 5, 5, 5, 5] },
+  { id: "thighs", label: "Thighs (both)", pct: [11, 13, 16, 17, 18, 19] },
+  { id: "legs", label: "Lower legs (both)", pct: [10, 10, 11, 12, 13, 14] },
+  { id: "feet", label: "Feet (both)", pct: [7, 7, 7, 7, 7, 7] },
+];
+const TBW_GROUP: CalcInput = {
+  id: "group", kind: "select", label: "Patient",
+  options: [
+    { value: "m", label: "Adult man (water 60% of weight)" }, { value: "f", label: "Adult woman (50%)" },
+    { value: "em", label: "Man 65 or older (50%)" }, { value: "ef", label: "Woman 65 or older (45%)" }, { value: "c", label: "Child (60%)" },
+  ],
+};
+const TBW_FACTOR: Record<string, number> = { m: 0.6, f: 0.5, em: 0.5, ef: 0.45, c: 0.6 };
+const FLUIDS: Record<string, { na: number; k: number }> = {
+  hts3: { na: 513, k: 0 }, ns: { na: 154, k: 0 }, dns: { na: 154, k: 0 }, rl: { na: 130, k: 4 }, half: { na: 77, k: 0 }, d5: { na: 0, k: 0 },
+};
+
 /* ------------------------------------------------------------------ calculators */
 
 export const CALCULATORS: Calculator[] = [
   {
     id: "crcl",
     name: "Creatinine clearance",
-    group: "Kidney and liver",
+    group: "Kidney, liver and GI",
     desc: "Cockcroft-Gault, for renal drug dosing",
     inputs: [
       { id: "age", kind: "number", label: "Age", unit: "years", min: 18, max: 120 },
@@ -169,7 +270,7 @@ export const CALCULATORS: Calculator[] = [
   {
     id: "egfr",
     name: "eGFR (CKD-EPI 2021)",
-    group: "Kidney and liver",
+    group: "Kidney, liver and GI",
     desc: "Race-free eGFR and KDIGO stage",
     inputs: [
       { id: "age", kind: "number", label: "Age", unit: "years", min: 18, max: 120 },
@@ -197,7 +298,7 @@ export const CALCULATORS: Calculator[] = [
   {
     id: "childpugh",
     name: "Child-Pugh score",
-    group: "Kidney and liver",
+    group: "Kidney, liver and GI",
     desc: "Severity of cirrhosis",
     inputs: [
       { id: "bili", kind: "number", label: "Total bilirubin", unit: "mg/dL", min: 0.1, max: 60, step: 0.1 },
@@ -256,7 +357,7 @@ export const CALCULATORS: Calculator[] = [
   {
     id: "gcs",
     name: "Glasgow Coma Scale",
-    group: "Emergency and scores",
+    group: "Emergency and critical care",
     desc: "Eye, verbal and motor response",
     inputs: [
       { id: "e", kind: "select", label: "Eye opening", options: [
@@ -284,7 +385,7 @@ export const CALCULATORS: Calculator[] = [
   {
     id: "curb65",
     name: "CURB-65",
-    group: "Emergency and scores",
+    group: "Emergency and critical care",
     desc: "Severity of community-acquired pneumonia",
     inputs: CURB65_IN,
     formula: "One point each for Confusion, Urea > 7 mmol/L, Respiratory rate ≥ 30, low Blood pressure, age ≥ 65",
@@ -300,7 +401,7 @@ export const CALCULATORS: Calculator[] = [
   {
     id: "qsofa",
     name: "qSOFA",
-    group: "Emergency and scores",
+    group: "Emergency and critical care",
     desc: "Bedside risk of poor outcome in infection",
     inputs: QSOFA_IN,
     formula: "One point each, total 0 to 3; 2 or more = high risk",
@@ -318,7 +419,7 @@ export const CALCULATORS: Calculator[] = [
   {
     id: "wells",
     name: "Wells score for PE",
-    group: "Emergency and scores",
+    group: "Emergency and critical care",
     desc: "Pre-test probability of pulmonary embolism",
     inputs: WELLS_IN,
     formula: "Sum of points; more than 4 = PE likely, 4 or less = PE unlikely",
@@ -339,7 +440,7 @@ export const CALCULATORS: Calculator[] = [
   {
     id: "alvarado",
     name: "Alvarado score",
-    group: "Emergency and scores",
+    group: "Emergency and critical care",
     desc: "Likelihood of acute appendicitis",
     inputs: ALVARADO_IN,
     formula: "MANTRELS: Migration 1, Anorexia 1, Nausea 1, Tenderness in RIF 2, Rebound 1, Elevated temperature 1, Leucocytosis 2, Shift to the left 1 (total 10)",
@@ -648,6 +749,634 @@ export const CALCULATORS: Calculator[] = [
         band: k < 135 ? "Low" : k <= 145 ? "Within 135-145" : "High",
         level: k < 135 || k > 145 ? "warn" : "ok",
         details: [`With the Hillier factor (2.4): ${fmt(h, 1)} mmol/L`],
+      };
+    },
+  },
+  /* ---------------------------------------------------------------- added in Cadus 3 */
+  {
+    id: "heart",
+    name: "HEART score",
+    group: "Cardiology",
+    desc: "Chest pain: risk of a major cardiac event in 6 weeks",
+    inputs: [
+      { id: "h", kind: "select", label: "History", options: [{ value: "0", label: "0 Slightly suspicious" }, { value: "1", label: "1 Moderately suspicious" }, { value: "2", label: "2 Highly suspicious" }] },
+      { id: "e", kind: "select", label: "ECG", options: [{ value: "0", label: "0 Normal" }, { value: "1", label: "1 Non-specific repolarisation change (LBBB, LVH, paced, digoxin)" }, { value: "2", label: "2 Significant ST deviation" }] },
+      { id: "a", kind: "select", label: "Age", options: [{ value: "0", label: "0 Under 45" }, { value: "1", label: "1 45 to 64" }, { value: "2", label: "2 65 or older" }] },
+      { id: "r", kind: "select", label: "Risk factors", options: [{ value: "0", label: "0 None known" }, { value: "1", label: "1 One or two" }, { value: "2", label: "2 Three or more, or known atherosclerotic disease" }] },
+      { id: "t", kind: "select", label: "Initial troponin", options: [{ value: "0", label: "0 At or below the normal limit" }, { value: "1", label: "1 One to three times the normal limit" }, { value: "2", label: "2 More than three times the normal limit" }] },
+    ],
+    formula: "History + ECG + Age + Risk factors (hypertension, diabetes, high cholesterol, smoking, family history, obesity) + Troponin, 0 to 2 each; total 0 to 10",
+    source: "Six AJ et al. Neth Heart J 2008;16:191-6; Backus BE et al. Int J Cardiol 2013;168:2153-8",
+    keywords: ["chest pain", "heart score", "acs", "acute coronary", "nstemi", "unstable angina", "troponin"],
+    compute: (v) => {
+      const ids = ["h", "e", "a", "r", "t"];
+      const vals = ids.map((id) => num(v, id));
+      if (vals.some((x) => x === null)) return null;
+      const s = vals.reduce((a, b) => a! + b!, 0)!;
+      const band = s <= 3 ? "Low risk (MACE about 1-2% at 6 weeks)" : s <= 6 ? "Moderate risk (MACE about 12-17%)" : "High risk (MACE about 50-65%)";
+      const act = s <= 3 ? "Consider early discharge with outpatient follow-up if serial troponins are normal." : s <= 6 ? "Admit for observation, serial troponins and non-invasive testing." : "Treat as acute coronary syndrome and plan an early invasive strategy.";
+      return { value: `${s} / 10`, label: "HEART score", band, level: s <= 3 ? "ok" : s <= 6 ? "warn" : "danger", details: [act, "Not for patients with ST elevation, who need immediate reperfusion."] };
+    },
+  },
+  {
+    id: "wellsdvt",
+    name: "Wells score for DVT",
+    group: "Emergency and critical care",
+    desc: "Pre-test probability of deep vein thrombosis",
+    inputs: WELLS_DVT_IN,
+    formula: "One point each for the clinical features listed; minus 2 if an alternative diagnosis is at least as likely",
+    source: "Wells PS et al. N Engl J Med 2003;349:1227-35; NICE NG158 (2020)",
+    keywords: ["dvt", "deep vein thrombosis", "deep venous thrombosis", "leg swelling", "calf swelling", "swollen leg"],
+    compute: (v) => {
+      const s = points(WELLS_DVT_IN, v);
+      const likely = s >= 2;
+      return {
+        value: `${s} points`, label: "Wells DVT", band: likely ? "DVT likely" : "DVT unlikely",
+        level: likely ? "danger" : "ok",
+        details: [
+          likely
+            ? "Proximal leg vein ultrasound within 4 hours; if that isn't possible, do a D-dimer and give interim anticoagulation (NICE NG158)."
+            : "Do a D-dimer. If it is positive, arrange a proximal leg vein ultrasound within 4 hours.",
+          `Three-level reading: ${s <= 0 ? "low" : s <= 2 ? "moderate" : "high"} probability (0 or less low, 1-2 moderate, 3 or more high).`,
+        ],
+      };
+    },
+  },
+  {
+    id: "perc",
+    name: "PERC rule",
+    group: "Emergency and critical care",
+    desc: "Rule out pulmonary embolism without testing (low pre-test probability)",
+    inputs: PERC_IN,
+    formula: "PERC negative only if none of the eight criteria is present",
+    source: "Kline JA et al. J Thromb Haemost 2004;2:1247-55; J Thromb Haemost 2008;6:772-80",
+    keywords: ["perc", "pe rule out", "pulmonary embolism rule"],
+    compute: (v) => {
+      const s = points(PERC_IN, v);
+      return s === 0
+        ? { value: "PERC negative", label: "PERC rule", band: "PE can be ruled out without further testing", level: "ok", details: ["Valid only when your clinical gestalt puts the pre-test probability below 15%."] }
+        : { value: `${s} criteri${s === 1 ? "on" : "a"} positive`, label: "PERC rule", band: "PE not ruled out by PERC", level: "warn", details: ["Use the Wells score and a D-dimer or imaging as appropriate."] };
+    },
+  },
+  {
+    id: "sofa",
+    name: "SOFA score",
+    group: "Emergency and critical care",
+    desc: "Organ dysfunction in sepsis and critical illness",
+    inputs: [
+      { id: "resp", kind: "select", label: "Respiration: PaO₂/FiO₂ (mmHg)", options: [{ value: "0", label: "0 400 or more" }, { value: "1", label: "1 Below 400" }, { value: "2", label: "2 Below 300" }, { value: "3", label: "3 Below 200 with respiratory support" }, { value: "4", label: "4 Below 100 with respiratory support" }] },
+      { id: "coag", kind: "select", label: "Platelets (×10³/µL)", options: [{ value: "0", label: "0 150 or more" }, { value: "1", label: "1 Below 150" }, { value: "2", label: "2 Below 100" }, { value: "3", label: "3 Below 50" }, { value: "4", label: "4 Below 20" }] },
+      { id: "liver", kind: "select", label: "Bilirubin (mg/dL)", options: [{ value: "0", label: "0 Below 1.2" }, { value: "1", label: "1 1.2 to 1.9" }, { value: "2", label: "2 2.0 to 5.9" }, { value: "3", label: "3 6.0 to 11.9" }, { value: "4", label: "4 12 or more" }] },
+      { id: "cvs", kind: "select", label: "Cardiovascular (doses in µg/kg/min)", options: [{ value: "0", label: "0 MAP 70 mmHg or more" }, { value: "1", label: "1 MAP below 70 mmHg" }, { value: "2", label: "2 Dopamine 5 or less, or any dobutamine" }, { value: "3", label: "3 Dopamine above 5, or adrenaline or noradrenaline 0.1 or less" }, { value: "4", label: "4 Dopamine above 15, or adrenaline or noradrenaline above 0.1" }] },
+      { id: "cns", kind: "select", label: "Glasgow Coma Scale", options: [{ value: "0", label: "0 15" }, { value: "1", label: "1 13 to 14" }, { value: "2", label: "2 10 to 12" }, { value: "3", label: "3 6 to 9" }, { value: "4", label: "4 Below 6" }] },
+      { id: "renal", kind: "select", label: "Creatinine (mg/dL) or urine output", options: [{ value: "0", label: "0 Below 1.2" }, { value: "1", label: "1 1.2 to 1.9" }, { value: "2", label: "2 2.0 to 3.4" }, { value: "3", label: "3 3.5 to 4.9, or urine below 500 mL/day" }, { value: "4", label: "4 5.0 or more, or urine below 200 mL/day" }] },
+    ],
+    formula: "Six organ systems scored 0 to 4 each; total 0 to 24",
+    source: "Vincent JL et al. Intensive Care Med 1996;22:707-10; Singer M et al. JAMA 2016;315:801-10 (Sepsis-3)",
+    keywords: ["sofa", "sepsis", "septic", "organ failure", "organ dysfunction", "icu", "multi-organ"],
+    compute: (v) => {
+      const vals = ["resp", "coag", "liver", "cvs", "cns", "renal"].map((id) => num(v, id));
+      if (vals.some((x) => x === null)) return null;
+      const s = vals.reduce((a, b) => a! + b!, 0)!;
+      const band = s <= 1 ? "Minimal organ dysfunction" : s <= 6 ? "Organ dysfunction" : s <= 11 ? "Severe organ dysfunction" : "Very severe organ dysfunction";
+      return {
+        value: `${s} / 24`, label: "SOFA", band, level: s <= 1 ? "ok" : s <= 6 ? "warn" : "danger",
+        details: [
+          "Sepsis-3: suspected infection with an acute rise in SOFA of 2 or more points; in-hospital mortality is about 10% or higher.",
+          "Track the trend: a rising score over the first 48 hours carries a worse prognosis.",
+        ],
+      };
+    },
+  },
+  {
+    id: "meldna",
+    name: "MELD-Na",
+    group: "Kidney, liver and GI",
+    desc: "Severity of end-stage liver disease (transplant listing)",
+    inputs: [
+      { id: "cr", kind: "number", label: "Creatinine", unit: "mg/dL", min: 0.1, max: 20, step: 0.01 },
+      { id: "bili", kind: "number", label: "Total bilirubin", unit: "mg/dL", min: 0.1, max: 80, step: 0.1 },
+      { id: "inr", kind: "number", label: "INR", min: 0.5, max: 20, step: 0.01 },
+      { id: "na", kind: "number", label: "Sodium", unit: "mmol/L", min: 100, max: 180 },
+      { id: "dial", kind: "toggle", label: "Dialysis twice or more, or 24 h of CVVHD, in the past week", points: 0 },
+    ],
+    formula: "MELD(i) = 0.957 ln(Cr) + 0.378 ln(bilirubin) + 1.120 ln(INR) + 0.643, rounded to one decimal and × 10; if above 11: MELD-Na = MELD + 1.32 (137 − Na) − 0.033 MELD (137 − Na). Values below 1 set to 1; creatinine capped at 4 (4 on dialysis); sodium bounded 125-137; maximum 40",
+    source: "OPTN/UNOS policy (MELD-Na, January 2016); Kim WR et al. N Engl J Med 2008;359:1018-26; Wiesner R et al. Gastroenterology 2003;124:91-6",
+    keywords: ["meld", "cirrhosis", "liver transplant", "end-stage liver", "decompensated", "chronic liver disease"],
+    compute: (v) => {
+      let cr = num(v, "cr"), bili = num(v, "bili"), inr = num(v, "inr"), na = num(v, "na");
+      if (cr === null || bili === null || inr === null || na === null || cr <= 0 || bili <= 0 || inr <= 0) return null;
+      cr = on(v, "dial") ? 4 : Math.min(4, Math.max(1, cr));
+      bili = Math.max(1, bili);
+      inr = Math.max(1, inr);
+      na = Math.min(137, Math.max(125, na));
+      const meldI = round(0.957 * Math.log(cr) + 0.378 * Math.log(bili) + 1.12 * Math.log(inr) + 0.643, 1) * 10;
+      const meld = Math.min(40, meldI > 11 ? meldI + 1.32 * (137 - na) - 0.033 * meldI * (137 - na) : meldI);
+      const s = Math.round(meld);
+      const mort = s <= 9 ? "about 2%" : s <= 19 ? "about 6%" : s <= 29 ? "about 20%" : s <= 39 ? "about 53%" : "about 71%";
+      return {
+        value: `${s}`, label: "MELD-Na", band: `3-month mortality ${mort}`,
+        level: s < 10 ? "ok" : s < 20 ? "warn" : "danger",
+        details: [`MELD without sodium: ${Math.round(Math.min(40, meldI))}`, "Refer for liver transplant assessment, usually at MELD 15 or above, or earlier with complications.", "Mortality bands are approximate (Wiesner 2003, original MELD)."],
+      };
+    },
+  },
+  {
+    id: "nihss",
+    name: "NIH Stroke Scale",
+    group: "Neurology",
+    desc: "Stroke severity at the bedside",
+    inputs: NIHSS_IN,
+    formula: "Sum of 15 items (consciousness, gaze, visual fields, facial palsy, motor arms and legs, ataxia, sensation, language, dysarthria, extinction); 0 to 42. Untestable limbs (UN) score 0",
+    source: "Brott T et al. Stroke 1989;20:864-70; NINDS NIH Stroke Scale; Powers WJ et al. Stroke 2019;50:e344-e418",
+    keywords: ["nihss", "stroke", "cva", "hemiparesis", "hemiplegia", "thrombolysis", "thrombectomy", "aphasia", "facial droop"],
+    compute: (v) => {
+      if (NIHSS_IN.some((i) => v[i.id] === undefined || v[i.id] === "")) return null;
+      const s = NIHSS_IN.reduce((a, i) => a + (num(v, i.id) ?? 0), 0);
+      const band = s === 0 ? "No stroke symptoms" : s <= 4 ? "Minor stroke" : s <= 15 ? "Moderate stroke" : s <= 20 ? "Moderate to severe stroke" : "Severe stroke";
+      return {
+        value: `${s} / 42`, label: "NIHSS", band, level: s === 0 ? "ok" : s <= 4 ? "warn" : "danger",
+        details: [
+          "Decide on thrombolysis with the time since the patient was last known well; a disabling deficit can justify treatment even with a low score.",
+          "Mechanical thrombectomy is usually considered for a large-vessel occlusion with NIHSS 6 or more (AHA/ASA 2019).",
+        ],
+      };
+    },
+  },
+  {
+    id: "gbs",
+    name: "Glasgow-Blatchford score",
+    group: "Kidney, liver and GI",
+    desc: "Upper GI bleeding: who can safely go home",
+    inputs: [
+      { id: "urea", kind: "number", label: "Blood urea", unit: "mg/dL", min: 1, max: 600, hint: "Blood urea, not BUN (BUN × 2.14 = urea)" },
+      { id: "hb", kind: "number", label: "Haemoglobin", unit: "g/dL", min: 1, max: 25, step: 0.1 },
+      SEX,
+      { id: "sbp", kind: "number", label: "Systolic BP", unit: "mmHg", min: 30, max: 300 },
+      ...GBS_FLAGS,
+    ],
+    formula: "Urea (mmol/L = mg/dL ÷ 6.0): 6.5-8 → 2, 8-10 → 3, 10-25 → 4, 25 or more → 6; Hb men 12-13 → 1, 10-12 → 3, below 10 → 6; women 10-12 → 1, below 10 → 6; SBP 100-109 → 1, 90-99 → 2, below 90 → 3; plus the listed features",
+    source: "Blatchford O et al. Lancet 2000;356:1318-21; Gralnek IM et al. Endoscopy 2021;53:300-32 (ESGE)",
+    keywords: ["upper gi bleed", "ugib", "gi bleed", "haematemesis", "hematemesis", "melaena", "melena", "blatchford", "variceal bleed"],
+    compute: (v) => {
+      const urea = num(v, "urea"), hb = num(v, "hb"), sbp = num(v, "sbp");
+      if (urea === null || hb === null || sbp === null || !v.sex) return null;
+      const mmol = urea / 6.006;
+      const pu = mmol < 6.5 ? 0 : mmol < 8 ? 2 : mmol < 10 ? 3 : mmol < 25 ? 4 : 6;
+      const ph = v.sex === "m" ? (hb >= 13 ? 0 : hb >= 12 ? 1 : hb >= 10 ? 3 : 6) : (hb >= 12 ? 0 : hb >= 10 ? 1 : 6);
+      const ps = sbp >= 110 ? 0 : sbp >= 100 ? 1 : sbp >= 90 ? 2 : 3;
+      const s = pu + ph + ps + points(GBS_FLAGS, v);
+      return {
+        value: `${s}`, label: "Glasgow-Blatchford", band: s <= 1 ? "Low risk" : s <= 7 ? "Not low risk" : "High risk",
+        level: s <= 1 ? "ok" : s <= 7 ? "warn" : "danger",
+        details: [
+          s <= 1 ? "A score of 0 or 1 identifies patients who can be considered for outpatient management (ESGE 2021)." : "Admit; endoscopy within 24 hours after resuscitation. Higher scores predict a greater need for transfusion or intervention.",
+          `Points: urea ${pu}, haemoglobin ${ph}, systolic BP ${ps}`,
+        ],
+      };
+    },
+  },
+  {
+    id: "centor",
+    name: "Centor score (McIsaac)",
+    group: "Emergency and critical care",
+    desc: "Sore throat: chance of streptococcal pharyngitis",
+    inputs: [
+      { id: "age", kind: "select", label: "Age", options: [{ value: "1", label: "3 to 14 years (+1)" }, { value: "0", label: "15 to 44 years (0)" }, { value: "-1", label: "45 years or older (−1)" }] },
+      ...CENTOR_IN,
+    ],
+    formula: "One point each for tonsillar exudate or swelling, tender anterior neck nodes, fever above 38 °C and no cough; +1 if aged 3-14, −1 if 45 or older",
+    source: "McIsaac WJ et al. CMAJ 1998;158:75-83; JAMA 2004;291:1587-95",
+    keywords: ["sore throat", "pharyngitis", "tonsillitis", "strep throat", "centor", "mcisaac"],
+    compute: (v) => {
+      const age = num(v, "age");
+      if (age === null) return null;
+      const s = age + points(CENTOR_IN, v);
+      const risk = s <= 0 ? "1-2.5%" : s === 1 ? "5-10%" : s === 2 ? "11-17%" : s === 3 ? "28-35%" : "51-53%";
+      const act = s <= 1 ? "No throat swab or antibiotic needed." : s <= 3 ? "Do a rapid antigen test or throat culture; give antibiotics only if positive." : "Test, and consider empirical antibiotics (for example penicillin V or amoxicillin) if testing isn't available.";
+      return { value: `${s}`, label: "McIsaac score", band: `Streptococcal infection about ${risk}`, level: s <= 1 ? "ok" : s <= 3 ? "warn" : "danger", details: [act] };
+    },
+  },
+  {
+    id: "bisap",
+    name: "BISAP score",
+    group: "Kidney, liver and GI",
+    desc: "Acute pancreatitis: in-hospital mortality (first 24 hours)",
+    inputs: BISAP_IN,
+    formula: "One point each: BUN above 25 mg/dL (blood urea above 53.5 mg/dL), impaired mental status, SIRS, age above 60, pleural effusion",
+    source: "Wu BU et al. Gut 2008;57:1698-703",
+    keywords: ["pancreatitis", "bisap"],
+    compute: (v) => {
+      const s = points(BISAP_IN, v);
+      const mort = ["below 1%", "below 1%", "about 2%", "about 4%", "about 7%", "about 10%"][s];
+      return { value: `${s} / 5`, label: "BISAP", band: `In-hospital mortality ${mort}`, level: s <= 1 ? "ok" : s === 2 ? "warn" : "danger", details: [s >= 3 ? "A score of 3 or more marks a higher risk of organ failure and death: consider HDU or ICU care." : "Reassess at 24 to 48 hours, as pancreatitis can evolve."] };
+    },
+  },
+  {
+    id: "bishop",
+    name: "Bishop score",
+    group: "Obstetrics and paediatrics",
+    desc: "Cervical readiness before induction of labour",
+    inputs: [
+      { id: "dil", kind: "select", label: "Dilatation", options: [{ value: "0", label: "0 Closed" }, { value: "1", label: "1 1-2 cm" }, { value: "2", label: "2 3-4 cm" }, { value: "3", label: "3 5 cm or more" }] },
+      { id: "eff", kind: "select", label: "Effacement", options: [{ value: "0", label: "0 0-30%" }, { value: "1", label: "1 40-50%" }, { value: "2", label: "2 60-70%" }, { value: "3", label: "3 80% or more" }] },
+      { id: "sta", kind: "select", label: "Station", options: [{ value: "0", label: "0 −3" }, { value: "1", label: "1 −2" }, { value: "2", label: "2 −1 or 0" }, { value: "3", label: "3 +1 or +2" }] },
+      { id: "con", kind: "select", label: "Consistency", options: [{ value: "0", label: "0 Firm" }, { value: "1", label: "1 Medium" }, { value: "2", label: "2 Soft" }] },
+      { id: "pos", kind: "select", label: "Position", options: [{ value: "0", label: "0 Posterior" }, { value: "1", label: "1 Mid" }, { value: "2", label: "2 Anterior" }] },
+    ],
+    formula: "Dilatation, effacement and station 0-3 each; consistency and position 0-2 each; total 0 to 13",
+    source: "Bishop EH. Obstet Gynecol 1964;24:266-8; ACOG Practice Bulletin 107 (2009); NICE NG207 (2021)",
+    keywords: ["bishop", "induction of labour", "induction of labor", "cervical ripening", "iol", "post-dates", "post dates"],
+    compute: (v) => {
+      const vals = ["dil", "eff", "sta", "con", "pos"].map((id) => num(v, id));
+      if (vals.some((x) => x === null)) return null;
+      const s = vals.reduce((a, b) => a! + b!, 0)!;
+      return s >= 8
+        ? { value: `${s} / 13`, label: "Bishop score", band: "Favourable cervix", level: "ok", details: ["Induction is likely to succeed; amniotomy and oxytocin can be used."] }
+        : s >= 7
+          ? { value: `${s} / 13`, label: "Bishop score", band: "Intermediate", level: "warn", details: ["Consider cervical ripening before oxytocin, according to local protocol."] }
+          : { value: `${s} / 13`, label: "Bishop score", band: "Unfavourable cervix", level: "warn", details: ["Ripen the cervix first (for example dinoprostone, misoprostol or a balloon catheter), following local protocol."] };
+    },
+  },
+  {
+    id: "burns",
+    name: "Burns: total body surface area",
+    group: "Emergency and critical care",
+    desc: "Lund and Browder chart, adjusted for age",
+    inputs: [
+      { id: "age", kind: "select", label: "Age", options: [{ value: "0", label: "Under 1 year" }, { value: "1", label: "1 to 4 years" }, { value: "2", label: "5 to 9 years" }, { value: "3", label: "10 to 14 years" }, { value: "4", label: "15 years" }, { value: "5", label: "Adult" }] },
+      ...BURN_REGIONS.map((r) => ({ id: r.id, kind: "select" as const, label: r.label, options: BURN_FRACTIONS })),
+    ],
+    formula: "TBSA = Σ (fraction of each region burned × its share of body surface). Head, thighs and lower legs change with age (Lund and Browder); count partial- and full-thickness burns only",
+    source: "Lund CC, Browder NC. Surg Gynecol Obstet 1944;79:352-8; ISBI Practice Guidelines for Burn Care, Burns 2016;42:953-1021",
+    keywords: ["burn", "burns", "tbsa", "scald", "lund", "rule of nines"],
+    compute: (v) => {
+      const age = num(v, "age");
+      if (age === null) return null;
+      let t = 0;
+      for (const r of BURN_REGIONS) t += (num(v, r.id) ?? 0) * r.pct[age];
+      const s = round(t, 1);
+      const child = age <= 3;
+      return {
+        value: `${fmt(s, 1)}% TBSA`, label: "Burn area (Lund and Browder)",
+        band: s === 0 ? "No area entered" : s < (child ? 10 : 15) ? "Minor to moderate" : s < (child ? 20 : 25) ? "Major burn: formal fluid resuscitation" : "Major burn: burns centre care",
+        level: s === 0 ? "info" : s < (child ? 10 : 15) ? "warn" : "danger",
+        details: [
+          `IV fluid resuscitation is usually needed above ${child ? "10" : "15"}% TBSA; use the Parkland calculator for volumes.`,
+          "Don't count simple erythema (superficial burns). The patient's palm with fingers is about 1% of their body surface.",
+        ],
+      };
+    },
+  },
+  {
+    id: "news2",
+    name: "NEWS2",
+    group: "Emergency and critical care",
+    desc: "National Early Warning Score for deterioration on the ward",
+    inputs: [
+      { id: "rr", kind: "number", label: "Respiratory rate", unit: "/min", min: 1, max: 80 },
+      { id: "spo2", kind: "number", label: "SpO₂", unit: "%", min: 40, max: 100 },
+      { id: "scale", kind: "select", label: "SpO₂ scale", options: [{ value: "1", label: "Scale 1 (most patients)" }, { value: "2", label: "Scale 2 (target 88-92%, hypercapnic respiratory failure)" }] },
+      { id: "o2", kind: "toggle", label: "On supplemental oxygen", points: 2 },
+      { id: "sbp", kind: "number", label: "Systolic BP", unit: "mmHg", min: 30, max: 300 },
+      { id: "hr", kind: "number", label: "Pulse", unit: "/min", min: 10, max: 250 },
+      { id: "cons", kind: "select", label: "Consciousness", options: [{ value: "a", label: "Alert" }, { value: "cvpu", label: "New confusion, or responds only to voice or pain, or unresponsive" }] },
+      { id: "temp", kind: "number", label: "Temperature", unit: "°C or °F", min: 25, max: 110, step: 0.1, hint: "Values above 45 are read as °F" },
+    ],
+    formula: "Each vital sign scores 0-3 against the RCP NEWS2 chart, plus 2 for supplemental oxygen; total 0 to 20",
+    source: "Royal College of Physicians. National Early Warning Score (NEWS) 2. London: RCP, 2017",
+    keywords: ["news2", "news score", "early warning", "deteriorat", "track and trigger", "vitals"],
+    compute: (v) => {
+      const rr = num(v, "rr"), sp = num(v, "spo2"), sbp = num(v, "sbp"), hr = num(v, "hr");
+      let t = num(v, "temp");
+      if (rr === null || sp === null || sbp === null || hr === null || t === null || !v.cons || !v.scale) return null;
+      if (t > 45) t = ((t - 32) * 5) / 9;
+      const o2 = on(v, "o2");
+      const pRR = rr <= 8 ? 3 : rr <= 11 ? 1 : rr <= 20 ? 0 : rr <= 24 ? 2 : 3;
+      const pSp = v.scale === "2"
+        ? (sp <= 83 ? 3 : sp <= 85 ? 2 : sp <= 87 ? 1 : sp <= 92 || !o2 ? 0 : sp <= 94 ? 1 : sp <= 96 ? 2 : 3)
+        : (sp <= 91 ? 3 : sp <= 93 ? 2 : sp <= 95 ? 1 : 0);
+      const pO2 = o2 ? 2 : 0;
+      const pBP = sbp <= 90 ? 3 : sbp <= 100 ? 2 : sbp <= 110 ? 1 : sbp <= 219 ? 0 : 3;
+      const pHR = hr <= 40 ? 3 : hr <= 50 ? 1 : hr <= 90 ? 0 : hr <= 110 ? 1 : hr <= 130 ? 2 : 3;
+      const pC = v.cons === "cvpu" ? 3 : 0;
+      const pT = t <= 35 ? 3 : t <= 36 ? 1 : t <= 38 ? 0 : t <= 39 ? 1 : 2;
+      const parts = [pRR, pSp, pBP, pHR, pC, pT];
+      const s = parts.reduce((a, b) => a + b, 0) + pO2;
+      const red = parts.some((x) => x === 3);
+      const band = s >= 7 ? "High clinical risk" : s >= 5 ? "Medium clinical risk" : red ? "Low-medium clinical risk (a single red score)" : "Low clinical risk";
+      const act = s >= 7 ? "Emergency response: immediate assessment by a team with critical-care skills; continuous monitoring." : s >= 5 ? "Urgent response: urgent review by a clinician competent in acute illness; observations at least hourly." : red ? "Urgent ward-based review by a clinician; observations at least hourly." : s >= 1 ? "Ward-based response: assessment by a registered nurse; observations at least 4-6 hourly." : "Continue routine monitoring at least 12-hourly.";
+      return {
+        value: `${s}`, label: "NEWS2", band, level: s >= 7 ? "danger" : s >= 5 || red ? "warn" : s >= 1 ? "info" : "ok",
+        details: [act, `Points: RR ${pRR}, SpO₂ ${pSp}, oxygen ${pO2}, BP ${pBP}, pulse ${pHR}, consciousness ${pC}, temperature ${pT} (${fmt(t, 1)} °C)`],
+      };
+    },
+  },
+  {
+    id: "abcd2",
+    name: "ABCD² score",
+    group: "Neurology",
+    desc: "Stroke risk in the 2 days after a TIA",
+    inputs: [
+      { id: "age", kind: "toggle", label: "Age 60 or older", points: 1 },
+      { id: "bp", kind: "toggle", label: "BP 140/90 mmHg or higher at first assessment", points: 1 },
+      { id: "clin", kind: "select", label: "Clinical features", options: [{ value: "0", label: "Other symptoms (0)" }, { value: "1", label: "Speech disturbance without weakness (1)" }, { value: "2", label: "Unilateral weakness (2)" }] },
+      { id: "dur", kind: "select", label: "Duration", options: [{ value: "0", label: "Under 10 minutes (0)" }, { value: "1", label: "10 to 59 minutes (1)" }, { value: "2", label: "60 minutes or longer (2)" }] },
+      { id: "dm", kind: "toggle", label: "Diabetes", points: 1 },
+    ],
+    formula: "Age ≥60 (1) + BP ≥140/90 (1) + clinical features (0-2) + duration (0-2) + diabetes (1); 0 to 7",
+    source: "Johnston SC et al. Lancet 2007;369:283-92; NICE NG128 (2019)",
+    keywords: ["tia", "transient ischaemic", "transient ischemic", "abcd2", "mini stroke"],
+    compute: (v) => {
+      const c = num(v, "clin"), d = num(v, "dur");
+      if (c === null || d === null) return null;
+      const s = c + d + (on(v, "age") ? 1 : 0) + (on(v, "bp") ? 1 : 0) + (on(v, "dm") ? 1 : 0);
+      const band = s <= 3 ? "Low risk (2-day stroke risk about 1%)" : s <= 5 ? "Moderate risk (about 4%)" : "High risk (about 8%)";
+      return {
+        value: `${s} / 7`, label: "ABCD²", band, level: s <= 3 ? "warn" : "danger",
+        details: ["NICE (NG128) advises against relying on a score: give aspirin 300 mg at once (unless contraindicated) and refer every suspected TIA for specialist assessment within 24 hours."],
+      };
+    },
+  },
+  {
+    id: "fwd",
+    name: "Free water deficit",
+    group: "Fluids and electrolytes",
+    desc: "Water needed to correct hypernatraemia",
+    inputs: [
+      { id: "weight", kind: "number", label: "Weight", unit: "kg", min: 1, max: 300, step: 0.1 },
+      { id: "na", kind: "number", label: "Serum sodium", unit: "mmol/L", min: 100, max: 200 },
+      TBW_GROUP,
+    ],
+    formula: "Total body water = weight × factor (0.6 adult men and children, 0.5 adult women and older men, 0.45 older women); deficit = TBW × (Na ÷ 140 − 1)",
+    source: "Adrogué HJ, Madias NE. N Engl J Med 2000;342:1493-9",
+    keywords: ["hypernatraemia", "hypernatremia", "free water", "water deficit"],
+    compute: (v) => {
+      const wt = num(v, "weight"), na = num(v, "na"), f = TBW_FACTOR[String(v.group)];
+      if (wt === null || na === null || !f) return null;
+      const tbw = wt * f;
+      if (na <= 140) return { value: "None", label: "Free water deficit", band: "Sodium is not raised", level: "ok", details: [`Total body water ${fmt(tbw, 1)} L`] };
+      const def = tbw * (na / 140 - 1);
+      return {
+        value: `${fmt(def, 1)} L`, label: "Free water deficit", band: na >= 160 ? "Severe hypernatraemia" : na > 145 ? "Hypernatraemia" : "High-normal sodium",
+        level: na >= 160 ? "danger" : na > 145 ? "warn" : "info",
+        details: [`Total body water ${fmt(tbw, 1)} L`, "Replace over 48 to 72 hours plus ongoing losses. In chronic hypernatraemia lower sodium by no more than 10-12 mmol/L in 24 hours (about 0.5 mmol/L per hour)."],
+      };
+    },
+  },
+  {
+    id: "adrogue",
+    name: "Sodium change per litre of fluid",
+    group: "Fluids and electrolytes",
+    desc: "Adrogué-Madias: expected change in serum sodium",
+    inputs: [
+      { id: "weight", kind: "number", label: "Weight", unit: "kg", min: 1, max: 300, step: 0.1 },
+      { id: "na", kind: "number", label: "Serum sodium", unit: "mmol/L", min: 90, max: 200 },
+      TBW_GROUP,
+      { id: "fluid", kind: "select", label: "Fluid", options: [{ value: "hts3", label: "3% saline (Na 513)" }, { value: "ns", label: "0.9% saline (Na 154)" }, { value: "dns", label: "5% dextrose in 0.9% saline (Na 154)" }, { value: "rl", label: "Ringer's lactate (Na 130, K 4)" }, { value: "half", label: "0.45% saline (Na 77)" }, { value: "d5", label: "5% dextrose (Na 0)" }] },
+      { id: "kadd", kind: "number", label: "Potassium added to each litre", unit: "mmol", min: 0, max: 80, optional: true },
+    ],
+    formula: "Change in serum Na per litre = (infusate Na + infusate K − serum Na) ÷ (total body water + 1)",
+    source: "Adrogué HJ, Madias NE. N Engl J Med 2000;342:1581-9; Verbalis JG et al. Am J Med 2013;126:S1-42",
+    keywords: ["hyponatraemia", "hyponatremia", "sodium correction", "hypertonic saline", "3% saline", "adrogue", "adrogué"],
+    compute: (v) => {
+      const wt = num(v, "weight"), na = num(v, "na"), f = TBW_FACTOR[String(v.group)], fl = FLUIDS[String(v.fluid)];
+      if (wt === null || na === null || !f || !fl) return null;
+      const tbw = wt * f;
+      const d = (fl.na + fl.k + (num(v, "kadd") ?? 0) - na) / (tbw + 1);
+      const per8 = d !== 0 ? Math.abs(8 / d) : Infinity;
+      return {
+        value: `${d >= 0 ? "+" : ""}${fmt(d, 1)} mmol/L`, label: "Change per litre", band: d > 0 ? "Sodium rises" : d < 0 ? "Sodium falls" : "No change",
+        level: Math.abs(d) >= 8 ? "danger" : "info",
+        details: [
+          `Total body water ${fmt(tbw, 1)} L. ${Number.isFinite(per8) ? `About ${fmt(per8, 2)} L would change sodium by 8 mmol/L.` : ""}`.trim(),
+          "Chronic hyponatraemia: raise sodium by no more than 8 mmol/L in 24 hours if the risk of osmotic demyelination is high (alcohol, malnutrition, hypokalaemia, liver disease), otherwise 10-12. The formula ignores urine and other losses: recheck sodium every 2 to 4 hours.",
+        ],
+      };
+    },
+  },
+  {
+    id: "aagrad",
+    name: "A-a gradient and P/F ratio",
+    group: "Respiratory and blood gases",
+    desc: "Alveolar-arterial oxygen gradient from an ABG",
+    inputs: [
+      { id: "fio2", kind: "number", label: "FiO₂", unit: "%", min: 21, max: 100 },
+      { id: "pao2", kind: "number", label: "PaO₂", unit: "mmHg", min: 10, max: 700 },
+      { id: "paco2", kind: "number", label: "PaCO₂", unit: "mmHg", min: 5, max: 200 },
+      { id: "age", kind: "number", label: "Age", unit: "years", min: 1, max: 120 },
+      { id: "patm", kind: "number", label: "Atmospheric pressure", unit: "mmHg", min: 400, max: 800, optional: true, hint: "760 at sea level (default); lower at altitude" },
+    ],
+    formula: "PAO₂ = FiO₂ × (Patm − 47) − PaCO₂ ÷ 0.8; A-a gradient = PAO₂ − PaO₂; expected ≈ age ÷ 4 + 4; P/F = PaO₂ ÷ FiO₂",
+    source: "West JB. Respiratory Physiology, 10th ed; ARDS Definition Task Force. JAMA 2012;307:2526-33",
+    keywords: ["a-a gradient", "aa gradient", "alveolar-arterial", "hypoxaemia", "hypoxemia", "p/f ratio", "pf ratio", "ards", "abg"],
+    compute: (v) => {
+      const fio2 = num(v, "fio2"), pao2 = num(v, "pao2"), paco2 = num(v, "paco2"), age = num(v, "age");
+      if (fio2 === null || pao2 === null || paco2 === null || age === null) return null;
+      const patm = num(v, "patm") ?? 760;
+      const f = fio2 / 100;
+      const PA = f * (patm - 47) - paco2 / 0.8;
+      const grad = PA - pao2;
+      const exp = age / 4 + 4;
+      const pf = pao2 / f;
+      const ards = pf <= 100 ? "severe range (100 or less)" : pf <= 200 ? "moderate range (101-200)" : pf <= 300 ? "mild range (201-300)" : "above 300";
+      return {
+        value: `${fmt(grad)} mmHg`, label: "A-a gradient", band: grad <= exp ? "Normal for age" : "Raised",
+        level: grad <= exp ? "ok" : "warn",
+        details: [
+          `Expected for age about ${fmt(exp)} mmHg (on room air). PAO₂ ${fmt(PA)} mmHg.`,
+          grad <= exp ? "Hypoxaemia with a normal gradient points to hypoventilation or low inspired oxygen." : "A raised gradient points to V/Q mismatch, shunt or a diffusion problem.",
+          `P/F ratio ${fmt(pf)}: ${ards}. ARDS (Berlin) also needs PEEP 5 cmH₂O or more, onset within a week and bilateral opacities not fully explained by heart failure.`,
+        ],
+      };
+    },
+  },
+  {
+    id: "osmgap",
+    name: "Osmolal gap",
+    group: "Fluids and electrolytes",
+    desc: "Screen for toxic alcohols (methanol, ethylene glycol)",
+    inputs: [
+      { id: "meas", kind: "number", label: "Measured osmolality", unit: "mOsm/kg", min: 200, max: 500 },
+      { id: "na", kind: "number", label: "Sodium", unit: "mmol/L", min: 90, max: 200 },
+      { id: "glu", kind: "number", label: "Glucose", unit: "mg/dL", min: 10, max: 3000 },
+      { id: "urea", kind: "number", label: "Blood urea", unit: "mg/dL", min: 1, max: 600 },
+      { id: "etoh", kind: "number", label: "Ethanol", unit: "mg/dL", min: 0, max: 800, optional: true },
+    ],
+    formula: "Calculated osmolality = 2 Na + glucose ÷ 18 + urea ÷ 6 (+ ethanol ÷ 3.7); gap = measured − calculated",
+    source: "Kraut JA, Xing SX. Am J Kidney Dis 2011;58:480-4",
+    keywords: ["osmolal gap", "osmolar gap", "methanol", "ethylene glycol", "toxic alcohol", "hooch", "spurious liquor"],
+    compute: (v) => {
+      const meas = num(v, "meas"), na = num(v, "na"), glu = num(v, "glu"), urea = num(v, "urea");
+      if (meas === null || na === null || glu === null || urea === null) return null;
+      const calc = 2 * na + glu / 18 + urea / 6 + (num(v, "etoh") ?? 0) / 3.7;
+      const gap = meas - calc;
+      return {
+        value: `${fmt(gap)} mOsm/kg`, label: "Osmolal gap", band: gap > 10 ? "Raised (above 10)" : "Normal (10 or less)",
+        level: gap > 20 ? "danger" : gap > 10 ? "warn" : "ok",
+        details: [`Calculated osmolality ${fmt(calc)} mOsm/kg`, "A raised gap with a high anion gap acidosis suggests methanol or ethylene glycol poisoning. A normal gap doesn't exclude late presentation, when the alcohol is already metabolised."],
+      };
+    },
+  },
+  {
+    id: "map",
+    name: "Mean arterial pressure",
+    group: "Cardiology",
+    desc: "MAP and pulse pressure",
+    inputs: [
+      { id: "sbp", kind: "number", label: "Systolic BP", unit: "mmHg", min: 30, max: 300 },
+      { id: "dbp", kind: "number", label: "Diastolic BP", unit: "mmHg", min: 10, max: 200 },
+    ],
+    formula: "MAP = DBP + (SBP − DBP) ÷ 3",
+    source: "Evans L et al. Surviving Sepsis Campaign guidelines 2021. Crit Care Med 2021;49:e1063-143",
+    keywords: ["mean arterial pressure", "map target", "hypotension", "septic shock", "vasopressor"],
+    compute: (v) => {
+      const s = num(v, "sbp"), d = num(v, "dbp");
+      if (s === null || d === null || d >= s) return null;
+      const map = d + (s - d) / 3;
+      return {
+        value: `${fmt(map)} mmHg`, label: "MAP", band: map < 65 ? "Below 65 mmHg" : map <= 100 ? "65 to 100 mmHg" : "Above 100 mmHg",
+        level: map < 65 ? "danger" : map <= 100 ? "ok" : "warn",
+        details: [`Pulse pressure ${fmt(s - d)} mmHg`, "In septic shock the initial target is a MAP of 65 mmHg (Surviving Sepsis Campaign 2021)."],
+      };
+    },
+  },
+  {
+    id: "ibw",
+    name: "Ideal body weight and tidal volume",
+    group: "Body size",
+    desc: "Devine IBW, adjusted weight and lung-protective tidal volume",
+    inputs: [
+      { id: "height", kind: "number", label: "Height", unit: "cm", min: 100, max: 250, step: 0.1 },
+      SEX,
+      { id: "weight", kind: "number", label: "Actual weight", unit: "kg", min: 20, max: 300, step: 0.1, optional: true },
+    ],
+    formula: "IBW (Devine) = 50 (men) or 45.5 (women) + 0.91 × (height cm − 152.4); adjusted weight = IBW + 0.4 × (actual − IBW); tidal volume 6 mL/kg IBW (range 4-8)",
+    source: "Devine BJ. Drug Intell Clin Pharm 1974;8:650-5; ARDS Network. N Engl J Med 2000;342:1301-8",
+    keywords: ["ideal body weight", "ibw", "predicted body weight", "tidal volume", "adjusted body weight", "ventilator setting"],
+    compute: (v) => {
+      const h = num(v, "height");
+      if (h === null || !v.sex) return null;
+      const ibw = (v.sex === "m" ? 50 : 45.5) + 0.91 * (h - 152.4);
+      if (ibw <= 0) return null;
+      const wt = num(v, "weight");
+      const adj = wt !== null && wt > 1.2 * ibw ? ibw + 0.4 * (wt - ibw) : null;
+      return {
+        value: `${fmt(ibw, 1)} kg`, label: "Ideal body weight", band: wt !== null ? `Actual weight is ${fmt((wt / ibw) * 100)}% of ideal` : "Devine formula",
+        level: "info",
+        details: [
+          `Tidal volume at 6 mL/kg: ${fmt(ibw * 6)} mL (4-8 mL/kg: ${fmt(ibw * 4)}-${fmt(ibw * 8)} mL)`,
+          ...(adj !== null ? [`Adjusted body weight ${fmt(adj, 1)} kg (used for some drug doses in obesity, such as aminoglycosides)`] : []),
+          "Not reliable for heights below about 152 cm.",
+        ],
+      };
+    },
+  },
+  {
+    id: "rpi",
+    name: "Reticulocyte production index",
+    group: "Haematology",
+    desc: "Is the marrow responding to anaemia?",
+    inputs: [
+      { id: "ret", kind: "number", label: "Reticulocytes", unit: "%", min: 0, max: 60, step: 0.1 },
+      { id: "hct", kind: "number", label: "Haematocrit (PCV)", unit: "%", min: 5, max: 70, step: 0.1 },
+    ],
+    formula: "Corrected reticulocytes = retic % × Hct ÷ 45; RPI = corrected ÷ maturation time (1.0 for Hct 40% or more, 1.5 for 30-39, 2.0 for 20-29, 2.5 below 20)",
+    source: "Hillman RS, Finch CA. Red Cell Manual, 7th ed. FA Davis, 1996",
+    keywords: ["reticulocyte", "rpi", "haemolysis", "hemolysis", "anaemia workup", "anemia workup"],
+    compute: (v) => {
+      const r = num(v, "ret"), hct = num(v, "hct");
+      if (r === null || hct === null) return null;
+      const corr = (r * hct) / 45;
+      const mt = hct >= 40 ? 1 : hct >= 30 ? 1.5 : hct >= 20 ? 2 : 2.5;
+      const rpi = corr / mt;
+      return {
+        value: fmt(rpi, 2), label: "RPI",
+        band: rpi < 2 ? "Inadequate marrow response" : rpi <= 3 ? "Borderline response" : "Adequate marrow response",
+        level: rpi < 2 ? "warn" : "info",
+        details: [
+          `Corrected reticulocyte count ${fmt(corr, 1)}%; maturation time ${mt} days`,
+          rpi < 2 ? "Hypoproliferative anaemia: think of iron, B12 or folate deficiency, CKD, inflammation or marrow failure." : "With anaemia this suggests haemolysis or blood loss.",
+        ],
+      };
+    },
+  },
+  {
+    id: "maddrey",
+    name: "Maddrey discriminant function",
+    group: "Kidney, liver and GI",
+    desc: "Severity of alcohol-related hepatitis",
+    inputs: [
+      { id: "pt", kind: "number", label: "Prothrombin time", unit: "s", min: 5, max: 200, step: 0.1 },
+      { id: "ctl", kind: "number", label: "Control prothrombin time", unit: "s", min: 5, max: 40, step: 0.1 },
+      { id: "bili", kind: "number", label: "Total bilirubin", unit: "mg/dL", min: 0.1, max: 80, step: 0.1 },
+    ],
+    formula: "DF = 4.6 × (patient PT − control PT) + bilirubin (mg/dL)",
+    source: "Maddrey WC et al. Gastroenterology 1978;75:193-9; Crabb DW et al. Hepatology 2020;71:306-33 (AASLD)",
+    keywords: ["alcoholic hepatitis", "alcohol-related hepatitis", "maddrey", "discriminant function"],
+    compute: (v) => {
+      const pt = num(v, "pt"), ctl = num(v, "ctl"), b = num(v, "bili");
+      if (pt === null || ctl === null || b === null) return null;
+      const df = 4.6 * (pt - ctl) + b;
+      return df >= 32
+        ? { value: fmt(df, 1), label: "Maddrey DF", band: "Severe (32 or more)", level: "danger", details: ["Consider prednisolone 40 mg daily for 28 days if there is no contraindication (active infection, GI bleeding, kidney failure); reassess with the Lille score on day 7.", "Calculate MELD as well: a MELD above 20 also marks severe disease."] }
+        : { value: fmt(df, 1), label: "Maddrey DF", band: "Not severe (below 32)", level: "warn", details: ["Supportive care, abstinence and nutrition; steroids are not indicated on this score."] };
+    },
+  },
+  {
+    id: "fib4",
+    name: "FIB-4 index",
+    group: "Kidney, liver and GI",
+    desc: "Advanced liver fibrosis in fatty liver disease and hepatitis",
+    inputs: [
+      { id: "age", kind: "number", label: "Age", unit: "years", min: 18, max: 110 },
+      { id: "ast", kind: "number", label: "AST (SGOT)", unit: "U/L", min: 1, max: 5000 },
+      { id: "alt", kind: "number", label: "ALT (SGPT)", unit: "U/L", min: 1, max: 5000 },
+      { id: "plt", kind: "number", label: "Platelets", unit: "×10³/µL", min: 1, max: 2000, hint: "1.5 lakh/µL = 150" },
+    ],
+    formula: "FIB-4 = age × AST ÷ (platelets [×10⁹/L] × √ALT)",
+    source: "Sterling RK et al. Hepatology 2006;43:1317-25; McPherson S et al. Am J Gastroenterol 2017;112:740-51; Rinella ME et al. Hepatology 2023;77:1797-1835 (AASLD)",
+    keywords: ["fib-4", "fib4", "fatty liver", "nafld", "masld", "nash", "mash", "liver fibrosis"],
+    compute: (v) => {
+      const age = num(v, "age"), ast = num(v, "ast"), alt = num(v, "alt"), plt = num(v, "plt");
+      if (age === null || ast === null || alt === null || plt === null || plt <= 0 || alt <= 0) return null;
+      const f = (age * ast) / (plt * Math.sqrt(alt));
+      const low = age >= 65 ? 2.0 : 1.3;
+      return {
+        value: fmt(f, 2), label: "FIB-4",
+        band: f < low ? "Low risk of advanced fibrosis" : f <= 2.67 ? "Indeterminate" : "High risk of advanced fibrosis",
+        level: f < low ? "ok" : f <= 2.67 ? "warn" : "danger",
+        details: [
+          f < low ? "Repeat in 1 to 3 years if risk factors persist." : f <= 2.67 ? "Arrange liver stiffness measurement (transient elastography) or ELF testing." : "Refer to hepatology for assessment of advanced fibrosis or cirrhosis.",
+          `Lower cut-off ${low}${age >= 65 ? " (age 65 or older)" : ""}; not validated below age 35.`,
+        ],
+      };
+    },
+  },
+  {
+    id: "ldl",
+    name: "LDL cholesterol (Friedewald)",
+    group: "Cardiology",
+    desc: "Calculated LDL and non-HDL cholesterol",
+    inputs: [
+      { id: "tc", kind: "number", label: "Total cholesterol", unit: "mg/dL", min: 50, max: 1000 },
+      { id: "hdl", kind: "number", label: "HDL cholesterol", unit: "mg/dL", min: 5, max: 200 },
+      { id: "tg", kind: "number", label: "Triglycerides", unit: "mg/dL", min: 10, max: 5000 },
+    ],
+    formula: "LDL = total cholesterol − HDL − triglycerides ÷ 5 (mg/dL); not valid when triglycerides are 400 mg/dL or more",
+    source: "Friedewald WT et al. Clin Chem 1972;18:499-502; Mach F et al. Eur Heart J 2020;41:111-88 (ESC/EAS)",
+    keywords: ["ldl", "cholesterol", "lipid profile", "dyslipidaemia", "dyslipidemia", "statin"],
+    compute: (v) => {
+      const tc = num(v, "tc"), hdl = num(v, "hdl"), tg = num(v, "tg");
+      if (tc === null || hdl === null || tg === null) return null;
+      const nonhdl = tc - hdl;
+      if (tg >= 400) return { value: "Not valid", label: "LDL (Friedewald)", band: "Triglycerides 400 mg/dL or more", level: "warn", details: [`Non-HDL cholesterol ${fmt(nonhdl)} mg/dL`, "Measure LDL directly."] };
+      const ldl = tc - hdl - tg / 5;
+      return {
+        value: `${fmt(ldl)} mg/dL`, label: "LDL cholesterol",
+        band: ldl < 100 ? "Optimal (below 100)" : ldl < 130 ? "Near optimal (100-129)" : ldl < 160 ? "Borderline high (130-159)" : ldl < 190 ? "High (160-189)" : "Very high (190 or more)",
+        level: ldl < 100 ? "ok" : ldl < 160 ? "warn" : "danger",
+        details: [`Non-HDL cholesterol ${fmt(nonhdl)} mg/dL`, "Treatment targets depend on cardiovascular risk: for example below 70 mg/dL at high risk and below 55 mg/dL at very high risk (ESC/EAS 2019); the Lipid Association of India sets similar or lower targets."],
       };
     },
   },

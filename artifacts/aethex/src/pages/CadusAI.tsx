@@ -15,6 +15,8 @@ import {
   LogOut, Menu, MessageSquare, Mic, Moon, MoreHorizontal, PanelLeftClose, PanelLeftOpen, Pencil, Pill, Pin, PinOff, Play,
   Plus, Presentation, RefreshCw, RotateCcw, Scale, Search, Settings, ShieldAlert, ShieldCheck, ShoppingBag, SlidersHorizontal,
   Sparkles, Square, SquarePen, Stethoscope, Sun, Syringe, Telescope, Trash2, Users, Volume2, VolumeX, X, Zap, Palette,
+  BedDouble, BookMarked, BookOpenText, ChartLine, ClipboardPlus, FileBadge, FileSignature, Microscope, NotebookPen, NotepadText,
+  Printer, Scissors, ScrollText, Sigma,
   type LucideIcon,
 } from "lucide-react";
 import { invokeAi } from "@/lib/ai-functions";
@@ -55,16 +57,25 @@ import {
 } from "@/lib/cadus/files";
 import { addMemory, personalPayload, readPersonal, rememberFrom, savePersonal, type Personal } from "@/lib/cadus/memory";
 import { downloadBlob, fileSlug, markdownToDocx } from "@/lib/cadus/docx";
+import { hasLetterhead, letterheadLines, readLetterhead, saveLetterhead, SIGNED_MODES, type Letterhead } from "@/lib/cadus/letterhead";
+import { printMarkdown } from "@/lib/cadus/printdoc";
+import { evidenceRecords, evidenceSources, readReading, type Paper } from "@/lib/cadus/pubmed";
+import { localDate, readWard } from "@/lib/cadus/wardlist";
+import ResearchView, { type ResearchTab } from "@/components/cadus/ResearchView";
+import WardView from "@/components/cadus/WardView";
+import LetterheadSettings from "@/components/cadus/LetterheadSettings";
+import { CADUS_PRO_CSS } from "@/components/cadus/cadus-pro-styles";
 
 /* ================================================================ types */
 
 type ModeId =
   | "general" | "ddx" | "drugs" | "dosage" | "labs" | "image" | "procedure"
-  | "soap" | "discharge" | "referral" | "handover" | "patient" | "research" | "mcq" | "slides" | "viva" | "osce";
+  | "soap" | "discharge" | "referral" | "handover" | "patient" | "research" | "mcq" | "slides" | "viva" | "osce"
+  | "admission" | "progress" | "opnote" | "death" | "certificate" | "rx" | "evidence";
 type Provider = "claude" | "groq" | "library";
-type View = "chat" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice";
+type View = "chat" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward";
 type ToolTab = "all" | "clinical" | "documentation" | "learning";
-type SettingsTab = "general" | "personal" | "data" | "shortcuts" | "about";
+type SettingsTab = "general" | "personal" | "letterhead" | "data" | "shortcuts" | "about";
 type StyleId = "concise" | "balanced" | "detailed";
 
 interface SourceRef {
@@ -112,6 +123,8 @@ interface Msg {
   think?: boolean;
   /** user message: asked in voice mode (short, spoken answer) */
   voice?: boolean;
+  /** user message: numbered records attached for an evidence summary; they become the answer's sources */
+  refs?: SourceRef[];
   /** assistant message: earlier versions from regenerating, oldest first */
   versions?: Msg[];
   /** assistant message: the user's thumbs up or down */
@@ -188,6 +201,8 @@ interface ModeDef {
   busy: string;
   example: string;
   cat: Exclude<ToolTab, "all"> | "general";
+  /** Started from elsewhere in Cadus (an evidence summary from Research), not picked as a tool. */
+  hidden?: boolean;
 }
 
 interface PaletteItem {
@@ -212,19 +227,26 @@ const MODES: ModeDef[] = [
   { id: "handover", cat: "documentation", label: "Rounds presentation", short: "Rounds (SBAR)", icon: ClipboardCheck, desc: "SBAR handover with a 60-second spoken version", placeholder: "Paste the case or your notes for the ward round…", busy: "Preparing the presentation", example: "Turn my admission notes into an SBAR for the morning round." },
   { id: "referral", cat: "documentation", label: "Referral letter", short: "Referral", icon: Mail, desc: "A specialist referral letter from the case", placeholder: "Describe the patient, who you're referring to and why…", busy: "Writing the letter", example: "Refer a 60M with new AF and a CHA₂DS₂-VASc of 3 to cardiology." },
   { id: "discharge", cat: "documentation", label: "Discharge summary", short: "Discharge", icon: FileText, desc: "A structured discharge summary from your notes", placeholder: "Paste admission details, hospital course, procedures and medicines…", busy: "Drafting the summary", example: "Paste the admission and course to draft one." },
+  { id: "admission", cat: "documentation", label: "Admission note", short: "Admission", icon: ClipboardPlus, desc: "A complete clerking from your history and examination", placeholder: "Paste the history, examination and first investigations…", busy: "Writing the admission note", example: "58M, fever and cough for 5 days, SpO₂ 91%: write the clerking." },
+  { id: "progress", cat: "documentation", label: "Progress note", short: "Progress", icon: NotebookPen, desc: "A problem-based daily note with today's plan and jobs", placeholder: "Today's events, vitals, examination and new results…", busy: "Writing the progress note", example: "Day 3 of pneumonia: afebrile, CRP falling, plan the switch to oral antibiotics." },
+  { id: "opnote", cat: "documentation", label: "Operative note", short: "Op note", icon: Scissors, desc: "A structured operative note from the procedure details", placeholder: "Procedure, findings, technique, blood loss, closure and post-op plan…", busy: "Writing the operative note", example: "Laparoscopic cholecystectomy for symptomatic gallstones." },
+  { id: "death", cat: "documentation", label: "Death summary", short: "Death summary", icon: ScrollText, desc: "A death summary with the MCCD cause-of-death sequence", placeholder: "Admission details, hospital course, events before death and the time of death…", busy: "Writing the death summary", example: "Septic shock from pneumonia in a 72M with COPD." },
+  { id: "certificate", cat: "documentation", label: "Medical certificate", short: "Certificate", icon: FileBadge, desc: "Sickness and fitness certificates, ready for you to sign", placeholder: "Type of certificate, diagnosis and the dates of leave or fitness…", busy: "Drafting the certificate", example: "Sick leave for 5 days for acute gastroenteritis." },
+  { id: "rx", cat: "documentation", label: "Prescription draft", short: "Prescription", icon: NotepadText, desc: "A prescription in generic names for you to check and sign", placeholder: "Diagnosis, the patient's age, weight and allergies, and what to prescribe…", busy: "Drafting the prescription", example: "Uncomplicated UTI in a non-pregnant 30-year-old woman." },
   { id: "patient", cat: "documentation", label: "Patient education", short: "Patient info", icon: Users, desc: "Plain-language explainers patients understand", placeholder: "Topic to explain, e.g. starting insulin", busy: "Writing the explainer", example: "Explain starting insulin to a newly diagnosed patient." },
   { id: "research", cat: "learning", label: "Deep research", short: "Research", icon: Telescope, desc: "A structured, guideline-aware evidence review", placeholder: "Research question, e.g. SGLT2 inhibitors in HFpEF", busy: "Reviewing the evidence", example: "Current evidence for SGLT2 inhibitors in HFpEF." },
   { id: "viva", cat: "learning", label: "Viva practice", short: "Viva", icon: MessageCircleQuestion, desc: "An examiner asks one question at a time, then scores you", placeholder: "Topic for your viva, e.g. heart failure", busy: "The examiner is thinking", example: "Viva on diabetic ketoacidosis." },
   { id: "osce", cat: "learning", label: "OSCE history station", short: "OSCE", icon: UserRound, desc: "Take a history from a simulated patient, then get scored", placeholder: "Station, e.g. chest pain, or leave it to Cadus", busy: "The patient is answering", example: "Chest pain history station." },
   { id: "mcq", cat: "learning", label: "Exam MCQs", short: "MCQs", icon: GraduationCap, desc: "NEET-PG and USMLE-style practice questions", placeholder: "Topic for 5 practice questions, e.g. nephrotic syndrome", busy: "Writing questions", example: "Five NEET-PG questions on nephrotic syndrome." },
   { id: "slides", cat: "learning", label: "Lecture slides", short: "Slides", icon: Presentation, desc: "A complete teaching deck, ready to present", placeholder: "Deck topic, e.g. acute coronary syndrome for MBBS", busy: "Designing your deck", example: "Acute coronary syndrome for final-year MBBS." },
+  { id: "evidence", cat: "learning", hidden: true, label: "Evidence summary", short: "Evidence", icon: BookOpenText, desc: "A cited summary of the PubMed papers you selected", placeholder: "Ask about these papers…", busy: "Summarising the evidence", example: "Summarise the papers selected in Research." },
 ];
 const MODE = Object.fromEntries(MODES.map((m) => [m.id, m])) as Record<ModeId, ModeDef>;
-const TOOL_MODES = MODES.filter((m) => m.id !== "general");
+const TOOL_MODES = MODES.filter((m) => m.id !== "general" && !m.hidden);
 
 const GROUPS: { label: string; ids: ModeId[] }[] = [
   { label: "Clinical", ids: ["ddx", "drugs", "dosage", "labs", "image", "procedure"] },
-  { label: "Documentation", ids: ["soap", "handover", "referral", "discharge", "patient"] },
+  { label: "Documentation", ids: ["soap", "admission", "progress", "handover", "referral", "discharge", "opnote", "death", "certificate", "rx", "patient"] },
   { label: "Learning and research", ids: ["viva", "osce", "mcq", "research", "slides"] },
 ];
 
@@ -240,9 +262,9 @@ const QUICK: ModeId[] = ["ddx", "drugs", "labs", "slides", "mcq"];
 const QUICK_BY_ROLE: Record<ProfileRole, ModeId[]> = {
   student: ["viva", "mcq", "slides", "ddx", "labs"],
   aspirant: ["mcq", "viva", "ddx", "labs", "research"],
-  intern: ["ddx", "drugs", "dosage", "handover", "discharge"],
-  resident: ["ddx", "handover", "referral", "drugs", "research"],
-  doctor: ["ddx", "drugs", "dosage", "labs", "referral"],
+  intern: ["admission", "progress", "ddx", "drugs", "discharge"],
+  resident: ["progress", "ddx", "handover", "referral", "research"],
+  doctor: ["ddx", "drugs", "rx", "certificate", "referral"],
   nurse: ["drugs", "dosage", "patient", "labs", "procedure"],
   pharmacist: ["drugs", "dosage", "patient", "labs", "research"],
 };
@@ -269,7 +291,14 @@ const FOLLOW: Record<ModeId, { text: string; mode?: ModeId }[]> = {
   viva: [],
   osce: [],
   discharge: [{ text: "Rewrite it in patient-friendly language", mode: "patient" }, { text: "List the follow-up appointments needed" }, { text: "Shorten it for the GP letter" }],
-  patient: [{ text: "Translate this into Hindi" }, { text: "Make it even simpler" }, { text: "Add a short FAQ section" }],
+  patient: [{ text: "Make it a bilingual handout in English and Hindi, section by section" }, { text: "Make it even simpler" }, { text: "Add a short FAQ section" }],
+  admission: [{ text: "List today's jobs for this patient as a checklist" }, { text: "Turn this into an SBAR for the ward round", mode: "handover" }, { text: "Which differentials must I not miss?", mode: "ddx" }],
+  progress: [{ text: "Shorten it for the handover", mode: "handover" }, { text: "Which investigations or reviews are due?" }, { text: "Explain today's plan to the family", mode: "patient" }],
+  opnote: [{ text: "Write the post-operative orders" }, { text: "Which complications should we watch for in the first 48 hours?" }, { text: "Draft the discharge summary", mode: "discharge" }],
+  death: [{ text: "Fill in the MCCD (Form 4) cause-of-death section" }, { text: "Check the cause-of-death sequence for errors" }, { text: "Help me prepare to speak with the family" }],
+  certificate: [{ text: "Make it a fitness-to-resume-work certificate" }, { text: "Make it more formal" }, { text: "Translate it into Hindi" }],
+  rx: [{ text: "Check these medicines for interactions", mode: "drugs" }, { text: "Explain the medicines to the patient", mode: "patient" }, { text: "Adjust the doses for kidney impairment", mode: "dosage" }],
+  evidence: [{ text: "Which of these studies is strongest, and why?" }, { text: "What should change in practice in India?" }, { text: "Outline a journal club presentation on these papers" }],
   research: [{ text: "Summarise this in five key points" }, { text: "What changed in the latest guidelines?" }, { text: "Turn this into practice questions", mode: "mcq" }],
   mcq: [{ text: "Give me five harder questions" }, { text: "Explain the answers in more depth" }, { text: "Make a lecture deck on this topic", mode: "slides" }],
   slides: [{ text: "Create five MCQs on this topic", mode: "mcq" }, { text: "Summarise this topic in key points", mode: "general" }, { text: "Make a shorter deck for a different audience" }],
@@ -448,7 +477,7 @@ const fmtTook = (ms?: number) => {
   return sec < 60 ? `${sec} s` : `${Math.floor(sec / 60)} min ${sec % 60} s`;
 };
 /** Answers that read as documents, offered as a Canvas document. */
-const DOC_MODES = new Set<ModeId>(["soap", "discharge", "referral", "handover", "patient"]);
+const DOC_MODES = new Set<ModeId>(["soap", "discharge", "referral", "handover", "patient", "admission", "progress", "opnote", "death", "certificate", "rx", "evidence"]);
 const FEEDBACK_REASONS = ["Inaccurate or outdated", "Unsafe or missing a warning", "Not relevant to India", "Didn't follow my instructions", "Too long", "Not detailed enough"];
 
 function pdfSafe(s: string): string {
@@ -458,32 +487,84 @@ function pdfSafe(s: string): string {
     .replace(/[µμ]/g, "u").replace(/…/g, "...").replace(/[^\x09\x0A\x0D\x20-\xFF]/g, "");
 }
 
-async function exportPdf(title: string, entries: { who: string; text: string }[]) {
+/**
+ * A PDF of an answer, a chat or a document. With a letterhead, the page starts
+ * with your details instead of the Cadus band, and letters, certificates and
+ * prescriptions end with a signature block.
+ */
+async function exportPdf(title: string, entries: { who: string; text: string }[], opts: { letterhead?: Letterhead | null; signature?: boolean } = {}) {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
   const M = 50;
-  doc.setFillColor(15, 23, 42);
-  doc.rect(0, 0, W, 74, "F");
-  doc.setFillColor(29, 78, 216);
-  doc.rect(0, 74, W, 3, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.text("Cadus", M, 46);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(160, 170, 184);
-  doc.text("CLINICAL AI BY AETHEX", M + 64, 46);
-  doc.text(new Date().toLocaleString("en-IN"), W - M, 46, { align: "right" });
-  let y = 114;
+  const lh = hasLetterhead(opts.letterhead) ? opts.letterhead : null;
+  const dateText = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+  let y: number;
+  if (lh) {
+    const lines = letterheadLines(lh);
+    const top = 42;
+    let x = M;
+    if (lh.logo) {
+      const h = 42;
+      const w = Math.min(120, (h * lh.logo.w) / lh.logo.h);
+      try {
+        doc.addImage(lh.logo.data, /^data:image\/jpe?g/.test(lh.logo.data) ? "JPEG" : "PNG", M, top, w, h);
+        x = M + w + 12;
+      } catch { /* a logo that can't be drawn is left out */ }
+    }
+    let ly = top + 12;
+    lines.left.forEach((t, i) => {
+      doc.setFont("helvetica", i === 0 ? "bold" : "normal");
+      doc.setFontSize(i === 0 ? 13 : 8.5);
+      doc.setTextColor(i === 0 ? 15 : 75, i === 0 ? 23 : 85, i === 0 ? 41 : 99);
+      doc.text(pdfSafe(t), x, ly);
+      ly += i === 0 ? 14 : 11;
+    });
+    let ry = top + 12;
+    lines.right.forEach((t, i) => {
+      doc.setFont("helvetica", i === 0 ? "bold" : "normal");
+      doc.setFontSize(i === 0 ? 10.5 : 8.5);
+      doc.setTextColor(i === 0 ? 15 : 75, i === 0 ? 23 : 85, i === 0 ? 41 : 99);
+      for (const part of doc.splitTextToSize(pdfSafe(t), (W - 2 * M) * 0.45) as string[]) {
+        doc.text(part, W - M, ry, { align: "right" });
+        ry += i === 0 ? 13 : 11;
+      }
+    });
+    y = Math.max(ly, ry, top + 46) + 4;
+    doc.setDrawColor(0, 122, 108);
+    doc.setLineWidth(1.6);
+    doc.line(M, y, W - M, y);
+    y += 30;
+  } else {
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, W, 74, "F");
+    doc.setFillColor(29, 78, 216);
+    doc.rect(0, 74, W, 3, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text("Cadus", M, 46);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(160, 170, 184);
+    doc.text("CLINICAL AI BY AETHEX", M + 64, 46);
+    doc.text(new Date().toLocaleString("en-IN"), W - M, 46, { align: "right" });
+    y = 114;
+  }
   doc.setTextColor(16, 24, 40);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
   for (const line of doc.splitTextToSize(pdfSafe(title), W - 2 * M) as string[]) {
     doc.text(line, M, y);
     y += 18;
+  }
+  if (lh) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(107, 114, 128);
+    doc.text(dateText, M, y - 2);
+    y += 10;
   }
   y += 8;
   for (const e of entries) {
@@ -505,12 +586,34 @@ async function exportPdf(title: string, entries: { who: string; text: string }[]
     }
     y += 16;
   }
+  if (opts.signature) {
+    if (y > H - 150) { doc.addPage(); y = 80; }
+    const sx = W - M - 200;
+    y += 30;
+    doc.setDrawColor(17, 24, 39);
+    doc.setLineWidth(0.8);
+    doc.line(sx, y, W - M, y);
+    y += 14;
+    const sign = [
+      [lh?.name || "Signature and seal", true],
+      [lh?.qualifications || "", false],
+      [lh?.registration || "Registration no. ____________", false],
+      [`Date: ${dateText}`, false],
+    ] as [string, boolean][];
+    for (const [t, bold] of sign.filter(([t]) => t)) {
+      doc.setFont("helvetica", bold ? "bold" : "normal");
+      doc.setFontSize(bold ? 10.5 : 9);
+      doc.setTextColor(bold ? 17 : 75, bold ? 24 : 85, bold ? 39 : 99);
+      doc.text(pdfSafe(t), sx, y);
+      y += 13;
+    }
+  }
   const pages = doc.getNumberOfPages();
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i);
     doc.setFontSize(8);
     doc.setTextColor(140, 148, 160);
-    doc.text("AI-generated clinical decision support. Verify independently before use.", M, H - 30);
+    doc.text(opts.signature ? "Draft prepared with Cadus. Check every detail before signing." : "AI-generated clinical decision support. Verify independently before use.", M, H - 30);
     doc.text(`${i} / ${pages}`, W - M, H - 30, { align: "right" });
   }
   const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "consultation";
@@ -544,6 +647,8 @@ async function invokeCadus(body: Record<string, unknown>): Promise<any> {
 }
 
 function friendlyError(raw: string): string {
+  // PubMed's own messages (busy, unreachable) are already plain.
+  if (/PubMed/.test(raw)) return raw;
   if (/fetch|network|Failed to send|load failed/i.test(raw)) return "Couldn't reach Cadus. Check your connection and try again.";
   if (/No AI key|not configured/i.test(raw)) return "Cadus isn't configured yet. The site owner needs to add the AI key in Cloudflare.";
   if (/rate|busy|429/i.test(raw)) return "Cadus is busy right now. Please try again in a moment.";
@@ -734,6 +839,11 @@ export default function CadusAI() {
   const [deleteArmed, setDeleteArmed] = useState(0);
   const [lightbox, setLightbox] = useState("");
   const [dlFor, setDlFor] = useState("");
+  const [letterhead, setLetterhead] = useState<Letterhead>(readLetterhead);
+  const [researchInit, setResearchInit] = useState<{ tab?: ResearchTab; query?: string; key: number }>({ key: 0 });
+  const [homeQuery, setHomeQuery] = useState("");
+  const [wardInfo, setWardInfo] = useState(() => readWard());
+  const [readingCount, setReadingCount] = useState(() => readReading().length);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
@@ -758,6 +868,8 @@ export default function CadusAI() {
   const messages = view === "chat" ? active?.messages ?? [] : [];
   const modeDef = MODE[mode];
   const examDays = daysToExam(profile);
+  /** The letterhead, when one is switched on and filled in. */
+  const lh = hasLetterhead(letterhead) ? letterhead : null;
   const ptot = totals(practice);
   const liveGuard = useMemo(
     () => (prefs.privacyGuard && !ROLEPLAY.has(mode) && input.trim().length > 3 ? deidentify(input) : null),
@@ -829,6 +941,12 @@ export default function CadusAI() {
   useEffect(() => writeJSON(SESSIONS_KEY, sessions.filter((s) => !s.temp).slice(0, 100).map(storableSession)), [sessions]);
   useEffect(() => writeJSON(DOCS_KEY, docs.slice(0, 50).map((d) => ({ ...d, history: d.history.slice(-5) }))), [docs]);
   useEffect(() => savePersonal(personal), [personal]);
+  useEffect(() => saveLetterhead(letterhead), [letterhead]);
+  // The ward list and reading list live in their own views; refresh the home page's view of them.
+  useEffect(() => {
+    setWardInfo(readWard());
+    setReadingCount(readReading().length);
+  }, [view]);
   // A temporary chat is discarded as soon as you leave it.
   useEffect(() => {
     setSessions((p) => (p.some((s) => s.temp && s.id !== activeId) ? p.filter((s) => !s.temp || s.id === activeId) : p));
@@ -1182,11 +1300,14 @@ export default function CadusAI() {
       const hasImage = !!userMsg.image || !!userMsg.files?.some((f) => f.kind === "image");
       // Follow-up questions can refer to files attached earlier in the chat, as in ChatGPT and Claude.
       let filesEarlier = false;
+      // PubMed records attached for an evidence summary are its numbered sources.
+      let refs = userMsg.refs;
       if (!files.length && !userMsg.image && !roleplay && userMsg.mode !== "slides") {
         const earlier = [...history].reverse().find((m) => m.role === "user" && m.files?.some((f) => f.data));
         if (earlier?.files) {
           files = attachmentPayload(earlier.files);
           filesEarlier = files.length > 0;
+          if (!refs?.length && earlier.refs?.length) refs = earlier.refs;
         }
       }
       const style = userMsg.voice ? "voice" : prefs.style;
@@ -1250,7 +1371,7 @@ export default function CadusAI() {
             });
           } else {
             if (!draft?.message) throw new Error("Cadus returned an empty answer. Please try again.");
-            const sources = safeSources(draft.sources);
+            const sources = refs?.length ? safeSources(refs) : safeSources(draft.sources);
             let content = String(draft.message);
             // The finished draft (with citation markers) stays on screen while it is reviewed.
             streamStore.set(content);
@@ -1328,11 +1449,15 @@ export default function CadusAI() {
 
   const setPersonal = (p: Personal) => setPersonalState(p);
 
-  const send = (textOverride?: string, modeOverride?: ModeId, extra?: { lang?: string; title?: string; voice?: boolean }): Promise<Msg | null> => {
+  const send = (
+    textOverride?: string,
+    modeOverride?: ModeId,
+    extra?: { lang?: string; title?: string; voice?: boolean; files?: Attachment[]; refs?: SourceRef[] },
+  ): Promise<Msg | null> => {
     const raw = (textOverride ?? input).trim();
     const m = modeOverride ?? mode;
     // Attachments in the composer go with what you type there, not with suggestion chips.
-    const atts = textOverride === undefined ? attachments : [];
+    const atts = extra?.files ?? (textOverride === undefined ? attachments : []);
     if ((!raw && !atts.length) || pending) return Promise.resolve(null);
     const guard = guardText(raw, m);
     const text = guard.text;
@@ -1352,7 +1477,9 @@ export default function CadusAI() {
       id: uid(), role: "user", mode: m, at: Date.now(),
       content: text || (onlyImages ? (atts.length > 1 ? "Please analyse these images." : "Please analyse this image.") : "Please review the attached document."),
       ...(atts.length ? { files: atts } : {}),
-      search: !ROLEPLAY.has(m) && (prefs.sources || m === "research"),
+      // An evidence summary uses only the attached PubMed records.
+      search: !ROLEPLAY.has(m) && m !== "evidence" && (prefs.sources || m === "research"),
+      ...(extra?.refs?.length ? { refs: extra.refs } : {}),
       ...(guard.total ? { privacy: { total: guard.total, hits: guard.hits } } : {}),
       ...(extra?.lang ? { lang: extra.lang } : {}),
       ...(think && textOverride === undefined ? { think: true } : {}),
@@ -1460,6 +1587,36 @@ export default function CadusAI() {
     setPop(null);
   };
 
+  /** Research: PubMed search, the reading list and the thesis kit. A query runs straight away. */
+  const openResearch = (opts: { tab?: ResearchTab; query?: string } = {}) => {
+    setResearchInit({ ...opts, key: Date.now() });
+    setView("research");
+    setSidebarOpen(false);
+    setPop(null);
+  };
+
+  const openWard = () => {
+    setView("ward");
+    setSidebarOpen(false);
+    setPop(null);
+  };
+
+  /** An evidence summary: the selected PubMed records go with the question, and become its sources. */
+  const summariseEvidence = (query: string, papers: Paper[], ask?: string) => {
+    if (!papers.length) return;
+    if (pending) { toast("Wait for the current answer to finish"); return; }
+    const records = evidenceRecords(query, papers);
+    const file: Attachment = {
+      id: uid(),
+      kind: "text",
+      name: papers.length === 1 ? "PubMed record.txt" : `PubMed records (${papers.length}).txt`,
+      size: new Blob([records]).size,
+      data: records,
+    };
+    const text = ask ?? (papers.length === 1 ? "Summarise this study and what it shows." : `Summarise what these ${papers.length} studies show about ${query}.`);
+    void send(text, "evidence", { files: [file], refs: evidenceSources(papers), title: clip(papers.length === 1 ? papers[0].title : `Evidence: ${query}`, 64) });
+  };
+
   /** Ask again for a new answer. The old one is kept as a version; feedback (if any) asks for a better one. */
   const regenerate = (assistantId: string, improve?: { reasons: string[]; comment: string }) => {
     if (!active || pending) return;
@@ -1487,7 +1644,8 @@ export default function CadusAI() {
 
   const copy = async (m: Msg) => {
     try {
-      await navigator.clipboard.writeText(withSources(m.content, m.sources));
+      // A flowchart's source is left out: the answer's text already says the same.
+      await navigator.clipboard.writeText(withSources(m.content.replace(/```mermaid[\s\S]*?(```|$)\n*/gi, "").trim(), m.sources));
       setCopied(m.id);
       window.setTimeout(() => setCopied(""), 1600);
       toast("Copied to clipboard");
@@ -1521,8 +1679,23 @@ export default function CadusAI() {
     synth.speak(u);
   };
 
+  /** A title for an answer as a document: its heading or the tool's name for letters and notes, otherwise the question. */
+  const answerTitle = (m: Msg, content = m.content) => {
+    const heading = /^#{1,2}\s+(.+)$/m.exec(content)?.[1]?.replace(/[*_`]/g, "").trim();
+    if (DOC_MODES.has(m.mode) && m.mode !== "evidence" && m.mode !== "patient") return clip(heading || MODE[m.mode].label, 80);
+    if (m.mode === "patient" && heading) return clip(heading, 80);
+    return clip(stripPlaceholders(questionFor(m)) || active?.title || "Cadus answer", 80);
+  };
   const exportAnswer = (m: Msg) => {
-    void exportPdf(active?.title || "Cadus answer", [{ who: "Question", text: questionFor(m) }, { who: m.review ? "Cadus (safety-reviewed)" : "Cadus", text: withSources(m.content, m.sources) }]);
+    // Letters, notes and certificates are exported as the document alone; other answers with the question.
+    const isDoc = DOC_MODES.has(m.mode) && m.mode !== "evidence";
+    void exportPdf(
+      isDoc ? answerTitle(m) : active?.title || "Cadus answer",
+      isDoc
+        ? [{ who: "", text: withSources(m.content, m.sources) }]
+        : [{ who: "Question", text: questionFor(m) }, { who: m.review ? "Cadus (safety-reviewed)" : "Cadus", text: withSources(m.content, m.sources) }],
+      { letterhead: lh, signature: SIGNED_MODES.has(m.mode) },
+    );
   };
 
   const exportSession = (s?: Session) => {
@@ -1560,9 +1733,15 @@ export default function CadusAI() {
   const onFile = (f?: File | null) => onFiles(f ? [f] : []);
 
   /** Word and Markdown downloads of an answer or a whole chat. */
-  const downloadWord = (title: string, md: string) => {
-    downloadBlob(`${fileSlug(title, "cadus-answer")}.docx`, markdownToDocx(title, md));
-    toast("Word document downloaded");
+  const downloadWord = (title: string, md: string, mode?: string) => {
+    downloadBlob(`${fileSlug(title, "cadus-answer")}.docx`, markdownToDocx(title, md, { letterhead: lh, signature: !!mode && SIGNED_MODES.has(mode) }));
+    toast(lh ? "Word document downloaded with your letterhead" : "Word document downloaded");
+  };
+  /** Print an answer or document with the letterhead (patient handouts in large type). */
+  const printDoc = (title: string, md: string, opts: { mode?: string; sources?: SourceRef[]; large?: boolean } = {}) => {
+    // A first heading that repeats the title isn't printed twice.
+    const body = md.replace(/^#{1,2}\s+(.+)\n+/, (line, h: string) => (h.replace(/[*_`]/g, "").trim().toLowerCase() === title.trim().toLowerCase() ? "" : line));
+    void printMarkdown({ title, md: body, sources: opts.sources, letterhead: lh, signature: !!opts.mode && SIGNED_MODES.has(opts.mode), large: opts.large });
   };
   const chatMarkdown = (t: Session) =>
     `# ${t.title}\n\n${t.messages.filter((m) => !(m.stopped && m.content === "Response stopped.")).map((m) => (m.role === "user" ? `**You:** ${m.content}` : withSources(m.content, m.sources))).join("\n\n---\n\n")}\n`;
@@ -1802,6 +1981,12 @@ export default function CadusAI() {
       { key: "a:lib", label: "Open Library", icon: Library, run: () => setView("library") },
       { key: "a:decks", label: "Open decks", icon: Presentation, run: () => setView("decks") },
       { key: "a:tools", label: "Browse clinical tools", icon: LayoutGrid, run: () => setView("tools") },
+      { key: "a:ward", label: "Open ward round", hint: "Your patient list", icon: BedDouble, run: () => openWard() },
+      { key: "a:pubmed", label: "Search PubMed", hint: "Research", icon: Microscope, run: () => openResearch({ tab: "search" }) },
+      { key: "a:reading", label: "Open reading list", icon: BookMarked, run: () => openResearch({ tab: "reading" }) },
+      { key: "a:thesis", label: "Thesis kit: sample size and statistical tests", icon: Sigma, run: () => openResearch({ tab: "thesis" }) },
+      { key: "a:trends", label: "Chart lab trends", icon: ChartLine, run: () => openCalculators({ tab: "trends" }) },
+      { key: "a:letterhead", label: lh ? "Edit your letterhead" : "Set up your letterhead", icon: FileSignature, run: () => openSettings("letterhead") },
       { key: "a:calc", label: "Open calculators", icon: Calculator, run: () => openCalculators() },
       { key: "a:ix", label: "Open the interaction checker", icon: Pill, run: () => openCalculators({ tab: "ix" }) },
       { key: "a:practice", label: "Open practice", icon: Target, run: () => openPractice() },
@@ -1816,6 +2001,8 @@ export default function CadusAI() {
       { key: "a:theme", label: dark ? "Switch to light theme" : "Switch to dark theme", icon: dark ? Sun : Moon, run: () => setPrefs((p) => ({ ...p, theme: dark ? "light" : "dark" })) },
       { key: "a:font", label: serif ? "Use sans-serif answers" : "Use serif answers", icon: Palette, run: () => setPrefs((p) => ({ ...p, answerFont: serif ? "sans" : "serif" })) },
       { key: "a:settings", label: "Open settings", icon: Settings, run: () => openSettings() },
+      // Anything typed can also be searched on PubMed (listed after the actions it matches).
+      ...(q.length > 2 ? [{ key: "a:pubmedq", label: `Search PubMed for “${palQuery.trim()}”`, icon: Microscope, run: () => openResearch({ query: palQuery.trim() }) }] : []),
     ].filter((a) => match(a.label));
     const projectItems: PaletteItem[] = sortedProjects
       .filter((p) => match(p.name))
@@ -2026,11 +2213,12 @@ export default function CadusAI() {
     ddx: "Differentials", drugs: "Interactions", labs: "Lab results", slides: "Lecture slides", mcq: "Exam MCQs", viva: "Viva practice",
     osce: "OSCE station", handover: "Rounds (SBAR)", referral: "Referral letter", dosage: "Dosing", patient: "Patient info",
     research: "Research", discharge: "Discharge", procedure: "Procedures",
+    admission: "Admission note", progress: "Progress note", opnote: "Op note", death: "Death summary", certificate: "Certificate", rx: "Prescription",
   };
   const quick = profile ? QUICK_BY_ROLE[profile.role] : QUICK;
   /** Calculators on the home page, with short labels. */
   const HOME_CALCS: [string, string][] = [
-    ["crcl", "CrCl"], ["egfr", "eGFR"], ["gcs", "GCS"], ["curb65", "CURB-65"], ["chads", "CHA₂DS₂-VASc"], ["qtc", "QTc"], ["edd", "Due date"], ["pedsdose", "Paediatric dose"],
+    ["crcl", "CrCl"], ["egfr", "eGFR"], ["news2", "NEWS2"], ["curb65", "CURB-65"], ["heart", "HEART"], ["chads", "CHA₂DS₂-VASc"], ["gcs", "GCS"], ["pedsdose", "Paediatric dose"],
   ];
   const recentChats = [...listed].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 7);
   const projectName = (id?: string) => (id ? projects.find((p) => p.id === id)?.name : undefined);
@@ -2118,6 +2306,28 @@ export default function CadusAI() {
             </section>
             <section className="cx-panel">
               <header className="cx-panel-h">
+                <b><BedDouble size={15} /> Ward round</b>
+                <button onClick={openWard}>{wardInfo.patients.length ? "Open" : <><Plus size={13} /> Start</>}</button>
+              </header>
+              {wardInfo.patients.length ? (() => {
+                const open = wardInfo.patients.reduce((n, p) => n + p.jobs.filter((j) => !j.done).length, 0);
+                const sick = wardInfo.patients.filter((p) => p.status === "sick").length;
+                // The round checklist starts afresh each day.
+                const seenToday = wardInfo.roundDate === localDate() ? wardInfo.patients.filter((p) => p.checks.includes("seen")).length : 0;
+                return (
+                  <div className="cx-ward-mini">
+                    <div className="cx-mini-stats">
+                      <div><b>{wardInfo.patients.length}</b><small>Patients{wardInfo.unit ? ` · ${clip(wardInfo.unit, 18)}` : ""}</small></div>
+                      <div className={sick ? "sick" : ""}><b>{sick}</b><small>Sick</small></div>
+                      <div><b>{open}</b><small>Jobs to do</small></div>
+                    </div>
+                    <button className="cx-mini-rev" onClick={openWard}><ClipboardCheck size={13} /> {seenToday} of {wardInfo.patients.length} seen today</button>
+                  </div>
+                );
+              })() : <p className="cx-panel-empty">Keep today's patients by bed number, with their problems, medicines, jobs and a round checklist, then hand over in one click. Stays on this device.</p>}
+            </section>
+            <section className="cx-panel">
+              <header className="cx-panel-h">
                 <b><Folder size={15} /> Projects</b>
                 <button onClick={projects.length ? openProjects : () => setProjectDialog({ name: "", instructions: "" })}>{projects.length ? "All projects" : <><Plus size={13} /> New project</>}</button>
               </header>
@@ -2182,6 +2392,24 @@ export default function CadusAI() {
             </section>
             <section className="cx-panel">
               <header className="cx-panel-h">
+                <b><Microscope size={15} /> Research</b>
+                <button onClick={() => openResearch({ tab: readingCount ? "reading" : "search" })}>{readingCount ? `Reading list · ${readingCount}` : "Open"}</button>
+              </header>
+              <div className="cx-rs-mini">
+                <form onSubmit={(e) => { e.preventDefault(); const q = homeQuery.trim(); if (q) { setHomeQuery(""); openResearch({ query: q }); } }}>
+                  <Search size={15} />
+                  <input value={homeQuery} onChange={(e) => setHomeQuery(e.target.value)} placeholder="Search PubMed" aria-label="Search PubMed" maxLength={300} />
+                  <button type="submit" disabled={!homeQuery.trim()}>Search</button>
+                </form>
+                <div className="cx-rs-mini-l">
+                  <button onClick={() => openResearch({ tab: "thesis" })}><Sigma size={13} /> Sample size</button>
+                  <button onClick={() => openResearch({ tab: "thesis" })}><Scale size={13} /> Which test?</button>
+                  <button onClick={() => openResearch({ tab: "reading" })}><BookMarked size={13} /> Reading list</button>
+                </div>
+              </div>
+            </section>
+            <section className="cx-panel">
+              <header className="cx-panel-h">
                 <b><Target size={15} /> Practice</b>
                 <button onClick={openPractice}>{ptot.attempted ? "Open" : <><Plus size={13} /> Start</>}</button>
               </header>
@@ -2206,9 +2434,10 @@ export default function CadusAI() {
                 <button onClick={() => openCalculators()}>All calculators</button>
               </header>
               <div className="cx-tool-grid">
-                {HOME_CALCS.map(([id, label]) => (
+                {HOME_CALCS.filter(([id]) => CALC_BY_ID[id]).map(([id, label]) => (
                   <button key={id} onClick={() => openCalculators({ calc: id })} title={CALC_BY_ID[id]?.name}>{label}</button>
                 ))}
+                <button onClick={() => openCalculators({ tab: "trends" })} title="Chart serial lab results"><ChartLine size={13} /> Lab trends</button>
                 <button className="ix" onClick={() => openCalculators({ tab: "ix" })}><Pill size={13} /> Interaction checker</button>
               </div>
             </section>
@@ -2325,8 +2554,9 @@ export default function CadusAI() {
                   <p>{markdownToText(d.text) || "Empty document"}</p>
                   <div className="cx-lib-acts">
                     <button onClick={() => setCanvasId(d.id)}><FilePen size={13} /> Open</button>
-                    <button onClick={() => downloadWord(d.title, d.text)} disabled={!d.text.trim()}><FileDown size={13} /> Word</button>
-                    <button onClick={() => void exportPdf(d.title, [{ who: "", text: d.text }])} disabled={!d.text.trim()}><Download size={13} /> PDF</button>
+                    <button onClick={() => downloadWord(d.title, d.text, d.mode)} disabled={!d.text.trim()}><FileDown size={13} /> Word</button>
+                    <button onClick={() => void exportPdf(d.title, [{ who: "", text: d.text }], { letterhead: lh, signature: SIGNED_MODES.has(d.mode ?? "") })} disabled={!d.text.trim()}><Download size={13} /> PDF</button>
+                    <button onClick={() => printDoc(d.title, d.text, { mode: d.mode, large: d.mode === "patient" })} disabled={!d.text.trim()}><Printer size={13} /> Print</button>
                     <button className="danger" onClick={() => deleteDoc(d.id)}><Trash2 size={13} /> Delete</button>
                   </div>
                 </article>
@@ -2568,7 +2798,7 @@ export default function CadusAI() {
     let q = "";
     for (const m of messages) {
       if (m.role === "user") { q = m.content; continue; }
-      const checkable = !m.error && !m.stopped && !["mcq", "slides", "research", "viva", "osce", "patient"].includes(m.mode);
+      const checkable = !m.error && !m.stopped && !["mcq", "slides", "research", "viva", "osce", "patient", "evidence"].includes(m.mode);
       out[m.id] = { q, ix: checkable ? checkText(q).matches : [] };
     }
     return out;
@@ -2723,6 +2953,9 @@ export default function CadusAI() {
                 {speakingId === m.id ? <VolumeX size={16} /> : <Volume2 size={16} />}
               </button>
               <button className="cx-act cx-tip" data-tip="Regenerate" onClick={() => regenerate(m.id)} disabled={!!pending} aria-label="Regenerate"><RefreshCw size={16} /></button>
+              {DOC_MODES.has(m.mode) && m.mode !== "evidence" && (
+                <button className="cx-act cx-tip" data-tip={m.mode === "patient" ? "Print handout" : "Print"} onClick={() => printDoc(answerTitle(m, v.content), v.content, { mode: m.mode, sources: src, large: m.mode === "patient" })} aria-label={m.mode === "patient" ? "Print handout" : "Print"}><Printer size={16} /></button>
+              )}
               <button className={`cx-act cx-tip ${savedIds.has(m.id) ? "on" : ""}`} data-tip={savedIds.has(m.id) ? "Saved to Library" : "Save to Library"} onClick={() => toggleSave(shown)} aria-label="Save to Library">
                 {savedIds.has(m.id) ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
               </button>
@@ -2731,9 +2964,16 @@ export default function CadusAI() {
                 {pop === menuKey && (
                   <div className="cx-pop cx-msg-menu" role="menu">
                     <button className="cx-pop-i" onClick={() => { setPop(null); openCanvas(shown); }}><FilePen size={16} /> {doc ? "Open in Canvas" : "Edit in Canvas"}</button>
-                    <button className="cx-pop-i" onClick={() => { setPop(null); downloadWord(clip(stripPlaceholders(questionFor(m)) || active?.title || "Cadus answer", 80), withSources(v.content, v.sources)); }}><FileDown size={16} /> Download for Word</button>
+                    <button className="cx-pop-i" onClick={() => { setPop(null); downloadWord(answerTitle(m, v.content), withSources(v.content, v.sources), m.mode); }}><FileDown size={16} /> Download for Word</button>
                     <button className="cx-pop-i" onClick={() => { setPop(null); exportAnswer(shown); }}><Download size={16} /> Download as PDF</button>
+                    <button className="cx-pop-i" onClick={() => { setPop(null); printDoc(answerTitle(m, v.content), v.content, { mode: m.mode, sources: src, large: m.mode === "patient" }); }}><Printer size={16} /> {m.mode === "patient" ? "Print handout" : "Print"}</button>
                     <button className="cx-pop-i" onClick={() => { setPop(null); void shareAnswer(shown); }}><Share2 size={16} /> Share</button>
+                    {(lh || SIGNED_MODES.has(m.mode)) && <div className="cx-pop-sep" />}
+                    {lh ? (
+                      <p className="cx-pop-gl">Word, PDF and print use your letterhead</p>
+                    ) : SIGNED_MODES.has(m.mode) ? (
+                      <button className="cx-pop-i" onClick={() => openSettings("letterhead")}><FileSignature size={16} /> Add your letterhead</button>
+                    ) : null}
                   </div>
                 )}
               </div>
@@ -2749,7 +2989,7 @@ export default function CadusAI() {
             {m.id === lastAssistant?.id && !pending && (() => {
               const ctx = answerContext[m.id];
               if (!ctx || ROLEPLAY.has(m.mode)) return null;
-              const calcs = STUDY_MODES.has(m.mode) ? [] : suggestCalculators(ctx.q, m.content);
+              const calcs = STUDY_MODES.has(m.mode) || m.mode === "evidence" ? [] : suggestCalculators(ctx.q, m.content);
               const ward = CASE_MODES.has(m.mode) || (m.mode === "general" && looksLikeCase(ctx.q));
               if (!calcs.length && !ward) return null;
               const lang = wardLang || prefs.language;
@@ -2800,7 +3040,9 @@ export default function CadusAI() {
   /** The answer being written: progress steps, then the text as it streams in. */
   const renderPending = (p: NonNullable<typeof pending>) => {
     const reviewer = STUDY_MODES.has(p.mode) ? MODEL_DEF.medius.short : MODEL_DEF.magnus.short;
-    const draftLabel = p.think
+    const draftLabel = p.mode === "evidence"
+      ? "Reading the PubMed abstracts and summarising the evidence"
+      : p.think
       ? `Thinking it through carefully${p.search ? " and searching trusted sources" : ""}`
       : p.doc ? `Reading the attached document${p.search ? " and searching trusted sources" : ""}`
       : p.search ? "Searching trusted medical sources and drafting"
@@ -3023,7 +3265,7 @@ export default function CadusAI() {
       style={{ ["--acc" as string]: dark ? accent.dark : accent.light, ["--fs" as string]: `${fontSize}px`, ["--fs-u" as string]: `${sansSize}px` }}
       {...dropHandlers}
     >
-      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS}</style>
+      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS}</style>
 
       {/* ============================================== sidebar */}
       <div className={`cx-scrim ${sidebarOpen ? "on" : ""}`} onClick={() => setSidebarOpen(false)} />
@@ -3047,12 +3289,12 @@ export default function CadusAI() {
             <span className="cx-new-ic"><Plus size={15} strokeWidth={2.6} /></span><span className="cx-nav-l">New chat</span><kbd>{MOD} ⇧ O</kbd>
           </button>
           {([
-            ["projects", Folder, "Projects", projects.length, openProjects],
-            ["practice", Target, "Practice", 0, openPractice],
+            ["ward", BedDouble, "Ward round", wardInfo.patients.length, openWard],
+            ["research", Microscope, "Research", 0, () => openResearch()],
             ["calculators", Calculator, "Calculators", 0, () => openCalculators()],
+            ["practice", Target, "Practice", 0, openPractice],
+            ["projects", Folder, "Projects", projects.length, openProjects],
             ["library", Library, "Library", library.length, () => { setView("library"); setSidebarOpen(false); }],
-            ["decks", Presentation, "Decks", decks.length, () => { setView("decks"); setSidebarOpen(false); }],
-            ["tools", LayoutGrid, "Clinical tools", 0, () => { setView("tools"); setSidebarOpen(false); }],
           ] as [View, LucideIcon, string, number, () => void][]).map(([id, Icon, label, count, go]) => (
             <button
               key={id}
@@ -3070,6 +3312,8 @@ export default function CadusAI() {
           </button>
           {moreOpen && (
             <div className="cx-more">
+              <button className={`cx-nav-i ${view === "decks" ? "on" : ""}`} onClick={() => { setView("decks"); setSidebarOpen(false); }} title="Decks"><Presentation size={16} /><span className="cx-nav-l">Decks</span>{decks.length > 0 && <em>{decks.length}</em>}</button>
+              <button className={`cx-nav-i ${view === "tools" ? "on" : ""}`} onClick={() => { setView("tools"); setSidebarOpen(false); }} title="Clinical tools"><LayoutGrid size={16} /><span className="cx-nav-l">Clinical tools</span></button>
               <button className="cx-nav-i" onClick={openPalette} title="Search"><Search size={16} /><span className="cx-nav-l">Search</span><kbd>{MOD} K</kbd></button>
               <button className="cx-nav-i" onClick={() => openSettings("shortcuts")} title="Keyboard shortcuts"><Keyboard size={16} /><span className="cx-nav-l">Keyboard shortcuts</span></button>
               <a className="cx-nav-i" href="/ai-assistant-classic" title="Classic Cadus"><History size={16} /><span className="cx-nav-l">Classic Cadus</span></a>
@@ -3293,6 +3537,8 @@ export default function CadusAI() {
                 : view === "practice" ? [Target, "Practice"]
                 : view === "library" ? [Library, "Library"]
                 : view === "decks" ? [Presentation, "Decks"]
+                : view === "research" ? [Microscope, "Research"]
+                : view === "ward" ? [BedDouble, "Ward round"]
                 : view === "project" && project ? [Folder, project.name]
                 : [Folder, "Projects"];
               return <span className="cx-title-btn static"><Icon size={14} /> <span>{label}</span></span>;
@@ -3383,6 +3629,24 @@ export default function CadusAI() {
               friendlyError={friendlyError}
             />
           )
+            : view === "research" ? (
+              <ResearchView
+                initial={researchInit}
+                search={(body) => invokeCadus(body)}
+                onSummarise={summariseEvidence}
+                onAsk={(t, m) => send(t, (m as ModeId) ?? "general")}
+                toast={toast}
+                friendlyError={friendlyError}
+              />
+            )
+            : view === "ward" ? (
+              <WardView
+                onAsk={(t, m, title) => send(t, m as ModeId, { title })}
+                onOpenChecker={(drugs) => openCalculators({ tab: "ix", drugs })}
+                letterhead={lh}
+                toast={toast}
+              />
+            )
             : view === "tools" ? renderTools()
             : view === "library" ? renderLibrary()
             : view === "projects" ? renderProjects()
@@ -3437,7 +3701,10 @@ export default function CadusAI() {
           onChange={updateDoc}
           onClose={closeCanvas}
           aiEdit={canvasEdit}
-          exportPdf={(title, text) => void exportPdf(title, [{ who: "", text }])}
+          exportPdf={(title, text) => void exportPdf(title, [{ who: "", text }], { letterhead: lh, signature: SIGNED_MODES.has(canvasDoc.mode ?? "") })}
+          exportWord={(title, text) => downloadWord(title, text, canvasDoc.mode)}
+          print={(title, text) => printDoc(title, text, { mode: canvasDoc.mode, large: canvasDoc.mode === "patient" })}
+          letterhead={!!lh}
           toast={toast}
         />
       )}
@@ -3562,6 +3829,7 @@ export default function CadusAI() {
               {([
                 ["general", "General", Settings],
                 ["personal", "Personalisation", Palette],
+                ["letterhead", "Letterhead", FileSignature],
                 ["data", "Data and privacy", Database],
                 ["shortcuts", "Shortcuts", Keyboard],
                 ["about", "About", Info],
@@ -3571,7 +3839,7 @@ export default function CadusAI() {
             </nav>
             <div className="cx-set-body">
               <div className="cx-set-head">
-                <h3>{{ general: "General", personal: "Personalisation", data: "Data and privacy", shortcuts: "Keyboard shortcuts", about: "About Cadus" }[settingsTab]}</h3>
+                <h3>{{ general: "General", personal: "Personalisation", letterhead: "Letterhead", data: "Data and privacy", shortcuts: "Keyboard shortcuts", about: "About Cadus" }[settingsTab]}</h3>
                 <button className="cx-ib" onClick={() => setSettingsOpen(false)} aria-label="Close settings"><X size={18} /></button>
               </div>
               <div className="cx-set-scroll">
@@ -3655,10 +3923,11 @@ export default function CadusAI() {
                     </div>
                   </>
                 )}
+                {settingsTab === "letterhead" && <LetterheadSettings value={letterhead} onChange={setLetterhead} toast={toast} />}
                 {settingsTab === "data" && (
                   <>
                     <div className="cx-set-row">
-                      <div><b>Where your data lives</b><small>Chats, projects, documents, Library items, memory, your profile and practice progress are stored only in this browser, so they don't sync between devices yet. Messages, attachments, custom instructions and memory are sent securely to the AI to generate answers. Temporary chats are never stored.</small></div>
+                      <div><b>Where your data lives</b><small>Chats, projects, documents, Library items, memory, your profile, practice progress, your ward list, reading list and letterhead are stored only in this browser, so they don't sync between devices yet. Messages, attachments, custom instructions and memory are sent securely to the AI to generate answers. Temporary chats are never stored.</small></div>
                     </div>
                     <div className="cx-set-row">
                       <div>
@@ -3716,10 +3985,10 @@ export default function CadusAI() {
                       </div>
                     )}
                     <div className="cx-set-row">
-                      <div><b>Export all chats</b><small>{listed.length + archivedList.length} chats, {projects.length} projects, {docs.length} documents and {library.length} saved answers, with your memory and custom instructions, as a JSON file</small></div>
+                      <div><b>Export all chats</b><small>{listed.length + archivedList.length} chats, {projects.length} projects, {docs.length} documents and {library.length} saved answers, with your memory, custom instructions, reading list and letterhead, as a JSON file</small></div>
                       <button
                         className="cx-btn"
-                        onClick={() => downloadJSON(`cadus-export-${today()}.json`, { exportedAt: new Date().toISOString(), sessions: sessions.filter((x) => !x.temp), projects, library, documents: docs, personalisation: personal })}
+                        onClick={() => downloadJSON(`cadus-export-${today()}.json`, { exportedAt: new Date().toISOString(), sessions: sessions.filter((x) => !x.temp), projects, library, documents: docs, personalisation: personal, readingList: readReading(), letterhead: { ...letterhead, logo: undefined } })}
                         disabled={!sessions.length && !library.length && !projects.length && !docs.length}
                       >
                         <Download size={14} /> Export
@@ -3769,7 +4038,7 @@ export default function CadusAI() {
                       <div><h4>Cadus 2.0</h4><p>Clinical AI by Aethex</p></div>
                     </div>
                     <div className="cx-set-row"><div><b>How Cadus answers</b><small>1. Cadus Medius 3.1, or Cadus Magnus 3.6 if you pick it, drafts each answer to the Cadus clinical standards: evidence-based, structured, dose-checked and aware of Indian guidance. 2. Cadus Magnus 3.6 audits clinical answers for doses, interactions, red flags and invented facts, and corrects them (Medius 3.1 checks study content). 3. With Sources on, Cadus searches trusted medical sites and cites them. 4. If the AI credits run out, Cadus switches to Library mode: it answers from its offline medical library (Wikipedia, NIH and the Disease Ontology), cites each article and labels the answer. A backup model covers other outages.</small></div></div>
-                    <div className="cx-set-row"><div><b>Built-in tools</b><small>{CALCULATORS.length} clinical calculators and the interaction checker run in your browser from published formulas and a curated drug list, so they are exact and not generated by AI. The practice hub writes exam questions with Cadus and keeps your progress on this device. The privacy guard hides patient identifiers before anything is sent.</small></div></div>
+                    <div className="cx-set-row"><div><b>Built-in tools</b><small>{CALCULATORS.length} clinical calculators, lab trend charts, the thesis kit's sample-size formulas and the interaction checker run in your browser from published formulas and a curated drug list, so they are exact and not generated by AI. PubMed search returns real papers with their PMIDs and DOIs; Cadus summarises only the abstracts you select. The ward round list, practice progress and reading list stay on this device. The privacy guard hides patient identifiers before anything is sent.</small></div></div>
                     <div className="cx-set-row"><div><b>Limitations</b><small>Cadus is decision support for qualified professionals and students. It is not a certified medical device, and the safety review reduces errors without eliminating them. Confirm diagnoses and doses against current guidelines and local protocols.</small></div></div>
                     <div className="cx-set-row">
                       <div><b>Classic Cadus</b><small>The previous version, with its original modes</small></div>

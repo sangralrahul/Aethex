@@ -3,9 +3,10 @@
  * chats don't re-render every answer) and the live, streaming answer, which
  * subscribes to its own small store so only it updates as text arrives.
  */
-import { memo, useEffect, useSyncExternalStore, type ReactNode } from "react";
+import { memo, useEffect, useMemo, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { renderMarkdown } from "@/lib/cadus-markdown";
 import { closePartialMarkdown } from "@/lib/cadus/stream";
+import { useFlowcharts } from "@/lib/cadus/flowchart";
 
 export interface TextStore {
   get: () => string;
@@ -13,7 +14,13 @@ export interface TextStore {
 }
 
 export const MdBlock = memo(function MdBlock({ text, cites, className = "" }: { text: string; cites?: number; className?: string }) {
-  return <div className={`cx-md ${className}`} dangerouslySetInnerHTML={{ __html: renderMarkdown(text, { cites, copy: true }) }} />;
+  const ref = useRef<HTMLDivElement>(null);
+  const html = useMemo(() => renderMarkdown(text, { cites, copy: true }), [text, cites]);
+  // The same object between renders, so React 19 doesn't reset the HTML and wipe drawn flowcharts.
+  const inner = useMemo(() => ({ __html: html }), [html]);
+  // Flowcharts are drawn once the answer is on screen.
+  useFlowcharts(ref, `${html}|${className}`);
+  return <div ref={ref} className={`cx-md ${className}`} dangerouslySetInnerHTML={inner} />;
 });
 
 /** Puts a blinking caret at the end of the last block of streamed text. */

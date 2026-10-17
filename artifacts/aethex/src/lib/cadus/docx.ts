@@ -1,8 +1,10 @@
 /**
  * Markdown to a Word document (.docx), written in the browser with no library:
  * headings, paragraphs, bold/italic, lists, tables, quotes and code, on A4 with
- * a Cadus footer note. Opens in Word, Google Docs, LibreOffice and WPS.
+ * a Cadus footer note, and optionally the user's letterhead (with logo) and a
+ * signature block. Opens in Word, Google Docs, LibreOffice and WPS.
  */
+import { hasLetterhead, letterheadLines, type Letterhead } from "./letterhead";
 
 /* ------------------------------------------------------------------ zip (store) */
 
@@ -93,7 +95,7 @@ const xml = (s: string) =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
-interface RunStyle { b?: boolean; i?: boolean; code?: boolean; color?: string }
+interface RunStyle { b?: boolean; i?: boolean; code?: boolean; color?: string; size?: number }
 
 function run(text: string, st: RunStyle = {}): string {
   if (!text) return "";
@@ -102,6 +104,7 @@ function run(text: string, st: RunStyle = {}): string {
     st.b ? "<w:b/>" : "",
     st.i ? "<w:i/>" : "",
     st.color ? `<w:color w:val="${st.color}"/>` : "",
+    st.size ? `<w:sz w:val="${st.size}"/><w:szCs w:val="${st.size}"/>` : "",
     st.code ? '<w:sz w:val="19"/><w:shd w:val="clear" w:color="auto" w:fill="F3F4F7"/>' : "",
   ].join("");
   return `<w:r>${props ? `<w:rPr>${props}</w:rPr>` : ""}<w:t xml:space="preserve">${xml(text)}</w:t></w:r>`;
@@ -153,7 +156,14 @@ export function markdownToWordXml(md: string): string {
   while (i < lines.length) {
     const line = lines[i];
     if (/^```/.test(line)) {
+      const lang = line.slice(3).trim().toLowerCase();
       i++;
+      if (lang === "mermaid") {
+        while (i < lines.length && !/^```/.test(lines[i])) i++;
+        i++;
+        out.push(para(run("(Flowchart: open the answer in Cadus to view it.)", { i: true, color: "667085" })));
+        continue;
+      }
       while (i < lines.length && !/^```/.test(lines[i])) out.push(para(run(lines[i++] || " ", { code: true }), "Code"));
       i++;
       continue;
@@ -225,26 +235,92 @@ const STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:style w:type="paragraph" w:styleId="Small"><w:name w:val="Small"/><w:basedOn w:val="Normal"/><w:pPr><w:pBdr><w:top w:val="single" w:sz="4" w:space="6" w:color="D8DCE4"/></w:pBdr><w:spacing w:before="360"/></w:pPr><w:rPr><w:sz w:val="16"/><w:color w:val="667085"/></w:rPr></w:style>
 </w:styles>`;
 
+/* ------------------------------------------------------------------ letterhead */
+
+const EMU_PER_INCH = 914400;
+
+function dataUrlBytes(dataUrl: string): Uint8Array {
+  const b64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/** An inline picture for the letterhead logo, at most 0.6 in tall and 1.4 in wide. */
+function logoXml(w: number, h: number): string {
+  let cy = 0.6 * EMU_PER_INCH;
+  let cx = (cy * w) / h;
+  if (cx > 1.4 * EMU_PER_INCH) { cx = 1.4 * EMU_PER_INCH; cy = (cx * h) / w; }
+  cx = Math.round(cx); cy = Math.round(cy);
+  return `<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="1" name="Logo"/><wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="0" name="logo"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdLogo"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>`;
+}
+
+/** The letterhead as a borderless table (logo, doctor, hospital) over a teal rule. */
+function letterheadXml(l: Letterhead): string {
+  const { left, right } = letterheadLines(l);
+  const nil = ["top", "left", "bottom", "right", "insideH", "insideV"].map((s) => `<w:${s} w:val="nil"/>`).join("");
+  const line = (text: string, first: boolean, align: "left" | "right") =>
+    para(run(text, first ? { b: true, size: align === "left" ? 28 : 22, color: "0F1729" } : { size: 18, color: "475467" }), undefined,
+      `<w:spacing w:after="0" w:line="252" w:lineRule="auto"/>${align === "right" ? '<w:jc w:val="right"/>' : ""}`);
+  const logoW = l.logo ? 1700 : 0;
+  const leftW = Math.round((TEXT_WIDTH - logoW) * 0.55);
+  const rightW = TEXT_WIDTH - logoW - leftW;
+  const cell = (w: number, inner: string) => `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr>${inner || para("")}</w:tc>`;
+  const cells = [
+    l.logo ? cell(logoW, para(logoXml(l.logo.w, l.logo.h), undefined, '<w:spacing w:after="0"/>')) : "",
+    cell(leftW, left.map((t, i) => line(t, i === 0, "left")).join("")),
+    cell(rightW, right.map((t, i) => line(t, i === 0, "right")).join("")),
+  ].join("");
+  const grid = [l.logo ? logoW : 0, leftW, rightW].filter(Boolean).map((w) => `<w:gridCol w:w="${w}"/>`).join("");
+  return `<w:tbl><w:tblPr><w:tblW w:w="${TEXT_WIDTH}" w:type="dxa"/><w:tblBorders>${nil}</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="0" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>${grid}</w:tblGrid><w:tr>${cells}</w:tr></w:tbl>${para("", undefined, '<w:pBdr><w:bottom w:val="single" w:sz="12" w:space="1" w:color="007A6C"/></w:pBdr><w:spacing w:after="240"/>')}`;
+}
+
+/** Signature, name, qualifications, registration and date, right-aligned at the end. */
+function signatureXml(l: Letterhead | null, date: Date): string {
+  const lines = [
+    l?.name || "",
+    l?.qualifications || "",
+    l?.registration || "Registration no. ____________",
+    `Date: ${date.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}`,
+  ].filter(Boolean);
+  const right = '<w:jc w:val="right"/><w:spacing w:after="0"/>';
+  return [
+    para("", undefined, '<w:spacing w:before="480" w:after="0"/>'),
+    para(run("______________________________"), undefined, right),
+    para(run("Signature and seal", { size: 18, color: "667085" }), undefined, right),
+    ...lines.map((t, i) => para(run(t, i === 0 && l?.name ? { b: true } : { size: 20 }), undefined, right)),
+  ].join("");
+}
+
 /** A complete .docx file for a markdown document. */
-export function markdownToDocx(title: string, md: string, opts: { subtitle?: string; note?: string; date?: Date } = {}): Blob {
+export function markdownToDocx(
+  title: string,
+  md: string,
+  opts: { subtitle?: string; note?: string; date?: Date; letterhead?: Letterhead | null; signature?: boolean } = {},
+): Blob {
   const date = opts.date ?? new Date();
   const enc = new TextEncoder();
+  const lh = hasLetterhead(opts.letterhead) ? opts.letterhead : null;
   const body = [
+    lh ? letterheadXml(lh) : "",
     para(run(title), "Title"),
     para(run(opts.subtitle ?? `Cadus · ${date.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}`), "Subtitle"),
     markdownToWordXml(md.replace(/^#\s+.+\n+/, (m) => (m.replace(/^#\s+/, "").trim() === title.trim() ? "" : m))),
-    para(run(opts.note ?? "Prepared with Cadus, clinical AI by Aethex. Verify against current guidelines and local protocols before clinical use."), "Small"),
+    opts.signature ? signatureXml(lh, date) : "",
+    para(run(opts.note ?? (opts.signature ? "Draft prepared with Cadus. Check every detail before signing." : "Prepared with Cadus, clinical AI by Aethex. Verify against current guidelines and local protocols before clinical use.")), "Small"),
   ].join("");
   const document = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>${body}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" w:header="709" w:footer="709" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><w:body>${body}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" w:header="709" w:footer="709" w:gutter="0"/></w:sectPr></w:body></w:document>`;
   const iso = date.toISOString().replace(/\.\d{3}Z$/, "Z");
+  const logo = lh?.logo ? { ext: /^data:image\/jpe?g/.test(lh.logo.data) ? "jpg" : "png", bytes: dataUrlBytes(lh.logo.data) } : null;
   const files: [string, string][] = [
     ["[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>`],
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>${logo ? `<Default Extension="${logo.ext}" ContentType="image/${logo.ext === "jpg" ? "jpeg" : "png"}"/>` : ""}<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>`],
     ["_rels/.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>`],
     ["word/_rels/document.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>${logo ? `<Relationship Id="rIdLogo" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/logo.${logo.ext}"/>` : ""}</Relationships>`],
     ["word/document.xml", document],
     ["word/styles.xml", STYLES],
     ["docProps/core.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -252,7 +328,9 @@ export function markdownToDocx(title: string, md: string, opts: { subtitle?: str
     ["docProps/app.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>Cadus</Application></Properties>`],
   ];
-  const zip = zipStore(files.map(([name, text]) => ({ name, data: enc.encode(text) })), date);
+  const parts: { name: string; data: Uint8Array }[] = files.map(([name, text]) => ({ name, data: enc.encode(text) }));
+  if (logo) parts.push({ name: `word/media/logo.${logo.ext}`, data: logo.bytes });
+  const zip = zipStore(parts, date);
   return new Blob([zip as BlobPart], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
 }
 

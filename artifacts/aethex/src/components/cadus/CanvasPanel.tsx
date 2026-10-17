@@ -3,12 +3,13 @@
  * Claude's artifacts. Quick AI edits (shorter, formal, patient-friendly,
  * translate or any instruction), undo, and export to Word, PDF or Markdown.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowUp, Check, ChevronDown, Copy, Download, Eye, FileDown, FileText, Languages, PenLine, Undo2, WandSparkles, X,
+  ArrowUp, Check, ChevronDown, Copy, Download, Eye, FileDown, FileText, Languages, PenLine, Printer, Undo2, WandSparkles, X,
 } from "lucide-react";
 import { renderMarkdown, markdownToText } from "@/lib/cadus-markdown";
-import { downloadBlob, fileSlug, markdownToDocx } from "@/lib/cadus/docx";
+import { downloadBlob, fileSlug } from "@/lib/cadus/docx";
+import { useFlowcharts } from "@/lib/cadus/flowchart";
 
 export interface CanvasDoc {
   id: string;
@@ -33,12 +34,17 @@ const QUICK_EDITS: { label: string; instruction: string }[] = [
 ];
 const TRANSLATE_TO = ["Hindi", "Hinglish", "Bengali", "Tamil", "Telugu", "Marathi", "Gujarati", "Kannada", "Malayalam", "Punjabi", "Urdu", "English"];
 
-export default function CanvasPanel({ doc, onChange, onClose, aiEdit, exportPdf, toast }: {
+export default function CanvasPanel({ doc, onChange, onClose, aiEdit, exportPdf, exportWord, print, letterhead, toast }: {
   doc: CanvasDoc;
   onChange: (doc: CanvasDoc) => void;
   onClose: () => void;
   aiEdit: (text: string, instruction: string) => Promise<string>;
+  /** Downloads and printing add the letterhead and, for letters and certificates, a signature block. */
   exportPdf: (title: string, text: string) => void;
+  exportWord: (title: string, text: string) => void;
+  print: (title: string, text: string) => void;
+  /** Whether a letterhead is set up, shown in the export menu. */
+  letterhead?: boolean;
   toast: (t: string) => void;
 }) {
   // A blank document opens ready to type.
@@ -48,6 +54,11 @@ export default function CanvasPanel({ doc, onChange, onClose, aiEdit, exportPdf,
   const [menu, setMenu] = useState<"" | "export" | "translate">("");
   const [error, setError] = useState("");
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const docRef = useRef<HTMLDivElement>(null);
+  const html = editing || !doc.text.trim() ? "" : renderMarkdown(doc.text);
+  // React 19 sets innerHTML again whenever this object changes, which would wipe drawn flowcharts.
+  const inner = useMemo(() => ({ __html: html }), [html]);
+  useFlowcharts(docRef, html);
 
   useEffect(() => {
     if (editing) window.setTimeout(() => taRef.current?.focus(), 30);
@@ -126,9 +137,11 @@ export default function CanvasPanel({ doc, onChange, onClose, aiEdit, exportPdf,
             </button>
             {menu === "export" && (
               <div className="cx-pop cx-cv-menu" role="menu">
-                <button className="cx-pop-i" onClick={() => { setMenu(""); downloadBlob(`${fileSlug(doc.title)}.docx`, markdownToDocx(doc.title, doc.text)); toast("Word document downloaded"); }}><FileDown size={16} /> Word document (.docx)</button>
+                <button className="cx-pop-i" onClick={() => { setMenu(""); exportWord(doc.title, doc.text); }}><FileDown size={16} /> Word document (.docx)</button>
                 <button className="cx-pop-i" onClick={() => { setMenu(""); exportPdf(doc.title, doc.text); }}><FileDown size={16} /> PDF</button>
+                <button className="cx-pop-i" onClick={() => { setMenu(""); print(doc.title, doc.text); }}><Printer size={16} /> Print</button>
                 <button className="cx-pop-i" onClick={() => { setMenu(""); downloadBlob(`${fileSlug(doc.title)}.md`, new Blob([`# ${doc.title}\n\n${doc.text}\n`], { type: "text/markdown" })); }}><FileDown size={16} /> Markdown (.md)</button>
+                <p className="cx-pop-gl">{letterhead ? "Word, PDF and print use your letterhead" : "Add your letterhead in Settings"}</p>
               </div>
             )}
           </div>
@@ -151,7 +164,7 @@ export default function CanvasPanel({ doc, onChange, onClose, aiEdit, exportPdf,
           empty ? (
             <p className="cx-cv-empty">This document is empty. Select <b>Edit text</b> to type, or ask Cadus below to write it.</p>
           ) : (
-            <div className="cx-cv-doc cx-md" onDoubleClick={() => setEditing(true)} dangerouslySetInnerHTML={{ __html: renderMarkdown(doc.text) }} />
+            <div ref={docRef} className="cx-cv-doc cx-md" onDoubleClick={() => setEditing(true)} dangerouslySetInnerHTML={inner} />
           )
         )}
         {busy && (

@@ -17,6 +17,8 @@
 //   title                 A short title for a new chat.
 //   canvas-edit           Applies an instruction to a document open in Canvas
 //                         (or writes a blank document from scratch).
+//   literature            PubMed search (NCBI E-utilities) with filters: real
+//                         records with abstracts, for the Research page. No AI.
 //   deep-research         Legacy endpoint used by the classic page.
 //   med-knowledge         Study Hub content.
 import {
@@ -30,6 +32,7 @@ import {
   parseJsonLoose,
   type Source,
 } from "../_shared/groq.ts";
+import { PubmedBusy, searchPubMed, type PaperType } from "../_shared/pubmed.ts";
 
 /* ------------------------------------------------------------------ prompts */
 
@@ -50,6 +53,7 @@ const CORE_SYSTEM = `You are Cadus, the clinical AI assistant built by Aethex (a
 - Begin with "**Bottom line:**" followed by the direct answer in one to three sentences.
 - Then use short sections with "##" headings, bullet points and tables. Bold critical numbers and actions.
 - Finish longer answers with "## Key points" (three to five bullets).
+- For a management algorithm or decision pathway with four or more steps, you may add one compact flowchart as a fenced \`\`\`mermaid block using "flowchart TD", with short labels in double quotes (no line breaks, brackets or other special characters inside a label). Keep the full answer in text as well; the flowchart only summarises it.
 - Write like a senior consultant briefing a colleague: precise, structured, no filler, no moralising and no generic disclaimers (the app shows one).
 - Use the units of Indian practice (for example glucose in mg/dL), adding SI units where helpful.`;
 
@@ -101,6 +105,42 @@ Note that reference ranges vary between laboratories.`,
 ## On rounds: a spoken version the user can present in about 60 seconds.
 Use only the information provided, write [not documented] where something important is missing, and never invent results. Skip the Bottom line.`,
   discharge: `TASK: Discharge summary. Draft a structured discharge summary with the sections Diagnosis, Presenting complaint, Hospital course, Procedures, Key investigations, Condition at discharge, Discharge medications (a table with columns Drug | Dose | Frequency | Duration), Advice and follow-up, and Return immediately if (red-flag symptoms). Use only the information provided, write [to be completed] for anything missing, and never invent results or doses. Skip the Bottom line.`,
+  admission: `TASK: Admission note (clerking). Write a structured admission note in the format used in Indian hospitals:
+## Patient (age and sex; keep placeholders)
+## Chief complaints (each with its duration)
+## History of present illness
+## Past, drug and allergy history
+## Personal, family and (where relevant) menstrual and obstetric history
+## General examination (pulse, BP, respiratory rate, temperature, SpO2; pallor, icterus, cyanosis, clubbing, lymphadenopathy, oedema)
+## Systemic examination (CVS, RS, per abdomen, CNS)
+## Provisional diagnosis and differentials
+## Plan (investigations; treatment with generic drug, dose, route and frequency; monitoring; referrals)
+Use only the information provided, write [not documented] for anything missing, and never invent findings, results or doses. Skip the Bottom line.`,
+  progress: `TASK: Daily progress note. Write a concise progress note: "Day [n] of admission" (use [n] if unknown), then
+## Subjective (symptoms since the last review)
+## Objective (vitals, intake and output, examination, new results compared with earlier ones)
+## Assessment and plan, problem by problem (a numbered list: each problem with its status and today's plan)
+## Jobs for today (a checklist)
+Use only the information provided, write [not documented] for anything missing, and never invent results. Skip the Bottom line.`,
+  opnote: `TASK: Operative note. Write a structured operative note with: Date and time [to be completed]; Procedure; Surgeon, assistant and anaesthetist [to be completed]; Anaesthesia; Indication; Consent [to be completed]; Position; Incision; Findings; Procedure details (step by step); Specimens sent; Implants and drains; Estimated blood loss; Complications; Closure; Post-operative instructions (monitoring, analgesia, antibiotics, thromboprophylaxis, feeding, drains, follow-up). Use only the information provided, write [to be completed] for anything missing, and never invent findings or numbers. Skip the Bottom line.`,
+  death: `TASK: Death summary. Write a respectful, factual death summary with: Patient (age and sex; keep placeholders); Date and time of admission and of death [to be completed]; Presenting complaints; Hospital course; Resuscitation (if any); then "## Cause of death" in the WHO / MCCD (Form 4) format: Part I (a) immediate cause, (b) antecedent cause, (c) underlying cause, each with the approximate interval between onset and death; Part II other significant conditions contributing to death. Write diseases or conditions, never modes of dying such as cardiac arrest or respiratory failure on their own, and put the underlying cause on the lowest line used in Part I. Use only the information provided, write [to be completed] for anything missing, and never invent times, results or causes. Skip the Bottom line.`,
+  certificate: `TASK: Medical certificate. Write a formal medical certificate in the style used in India: a sickness certificate recommending leave (diagnosis, period of rest from [date] to [date]) or a fitness certificate to resume duty, as the user asks. Include placeholders for the patient's name, age, sex and identification marks, the dates, and the doctor's signature, name, qualifications, registration number and council, and seal. Certify only what the user has stated; never invent findings, dates or a diagnosis. Keep it to half a page. Skip the Bottom line.`,
+  rx: `TASK: Prescription draft for a registered medical practitioner to check, sign and stamp. Write:
+Date [to be completed] · Patient [patient], age and sex · Weight (needed for children)
+## Diagnosis
+## Rx (a numbered list; each line: GENERIC NAME IN CAPITAL LETTERS with strength and dosage form, dose, route, frequency, duration, and with or without food)
+## Advice (non-drug measures)
+## Follow up
+## Return immediately if (warning signs)
+Rules: generic names written legibly in capitals, as the Indian Medical Council (Professional Conduct, Etiquette and Ethics) Regulations require; prefer the National List of Essential Medicines; avoid irrational fixed-dose combinations; weight-based doses for children with the adult maximum; check interactions, renal and hepatic dosing, pregnancy and allergies. Use only what the user has given; if something that changes the prescription is missing (age, weight, pregnancy, renal function, allergies), say so above the draft. End with "Draft only: to be reviewed, signed and stamped by the treating doctor with their registration number." Skip the Bottom line.`,
+  evidence: `TASK: Evidence summary from PubMed records. The user attached numbered PubMed records ([1], [2] and so on) with their abstracts. Base every statement ONLY on these records and cite them by number, for example [2] or [1][3]. Never cite or name any other study, and never invent numbers, results or references.
+**Bottom line:** what the evidence shows and how strong it is, in one to three sentences.
+## Studies at a glance (a table: Ref | Design | Population and setting | n | Comparison | Main result)
+## What the evidence shows (by outcome; report effect sizes with 95% confidence intervals and p values exactly as the abstracts give them)
+## Quality and limitations (study design, risk of bias, consistency, and what abstracts alone can't show)
+## Applicability in India (only what follows from these records; say plainly if none of them is from India or a similar setting)
+## Key points
+If the records don't answer the question, say so and suggest a better search.`,
   patient: `TASK: Patient education. Write for a patient or family member at about a 12-year-old reading level: warm, clear and free of jargon (explain any medical word you must use). Sections: What it is, Why it happens, What you can do, Medicines (general guidance only, no doses unless asked), When to see a doctor urgently. Start with "**Bottom line:**" in plain words.`,
   research: `TASK: Evidence review.
 **Bottom line:** the practical answer for clinicians.
@@ -168,6 +208,7 @@ RULES
 6. Format: begin with "**Bottom line:**" and one or two sentences. Then short sections with ## headings and bullet points where helpful. Be concise. Do not mention these rules or the word "passage".`;
 
 const SOURCES_OFF = `SOURCES: You cannot browse in this answer. Do not include URLs. Name a guideline body and year only when you are certain of both.`;
+const SOURCES_RECORDS = `SOURCES: You cannot browse in this answer. Use only the attached PubMed records, cite them as [n], and do not include URLs or a reference list (the app shows the records).`;
 
 const REVIEW_SYSTEM = `You are Cadus Safety Review: a senior physician and clinical pharmacologist who audits AI-drafted clinical answers before they reach doctors and medical students in India.
 
@@ -229,8 +270,13 @@ const MODE_LABELS: Record<string, string> = {
   discharge: "Discharge summary", patient: "Patient education", research: "Evidence review", mcq: "Exam MCQs",
   slides: "Lecture slides", viva: "Viva practice", osce: "OSCE history station",
   referral: "Referral letter", handover: "Rounds presentation (SBAR)",
+  admission: "Admission note", progress: "Progress note", opnote: "Operative note", death: "Death summary",
+  certificate: "Medical certificate", rx: "Prescription draft", evidence: "Evidence summary from PubMed",
 };
-const HIGH_RISK = new Set(["ddx", "drugs", "dosage", "labs", "image", "procedure", "discharge", "soap", "referral", "handover"]);
+const HIGH_RISK = new Set([
+  "ddx", "drugs", "dosage", "labs", "image", "procedure", "discharge", "soap", "referral", "handover",
+  "admission", "progress", "opnote", "death", "certificate", "rx", "evidence",
+]);
 /** Exam practice questions for the practice hub, returned as JSON. */
 const PRACTICE_SYSTEM = `You are Cadus, writing exam practice questions for Indian medical students and doctors (NEET-PG, INI-CET, FMGE, NExT and USMLE style).
 Rules:
@@ -518,7 +564,8 @@ Deno.serve(async (req) => {
       const earlier = body.filesEarlier === true && attached.parts.length > 0;
       const mode = MODE_LABELS[String(body.mode)] ? String(body.mode) : "general";
       const style = String(body.style || "balanced");
-      const search = mode === "research" || body.search === true;
+      // An evidence summary is written only from the attached PubMed records, never from a web search.
+      const search = mode !== "evidence" && (mode === "research" || body.search === true);
       const roleplay = mode === "viva" || mode === "osce";
       // A single image in the image tool (or with no tool) gets the systematic image read.
       const imageRead = !earlier && attached.images > 0 && !attached.documents && (mode === "image" || mode === "general");
@@ -529,7 +576,7 @@ Deno.serve(async (req) => {
         attached.documents ? DOCUMENT_NOTE : "",
         earlier ? EARLIER_FILES_NOTE : "",
         STYLE_PROMPTS[style] ?? "",
-        search ? SOURCES_ON : SOURCES_OFF,
+        mode === "evidence" ? SOURCES_RECORDS : search ? SOURCES_ON : SOURCES_OFF,
         projectLine(body.instructions),
         roleplay ? "" : profileLine(body.profile),
         roleplay ? "" : personalLine(body.personal),
@@ -604,6 +651,9 @@ Deno.serve(async (req) => {
         attached.documents ? "The user attached the documents shown above; check the draft against them." : "",
         body.style === "voice"
           ? "THE DRAFT IS A SPOKEN ANSWER (voice mode): keep the corrected answer as plain, natural spoken sentences under about 120 words, with no headings, lists, tables, bold text or citations."
+          : "",
+        mode === "evidence"
+          ? "THE DRAFT SUMMARISES THE ATTACHED PUBMED RECORDS: check every statement and number against those abstracts, keep each [n] citation that matches its record, fix or remove any that don't, and add nothing from outside the records."
           : "",
         `USER QUESTION:\n${question}`,
         sources.length
@@ -757,6 +807,33 @@ Deno.serve(async (req) => {
       const title = r.content.split("\n")[0].replace(/^["'“”‘’#*\s]+|["'“”‘’*.\s]+$/g, "").replace(/\[[^\]]*\]/g, "").replace(/\s+/g, " ").trim().slice(0, 70);
       if (!title) return jsonResponse({ error: "No title" }, 502);
       return jsonResponse({ title });
+    }
+
+    // ---------------------------------------------------------------- literature (PubMed, no AI)
+    if (action === "literature") {
+      const q = String(body.query || "").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 300);
+      if (!q) return jsonResponse({ error: "query is required" }, 400);
+      const types: PaperType[] = ["any", "sr", "rct", "guideline", "review"];
+      try {
+        const r = await searchPubMed(
+          {
+            q,
+            type: types.includes(body.type) ? body.type : "any",
+            years: [0, 1, 5, 10].includes(Number(body.years)) ? Number(body.years) : 0,
+            free: body.free === true,
+            india: body.india === true,
+            sort: body.sort === "date" ? "date" : "relevance",
+            page: Number(body.page) || 1,
+            perPage: 20,
+          },
+          { apiKey: Deno.env.get("NCBI_API_KEY") },
+        );
+        return jsonResponse(r);
+      } catch (e) {
+        if (e instanceof PubmedBusy) return jsonResponse({ error: "PubMed is busy right now. Please try again in a moment." }, 429);
+        console.error("PubMed search failed", e);
+        return jsonResponse({ error: "Couldn't reach PubMed. Please try again." }, 502);
+      }
     }
 
     // ---------------------------------------------------------------- canvas

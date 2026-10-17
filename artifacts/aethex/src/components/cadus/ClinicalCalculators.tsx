@@ -13,8 +13,9 @@ import {
   detectDrugs, findInteractions, IX_DRUG_COUNT, IX_RULE_COUNT, suggestDrugNames,
   type DetectedDrug, type IxMatch, type IxSeverity,
 } from "@/lib/cadus/interactions";
+import LabTrends from "./LabTrends";
 
-export type ToolsTab = "calc" | "ix";
+export type ToolsTab = "calc" | "ix" | "trends";
 
 const SEV_LABEL: Record<IxSeverity, string> = { major: "Major", moderate: "Moderate", minor: "Minor" };
 
@@ -308,7 +309,7 @@ export default function ClinicalCalculators({ initialCalc, initialTab, initialDr
   initialCalc?: string;
   initialTab?: ToolsTab;
   initialDrugs?: string[];
-  onAsk: (text: string, mode?: "general" | "drugs") => void;
+  onAsk: (text: string, mode?: "general" | "drugs" | "labs") => void;
   toast: (t: string) => void;
 }) {
   const [tab, setTab] = useState<ToolsTab>(initialTab ?? "calc");
@@ -335,19 +336,24 @@ export default function ClinicalCalculators({ initialCalc, initialTab, initialDr
     <section className="cx-page cx-tools-page" ref={topRef}>
       <header className="cx-page-h">
         <div>
-          <h1>{tab === "calc" ? "Calculators" : "Interaction checker"}</h1>
+          <h1>{tab === "calc" ? "Calculators" : tab === "ix" ? "Interaction checker" : "Lab trends"}</h1>
           <p>{tab === "calc"
             ? `${CALCULATORS.length} bedside scores and formulas, computed exactly in your browser. No AI is involved, so results are instant and repeatable.`
-            : "Check a prescription against Cadus's curated list of high-risk interactions. Understands generic names and common Indian brands."}</p>
+            : tab === "ix"
+              ? "Check a prescription against Cadus's curated list of high-risk interactions. Understands generic names and common Indian brands."
+              : "Paste results from several days and see every test charted against its usual range, with the latest value flagged."}</p>
         </div>
         <div className="cx-tabs" role="tablist">
           <button role="tab" aria-selected={tab === "calc"} className={tab === "calc" ? "on" : ""} onClick={() => setTab("calc")}>Calculators</button>
           <button role="tab" aria-selected={tab === "ix"} className={tab === "ix" ? "on" : ""} onClick={() => setTab("ix")}>Interaction checker</button>
+          <button role="tab" aria-selected={tab === "trends"} className={tab === "trends" ? "on" : ""} onClick={() => setTab("trends")}>Lab trends</button>
         </div>
       </header>
 
       {tab === "ix" ? (
         <InteractionChecker initialDrugs={initialDrugs} onAsk={(t) => onAsk(t, "drugs")} />
+      ) : tab === "trends" ? (
+        <LabTrends onAsk={(t) => onAsk(t, "labs")} toast={toast} />
       ) : (
         <div className={`cx-calc ${showList ? "list-open" : ""}`}>
           <aside className="cx-calc-list" aria-label="Calculators">

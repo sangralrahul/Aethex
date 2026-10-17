@@ -285,6 +285,8 @@ The application uses environment variables for sensitive integrations.
 
 ```env
 GROQ_API_KEY=
+# Optional: an NCBI API key raises PubMed's rate limit for Cadus Research
+NCBI_API_KEY=
 SUPABASE_URL=
 SUPABASE_ANON_KEY=
 RESEND_API_KEY=

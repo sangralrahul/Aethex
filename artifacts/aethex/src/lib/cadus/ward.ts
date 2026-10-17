@@ -43,7 +43,7 @@ export const WARD_ACTIONS: WardAction[] = [
 ];
 
 /** Tools whose answers are about a patient, so the ward actions make sense under them. */
-export const CASE_MODES = new Set(["ddx", "labs", "image", "drugs", "dosage", "soap", "handover", "referral", "discharge"]);
+export const CASE_MODES = new Set(["ddx", "labs", "image", "drugs", "dosage", "soap", "handover", "referral", "discharge", "admission", "progress"]);
 
 /** Whether a free-text question describes a patient (age and sex, "presents with" and so on). */
 export function looksLikeCase(text: string): boolean {

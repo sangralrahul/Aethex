@@ -2,7 +2,8 @@
  * Tiny, dependency-free markdown → HTML renderer for Cadus replies.
  * All text is HTML-escaped first, so model output can never inject markup.
  * Supports headings, bold/italic, inline + fenced code, lists, tables,
- * blockquotes, horizontal rules and http(s) links.
+ * blockquotes, horizontal rules and http(s) links. A ```mermaid block becomes a
+ * placeholder holding the (escaped) source, which the page draws as a flowchart.
  */
 
 function esc(s: string): string {
@@ -53,6 +54,10 @@ export function renderMarkdown(md: string, opts: RenderOptions = {}, nested = fa
       i++;
       while (i < lines.length && !/^```/.test(lines[i])) buf.push(lines[i++]);
       i++;
+      if (fence[1].toLowerCase() === "mermaid") {
+        out.push(`<div class="md-mermaid" data-state="new"><pre class="md-mermaid-src">${esc(buf.join("\n"))}</pre><div class="md-mermaid-fig" role="img" aria-label="Flowchart"></div></div>`);
+        continue;
+      }
       out.push(
         opts.copy
           ? `<div class="md-code">${COPY_BTN("code")}<pre><code>${esc(buf.join("\n"))}</code></pre></div>`
@@ -132,6 +137,7 @@ export function renderMarkdown(md: string, opts: RenderOptions = {}, nested = fa
 /** Strip markdown to readable plain text (for copy-as-text / PDF). */
 export function markdownToText(md: string): string {
   return md
+    .replace(/```mermaid[\s\S]*?(```|$)/gi, "")
     .replace(/```[\w-]*\n?/g, "")
     .replace(/^#{1,6}\s+/gm, "")
     .replace(/\*\*([^*]+)\*\*/g, "$1")
