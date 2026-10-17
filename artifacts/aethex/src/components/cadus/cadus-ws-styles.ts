@@ -198,4 +198,24 @@ export const CADUS_WS_CSS = `
   .cx-inst-acts .cx-btn{flex:1;justify-content:center}
   .cx-casebar{margin-bottom:-8px}
 }
+
+/* ================================================================ wallpaper */
+.cx-wall-pick{display:grid;grid-template-columns:repeat(4,64px);gap:8px;flex-shrink:0}
+.cx-wall-pick button{display:flex;flex-direction:column;align-items:center;gap:4px}
+.cx-wall-pick button>span{width:64px;height:44px;border:1px solid var(--line2);border-radius:9px;background-color:var(--bg);background-repeat:repeat;transition:box-shadow .12s,border-color .12s}
+.cx-wall-pick button:hover>span{border-color:color-mix(in srgb,var(--text) 24%,var(--line2))}
+.cx-wall-pick button.on>span{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc-soft)}
+.cx-wall-pick small{font-size:11px;font-weight:550;color:var(--t3)}
+.cx-wall-pick button.on small{color:var(--acc)}
+/* over a wallpaper, answers, cards and the bars stay readable */
+.cx-main[style*="background-image"] .cx-top{background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(8px)}
+.cx-main[style*="background-image"] .cx-dock{background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--bg) 70%,transparent) 30%)}
+.cx-main[style*="background-image"] .cx-dock{background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--bg) 88%,transparent) 18px)}
+.cx-main[style*="background-image"] .cx-thread>.cx-a{padding:14px 18px;margin:0 -18px;border-radius:16px;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(2px)}
+.cx-main[style*="background-image"] .cx-page>:not(header){position:relative}
+.cx-main[style*="background-image"] :is(.cx-page-h,.cx-fh-h){padding:4px 0}
+@media (max-width:899px){
+  .cx-wall-pick{grid-template-columns:repeat(4,minmax(0,1fr));width:100%}
+  .cx-wall-pick button>span{width:100%}
+}
 `;

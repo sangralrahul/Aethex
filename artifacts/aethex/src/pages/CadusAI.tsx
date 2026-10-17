@@ -34,7 +34,7 @@ import {
   type LibraryManifest, type LibraryResult,
 } from "@/lib/medlib/library";
 import { queryTerms } from "@/lib/medlib/text";
-import { isCadusHost, loginUrl, mainUrl } from "@/lib/host";
+import { isCadusHost, mainUrl } from "@/lib/host";
 import ClinicalCalculators, { InteractionNotice, type ToolsTab } from "@/components/cadus/ClinicalCalculators";
 import PracticeView from "@/components/cadus/PracticeView";
 import ProfileDialog from "@/components/cadus/ProfileDialog";
@@ -63,6 +63,7 @@ import { downloadBlob, fileSlug, markdownToDocx } from "@/lib/cadus/docx";
 import { hasLetterhead, letterheadLines, readLetterhead, saveLetterhead, SIGNED_MODES, type Letterhead } from "@/lib/cadus/letterhead";
 import { contentWords, institutionPayload, readInstitution, saveInstitution, type Institution } from "@/lib/cadus/institution";
 import { caseLabel, caseSummary, newCase, newEntry, readCases, saveCases, type PatientCase } from "@/lib/cadus/cases";
+import { isWallpaper, wallpaperCss, WALLPAPERS, type WallpaperId } from "@/lib/cadus/wallpaper";
 import CaseView from "@/components/cadus/CaseView";
 import { printMarkdown } from "@/lib/cadus/printdoc";
 import { evidenceRecords, evidenceSources, readReading, type Paper } from "@/lib/cadus/pubmed";
@@ -212,6 +213,8 @@ interface Prefs {
   model: ModelId;
   /** Hide patient identifiers (names, phone numbers, Aadhaar, UHID...) before a message is sent. */
   privacyGuard: boolean;
+  /** A quiet pattern behind the chat and home page. */
+  wallpaper: WallpaperId;
   /** Show a notification when an answer is ready and Cadus is in a background tab. */
   notify: boolean;
   /** Units in answers: conventional (mg/dL, as Indian laboratories report) or SI. */
@@ -368,7 +371,7 @@ const PROJECTS_KEY = "cadus3.projects";
 const UI_KEY = "cadus3.ui";
 const DOCS_KEY = "cadus3.docs";
 const FREE_DAILY = 20;
-const DEFAULT_PREFS: Prefs = { theme: "light", accent: "aethex", textSize: "m", style: "balanced", language: "English", enterToSend: true, safetyReview: true, sources: false, answerFont: "sans", model: "medius", privacyGuard: true, notify: false, units: "conventional", nlem: false, density: "comfortable" };
+const DEFAULT_PREFS: Prefs = { theme: "light", accent: "aethex", textSize: "m", style: "balanced", language: "English", enterToSend: true, safetyReview: true, sources: false, answerFont: "sans", model: "medius", privacyGuard: true, notify: false, units: "conventional", nlem: false, density: "comfortable", wallpaper: "none" };
 /** Bumped when the default look changes, so saved settings move to the new theme, colour and answer font once. */
 const PREFS_VERSION = 3;
 
@@ -379,7 +382,9 @@ function loadPrefs(): Prefs {
     delete saved.accent;
     delete saved.answerFont;
   }
-  return { ...DEFAULT_PREFS, ...saved };
+  const prefs = { ...DEFAULT_PREFS, ...saved };
+  if (!isWallpaper(prefs.wallpaper)) prefs.wallpaper = "none";
+  return prefs;
 }
 const PROJECT_IDEAS = ["Cardiology rotation", "NEET-PG revision", "Thesis literature review"];
 const INSTRUCTIONS_MAX = 2000;
@@ -953,6 +958,12 @@ export default function CadusAI() {
 
   const dark = prefs.theme === "dark" || (prefs.theme === "system" && systemDark);
   const accent = ACCENTS.find((a) => a.id === prefs.accent) ?? ACCENTS[0];
+  // The wallpaper is drawn in the accent colour, faint enough to read over.
+  const wallpaper = useMemo(() => {
+    const acc = dark ? accent.dark : accent.light;
+    const ink = prefs.wallpaper === "mesh" ? `color-mix(in srgb, ${acc} ${dark ? 16 : 11}%, transparent)` : `color-mix(in srgb, ${acc} ${dark ? 22 : 15}%, transparent)`;
+    return wallpaperCss(prefs.wallpaper, ink, dark);
+  }, [prefs.wallpaper, accent, dark]);
   const active = sessions.find((s) => s.id === activeId);
   const messages = view === "chat" ? active?.messages ?? [] : [];
   const modeDef = MODE[mode];
@@ -1013,7 +1024,7 @@ export default function CadusAI() {
     (a, b) => Math.max(b.updatedAt, projectStats[b.id]?.last ?? 0) - Math.max(a.updatedAt, projectStats[a.id]?.last ?? 0),
   );
   const homeHref = isCadusHost() ? mainUrl("/") : "/";
-  const signInHref = isCadusHost() ? loginUrl("/") : "/login";
+  const signInHref = isCadusHost() ? "/sign-in" : "/ai-assistant/sign-in";
 
   /* --------------------------------------------------------- effects */
 
@@ -3620,7 +3631,7 @@ export default function CadusAI() {
       </aside>
 
       {/* ============================================== main */}
-      <main className="cx-main">
+      <main className="cx-main" style={wallpaper ? { backgroundImage: wallpaper.image, backgroundSize: wallpaper.size, backgroundAttachment: wallpaper.attachment, backgroundPosition: wallpaper.position } : undefined}>
         {!online && (
           <div className="cx-offline" role="status">
             <WifiOff size={14} /> <b>You're offline.</b> <span>Calculators, your ward list, cases and saved answers still work. Questions need a connection.</span>
@@ -4188,6 +4199,20 @@ export default function CadusAI() {
                     <p className={`cx-font-prev ${serif ? "serif" : ""}`}>
                       <b>Bottom line:</b> Cadus answers are set in {serif ? "Newsreader, a serif designed for long-form reading on screens" : "Plus Jakarta Sans, the clean sans-serif used across Aethex"}, so dense clinical detail stays easy to read.
                     </p>
+                    <div className="cx-set-row cx-set-wall">
+                      <div><b>Wallpaper</b><small>A quiet pattern behind the chat, in your accent colour. Answers keep a plain background.</small></div>
+                      <div className="cx-wall-pick" role="radiogroup" aria-label="Wallpaper">
+                        {WALLPAPERS.map((w) => {
+                          const css = wallpaperCss(w.id, `color-mix(in srgb, ${dark ? accent.dark : accent.light} ${w.id === "mesh" ? 55 : 80}%, transparent)`, dark);
+                          return (
+                            <button key={w.id} role="radio" aria-checked={prefs.wallpaper === w.id} className={prefs.wallpaper === w.id ? "on" : ""} title={w.hint} onClick={() => setPrefs({ ...prefs, wallpaper: w.id })}>
+                              <span style={css ? { backgroundImage: css.image, backgroundSize: css.size === "100% 100%" ? css.size : css.size.split(" ").map((v) => `calc(${v} * .6)`).join(" ") } : undefined} />
+                              <small>{w.name}</small>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                     <div className="cx-set-row">
                       <div><b>Accent colour</b><small>{accent.name}. Used for highlights, links and focus</small></div>
                       <div className="cx-swatch">
