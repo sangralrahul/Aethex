@@ -84,6 +84,10 @@ export function deidentify(input: string): Deidentified {
       const strong = /^(UHID|MRD|MRN|CR|IPD?|OPD?|ABHA)$/i.test(label);
       const explicit = /(?:No\.?|Number|ID|#|:)/i.test(sep);
       if (!explicit && !(strong && /\d{3,}/.test(id))) return m;
+      // "Patient: 45-year-old woman" is an age, not a record number.
+      if (!strong && /^\d{1,3}-?(?:years?|yrs?|months?|weeks?|days?)/i.test(id)) return m;
+      // After a bare colon, a weak label needs a real number ("Patient: A1" isn't one); "No.", "ID" or "#" is enough.
+      if (!strong && !/(?:No\.?|Number|ID|#)/i.test(sep) && (id.match(/\d/g) ?? []).length < 3) return m;
       bump(hits, "record");
       return `${label}${sep}[record no.]`;
     },

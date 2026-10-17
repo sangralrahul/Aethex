@@ -10,6 +10,28 @@ const port = Number(process.env.PORT) || 5173;
 const basePath = process.env.BASE_PATH || "/";
 const buildOutDir = path.resolve(import.meta.dirname, "..", "..", "dist");
 
+/**
+ * The scripts the app shell needs to start offline: the entry, Cadus, and every
+ * script they import statically (react-dom, icons and so on). Other pages and
+ * heavy extras (diagram types, PDF export) are cached the first time they load.
+ */
+const shellScripts = new Set<string>();
+function appShell(): Plugin {
+  return {
+    name: "aethex-app-shell",
+    generateBundle(_options, bundle) {
+      const chunks = Object.values(bundle).filter((c): c is Extract<typeof c, { type: "chunk" }> => c.type === "chunk");
+      const byFile = new Map(chunks.map((c) => [c.fileName, c]));
+      const add = (file: string) => {
+        if (shellScripts.has(file)) return;
+        shellScripts.add(file);
+        byFile.get(file)?.imports.forEach(add);
+      };
+      for (const c of chunks) if (c.isEntry || /[\\/]pages[\\/]CadusAI\.tsx$/.test(c.facadeModuleId ?? "")) add(c.fileName);
+    },
+  };
+}
+
 function spaRouteFallbacks(): Plugin {
   const routes = ["login", "signup", "onboarding", "ai-assistant", "ai-assistant-classic", "cadus-standalone"];
 
@@ -37,6 +59,8 @@ export default defineConfig({
     runtimeErrorOverlay(),
     VitePWA({
       registerType: "autoUpdate",
+      // Registered in src/main.tsx.
+      injectRegister: false,
       base: basePath,
       includeAssets: ["favicon.ico", "apple-touch-icon.png", "favicon-32.png"],
       manifest: {
@@ -57,7 +81,16 @@ export default defineConfig({
         lang: "en",
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,jpg,woff2}"],
+        // The app shell (entry script, styles, fonts and icons) is precached so the app opens
+        // offline and fast on a slow connection; page chunks are cached the first time they load.
+        globPatterns: ["index.html", "assets/*.js", "**/*.{css,ico,svg}", "*.png", "fonts/cadus/plus-jakarta-sans-latin-wght-normal.woff2"],
+        manifestTransforms: [
+          async (entries) => ({
+            manifest: entries.filter((e) => !/^assets\/[^/]+\.js$/.test(e.url) || shellScripts.has(e.url)),
+            warnings: [],
+          }),
+        ],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         // /api/* is the Cloudflare Worker (AI endpoints, /api/health), never the app shell.
         navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
@@ -67,6 +100,12 @@ export default defineConfig({
             options: { cacheName: "google-fonts-cache", expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 } },
           },
           {
+            // Hashed build files and fonts never change, so a cached copy is always right.
+            urlPattern: ({ url }: { url: URL }) => url.origin === self.location.origin && (url.pathname.includes("/assets/") || url.pathname.includes("/fonts/")),
+            handler: "CacheFirst",
+            options: { cacheName: "aethex-chunks", expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 60 } },
+          },
+          {
             urlPattern: /\/api\/.*/i,
             handler: "NetworkFirst",
             options: { cacheName: "api-cache", expiration: { maxEntries: 100, maxAgeSeconds: 60 * 5 } },
@@ -74,6 +113,7 @@ export default defineConfig({
         ],
       },
     }),
+    appShell(),
     spaRouteFallbacks(),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined

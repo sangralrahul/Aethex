@@ -201,3 +201,21 @@ export function liftKeyPoints(md: string): string {
   const tail = restLines.slice(at).join("\n").trim();
   return tail ? `${head}\n\n${card}\n\n${tail}` : `${head}\n\n${card}`;
 }
+
+/* ------------------------------------------------------------------ outline */
+
+/**
+ * The "##" sections of an answer, in order, for the outline above a long
+ * answer (fenced blocks and the lifted key points are left out).
+ */
+export function answerOutline(md: string): string[] {
+  const out: string[] = [];
+  let fence = false;
+  for (const line of liftKeyPoints(md).replace(/\r\n/g, "\n").split("\n")) {
+    if (/^```/.test(line)) { fence = !fence; continue; }
+    if (fence) continue;
+    const m = /^##\s+(.+?)\s*#*\s*$/.exec(line);
+    if (m) out.push(m[1].replace(/[*_`]/g, "").replace(/:$/, "").trim().slice(0, 48));
+  }
+  return out.filter(Boolean);
+}

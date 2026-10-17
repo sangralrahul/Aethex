@@ -6,7 +6,7 @@
 import { Fragment, useMemo, useState, type ReactNode } from "react";
 import {
   Archive, BedDouble, BookMarked, Bookmark, Brain, Download, EyeOff, FilePen, Folder, HardDrive, History, IdCard, MessageSquare,
-  Send, ShieldCheck, Target, Trash2,
+  Building2, ClipboardList, Send, ShieldCheck, Target, Trash2,
 } from "lucide-react";
 import { deidentify, describeHits } from "@/lib/cadus/deidentify";
 
@@ -22,6 +22,8 @@ export interface PrivacyCounts {
   history: number;
   hidden: number;
   practice: number;
+  protocols: number;
+  cases: number;
   letterhead: boolean;
   profile: boolean;
 }
@@ -69,6 +71,8 @@ export default function PrivacyView({ counts, guardOn, onToggleGuard, actions }:
     editProfile: () => void;
     openHistory: () => void;
     clearPractice: () => void;
+    manageInstitution: () => void;
+    clearCases: () => void;
     deleteEverything: () => void;
   };
 }) {
@@ -122,6 +126,9 @@ export default function PrivacyView({ counts, guardOn, onToggleGuard, actions }:
             <Item icon={<Bookmark size={16} />} title="Saved answers" detail={n(counts.saved, "answer")}>
               <Armed label="Clear" onConfirm={actions.clearSaved} disabled={!counts.saved} />
             </Item>
+            <Item icon={<ClipboardList size={16} />} title="Patient cases" detail={`${n(counts.cases, "case")}, de-identified`}>
+              <Armed label="Delete" onConfirm={actions.clearCases} disabled={!counts.cases} />
+            </Item>
             <Item icon={<BedDouble size={16} />} title="Ward round list" detail={`${n(counts.ward, "patient")}, de-identified`}>
               <Armed label="Clear" onConfirm={actions.clearWard} disabled={!counts.ward} />
             </Item>
@@ -140,6 +147,9 @@ export default function PrivacyView({ counts, guardOn, onToggleGuard, actions }:
             <Item icon={<Target size={16} />} title="Practice progress" detail={n(counts.practice, "question")}>
               <Armed label="Reset" onConfirm={actions.clearPractice} disabled={!counts.practice} />
             </Item>
+            <Item icon={<Building2 size={16} />} title="Institution protocols" detail={n(counts.protocols, "protocol")}>
+              <button className="cx-btn" onClick={actions.manageInstitution}>Manage</button>
+            </Item>
             <Item icon={<Folder size={16} />} title="Projects" detail={n(counts.projects, "project")} />
           </div>
         </section>
@@ -153,6 +163,7 @@ export default function PrivacyView({ counts, guardOn, onToggleGuard, actions }:
               <li>Custom instructions and memory (memory is off in temporary chats)</li>
               <li>Your role, specialty or exam, and your units, formulary and state preferences</li>
               <li>A project's instructions, for chats in that project</li>
+              <li>Your institution's protocols that match the question, with its formulary and antibiotic notes (when turned on)</li>
             </ul>
             <p className="cx-pv-note">Sent securely to Cadus's AI service through the Aethex server, only to write the answer you asked for.</p>
           </section>
@@ -160,7 +171,7 @@ export default function PrivacyView({ counts, guardOn, onToggleGuard, actions }:
             <h2><ShieldCheck size={16} /> Never sent</h2>
             <ul className="cx-pv-bul ok">
               <li>Your letterhead and registration number</li>
-              <li>Your ward list, unless you ask Cadus about a patient</li>
+              <li>Your ward list and patient cases, unless you ask Cadus about a patient</li>
               <li>Your reading list, answer history and practice progress</li>
               <li>Documents, unless you ask Cadus to edit one</li>
               <li>Temporary chats are never stored at all</li>

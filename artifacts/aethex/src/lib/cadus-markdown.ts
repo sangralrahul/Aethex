@@ -9,6 +9,10 @@
  */
 import { EVIDENCE, EVIDENCE_TAG, parseDoseBlock, referenceToPlain, type EvidenceLevel } from "./cadus/reference";
 
+/** Headings for sections a clinician must not miss, and for cautions. */
+const ALERT_HEAD = /\b(red flags?|warning signs?|danger signs?|when to (?:refer|escalate|seek help|admit)|emergency|urgent referral|seek (?:urgent|immediate) (?:care|help))\b/i;
+const CAUTION_HEAD = /\b(contraindications?|cautions?|precautions|interactions to (?:watch|avoid)|what to avoid|safety netting)\b/i;
+
 function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
@@ -101,7 +105,9 @@ export function renderMarkdown(md: string, opts: RenderOptions = {}, nested = fa
     const h = /^(#{1,6})\s+(.*)$/.exec(line);
     if (h) {
       const lvl = Math.min(4, h[1].length + 1);
-      out.push(`<h${lvl}>${inline(h[2])}</h${lvl}>`);
+      const plain = h[2].replace(/[*_`#]/g, "");
+      const kind = ALERT_HEAD.test(plain) ? "alert" : CAUTION_HEAD.test(plain) ? "caution" : "";
+      out.push(kind ? `<h${lvl} class="md-h md-h-${kind}">${inline(h[2])}</h${lvl}>` : `<h${lvl}>${inline(h[2])}</h${lvl}>`);
       i++;
       continue;
     }
@@ -113,9 +119,11 @@ export function renderMarkdown(md: string, opts: RenderOptions = {}, nested = fa
       i += 2;
       const rows: string[][] = [];
       while (i < lines.length && lines[i].includes("|") && lines[i].trim()) rows.push(splitRow(lines[i++]));
+      // Each cell carries its column name, so wide tables can stack into cards on a phone.
+      const labels = head.map((c) => esc(c.replace(/[*_`]/g, "").trim()));
       out.push(
-        `${opts.copy ? `<div class="md-tablewrap">${COPY_BTN("table")}` : ""}<div class="md-table"><table><thead><tr>${head.map((c) => `<th>${inline(c)}</th>`).join("")}</tr></thead><tbody>${rows
-          .map((r) => `<tr>${r.map((c) => `<td>${inline(c)}</td>`).join("")}</tr>`)
+        `${opts.copy ? `<div class="md-tablewrap">${COPY_BTN("table")}` : ""}<div class="md-table${head.length >= 4 ? " wide" : ""}"><table><thead><tr>${head.map((c) => `<th>${inline(c)}</th>`).join("")}</tr></thead><tbody>${rows
+          .map((r) => `<tr>${r.map((c, k) => `<td data-label="${labels[k] ?? ""}">${inline(c)}</td>`).join("")}</tr>`)
           .join("")}</tbody></table></div>${opts.copy ? "</div>" : ""}`,
       );
       continue;
@@ -153,7 +161,20 @@ export function renderMarkdown(md: string, opts: RenderOptions = {}, nested = fa
     ) buf.push(lines[i++]);
     out.push(`<p>${buf.map(inline).join("<br/>")}</p>`);
   }
-  let html = out.join("");
+  // Red-flag and caution sections are grouped so they can be set apart.
+  const blocks: string[] = [];
+  for (let k = 0; k < out.length; k++) {
+    const m = /^<h([2-4]) class="md-h md-h-(alert|caution)">/.exec(out[k]);
+    if (!m) { blocks.push(out[k]); continue; }
+    const parts = [out[k]];
+    while (k + 1 < out.length) {
+      const next = /^<h([2-4])[ >]/.exec(out[k + 1]);
+      if (next && Number(next[1]) <= Number(m[1])) break;
+      parts.push(out[++k]);
+    }
+    blocks.push(`<section class="md-sec md-sec-${m[2]}">${parts.join("")}</section>`);
+  }
+  let html = blocks.join("");
   const max = opts.cites ?? 0;
   if (max > 0) {
     // Only in text: a marker inside an attribute (a dose card's label, say) is left alone.

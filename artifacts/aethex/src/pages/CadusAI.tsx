@@ -19,7 +19,7 @@ import {
   Plus, Presentation, RefreshCw, RotateCcw, Scale, Search, Settings, ShieldAlert, ShieldCheck, ShoppingBag, SlidersHorizontal,
   Sparkles, Square, SquarePen, Stethoscope, Sun, Syringe, Telescope, Trash2, Users, Volume2, VolumeX, X, Zap, Palette,
   BedDouble, BookMarked, BookOpenText, ChartLine, ClipboardPlus, FileBadge, FileSignature, Microscope, NotebookPen, NotepadText,
-  Printer, Scissors, ScrollText, Sigma, PanelRight, EyeOff, Compass, Rows3,
+  Printer, Scissors, ScrollText, Sigma, PanelRight, EyeOff, Compass, Rows3, WifiOff, Building2,
   type LucideIcon,
 } from "lucide-react";
 import { invokeAi } from "@/lib/ai-functions";
@@ -61,14 +61,19 @@ import {
 import { addMemory, personalPayload, readPersonal, rememberFrom, savePersonal, type Personal } from "@/lib/cadus/memory";
 import { downloadBlob, fileSlug, markdownToDocx } from "@/lib/cadus/docx";
 import { hasLetterhead, letterheadLines, readLetterhead, saveLetterhead, SIGNED_MODES, type Letterhead } from "@/lib/cadus/letterhead";
+import { contentWords, institutionPayload, readInstitution, saveInstitution, type Institution } from "@/lib/cadus/institution";
+import { caseLabel, caseSummary, newCase, newEntry, readCases, saveCases, type PatientCase } from "@/lib/cadus/cases";
+import CaseView from "@/components/cadus/CaseView";
 import { printMarkdown } from "@/lib/cadus/printdoc";
 import { evidenceRecords, evidenceSources, readReading, type Paper } from "@/lib/cadus/pubmed";
 import { localDate, readWard } from "@/lib/cadus/wardlist";
 import ResearchView, { type ResearchTab } from "@/components/cadus/ResearchView";
 import WardView from "@/components/cadus/WardView";
+import InstitutionSettings from "@/components/cadus/InstitutionSettings";
 import LetterheadSettings from "@/components/cadus/LetterheadSettings";
 import { CADUS_PRO_CSS } from "@/components/cadus/cadus-pro-styles";
 import { CADUS_REF_CSS } from "@/components/cadus/cadus-ref-styles";
+import { CADUS_WS_CSS } from "@/components/cadus/cadus-ws-styles";
 import SourcesPanel from "@/components/cadus/SourcesPanel";
 import SafetyView from "@/components/cadus/SafetyView";
 import HistoryView from "@/components/cadus/HistoryView";
@@ -80,7 +85,7 @@ import { ONBOARD_KEY, practicePayload, readFlag, setFlag, specialtyTools, TOUR_K
 import { liftKeyPoints, referenceForDocument, referenceToPlain } from "@/lib/cadus/reference";
 import { IX_RULE_COUNT } from "@/lib/cadus/interactions";
 import { saveReading } from "@/lib/cadus/pubmed";
-import { saveWard, cleanWard } from "@/lib/cadus/wardlist";
+import { saveWard, cleanWard, newPatient, WARD_MAX } from "@/lib/cadus/wardlist";
 
 /* ================================================================ types */
 
@@ -89,9 +94,9 @@ type ModeId =
   | "soap" | "discharge" | "referral" | "handover" | "patient" | "research" | "mcq" | "slides" | "viva" | "osce"
   | "admission" | "progress" | "opnote" | "death" | "certificate" | "rx" | "evidence";
 type Provider = "claude" | "groq" | "library";
-type View = "chat" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "safety" | "history" | "privacy";
+type View = "chat" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "safety" | "history" | "privacy";
 type ToolTab = "all" | "clinical" | "documentation" | "learning";
-type SettingsTab = "general" | "personal" | "letterhead" | "data" | "shortcuts" | "about";
+type SettingsTab = "general" | "personal" | "letterhead" | "institution" | "data" | "shortcuts" | "about";
 type StyleId = "concise" | "balanced" | "detailed";
 
 interface SourceRef {
@@ -149,6 +154,8 @@ interface Msg {
   feedbackNote?: { reasons: string[]; comment: string };
   /** assistant message: milliseconds from question to answer */
   took?: number;
+  /** assistant message: the institution's local protocols that went with the question */
+  protocols?: string[];
 }
 
 interface Session {
@@ -164,6 +171,8 @@ interface Session {
   archived?: boolean;
   /** The title came from the first message and can be replaced by a better one. */
   autoTitle?: boolean;
+  /** The patient case this chat is about. */
+  caseId?: string;
 }
 
 interface Project {
@@ -424,6 +433,18 @@ const today = () => new Date().toISOString().slice(0, 10);
 const IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 const MOD = IS_MAC ? "⌘" : "Ctrl";
 
+/** Whether the browser thinks it is online. */
+function useOnline(): boolean {
+  const [on, setOn] = useState(() => typeof navigator === "undefined" || navigator.onLine !== false);
+  useEffect(() => {
+    const up = () => setOn(true), down = () => setOn(false);
+    window.addEventListener("online", up);
+    window.addEventListener("offline", down);
+    return () => { window.removeEventListener("online", up); window.removeEventListener("offline", down); };
+  }, []);
+  return on;
+}
+
 function useMedia(query: string): boolean {
   const [match, setMatch] = useState(() => typeof window !== "undefined" && !!window.matchMedia?.(query).matches);
   useEffect(() => {
@@ -669,6 +690,7 @@ async function invokeCadus(body: Record<string, unknown>): Promise<any> {
 }
 
 function friendlyError(raw: string): string {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return "You're offline. Reconnect to ask Cadus; calculators, your ward list, cases and saved answers still work.";
   // PubMed's own messages (busy, unreachable) are already plain.
   if (/PubMed/.test(raw)) return raw;
   if (/fetch|network|Failed to send|load failed/i.test(raw)) return "Couldn't reach Cadus. Check your connection and try again.";
@@ -800,6 +822,9 @@ function auditEntry(sid: string, q: Msg, a: Msg): AuditEntry {
   };
 }
 
+/** The last two questions in a chat, so a follow-up still matches the protocol it is about. */
+const hist0 = (history: Msg[]) => history.filter((m) => m.role === "user").slice(-2).map((m) => m.content).join("\n").slice(0, 600);
+
 /* ================================================================= page */
 
 export default function CadusAI() {
@@ -807,6 +832,7 @@ export default function CadusAI() {
   const systemDark = useMedia("(prefers-color-scheme: dark)");
   const isDesktop = useMedia("(min-width: 900px)");
   const narrowDesk = useMedia("(max-width: 1599px)");
+  const online = useOnline();
 
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
   const [sessions, setSessions] = useState<Session[]>(() =>
@@ -885,6 +911,9 @@ export default function CadusAI() {
   const [lightbox, setLightbox] = useState("");
   const [dlFor, setDlFor] = useState("");
   const [letterhead, setLetterhead] = useState<Letterhead>(readLetterhead);
+  const [institution, setInstitution] = useState<Institution>(readInstitution);
+  const [cases, setCases] = useState<PatientCase[]>(readCases);
+  const [caseOpen, setCaseOpen] = useState("");
   const [researchInit, setResearchInit] = useState<{ tab?: ResearchTab; query?: string; key: number }>({ key: 0 });
   const [homeQuery, setHomeQuery] = useState("");
   const [wardInfo, setWardInfo] = useState(() => readWard());
@@ -1006,6 +1035,8 @@ export default function CadusAI() {
   useEffect(() => writeJSON(DOCS_KEY, docs.slice(0, 50).map((d) => ({ ...d, history: d.history.slice(-5) }))), [docs]);
   useEffect(() => savePersonal(personal), [personal]);
   useEffect(() => saveLetterhead(letterhead), [letterhead]);
+  useEffect(() => saveInstitution(institution), [institution]);
+  useEffect(() => saveCases(cases), [cases]);
   useEffect(() => {
     // Someone who set up a profile before the welcome existed doesn't need it.
     if (profile && !readFlag(ONBOARD_KEY)) setFlag(ONBOARD_KEY);
@@ -1374,6 +1405,10 @@ export default function CadusAI() {
       // Temporary chats follow custom instructions but don't use memory.
       const mine = roleplay ? undefined : personalPayload(extra.temp ? { ...personal, useMemory: false } : personal);
       const tailored = { ...(who ? { profile: who } : {}), ...(mine ? { personal: mine } : {}) };
+      // The institution's protocols that match this question (none in role-play).
+      // A short follow-up ("and in children?") is matched with the questions before it.
+      const followUp = contentWords(userMsg.content) < 2 || /^(and|also|what about|how about|if|then|but|same)\b/i.test(userMsg.content.trim());
+      const inst = roleplay ? undefined : institutionPayload(institution, followUp ? `${userMsg.content}\n${hist0(history)}` : userMsg.content);
       let files = attachmentPayload(userMsg.files ?? []);
       const hasDoc = !!userMsg.files?.some((f) => f.kind !== "image");
       const hasImage = !!userMsg.image || !!userMsg.files?.some((f) => f.kind === "image");
@@ -1428,6 +1463,7 @@ export default function CadusAI() {
             ...project,
             ...tailored,
             ...(practicePrefs && !roleplay ? { practice: practicePrefs } : {}),
+            ...(inst ? { institution: inst.payload } : {}),
           };
           let draft: any;
           try {
@@ -1475,6 +1511,7 @@ export default function CadusAI() {
                   ...project,
                   ...tailored,
                   ...(practicePrefs ? { practice: practicePrefs } : {}),
+                  ...(inst ? { institution: inst.payload } : {}),
                 });
                 if (rv?.message) {
                   content = String(rv.message);
@@ -1492,6 +1529,7 @@ export default function CadusAI() {
               sources: sources.length ? sources : undefined,
               queries: Array.isArray(draft.queries) && draft.queries.length ? draft.queries : undefined,
               review, reviewNote,
+              ...(inst?.titles.length ? { protocols: inst.titles } : {}),
             };
           }
         }
@@ -1524,7 +1562,7 @@ export default function CadusAI() {
       return reply;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [prefs.style, prefs.language, prefs.safetyReview, prefs.model, prefs.notify, prefs.units, prefs.nlem, profile, personal, upsert],
+    [prefs.style, prefs.language, prefs.safetyReview, prefs.model, prefs.notify, prefs.units, prefs.nlem, profile, personal, institution, upsert],
   );
 
   /** The privacy guard: hide patient identifiers before a message is stored or sent. */
@@ -1536,7 +1574,7 @@ export default function CadusAI() {
   const send = (
     textOverride?: string,
     modeOverride?: ModeId,
-    extra?: { lang?: string; title?: string; voice?: boolean; files?: Attachment[]; refs?: SourceRef[] },
+    extra?: { lang?: string; title?: string; voice?: boolean; files?: Attachment[]; refs?: SourceRef[]; caseId?: string },
   ): Promise<Msg | null> => {
     const raw = (textOverride ?? input).trim();
     const m = modeOverride ?? mode;
@@ -1572,7 +1610,7 @@ export default function CadusAI() {
     const history = sessions.find((s) => s.id === sid)?.messages ?? [];
     const firstFile = atts.find((a) => a.kind !== "image");
     const title = extra?.title || stripPlaceholders(text) || (firstFile ? `Document: ${firstFile.name}` : "Image analysis");
-    upsert(sid, (msgs) => [...msgs, userMsg], clip(title, 64), inProject, { ...(temp ? { temp: true } : {}), autoTitle: !extra?.title });
+    upsert(sid, (msgs) => [...msgs, userMsg], clip(title, 64), inProject, { ...(temp ? { temp: true } : {}), ...(extra?.caseId ? { caseId: extra.caseId } : {}), autoTitle: !extra?.title });
     setView("chat");
     setActiveId(sid);
     setMode(m);
@@ -1689,6 +1727,38 @@ export default function CadusAI() {
     setSidebarOpen(false);
     setPop(null);
   };
+  const openCases = (id = "") => {
+    setCaseOpen(id);
+    setView("cases");
+    setSidebarOpen(false);
+    setPop(null);
+  };
+  const activeCases = cases.filter((c) => c.status === "active").length;
+  /** Ask Cadus about a case: the whole (de-identified) sheet goes with the question, in a chat linked to the case. */
+  const askAboutCase = (c: PatientCase, m: string, question: string, title: string): boolean => {
+    if (pending) { toast("Wait for the current answer to finish"); return false; }
+    void send(`${question}\n\nCASE (de-identified):\n${caseSummary(c)}`, (MODE[m as ModeId] ? m : "general") as ModeId, { title: clip(title, 64), caseId: c.id });
+    return true;
+  };
+  /** Puts a case on today's ward round (or says it is already there). */
+  const addCaseToWard = (c: PatientCase) => {
+    const w = readWard();
+    const label = `${c.age}${c.sex && c.sex !== "O" ? c.sex : ""}`.trim();
+    if (w.patients.some((p) => (c.bed && p.bed === c.bed) && p.label === label)) { toast("This patient is already on the ward round"); return; }
+    if (w.patients.length >= WARD_MAX) { toast("The ward list is full"); return; }
+    const next = { ...w, patients: [...w.patients, newPatient({ bed: c.bed, label, diagnosis: c.complaint || c.problems[0] || "", problems: c.problems.join("; "), meds: c.meds, plan: c.plan })] };
+    saveWard(next);
+    setWardInfo(next);
+    toast("Added to the ward round");
+  };
+  /** An answer's gist, added to its case's timeline. */
+  const addAnswerToCase = (caseId: string, m: Msg) => {
+    const plain = referenceToPlain(m.content).replace(/^\*\*Bottom line:?\*\*:?\s*/i, "");
+    const first = plain.split(/\n\s*\n/)[0].replace(/[*_#`]/g, "").trim();
+    const text = clip(`${MODE[m.mode]?.label ?? "Cadus"}: ${first}`, 600);
+    setCases((list) => list.map((c) => (c.id === caseId ? { ...c, timeline: [newEntry("cadus", text), ...c.timeline], updatedAt: Date.now() } : c)));
+    toast("Added to the case timeline");
+  };
 
   /** Everything Cadus keeps in this browser, as one JSON file. */
   const exportAll = () => downloadJSON(`cadus-export-${today()}.json`, {
@@ -1703,6 +1773,8 @@ export default function CadusAI() {
     wardList: readWard(),
     answerHistory: audit,
     letterhead: { ...letterhead, logo: undefined },
+    institution,
+    patientCases: cases,
   });
   /** Removes everything Cadus keeps in this browser (Classic Cadus and Quick Consult too) and starts afresh. */
   const deleteEverything = () => {
@@ -1991,8 +2063,9 @@ export default function CadusAI() {
     const doc = guard(text);
     const ask = guard(instruction);
     const hidden = doc.total + ask.total;
+    const canvasInst = institutionPayload(institution, `${canvasDoc?.title ?? ""}\n${ask.text}\n${doc.text.slice(0, 1500)}`);
     if (hidden) toast(`Privacy guard hid ${hidden === 1 ? "1 identifier" : `${hidden} identifiers`} before sending`);
-    const r = await invokeCadus({ action: "canvas-edit", document: doc.text, instruction: ask.text, mode: canvasDoc?.mode, language: prefs.language, model: prefs.model, ...(practicePrefs ? { practice: practicePrefs } : {}) });
+    const r = await invokeCadus({ action: "canvas-edit", document: doc.text, instruction: ask.text, mode: canvasDoc?.mode, language: prefs.language, model: prefs.model, ...(practicePrefs ? { practice: practicePrefs } : {}), ...(canvasInst ? { institution: canvasInst.payload } : {}) });
     if (typeof r?.document !== "string" || !r.document.trim()) throw new Error("The edit came back empty. Please try again.");
     return r.document as string;
   };
@@ -2167,6 +2240,8 @@ export default function CadusAI() {
       { key: "a:decks", label: "Open decks", icon: Presentation, run: () => setView("decks") },
       { key: "a:tools", label: "Browse clinical tools", icon: LayoutGrid, run: () => setView("tools") },
       { key: "a:ward", label: "Open ward round", hint: "Your patient list", icon: BedDouble, run: () => openWard() },
+      { key: "a:cases", label: "Patient cases", hint: "Case sheets with a timeline", icon: ClipboardList, run: () => openCases() },
+      { key: "a:newcase", label: "New patient case", hint: "Start a de-identified case sheet", icon: ClipboardList, run: () => { const c = newCase(); setCases((l) => [c, ...l]); openCases(c.id); } },
       { key: "a:pubmed", label: "Search PubMed", hint: "Research", icon: Microscope, run: () => openResearch({ tab: "search" }) },
       { key: "a:reading", label: "Open reading list", icon: BookMarked, run: () => openResearch({ tab: "reading" }) },
       { key: "a:thesis", label: "Thesis kit: sample size and statistical tests", icon: Sigma, run: () => openResearch({ tab: "thesis" }) },
@@ -2177,6 +2252,7 @@ export default function CadusAI() {
       { key: "a:privacy", label: "Privacy centre", icon: EyeOff, run: () => setView("privacy") },
       { key: "a:tour", label: "Take the tour", icon: Compass, run: () => startTour() },
       { key: "a:setup", label: "Set up Cadus again", hint: "Role, specialty, units", icon: UserCog, run: () => setOnboardOpen(true) },
+      { key: "a:institution", label: "Institution protocols", hint: "Local protocols, formulary, team pack", icon: Building2, run: () => openSettings("institution") },
       { key: "a:calc", label: "Open calculators", icon: Calculator, run: () => openCalculators() },
       { key: "a:ix", label: "Open the interaction checker", icon: Pill, run: () => openCalculators({ tab: "ix" }) },
       { key: "a:practice", label: "Open practice", icon: Target, run: () => openPractice() },
@@ -2491,7 +2567,7 @@ export default function CadusAI() {
               );
             })}
           </div>
-          {(wardInfo.patients.length > 0 || readingCount > 0 || ptot.attempted > 0 || decks.length > 0 || library.length > 0) && (
+          {(wardInfo.patients.length > 0 || activeCases > 0 || readingCount > 0 || ptot.attempted > 0 || decks.length > 0 || library.length > 0) && (
             <div className="cx-fh-status">
               {wardInfo.patients.length > 0 && (() => {
                 const open = wardInfo.patients.reduce((n, p) => n + p.jobs.filter((j) => !j.done).length, 0);
@@ -2503,6 +2579,7 @@ export default function CadusAI() {
                   </button>
                 );
               })()}
+              {activeCases > 0 && <button onClick={() => openCases()}><ClipboardList size={14} /> <b>Cases</b><span>{activeCases} active</span></button>}
               {readingCount > 0 && <button onClick={() => openResearch({ tab: "reading" })}><BookMarked size={14} /> <b>Reading list</b><span>{readingCount} paper{readingCount === 1 ? "" : "s"}</span></button>}
               {ptot.attempted > 0 && <button onClick={openPractice}><Target size={14} /> <b>Practice</b><span>{accuracy(ptot) ?? 0}% · <Flame size={12} /> {streak(practice.days)} day{streak(practice.days) === 1 ? "" : "s"}{practice.mistakes.length ? ` · ${practice.mistakes.length} to revise` : ""}</span></button>}
               {library.length > 0 && <button onClick={() => setView("library")}><Bookmark size={14} /> <b>Saved</b><span>{library.length} answer{library.length === 1 ? "" : "s"}</span></button>}
@@ -2907,6 +2984,11 @@ export default function CadusAI() {
             <span className="cx-rv"><ShieldCheck size={13} /> Safety-reviewed{v.review.changes.length ? ` · ${v.review.changes.length} correction${v.review.changes.length > 1 ? "s" : ""}` : ""}</span>
           )}
           {v.review && <span className={`cx-conf ${v.review.confidence}`}>{CONF_LABEL[v.review.confidence]}</span>}
+          {v.protocols?.length ? (
+            <span className="cx-instchip" title={`Your institution's protocols went with this question: ${v.protocols.join("; ")}`}>
+              <Building2 size={13} /> {v.protocols.length === 1 ? `Local protocol: ${v.protocols[0]}` : `${v.protocols.length} local protocols`}
+            </span>
+          ) : null}
           {v.library && (
             <span className="cx-libchip" title={`Library mode: ${v.library.reason}`}>
               <Library size={13} /> Medical Library · {v.library.mode === "llm" ? "written by the backup model" : "quoted"}
@@ -2931,7 +3013,7 @@ export default function CadusAI() {
           </>
         ) : (
           <>
-            <MdBlock text={v.content} cites={src.length} />
+            <MdBlock text={v.content} cites={src.length} outline />
             {src.length > 0 && (
               <div className="cx-sources">
                 <div className="cx-src-h">
@@ -3021,6 +3103,9 @@ export default function CadusAI() {
                     <button className="cx-pop-i" onClick={() => { setPop(null); exportAnswer(shown); }}><Download size={16} /> Download as PDF</button>
                     <button className="cx-pop-i" onClick={() => { setPop(null); printDoc(answerTitle(m, v.content), liftKeyPoints(v.content), { mode: m.mode, sources: src, large: m.mode === "patient" }); }}><Printer size={16} /> {m.mode === "patient" ? "Print handout" : "Print"}</button>
                     <button className="cx-pop-i" onClick={() => { setPop(null); void shareAnswer(shown); }}><Share2 size={16} /> Share</button>
+                    {active?.caseId && cases.some((c) => c.id === active.caseId) && (
+                      <button className="cx-pop-i" onClick={() => { setPop(null); addAnswerToCase(active.caseId!, shown); }}><ClipboardList size={16} /> Add to case timeline</button>
+                    )}
                     {(lh || SIGNED_MODES.has(m.mode)) && <div className="cx-pop-sep" />}
                     {lh ? (
                       <p className="cx-pop-gl">Word, PDF and print use your letterhead</p>
@@ -3158,6 +3243,16 @@ export default function CadusAI() {
 
   const renderThread = () => (
     <div className="cx-thread" onClick={onThreadClick} {...citeHandlers}>
+      {(() => {
+        const c = active?.caseId ? cases.find((x) => x.id === active.caseId) : undefined;
+        return c ? (
+          <div className="cx-casebar">
+            <ClipboardList size={15} />
+            <span><b>{caseLabel(c)}</b>{c.complaint ? ` · ${c.complaint}` : ""}</span>
+            <button onClick={() => openCases(c.id)}>Open case</button>
+          </div>
+        ) : null;
+      })()}
       {messages.map((m) =>
         m.role === "user" ? (
           <div key={m.id} className="cx-u">
@@ -3318,7 +3413,7 @@ export default function CadusAI() {
       style={{ ["--acc" as string]: dark ? accent.dark : accent.light, ["--fs" as string]: `${fontSize}px`, ["--fs-u" as string]: `${sansSize}px` }}
       {...dropHandlers}
     >
-      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS}</style>
+      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS}</style>
 
       {/* ============================================== sidebar */}
       <div className={`cx-scrim ${sidebarOpen ? "on" : ""}`} onClick={() => setSidebarOpen(false)} />
@@ -3343,6 +3438,7 @@ export default function CadusAI() {
           </button>
           {([
             ["ward", BedDouble, "Ward round", wardInfo.patients.length, openWard],
+            ["cases", ClipboardList, "Cases", activeCases, () => openCases()],
             ["research", Microscope, "Research", 0, () => openResearch()],
             ["calculators", Calculator, "Calculators", 0, () => openCalculators()],
             ["practice", Target, "Practice", 0, openPractice],
@@ -3525,6 +3621,11 @@ export default function CadusAI() {
 
       {/* ============================================== main */}
       <main className="cx-main">
+        {!online && (
+          <div className="cx-offline" role="status">
+            <WifiOff size={14} /> <b>You're offline.</b> <span>Calculators, your ward list, cases and saved answers still work. Questions need a connection.</span>
+          </div>
+        )}
         <header className={`cx-top ${view !== "chat" || messages.length ? "lined" : ""}`}>
           <button className="cx-ib cx-m" onClick={() => setSidebarOpen(true)} aria-label="Open menu"><Menu size={19} /></button>
           <div className="cx-picker-wrap" data-pop="picker">
@@ -3600,6 +3701,7 @@ export default function CadusAI() {
                 : view === "history" ? [History, "Answer history"]
                 : view === "privacy" ? [EyeOff, "Privacy centre"]
                 : view === "ward" ? [BedDouble, "Ward round"]
+                : view === "cases" ? [ClipboardList, "Patient cases"]
                 : view === "project" && project ? [Folder, project.name]
                 : [Folder, "Projects"];
               return <span className="cx-title-btn static"><Icon size={14} /> <span>{label}</span></span>;
@@ -3708,6 +3810,19 @@ export default function CadusAI() {
                 toast={toast}
               />
             )
+            : view === "cases" ? (
+              <CaseView
+                cases={cases}
+                onChange={setCases}
+                chatsFor={(id) => sessions.filter((x) => x.caseId === id && !x.temp).sort((a, b) => b.updatedAt - a.updatedAt).map((x) => ({ id: x.id, title: x.title, updatedAt: x.updatedAt }))}
+                onAsk={askAboutCase}
+                onOpenChat={(sid) => openSession(sid)}
+                onAddToWard={addCaseToWard}
+                toast={toast}
+                openId={caseOpen}
+                setOpenId={setCaseOpen}
+              />
+            )
             : view === "safety" ? (
               <SafetyView
                 stats={auditSummary}
@@ -3754,6 +3869,8 @@ export default function CadusAI() {
                   history: audit.length,
                   hidden: auditSummary.hidden,
                   practice: ptot.attempted,
+                  protocols: institution.protocols.length,
+                  cases: cases.length,
                   letterhead: !!lh,
                   profile: !!profile,
                 }}
@@ -3776,6 +3893,8 @@ export default function CadusAI() {
                   editProfile: () => setProfileOpen(true),
                   openHistory: () => setView("history"),
                   clearPractice: () => { setPracticeState(EMPTY_PRACTICE); toast("Practice progress reset"); },
+                  manageInstitution: () => openSettings("institution"),
+                  clearCases: () => { setCases([]); setCaseOpen(""); toast("Patient cases deleted"); },
                   deleteEverything,
                 }}
               />
@@ -3990,6 +4109,7 @@ export default function CadusAI() {
                 ["general", "General", Settings],
                 ["personal", "Personalisation", Palette],
                 ["letterhead", "Letterhead", FileSignature],
+                ["institution", "Institution", Building2],
                 ["data", "Data and privacy", Database],
                 ["shortcuts", "Shortcuts", Keyboard],
                 ["about", "About", Info],
@@ -3999,7 +4119,7 @@ export default function CadusAI() {
             </nav>
             <div className="cx-set-body">
               <div className="cx-set-head">
-                <h3>{{ general: "General", personal: "Personalisation", letterhead: "Letterhead", data: "Data and privacy", shortcuts: "Keyboard shortcuts", about: "About Cadus" }[settingsTab]}</h3>
+                <h3>{{ general: "General", personal: "Personalisation", letterhead: "Letterhead", institution: "Institution", data: "Data and privacy", shortcuts: "Keyboard shortcuts", about: "About Cadus" }[settingsTab]}</h3>
                 <button className="cx-ib" onClick={() => setSettingsOpen(false)} aria-label="Close settings"><X size={18} /></button>
               </div>
               <div className="cx-set-scroll">
@@ -4102,6 +4222,7 @@ export default function CadusAI() {
                   </>
                 )}
                 {settingsTab === "letterhead" && <LetterheadSettings value={letterhead} onChange={setLetterhead} toast={toast} />}
+                {settingsTab === "institution" && <InstitutionSettings value={institution} onChange={setInstitution} letterhead={letterhead} onLetterhead={setLetterhead} toast={toast} />}
                 {settingsTab === "data" && (
                   <>
                     <div className="cx-set-links">

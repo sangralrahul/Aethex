@@ -7,22 +7,40 @@ import { memo, useEffect, useMemo, useRef, useSyncExternalStore, type ReactNode 
 import { renderMarkdown } from "@/lib/cadus-markdown";
 import { closePartialMarkdown } from "@/lib/cadus/stream";
 import { useFlowcharts } from "@/lib/cadus/flowchart";
-import { liftKeyPoints } from "@/lib/cadus/reference";
+import { answerOutline, liftKeyPoints } from "@/lib/cadus/reference";
 
 export interface TextStore {
   get: () => string;
   subscribe: (l: () => void) => () => void;
 }
 
-export const MdBlock = memo(function MdBlock({ text, cites, className = "" }: { text: string; cites?: number; className?: string }) {
+export const MdBlock = memo(function MdBlock({ text, cites, className = "", outline = false }: { text: string; cites?: number; className?: string; outline?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
+  // Long answers (four or more sections) get an outline that jumps to each one.
+  const sections = useMemo(() => (outline ? answerOutline(text) : []), [outline, text]);
+  const jump = (i: number) => {
+    const el = ref.current?.querySelectorAll<HTMLElement>("h3")[i];
+    const box = el?.closest<HTMLElement>(".cx-view");
+    if (!el || !box) return;
+    box.scrollTo({ top: box.scrollTop + el.getBoundingClientRect().top - box.getBoundingClientRect().top - 72, behavior: "smooth" });
+  };
   // The answer's key points sit under its bottom line, as a card.
   const html = useMemo(() => renderMarkdown(liftKeyPoints(text), { cites, copy: true }), [text, cites]);
   // The same object between renders, so React 19 doesn't reset the HTML and wipe drawn flowcharts.
   const inner = useMemo(() => ({ __html: html }), [html]);
   // Flowcharts are drawn once the answer is on screen.
   useFlowcharts(ref, `${html}|${className}`);
-  return <div ref={ref} className={`cx-md ${className}`} dangerouslySetInnerHTML={inner} />;
+  const body = <div ref={ref} className={`cx-md ${className}`} dangerouslySetInnerHTML={inner} />;
+  if (sections.length < 4) return body;
+  return (
+    <>
+      <nav className="cx-outline" aria-label="Sections of this answer">
+        <span>In this answer</span>
+        {sections.map((t, i) => <button key={`${i}-${t}`} type="button" onClick={() => jump(i)}>{t}</button>)}
+      </nav>
+      {body}
+    </>
+  );
 });
 
 /** Puts a blinking caret at the end of the last block of streamed text. */

@@ -2,11 +2,58 @@ import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useState, useEffect } from "react";
+import { Component, Suspense, lazy, useState, useEffect, type ComponentType, type ReactNode } from "react";
 import { auth } from "@/lib/firebase";
 import { getRedirectResult } from "firebase/auth";
 import { useUserAuth } from "@/hooks/use-user-auth";
 import { isLoginHost, isCadusHost, isMainHost, loginUrl, cadusUrl } from "@/lib/host";
+
+
+/**
+ * Pages load on demand, so the first visit downloads only the page it opens.
+ * After a new deploy an old tab may ask for a chunk that no longer exists:
+ * reload once to pick up the new build.
+ */
+function lazyPage<T extends ComponentType<any>>(load: () => Promise<{ default: T }>) {
+  return lazy(() =>
+    load().then(
+      (m) => { try { sessionStorage.removeItem("aethex_chunk_reload"); } catch { /* blocked */ } return m; },
+      (err) => {
+        let tried = true;
+        try { tried = !!sessionStorage.getItem("aethex_chunk_reload"); sessionStorage.setItem("aethex_chunk_reload", "1"); } catch { /* blocked */ }
+        if (!tried && navigator.onLine !== false) { window.location.reload(); return new Promise<{ default: T }>(() => {}); }
+        throw err;
+      },
+    ),
+  );
+}
+
+/** A page that couldn't load (offline, or a deploy replaced it): say so instead of a blank screen. */
+class PageError extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() {
+    if (!this.state.failed) return this.props.children;
+    const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+    return (
+      <div role="alert" style={{ minHeight: "60vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: 24, textAlign: "center", fontFamily: "system-ui, sans-serif", color: "#0F1729" }}>
+        <b style={{ fontSize: 18 }}>{offline ? "You're offline" : "This page couldn't load"}</b>
+        <span style={{ maxWidth: 420, fontSize: 14, color: "#4A5264" }}>{offline ? "This page hasn't been opened on this device before, so it needs a connection. Cadus and the pages you've visited still work offline." : "Check your connection and try again."}</span>
+        <button onClick={() => window.location.reload()} style={{ height: 36, padding: "0 16px", border: 0, borderRadius: 10, background: "#0F1729", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Try again</button>
+      </div>
+    );
+  }
+}
+
+/** Shown for the moment a page is loading. */
+function PageLoading() {
+  return (
+    <div role="status" aria-label="Loading" style={{ position: "fixed", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent" }}>
+      <span style={{ width: 26, height: 26, borderRadius: "50%", border: "2.5px solid rgba(15,23,41,.12)", borderTopColor: "#007A6C", animation: "aethexSpin .8s linear infinite" }} />
+      <style>{"@keyframes aethexSpin{to{transform:rotate(360deg)}}"}</style>
+    </div>
+  );
+}
 
 function ExternalRedirect({ to }: { to: string }) {
   useEffect(() => { window.location.href = to; }, [to]);
@@ -28,103 +75,103 @@ import NotFound from "@/pages/not-found";
 import { Navbar, BrandSwitcherBar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 
-import Home from "@/pages/Home";
-import Products from "@/pages/Products";
-import ProductDetail from "@/pages/ProductDetail";
-import BookDetail from "@/pages/BookDetail";
-import Cart from "@/pages/Cart";
-import Wishlist from "@/pages/Wishlist";
-import Flashcards from "@/pages/Flashcards";
-import AiAssistant from "@/pages/AiAssistant";
-import CadusAI from "@/pages/CadusAI";
-import OrderTracking from "@/pages/OrderTracking";
-import Orders from "@/pages/Orders";
-import MyReviews from "@/pages/MyReviews";
-import AdminReviews from "@/pages/AdminReviews";
-import AdminSellers from "@/pages/AdminSellers";
-import SellerStorefront from "@/pages/SellerStorefront";
-import StudyHub from "@/pages/StudyHub";
-import Checkout from "@/pages/Checkout";
-import Account from "@/pages/Account";
-import Admin from "@/pages/Admin";
+const Home = lazyPage(() => import("@/pages/Home"));
+const Products = lazyPage(() => import("@/pages/Products"));
+const ProductDetail = lazyPage(() => import("@/pages/ProductDetail"));
+const BookDetail = lazyPage(() => import("@/pages/BookDetail"));
+const Cart = lazyPage(() => import("@/pages/Cart"));
+const Wishlist = lazyPage(() => import("@/pages/Wishlist"));
+const Flashcards = lazyPage(() => import("@/pages/Flashcards"));
+const AiAssistant = lazyPage(() => import("@/pages/AiAssistant"));
+const CadusAI = lazyPage(() => import("@/pages/CadusAI"));
+const OrderTracking = lazyPage(() => import("@/pages/OrderTracking"));
+const Orders = lazyPage(() => import("@/pages/Orders"));
+const MyReviews = lazyPage(() => import("@/pages/MyReviews"));
+const AdminReviews = lazyPage(() => import("@/pages/AdminReviews"));
+const AdminSellers = lazyPage(() => import("@/pages/AdminSellers"));
+const SellerStorefront = lazyPage(() => import("@/pages/SellerStorefront"));
+const StudyHub = lazyPage(() => import("@/pages/StudyHub"));
+const Checkout = lazyPage(() => import("@/pages/Checkout"));
+const Account = lazyPage(() => import("@/pages/Account"));
+const Admin = lazyPage(() => import("@/pages/Admin"));
 
-import Blog from "@/pages/Blog";
-import BlogPost from "@/pages/BlogPost";
-import MedicalNews from "@/pages/News";
-import AdminBlog from "@/pages/AdminBlog";
-import ClinicalTools from "@/pages/ClinicalTools";
-import DrugReference from "@/pages/DrugReference";
-import BMICalculator from "@/pages/tools/BMICalculator";
-import DrugInteractionChecker from "@/pages/tools/DrugInteractionChecker";
-import DosageCalculator from "@/pages/tools/DosageCalculator";
-import MedicalAbbreviations from "@/pages/tools/MedicalAbbreviations";
-import SymptomChecker from "@/pages/tools/SymptomChecker";
-import RiskCalculator from "@/pages/tools/RiskCalculator";
-import PrescriptionGenerator from "@/pages/tools/PrescriptionGenerator";
-import LabValueInterpreter from "@/pages/tools/LabValueInterpreter";
-import CaseStudySimulator from "@/pages/tools/CaseStudySimulator";
-import ClinicalDecisionSupport from "@/pages/tools/ClinicalDecisionSupport";
-import ECGAnalyzer from "@/pages/tools/ECGAnalyzer";
-import RadiologyAssistant from "@/pages/tools/RadiologyAssistant";
-import Contact from "@/pages/Contact";
-import Login from "@/pages/Login";
-import Signup from "@/pages/Signup";
-import Onboarding from "@/pages/Onboarding";
-import SettingsPage from "@/pages/Settings";
-import PrivacyPolicy from "@/pages/PrivacyPolicy";
-import TermsOfService from "@/pages/TermsOfService";
-import MedicalDisclaimer from "@/pages/MedicalDisclaimer";
+const Blog = lazyPage(() => import("@/pages/Blog"));
+const BlogPost = lazyPage(() => import("@/pages/BlogPost"));
+const MedicalNews = lazyPage(() => import("@/pages/News"));
+const AdminBlog = lazyPage(() => import("@/pages/AdminBlog"));
+const ClinicalTools = lazyPage(() => import("@/pages/ClinicalTools"));
+const DrugReference = lazyPage(() => import("@/pages/DrugReference"));
+const BMICalculator = lazyPage(() => import("@/pages/tools/BMICalculator"));
+const DrugInteractionChecker = lazyPage(() => import("@/pages/tools/DrugInteractionChecker"));
+const DosageCalculator = lazyPage(() => import("@/pages/tools/DosageCalculator"));
+const MedicalAbbreviations = lazyPage(() => import("@/pages/tools/MedicalAbbreviations"));
+const SymptomChecker = lazyPage(() => import("@/pages/tools/SymptomChecker"));
+const RiskCalculator = lazyPage(() => import("@/pages/tools/RiskCalculator"));
+const PrescriptionGenerator = lazyPage(() => import("@/pages/tools/PrescriptionGenerator"));
+const LabValueInterpreter = lazyPage(() => import("@/pages/tools/LabValueInterpreter"));
+const CaseStudySimulator = lazyPage(() => import("@/pages/tools/CaseStudySimulator"));
+const ClinicalDecisionSupport = lazyPage(() => import("@/pages/tools/ClinicalDecisionSupport"));
+const ECGAnalyzer = lazyPage(() => import("@/pages/tools/ECGAnalyzer"));
+const RadiologyAssistant = lazyPage(() => import("@/pages/tools/RadiologyAssistant"));
+const Contact = lazyPage(() => import("@/pages/Contact"));
+const Login = lazyPage(() => import("@/pages/Login"));
+const Signup = lazyPage(() => import("@/pages/Signup"));
+const Onboarding = lazyPage(() => import("@/pages/Onboarding"));
+const SettingsPage = lazyPage(() => import("@/pages/Settings"));
+const PrivacyPolicy = lazyPage(() => import("@/pages/PrivacyPolicy"));
+const TermsOfService = lazyPage(() => import("@/pages/TermsOfService"));
+const MedicalDisclaimer = lazyPage(() => import("@/pages/MedicalDisclaimer"));
 
-import InstitutionHub from "@/pages/InstitutionHub";
-import CmeHub from "@/pages/CmeHub";
-import CaseOfTheDay from "@/pages/CaseOfTheDay";
-import DrugInteractionCheckerPage from "@/pages/DrugInteractionCheckerPage";
-import NeetPg from "@/pages/NeetPg";
-import MedicalBooks from "@/pages/MedicalBooks";
+const InstitutionHub = lazyPage(() => import("@/pages/InstitutionHub"));
+const CmeHub = lazyPage(() => import("@/pages/CmeHub"));
+const CaseOfTheDay = lazyPage(() => import("@/pages/CaseOfTheDay"));
+const DrugInteractionCheckerPage = lazyPage(() => import("@/pages/DrugInteractionCheckerPage"));
+const NeetPg = lazyPage(() => import("@/pages/NeetPg"));
+const MedicalBooks = lazyPage(() => import("@/pages/MedicalBooks"));
 import CadusQuickConsult from "@/components/cadus/CadusQuickConsult";
-import MedicalKnowledgeHub from "@/pages/StudyHub/MedicalKnowledgeHub/index";
-import SubjectPage from "@/pages/StudyHub/MedicalKnowledgeHub/SubjectPage";
-import TopicPage from "@/pages/StudyHub/MedicalKnowledgeHub/TopicPage";
-import DepartmentPage from "@/pages/StudyHub/MedicalKnowledgeHub/DepartmentPage";
-import ConditionPage from "@/pages/StudyHub/MedicalKnowledgeHub/ConditionPage";
-import SellerRegister from "@/pages/seller/Register";
-import SellerLogin from "@/pages/seller/Login";
-import SellerDashboard from "@/pages/seller/Dashboard";
-import SellerProducts from "@/pages/seller/Products";
-import SellerOrders from "@/pages/seller/Orders";
-import SellerPayouts from "@/pages/seller/Payouts";
-import SellerAnalytics from "@/pages/seller/Analytics";
-import SellerSettings from "@/pages/seller/Settings";
-import CalculatorPage from "@/pages/Calculator";
-import Jobs from "@/pages/Jobs";
-import Community from "@/pages/Community";
-import ClinicalCases from "@/pages/ClinicalCases";
+const MedicalKnowledgeHub = lazyPage(() => import("@/pages/StudyHub/MedicalKnowledgeHub/index"));
+const SubjectPage = lazyPage(() => import("@/pages/StudyHub/MedicalKnowledgeHub/SubjectPage"));
+const TopicPage = lazyPage(() => import("@/pages/StudyHub/MedicalKnowledgeHub/TopicPage"));
+const DepartmentPage = lazyPage(() => import("@/pages/StudyHub/MedicalKnowledgeHub/DepartmentPage"));
+const ConditionPage = lazyPage(() => import("@/pages/StudyHub/MedicalKnowledgeHub/ConditionPage"));
+const SellerRegister = lazyPage(() => import("@/pages/seller/Register"));
+const SellerLogin = lazyPage(() => import("@/pages/seller/Login"));
+const SellerDashboard = lazyPage(() => import("@/pages/seller/Dashboard"));
+const SellerProducts = lazyPage(() => import("@/pages/seller/Products"));
+const SellerOrders = lazyPage(() => import("@/pages/seller/Orders"));
+const SellerPayouts = lazyPage(() => import("@/pages/seller/Payouts"));
+const SellerAnalytics = lazyPage(() => import("@/pages/seller/Analytics"));
+const SellerSettings = lazyPage(() => import("@/pages/seller/Settings"));
+const CalculatorPage = lazyPage(() => import("@/pages/Calculator"));
+const Jobs = lazyPage(() => import("@/pages/Jobs"));
+const Community = lazyPage(() => import("@/pages/Community"));
+const ClinicalCases = lazyPage(() => import("@/pages/ClinicalCases"));
 
-import StudyPlanner from "@/pages/StudyPlanner";
-import MockTest from "@/pages/MockTest";
-import LiveClasses from "@/pages/LiveClasses";
-import HospitalDirectory from "@/pages/HospitalDirectory";
-import DrugAlerts from "@/pages/DrugAlerts";
-import PatientEducation from "@/pages/PatientEducation";
-import TelemedicineDirectory from "@/pages/TelemedicineDirectory";
-import CmeCertificate from "@/pages/CmeCertificate";
-import AiScribe from "@/pages/AiScribe";
-import Analytics from "@/pages/Analytics";
-import AppWaitlist from "@/pages/AppWaitlist";
-import Enterprise from "@/pages/Enterprise";
+const StudyPlanner = lazyPage(() => import("@/pages/StudyPlanner"));
+const MockTest = lazyPage(() => import("@/pages/MockTest"));
+const LiveClasses = lazyPage(() => import("@/pages/LiveClasses"));
+const HospitalDirectory = lazyPage(() => import("@/pages/HospitalDirectory"));
+const DrugAlerts = lazyPage(() => import("@/pages/DrugAlerts"));
+const PatientEducation = lazyPage(() => import("@/pages/PatientEducation"));
+const TelemedicineDirectory = lazyPage(() => import("@/pages/TelemedicineDirectory"));
+const CmeCertificate = lazyPage(() => import("@/pages/CmeCertificate"));
+const AiScribe = lazyPage(() => import("@/pages/AiScribe"));
+const Analytics = lazyPage(() => import("@/pages/Analytics"));
+const AppWaitlist = lazyPage(() => import("@/pages/AppWaitlist"));
+const Enterprise = lazyPage(() => import("@/pages/Enterprise"));
 
-import AiDiagnosis from "@/pages/AiDiagnosis";
-import AiAnswerEval from "@/pages/AiAnswerEval";
-import LearningPath from "@/pages/LearningPath";
-import SmartFlashcards from "@/pages/SmartFlashcards";
-import VideoCases from "@/pages/VideoCases";
-import Webinars from "@/pages/Webinars";
-import Mentorship from "@/pages/Mentorship";
-import Leaderboard from "@/pages/Leaderboard";
-import InstitutionAnalytics from "@/pages/InstitutionAnalytics";
-import QuizBuilder from "@/pages/QuizBuilder";
-import ProgressTracker from "@/pages/ProgressTracker";
-import ConsultHistory from "@/pages/ConsultHistory";
+const AiDiagnosis = lazyPage(() => import("@/pages/AiDiagnosis"));
+const AiAnswerEval = lazyPage(() => import("@/pages/AiAnswerEval"));
+const LearningPath = lazyPage(() => import("@/pages/LearningPath"));
+const SmartFlashcards = lazyPage(() => import("@/pages/SmartFlashcards"));
+const VideoCases = lazyPage(() => import("@/pages/VideoCases"));
+const Webinars = lazyPage(() => import("@/pages/Webinars"));
+const Mentorship = lazyPage(() => import("@/pages/Mentorship"));
+const Leaderboard = lazyPage(() => import("@/pages/Leaderboard"));
+const InstitutionAnalytics = lazyPage(() => import("@/pages/InstitutionAnalytics"));
+const QuizBuilder = lazyPage(() => import("@/pages/QuizBuilder"));
+const ProgressTracker = lazyPage(() => import("@/pages/ProgressTracker"));
+const ConsultHistory = lazyPage(() => import("@/pages/ConsultHistory"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -232,7 +279,9 @@ function Router() {
                 <Navbar />
               </div>
               <main className="flex-1 pt-[141px] relative z-[1]">
-                <Home />
+                <Suspense fallback={<PageLoading />}>
+                  <Home />
+                </Suspense>
               </main>
               <Footer />
             </div>
@@ -245,6 +294,7 @@ function Router() {
         {() => (
           <div className="flex flex-col min-h-screen" style={{ background: "#F2F2F7" }}>
             <main className="flex-1 relative z-[1]" style={{ background: "#F2F2F7" }}>
+              <Suspense fallback={<PageLoading />}>
               <Switch>
 
                 {/* Books Library */}
@@ -373,6 +423,7 @@ function Router() {
 
                 <Route component={NotFound} />
               </Switch>
+              </Suspense>
             </main>
             <Footer />
           </div>
@@ -399,7 +450,11 @@ function App() {
         <FirebaseAuthHandler />
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
           <ScrollToTop />
-          <Router />
+          <PageError>
+            <Suspense fallback={<PageLoading />}>
+              <Router />
+            </Suspense>
+          </PageError>
           <CadusQuickConsult />
         </WouterRouter>
         <Toaster />

@@ -80,6 +80,8 @@ It provides an intelligent interface for medical and educational assistance.
 - Reference-style answers: key points, evidence-certainty labels and dose cards, with numbered sources
 - A safety review of every clinical answer, and an on-device answer history that exports to CSV
 - A privacy guard that hides patient identifiers before anything is sent
+- Patient cases: a de-identified case sheet with a vitals timeline that Cadus reasons over and writes notes and letters from
+- Institution protocols: local protocols, formulary and antibiotic policy that answers follow, shared across a team as a team pack
 
 > CADUS AI is intended as an educational and informational assistant and is not a replacement for qualified medical professionals.
 
