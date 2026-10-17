@@ -3,11 +3,13 @@
  * Backend: `groq-ai` on the site's Cloudflare Worker at /api/fn/groq-ai
  * (Claude Haiku 5.5, Groq fallback). See worker/index.ts.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent } from "react";
 import {
   AlertTriangle, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ArrowUpRight, Bookmark, BookmarkCheck, BookOpen, BookOpenCheck, Brain, Gauge,
   Calculator, Camera, Check, ChevronDown, ChevronRight, ChevronsUpDown, CircleQuestionMark, ClipboardCheck, ClipboardList, Copy, CornerDownRight,
   Flame, Languages, Mail, MessageCircleQuestion, Target, UserCog, UserRound,
+  Archive, ArchiveRestore, AudioLines, Bell, ChevronLeft, Ellipsis, FileDown, FilePen, Lightbulb, MessageSquareDashed, Paperclip, Share2,
+  ThumbsDown, ThumbsUp,
   Database, Download, ExternalLink, FileText, FlaskConical, Folder, FolderInput, FolderMinus, FolderPlus, Globe,
   GraduationCap, Grip, History, House, ImagePlus, Info, Keyboard, Laptop, Layers, LayoutGrid, Library, ListFilter, LogIn,
   LogOut, Menu, MessageSquare, Mic, Moon, MoreHorizontal, PanelLeftClose, PanelLeftOpen, Pencil, Pill, Pin, PinOff, Play,
@@ -41,6 +43,18 @@ import {
   type MedicalProfile, type ProfileRole,
 } from "@/lib/cadus/profile";
 import { CASE_MODES, looksLikeCase, WARD_ACTIONS } from "@/lib/cadus/ward";
+import { LiveAnswer, MdBlock } from "@/components/cadus/LiveAnswer";
+import CanvasPanel, { type CanvasDoc } from "@/components/cadus/CanvasPanel";
+import VoiceMode, { voiceSupported } from "@/components/cadus/VoiceMode";
+import PersonalSettings from "@/components/cadus/PersonalSettings";
+import { CADUS_CHAT_CSS } from "@/components/cadus/cadus-chat-styles";
+import { closePartialMarkdown, createTextStore, streamCadus, StreamUnavailable } from "@/lib/cadus/stream";
+import {
+  ACCEPT_ATTACH, attachmentPayload, attachmentsForStorage, attachProblem, describeAttachment, formatSize, readAttachment,
+  type Attachment,
+} from "@/lib/cadus/files";
+import { addMemory, personalPayload, readPersonal, rememberFrom, savePersonal, type Personal } from "@/lib/cadus/memory";
+import { downloadBlob, fileSlug, markdownToDocx } from "@/lib/cadus/docx";
 
 /* ================================================================ types */
 
@@ -92,6 +106,20 @@ interface Msg {
   privacy?: { total: number; hits: Partial<Record<IdentifierKind, number>> };
   /** user message: reply language for this message only (e.g. a patient explanation in Hindi) */
   lang?: string;
+  /** user message: attached images, PDFs and text files */
+  files?: Attachment[];
+  /** user message: "Think deeper" was on */
+  think?: boolean;
+  /** user message: asked in voice mode (short, spoken answer) */
+  voice?: boolean;
+  /** assistant message: earlier versions from regenerating, oldest first */
+  versions?: Msg[];
+  /** assistant message: the user's thumbs up or down */
+  feedback?: "up" | "down";
+  /** assistant message: what was wrong, from the thumbs-down form */
+  feedbackNote?: { reasons: string[]; comment: string };
+  /** assistant message: milliseconds from question to answer */
+  took?: number;
 }
 
 interface Session {
@@ -102,6 +130,11 @@ interface Session {
   pinned?: boolean;
   /** The project this chat belongs to, if any. */
   projectId?: string;
+  /** Temporary chat: never saved, doesn't use memory. */
+  temp?: boolean;
+  archived?: boolean;
+  /** The title came from the first message and can be replaced by a better one. */
+  autoTitle?: boolean;
 }
 
 interface Project {
@@ -141,6 +174,8 @@ interface Prefs {
   model: ModelId;
   /** Hide patient identifiers (names, phone numbers, Aadhaar, UHID...) before a message is sent. */
   privacyGuard: boolean;
+  /** Show a notification when an answer is ready and Cadus is in a background tab. */
+  notify: boolean;
 }
 
 interface ModeDef {
@@ -271,8 +306,9 @@ const USAGE_KEY = "cadus3.usage";
 const LIBRARY_KEY = "cadus3.library";
 const PROJECTS_KEY = "cadus3.projects";
 const UI_KEY = "cadus3.ui";
+const DOCS_KEY = "cadus3.docs";
 const FREE_DAILY = 20;
-const DEFAULT_PREFS: Prefs = { theme: "light", accent: "aethex", textSize: "m", style: "balanced", language: "English", enterToSend: true, safetyReview: true, sources: false, answerFont: "sans", model: "medius", privacyGuard: true };
+const DEFAULT_PREFS: Prefs = { theme: "light", accent: "aethex", textSize: "m", style: "balanced", language: "English", enterToSend: true, safetyReview: true, sources: false, answerFont: "sans", model: "medius", privacyGuard: true, notify: false };
 /** Bumped when the default look changes, so saved settings move to the new theme, colour and answer font once. */
 const PREFS_VERSION = 3;
 
@@ -317,11 +353,20 @@ function writeJSON(key: string, value: unknown) {
   } catch {
     if (key !== SESSIONS_KEY || !Array.isArray(value)) return;
     try {
-      const slim = (value as Session[]).map((s, i) => (i < 3 ? s : { ...s, messages: s.messages.map((m) => ({ ...m, image: undefined })) }));
+      const slim = (value as Session[]).map((s, i) => (i < 3 ? s : {
+        ...s,
+        messages: s.messages.map((m) => ({ ...m, image: undefined, files: m.files?.map((f) => ({ ...f, data: undefined })) })),
+      }));
       localStorage.setItem(key, JSON.stringify(slim));
     } catch { /* storage full */ }
   }
 }
+
+/** A chat as saved in this browser: PDFs are not kept (too large), nor are temporary chats. */
+const storableSession = (s: Session): Session => ({
+  ...s,
+  messages: s.messages.map((m) => (m.files?.length ? { ...m, files: attachmentsForStorage(m.files) } : m)),
+});
 
 const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36);
 const today = () => new Date().toISOString().slice(0, 10);
@@ -396,6 +441,15 @@ const withSources = (text: string, list?: SourceRef[]) => {
   return src.length ? `${text}\n\nSources:\n${src.map((x) => `[${x.n}] ${x.title} - ${x.url}`).join("\n")}` : text;
 };
 const CONF_LABEL: Record<ReviewMeta["confidence"], string> = { high: "High confidence", moderate: "Moderate confidence", low: "Low confidence" };
+/** "8 s" or "1 min 12 s": how long an answer took. */
+const fmtTook = (ms?: number) => {
+  if (!ms || ms < 0) return "";
+  const sec = Math.max(1, Math.round(ms / 1000));
+  return sec < 60 ? `${sec} s` : `${Math.floor(sec / 60)} min ${sec % 60} s`;
+};
+/** Answers that read as documents, offered as a Canvas document. */
+const DOC_MODES = new Set<ModeId>(["soap", "discharge", "referral", "handover", "patient"]);
+const FEEDBACK_REASONS = ["Inaccurate or outdated", "Unsafe or missing a warning", "Not relevant to India", "Didn't follow my instructions", "Too long", "Not detailed enough"];
 
 function pdfSafe(s: string): string {
   return s
@@ -434,11 +488,13 @@ async function exportPdf(title: string, entries: { who: string; text: string }[]
   y += 8;
   for (const e of entries) {
     if (y > H - 100) { doc.addPage(); y = 60; }
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8.5);
-    doc.setTextColor(29, 78, 216);
-    doc.text(e.who.toUpperCase(), M, y);
-    y += 15;
+    if (e.who) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(29, 78, 216);
+      doc.text(e.who.toUpperCase(), M, y);
+      y += 15;
+    }
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10.5);
     doc.setTextColor(32, 40, 54);
@@ -600,6 +656,7 @@ export default function CadusAI() {
   const { user, isPro, logout } = useUserAuth();
   const systemDark = useMedia("(prefers-color-scheme: dark)");
   const isDesktop = useMedia("(min-width: 900px)");
+  const narrowDesk = useMedia("(max-width: 1599px)");
 
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
   const [sessions, setSessions] = useState<Session[]>(() =>
@@ -624,8 +681,11 @@ export default function CadusAI() {
   const [activeId, setActiveId] = useState("");
   const [mode, setMode] = useState<ModeId>("general");
   const [input, setInput] = useState("");
-  const [image, setImage] = useState("");
-  const [pending, setPending] = useState<{ id: string; sid: string; mode: ModeId; image: boolean; stage: "draft" | "review" | "library"; search: boolean; review: boolean } | null>(null);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [pending, setPending] = useState<{
+    id: string; sid: string; mode: ModeId; image: boolean; doc: boolean; stage: "draft" | "review" | "library";
+    search: boolean; review: boolean; think: boolean; started: number; prior?: Msg;
+  } | null>(null);
   const [lastProvider, setLastProvider] = useState<Provider>("claude");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pop, setPop] = useState<string | null>(null);
@@ -657,6 +717,23 @@ export default function CadusAI() {
   const [toolsInit, setToolsInit] = useState<{ calc?: string; tab?: ToolsTab; drugs?: string[]; key: number }>({ key: 0 });
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
   const [wardLang, setWardLang] = useState("");
+  const [personal, setPersonalState] = useState<Personal>(readPersonal);
+  const [think, setThink] = useState(false);
+  const [tempNext, setTempNext] = useState(false);
+  const [versionView, setVersionView] = useState<Record<string, number>>({});
+  const [fb, setFb] = useState<{ id: string; reasons: string[]; comment: string } | null>(null);
+  const [docs, setDocs] = useState<CanvasDoc[]>(() =>
+    readJSON<CanvasDoc[]>(DOCS_KEY, []).filter((d) => d && typeof d.id === "string" && typeof d.text === "string").map((d) => ({ ...d, history: Array.isArray(d.history) ? d.history : [] })),
+  );
+  const [canvasId, setCanvasId] = useState("");
+  const [voiceOpen, setVoiceOpen] = useState(false);
+  const [dragDepth, setDragDepth] = useState(0);
+  const [archivedOpen, setArchivedOpen] = useState(false);
+  const [libTab, setLibTab] = useState<"saved" | "docs">("saved");
+  const [elapsed, setElapsed] = useState(0);
+  const [deleteArmed, setDeleteArmed] = useState(0);
+  const [lightbox, setLightbox] = useState("");
+  const [dlFor, setDlFor] = useState("");
 
   const fileRef = useRef<HTMLInputElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
@@ -666,6 +743,14 @@ export default function CadusAI() {
   const toastTimer = useRef<number | undefined>(undefined);
   const composerRef = useRef<HTMLDivElement>(null);
   const [menuMax, setMenuMax] = useState(480);
+  const streamStore = useRef(createTextStore()).current;
+  const aborts = useRef(new Map<string, AbortController>());
+  const sessionsRef = useRef(sessions);
+  sessionsRef.current = sessions;
+  const atBottomRef = useRef(true);
+  const lastHeight = useRef(0);
+  const autoCollapsed = useRef(false);
+  const scrollKey = useRef("");
 
   const dark = prefs.theme === "dark" || (prefs.theme === "system" && systemDark);
   const accent = ACCENTS.find((a) => a.id === prefs.accent) ?? ACCENTS[0];
@@ -690,9 +775,13 @@ export default function CadusAI() {
   const showDock = view === "chat" && !showHeroComposer;
   const project = projects.find((p) => p.id === projectId);
   const activeProject = active?.projectId ? projects.find((p) => p.id === active.projectId) : undefined;
-  const pinned = sessions.filter((s) => s.pinned);
+  const listed = sessions.filter((s) => !s.temp && !s.archived);
+  const archivedList = sessions.filter((s) => s.archived && !s.temp);
+  const pinned = listed.filter((s) => s.pinned);
+  const canvasDoc = docs.find((d) => d.id === canvasId);
+  const docByMsg = useMemo(() => new Map(docs.filter((d) => d.msgId).map((d) => [d.msgId as string, d])), [docs]);
   const chatQuery = (chatSearch ?? "").trim().toLowerCase();
-  const chatList = sessions.filter(
+  const chatList = listed.filter(
     (s) =>
       !s.pinned &&
       (chatFilter === "all" || sessionCat(s) === chatFilter) &&
@@ -701,6 +790,7 @@ export default function CadusAI() {
   const decks = useMemo(
     () =>
       sessions
+        .filter((s) => !s.temp)
         .flatMap((s) => s.messages.filter((m) => m.deck?.slides?.length).map((m) => ({ s, m })))
         .sort((a, b) => b.m.at - a.m.at),
     [sessions],
@@ -708,7 +798,7 @@ export default function CadusAI() {
   const projectStats = useMemo(() => {
     const out: Record<string, { chats: number; last: number }> = {};
     for (const s of sessions) {
-      if (!s.projectId) continue;
+      if (!s.projectId || s.temp || s.archived) continue;
       const cur = out[s.projectId] ?? { chats: 0, last: 0 };
       out[s.projectId] = { chats: cur.chats + 1, last: Math.max(cur.last, s.updatedAt) };
     }
@@ -736,11 +826,37 @@ export default function CadusAI() {
   }, []);
 
   useEffect(() => writeJSON(PREFS_KEY, { ...prefs, v: PREFS_VERSION }), [prefs]);
-  useEffect(() => writeJSON(SESSIONS_KEY, sessions.slice(0, 100)), [sessions]);
+  useEffect(() => writeJSON(SESSIONS_KEY, sessions.filter((s) => !s.temp).slice(0, 100).map(storableSession)), [sessions]);
+  useEffect(() => writeJSON(DOCS_KEY, docs.slice(0, 50).map((d) => ({ ...d, history: d.history.slice(-5) }))), [docs]);
+  useEffect(() => savePersonal(personal), [personal]);
+  // A temporary chat is discarded as soon as you leave it.
+  useEffect(() => {
+    setSessions((p) => (p.some((s) => s.temp && s.id !== activeId) ? p.filter((s) => !s.temp || s.id === activeId) : p));
+  }, [activeId]);
+  // Seconds since the question was sent, shown while Cadus works.
+  const pendingStarted = pending?.started;
+  useEffect(() => {
+    if (!pendingStarted) { setElapsed(0); return; }
+    const tick = () => setElapsed(Math.round((Date.now() - pendingStarted) / 1000));
+    tick();
+    const t = window.setInterval(tick, 1000);
+    return () => window.clearInterval(t);
+  }, [pendingStarted]);
   useEffect(() => writeJSON(LIBRARY_KEY, library.slice(0, 300)), [library]);
   useEffect(() => writeJSON(USAGE_KEY, usage), [usage]);
   useEffect(() => writeJSON(PROJECTS_KEY, projects), [projects]);
-  useEffect(() => writeJSON(UI_KEY, { collapsed, moreOpen }), [collapsed, moreOpen]);
+  useEffect(() => writeJSON(UI_KEY, { collapsed: autoCollapsed.current ? false : collapsed, moreOpen }), [collapsed, moreOpen]);
+  // Canvas needs room: on smaller desktop screens the sidebar folds away while it is open.
+  useEffect(() => {
+    if (canvasId && isDesktop && narrowDesk && !collapsed) {
+      autoCollapsed.current = true;
+      setCollapsed(true);
+    } else if (!canvasId && autoCollapsed.current) {
+      autoCollapsed.current = false;
+      setCollapsed(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canvasId]);
   useEffect(() => savePractice(practice), [practice]);
   useEffect(() => {
     if (view === "project" && !project) setView("projects");
@@ -749,9 +865,25 @@ export default function CadusAI() {
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    if (!messages.length) el.scrollTo({ top: 0 });
-    else el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    const key = `${view}:${activeId}`;
+    const switched = scrollKey.current !== key;
+    scrollKey.current = key;
+    if (!messages.length) { el.scrollTo({ top: 0 }); return; }
+    // An answer landing doesn't pull you down if you've scrolled up to read.
+    if (!switched && messages[messages.length - 1]?.role === "assistant" && !atBottomRef.current) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: switched ? "auto" : "smooth" });
+    atBottomRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages.length, pending?.id, activeId, view]);
+
+  /** Keep the answer in view as it streams in, unless you've scrolled up. */
+  const followStream = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const before = (lastHeight.current || el.scrollHeight) - el.scrollTop - el.clientHeight;
+    if (atBottomRef.current || before < 120) el.scrollTop = el.scrollHeight;
+    lastHeight.current = el.scrollHeight;
+  }, []);
 
   useEffect(() => {
     const ta = taRef.current;
@@ -768,6 +900,7 @@ export default function CadusAI() {
         setPop(null);
         setConfirmDelete("");
         setMoveFor("");
+        setDlFor("");
         setConfirmProjectDelete(false);
       }
     };
@@ -790,13 +923,45 @@ export default function CadusAI() {
         newChat();
         return;
       }
+      if (voiceOpen) return;
+      if (mod && e.shiftKey && e.key.toLowerCase() === "c" && !window.getSelection()?.toString()) {
+        // Copy the last answer
+        const last = [...messages].reverse().find((m) => m.role === "assistant" && !m.error);
+        if (last) { e.preventDefault(); void copy(shownVersion(last)); }
+        return;
+      }
+      if (mod && e.shiftKey && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        if (isDesktop) setCollapsed((c) => !c);
+        else setSidebarOpen((o) => !o);
+        return;
+      }
+      if (mod && e.shiftKey && (e.key === "Backspace" || e.key === "Delete") && view === "chat" && active) {
+        e.preventDefault();
+        if (Date.now() - deleteArmed < 4000) { setDeleteArmed(0); deleteSession(active.id); }
+        else { setDeleteArmed(Date.now()); toast(`Press ${MOD} Shift Backspace again to delete this chat`); }
+        return;
+      }
+      if (mod && e.key === "/") {
+        e.preventDefault();
+        openSettings("shortcuts");
+        return;
+      }
+      if (e.shiftKey && e.key === "Escape") {
+        e.preventDefault();
+        taRef.current?.focus();
+        return;
+      }
       if (e.key === "Escape") {
-        if (paletteOpen) setPaletteOpen(false);
+        if (lightbox) setLightbox("");
+        else if (paletteOpen) setPaletteOpen(false);
+        else if (fb) setFb(null);
+        else if (canvasDoc) closeCanvas();
         else if (profileOpen) setProfileOpen(false);
         else if (editing) setEditing(null);
         else if (projectDialog) setProjectDialog(null);
         else if (settingsOpen) setSettingsOpen(false);
-        else if (pop) { setPop(null); setConfirmDelete(""); setMoveFor(""); setConfirmProjectDelete(false); }
+        else if (pop) { setPop(null); setConfirmDelete(""); setMoveFor(""); setDlFor(""); setConfirmProjectDelete(false); }
         else if (renaming) setRenaming(null);
         else if (sidebarOpen) setSidebarOpen(false);
       }
@@ -833,10 +998,10 @@ export default function CadusAI() {
 
   /* -------------------------------------------------------- sessions */
 
-  const upsert = useCallback((sid: string, fn: (m: Msg[]) => Msg[], title?: string, inProject?: string) => {
+  const upsert = useCallback((sid: string, fn: (m: Msg[]) => Msg[], title?: string, inProject?: string, flags: Partial<Session> = {}) => {
     setSessions((prev) => {
       const existing = prev.find((s) => s.id === sid);
-      const base: Session = existing ?? { id: sid, title: title || "New chat", messages: [], updatedAt: Date.now(), ...(inProject ? { projectId: inProject } : {}) };
+      const base: Session = existing ?? { id: sid, title: title || "New chat", messages: [], updatedAt: Date.now(), ...(inProject ? { projectId: inProject } : {}), ...flags };
       const next: Session = { ...base, messages: fn(base.messages), updatedAt: Date.now() };
       return [next, ...prev.filter((s) => s.id !== sid)];
     });
@@ -855,7 +1020,7 @@ export default function CadusAI() {
     setView("project");
     setActiveId("");
     setInput("");
-    setImage("");
+    setAttachments([]);
     setMode("general");
     setSidebarOpen(false);
     setPop(null);
@@ -921,7 +1086,10 @@ export default function CadusAI() {
     setView("chat");
     setActiveId("");
     setInput("");
-    setImage("");
+    setAttachments([]);
+    setThink(false);
+    setFb(null);
+    setEditing(null);
     setMode(m);
     setSidebarOpen(false);
     setPop(null);
@@ -965,17 +1133,40 @@ export default function CadusAI() {
     const key = `row:${id}`;
     if (pop === key) { setPop(null); return; }
     const r = e.currentTarget.getBoundingClientRect();
-    setRowPos({ top: Math.max(8, Math.min(r.bottom + 4, window.innerHeight - 280)), left: Math.max(8, Math.min(r.left - 6, window.innerWidth - 248)) });
+    setRowPos({ top: Math.max(8, Math.min(r.bottom + 4, window.innerHeight - 330)), left: Math.max(8, Math.min(r.left - 6, window.innerWidth - 248)) });
     setConfirmDelete("");
     setMoveFor("");
+    setDlFor("");
     setPop(key);
   };
 
   /* ------------------------------------------------------------ send */
 
+  /** Replace a chat's first-message title with a short AI title (not for temporary or renamed chats). */
+  const autoTitle = async (sid: string, question: string, answer: string) => {
+    try {
+      const r = await invokeCadus({ action: "title", message: (stripPlaceholders(question) || question).slice(0, 1500), answer: markdownToText(answer).slice(0, 800) });
+      const t = typeof r?.title === "string" ? r.title.trim() : "";
+      if (t) setSessions((p) => p.map((x) => (x.id === sid && x.autoTitle ? { ...x, title: t.slice(0, 90), autoTitle: false } : x)));
+    } catch { /* keep the first-message title */ }
+  };
+
+  /** A desktop notification when an answer lands while Cadus is in a background tab. */
+  const notifyDone = (sid: string, reply: Msg) => {
+    if (!prefs.notify || typeof Notification === "undefined" || Notification.permission !== "granted" || document.visibilityState !== "hidden") return;
+    try {
+      const title = sessionsRef.current.find((x) => x.id === sid)?.title || "Your question";
+      new Notification(reply.error ? "Cadus couldn't answer" : "Cadus answered", { body: clip(title, 90), icon: CADUS_ICON_DATA_URL, tag: sid });
+    } catch { /* notifications blocked */ }
+  };
+
   const runRequest = useCallback(
-    async (sid: string, history: Msg[], userMsg: Msg, instructions = "") => {
+    async (
+      sid: string, history: Msg[], userMsg: Msg, instructions = "",
+      extra: { improve?: Record<string, unknown>; prior?: Msg; temp?: boolean } = {},
+    ): Promise<Msg | null> => {
       const reqId = uid();
+      const started = Date.now();
       const roleplay = ROLEPLAY.has(userMsg.mode);
       const search = !roleplay && (userMsg.mode === "research" || !!userMsg.search);
       const doReview = prefs.safetyReview && !roleplay;
@@ -983,8 +1174,26 @@ export default function CadusAI() {
       // A message can ask for its own reply language (a patient explanation in Hindi, say).
       const language = userMsg.lang || prefs.language;
       const who = profilePayload(profile);
-      const tailored = who ? { profile: who } : {};
-      setPending({ id: reqId, sid, mode: userMsg.mode, image: !!userMsg.image, stage: "draft", search, review: doReview });
+      // Temporary chats follow custom instructions but don't use memory.
+      const mine = roleplay ? undefined : personalPayload(extra.temp ? { ...personal, useMemory: false } : personal);
+      const tailored = { ...(who ? { profile: who } : {}), ...(mine ? { personal: mine } : {}) };
+      let files = attachmentPayload(userMsg.files ?? []);
+      const hasDoc = !!userMsg.files?.some((f) => f.kind !== "image");
+      const hasImage = !!userMsg.image || !!userMsg.files?.some((f) => f.kind === "image");
+      // Follow-up questions can refer to files attached earlier in the chat, as in ChatGPT and Claude.
+      let filesEarlier = false;
+      if (!files.length && !userMsg.image && !roleplay && userMsg.mode !== "slides") {
+        const earlier = [...history].reverse().find((m) => m.role === "user" && m.files?.some((f) => f.data));
+        if (earlier?.files) {
+          files = attachmentPayload(earlier.files);
+          filesEarlier = files.length > 0;
+        }
+      }
+      const style = userMsg.voice ? "voice" : prefs.style;
+      const controller = new AbortController();
+      aborts.current.set(reqId, controller);
+      streamStore.set("");
+      setPending({ id: reqId, sid, mode: userMsg.mode, image: hasImage && !hasDoc, doc: hasDoc, stage: "draft", search, review: doReview, think: !!userMsg.think, started, prior: extra.prior });
       setUsage((u) => (u.date === today() ? { ...u, count: u.count + 1 } : { date: today(), count: 1 }));
       const hist = history.filter((m) => !m.error && !m.stopped).slice(-16).map((m) => ({ role: m.role, content: m.content }));
       let reply: Msg;
@@ -1000,26 +1209,40 @@ export default function CadusAI() {
             content: `Your lecture deck **${d.title}** is ready: ${d.slides.length} slides covering ${d.subtitle || "the topic"}.`,
           };
         } else {
-          // Step 1: draft (optionally grounded in live, cited sources)
+          // Step 1: draft, streamed as it is written (optionally grounded in live, cited sources)
           const draftBody = {
-            action: userMsg.image ? "analyze-image" : "chat",
+            action: hasImage ? "analyze-image" : "chat",
             message: userMsg.content,
             image: userMsg.image,
+            ...(files.length ? { files, ...(filesEarlier ? { filesEarlier: true } : {}) } : {}),
             mode: userMsg.mode,
-            style: prefs.style,
+            style,
             language,
             history: hist,
             search,
             // Cadus can answer from the offline medical library when the AI has no credits.
             library: true,
             model: prefs.model,
+            ...(userMsg.think ? { think: true } : {}),
+            ...(extra.improve ? { improve: extra.improve } : {}),
             ...project,
             ...tailored,
           };
-          const draft = await invokeCadus(draftBody);
-          if (cancelled.current.has(reqId)) return;
+          let draft: any;
+          try {
+            draft = await streamCadus(draftBody, {
+              onDelta: (t) => streamStore.append(t),
+              onReset: () => streamStore.set(""),
+              signal: controller.signal,
+            });
+          } catch (e) {
+            if (!(e instanceof StreamUnavailable)) throw e;
+            draft = await invokeCadus(draftBody);
+          }
+          if (cancelled.current.has(reqId)) return null;
           if (draft?.libraryMode) {
             // No AI credits (or no valid key): answer from the offline medical library.
+            streamStore.set("");
             setPending((p) => (p?.id === reqId ? { ...p, stage: "library", review: false } : p));
             reply = await answerFromLibrary({
               userMsg, hist, reason: String(draft.reason || "credits"), draftBody,
@@ -1029,6 +1252,8 @@ export default function CadusAI() {
             if (!draft?.message) throw new Error("Cadus returned an empty answer. Please try again.");
             const sources = safeSources(draft.sources);
             let content = String(draft.message);
+            // The finished draft (with citation markers) stays on screen while it is reviewed.
+            streamStore.set(content);
             let review: ReviewMeta | undefined;
             let reviewNote: string | undefined;
             // Step 2: safety review by a second model
@@ -1043,7 +1268,9 @@ export default function CadusAI() {
                   history: hist.slice(-6),
                   sources,
                   image: userMsg.image,
+                  ...(files.length ? { files } : {}),
                   language,
+                  ...(userMsg.voice ? { style: "voice" } : {}),
                   ...project,
                   ...tailored,
                 });
@@ -1067,46 +1294,86 @@ export default function CadusAI() {
           }
         }
       } catch (e) {
+        if (cancelled.current.has(reqId) || (e as { name?: string })?.name === "AbortError") {
+          aborts.current.delete(reqId);
+          return null;
+        }
         reply = { id: uid(), role: "assistant", mode: userMsg.mode, at: Date.now(), error: true, content: friendlyError(e instanceof Error ? e.message : String(e)) };
       }
-      if (cancelled.current.has(reqId)) return;
+      aborts.current.delete(reqId);
+      if (cancelled.current.has(reqId)) return null;
+      reply.took = Date.now() - started;
+      // Regenerating keeps the earlier answers as versions (‹ 1 / 2 ›).
+      if (extra.prior && !extra.prior.error && !extra.prior.stopped) {
+        const { versions: older = [], ...prev } = extra.prior;
+        reply.versions = [...older, prev].slice(-5);
+      }
       if (reply.provider) setLastProvider(reply.provider);
+      const isFirst = history.filter((m) => m.role === "user").length === 0;
       upsert(sid, (m) => [...m, reply]);
       setPending((p) => (p?.id === reqId ? null : p));
+      streamStore.set("");
+      notifyDone(sid, reply);
+      const sess = sessionsRef.current.find((x) => x.id === sid);
+      if (isFirst && !reply.error && sess?.autoTitle && !sess.temp) void autoTitle(sid, userMsg.content, reply.content);
+      return reply;
     },
-    [prefs.style, prefs.language, prefs.safetyReview, prefs.model, profile, upsert],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [prefs.style, prefs.language, prefs.safetyReview, prefs.model, prefs.notify, profile, personal, upsert],
   );
 
   /** The privacy guard: hide patient identifiers before a message is stored or sent. */
   const guardText = (text: string, m: ModeId): Deidentified =>
     prefs.privacyGuard && !ROLEPLAY.has(m) ? deidentify(text) : { text, hits: {}, total: 0 };
 
-  const send = (textOverride?: string, modeOverride?: ModeId, extra?: { lang?: string; title?: string }) => {
+  const setPersonal = (p: Personal) => setPersonalState(p);
+
+  const send = (textOverride?: string, modeOverride?: ModeId, extra?: { lang?: string; title?: string; voice?: boolean }): Promise<Msg | null> => {
     const raw = (textOverride ?? input).trim();
     const m = modeOverride ?? mode;
-    if ((!raw && !image) || pending) return;
+    // Attachments in the composer go with what you type there, not with suggestion chips.
+    const atts = textOverride === undefined ? attachments : [];
+    if ((!raw && !atts.length) || pending) return Promise.resolve(null);
     const guard = guardText(raw, m);
     const text = guard.text;
     const isNew = !(view === "chat" && activeId);
     const sid = isNew ? uid() : activeId;
     // A chat started from a project page belongs to that project.
     const inProject = isNew && view === "project" && project ? project.id : undefined;
+    const temp = isNew ? tempNext : !!sessions.find((s) => s.id === sid)?.temp;
+    // "Remember that…" saves a memory, like ChatGPT (not in temporary chats or role-play).
+    const fact = !temp && !ROLEPLAY.has(m) && personal.useMemory ? rememberFrom(text) : null;
+    if (fact) {
+      setPersonalState((p) => addMemory(p, fact));
+      toast("Memory updated");
+    }
+    const onlyImages = atts.length > 0 && atts.every((a) => a.kind === "image");
     const userMsg: Msg = {
-      id: uid(), role: "user", content: text || "Please analyse this image.", mode: m, image: image || undefined, at: Date.now(),
+      id: uid(), role: "user", mode: m, at: Date.now(),
+      content: text || (onlyImages ? (atts.length > 1 ? "Please analyse these images." : "Please analyse this image.") : "Please review the attached document."),
+      ...(atts.length ? { files: atts } : {}),
       search: !ROLEPLAY.has(m) && (prefs.sources || m === "research"),
       ...(guard.total ? { privacy: { total: guard.total, hits: guard.hits } } : {}),
       ...(extra?.lang ? { lang: extra.lang } : {}),
+      ...(think && textOverride === undefined ? { think: true } : {}),
+      ...(extra?.voice ? { voice: true } : {}),
     };
     const history = sessions.find((s) => s.id === sid)?.messages ?? [];
-    upsert(sid, (msgs) => [...msgs, userMsg], clip(extra?.title || stripPlaceholders(text) || text || "Image analysis", 64), inProject);
+    const firstFile = atts.find((a) => a.kind !== "image");
+    const title = extra?.title || stripPlaceholders(text) || (firstFile ? `Document: ${firstFile.name}` : "Image analysis");
+    upsert(sid, (msgs) => [...msgs, userMsg], clip(title, 64), inProject, { ...(temp ? { temp: true } : {}), autoTitle: !extra?.title });
     setView("chat");
     setActiveId(sid);
     setMode(m);
-    setInput("");
-    setImage("");
+    if (textOverride === undefined) {
+      setInput("");
+      setAttachments([]);
+    }
+    // Carrying on in an archived chat brings it back to the sidebar.
+    if (!isNew && sessions.find((s) => s.id === sid)?.archived) setSessions((p) => p.map((s) => (s.id === sid ? { ...s, archived: false } : s)));
     setPop(null);
-    focusComposer();
-    void runRequest(sid, history, userMsg, instructionsFor(sid, inProject));
+    if (!extra?.voice) focusComposer();
+    return runRequest(sid, history, userMsg, instructionsFor(sid, inProject), { temp });
   };
 
   // Links from the rest of Aethex open Cadus with a question (?q=), which is asked
@@ -1132,7 +1399,16 @@ export default function CadusAI() {
   const stop = () => {
     if (!pending) return;
     cancelled.current.add(pending.id);
-    upsert(pending.sid, (m) => [...m, { id: uid(), role: "assistant", mode: pending.mode, at: Date.now(), content: "Response stopped.", stopped: true }]);
+    aborts.current.get(pending.id)?.abort();
+    const partial = streamStore.get().trim();
+    const prior = pending.prior;
+    const versions = prior && !prior.error && !prior.stopped ? [...(prior.versions ?? []), { ...prior, versions: undefined }].slice(-5) : undefined;
+    upsert(pending.sid, (m) => [...m, {
+      id: uid(), role: "assistant", mode: pending.mode, at: Date.now(), stopped: true,
+      content: partial ? closePartialMarkdown(partial) : "Response stopped.",
+      ...(versions ? { versions } : {}),
+    }]);
+    streamStore.set("");
     setPending(null);
   };
 
@@ -1146,8 +1422,9 @@ export default function CadusAI() {
     if (!guard.text) return;
     const userMsg: Msg = { ...orig, id: uid(), content: guard.text, at: Date.now(), privacy: guard.total ? { total: guard.total, hits: guard.hits } : undefined };
     setEditing(null);
+    if (orig.files?.some((f) => !f.data)) toast("The attached PDF isn't kept after reloading. Attach it again for a full answer.");
     upsert(active.id, (msgs) => [...msgs.slice(0, idx), userMsg]);
-    void runRequest(active.id, active.messages.slice(0, idx), userMsg, instructionsFor(active.id));
+    void runRequest(active.id, active.messages.slice(0, idx), userMsg, instructionsFor(active.id), { temp: active.temp });
   };
 
   const copyText = async (id: string, text: string) => {
@@ -1183,15 +1460,22 @@ export default function CadusAI() {
     setPop(null);
   };
 
-  const regenerate = (assistantId: string) => {
+  /** Ask again for a new answer. The old one is kept as a version; feedback (if any) asks for a better one. */
+  const regenerate = (assistantId: string, improve?: { reasons: string[]; comment: string }) => {
     if (!active || pending) return;
     const idx = active.messages.findIndex((m) => m.id === assistantId);
     let userIdx = -1;
     for (let i = idx - 1; i >= 0; i--) if (active.messages[i].role === "user") { userIdx = i; break; }
     if (userIdx < 0) return;
     const userMsg = active.messages[userIdx];
+    const prior = active.messages[idx];
+    if (userMsg.files?.some((f) => !f.data)) toast("The attached PDF isn't kept after reloading. Attach it again for a full answer.");
     upsert(active.id, (msgs) => msgs.slice(0, userIdx + 1));
-    void runRequest(active.id, active.messages.slice(0, userIdx), userMsg, instructionsFor(active.id));
+    void runRequest(active.id, active.messages.slice(0, userIdx), userMsg, instructionsFor(active.id), {
+      prior,
+      temp: active.temp,
+      ...(improve ? { improve: { ...improve, previous: prior?.content ?? "" } } : {}),
+    });
   };
 
   /* --------------------------------------------------------- actions */
@@ -1245,20 +1529,217 @@ export default function CadusAI() {
     const target = s ?? active;
     if (!target) return;
     setPop(null);
+    setDlFor("");
     void exportPdf(target.title, target.messages.filter((m) => !m.stopped).map((m) => ({ who: m.role === "user" ? "You" : m.review ? "Cadus (safety-reviewed)" : "Cadus", text: withSources(m.content, m.sources) })));
   };
 
-  const onFile = async (f?: File | null) => {
-    if (!f) return;
-    if (!f.type.startsWith("image/")) { toast("Please choose an image file"); return; }
-    try {
-      setImage(await fileToDataUrl(f));
-      setMode("image");
-      setPop(null);
-      taRef.current?.focus();
-    } catch {
-      toast("Couldn't read that image");
+  /** Attach files from the picker, a paste, a drop or the camera: images, PDFs and text files. */
+  const onFiles = async (list?: FileList | File[] | null) => {
+    const files = Array.from(list ?? []);
+    if (!files.length) return;
+    setPop(null);
+    let next = attachments;
+    let added = 0;
+    for (const f of files) {
+      try {
+        const a = await readAttachment(f, (img) => fileToDataUrl(img));
+        const problem = attachProblem(next, a);
+        if (problem) { toast(problem); continue; }
+        next = [...next, a];
+        added += 1;
+      } catch (e) {
+        toast(e instanceof Error ? e.message : `Couldn't read ${f.name}`);
+      }
     }
+    if (!added) return;
+    setAttachments(next);
+    // A first image switches to the systematic image read, as before.
+    if (mode === "general" && next.length === added && next.every((a) => a.kind === "image")) setMode("image");
+    taRef.current?.focus();
+  };
+  const onFile = (f?: File | null) => onFiles(f ? [f] : []);
+
+  /** Word and Markdown downloads of an answer or a whole chat. */
+  const downloadWord = (title: string, md: string) => {
+    downloadBlob(`${fileSlug(title, "cadus-answer")}.docx`, markdownToDocx(title, md));
+    toast("Word document downloaded");
+  };
+  const chatMarkdown = (t: Session) =>
+    `# ${t.title}\n\n${t.messages.filter((m) => !(m.stopped && m.content === "Response stopped.")).map((m) => (m.role === "user" ? `**You:** ${m.content}` : withSources(m.content, m.sources))).join("\n\n---\n\n")}\n`;
+  const exportSessionAs = (kind: "word" | "md", s?: Session) => {
+    const target = s ?? active;
+    if (!target) return;
+    setPop(null);
+    setDlFor("");
+    if (kind === "word") downloadWord(target.title, chatMarkdown(target).replace(/^# .*\n\n/, ""));
+    else downloadBlob(`${fileSlug(target.title, "cadus-chat")}.md`, new Blob([chatMarkdown(target)], { type: "text/markdown" }));
+  };
+  const shareAnswer = async (m: Msg) => {
+    const text = withSources(markdownToText(m.content), m.sources);
+    try {
+      if (navigator.share) await navigator.share({ title: active?.title || "Cadus answer", text });
+      else { await navigator.clipboard.writeText(text); toast("Copied to share"); }
+    } catch { /* share cancelled */ }
+  };
+
+  /** The version of an answer being shown (regenerated answers keep earlier versions). */
+  const allVersions = (m: Msg): Msg[] => [...(m.versions ?? []), m];
+  const shownVersion = (m: Msg): Msg => {
+    const all = allVersions(m);
+    const i = versionView[m.id];
+    return i === undefined || i < 0 || i >= all.length ? m : all[i];
+  };
+
+  /** Thumbs up or down; thumbs down can ask for a better answer straight away. */
+  const setFeedback = (m: Msg, value: "up" | "down" | undefined, note?: Msg["feedbackNote"]) => {
+    if (!active) return;
+    const sid = active.id;
+    // Feedback doesn't move the chat to the top of the list.
+    setSessions((p) => p.map((s) => (s.id !== sid ? s : {
+      ...s,
+      messages: s.messages.map((x) => (x.id === m.id ? { ...x, feedback: value, feedbackNote: value === "down" ? note ?? x.feedbackNote : undefined } : x)),
+    })));
+  };
+  const thumb = (m: Msg, value: "up" | "down") => {
+    if (m.feedback === value) {
+      setFeedback(m, undefined);
+      if (fb?.id === m.id) setFb(null);
+      return;
+    }
+    setFeedback(m, value);
+    if (value === "down") setFb({ id: m.id, reasons: [], comment: "" });
+    else {
+      if (fb?.id === m.id) setFb(null);
+      toast("Thanks for the feedback");
+    }
+  };
+  const submitFeedback = (improve: boolean) => {
+    if (!fb || !active) return;
+    const target = active.messages.find((x) => x.id === fb.id);
+    if (!target) { setFb(null); return; }
+    const note = { reasons: fb.reasons, comment: fb.comment.trim().slice(0, 600) };
+    setFeedback(target, "down", note);
+    setFb(null);
+    if (improve) regenerate(target.id, note);
+    else toast("Thanks. Your feedback is saved with this answer on this device.");
+  };
+
+  /** Canvas: open an answer as an editable document beside the chat. */
+  const openCanvas = (m: Msg) => {
+    const existing = docs.find((d) => d.msgId === m.id);
+    if (existing) { setCanvasId(existing.id); return; }
+    const q = questionFor(m);
+    const heading = /^#\s+(.+)$/m.exec(m.content)?.[1];
+    const title = clip(heading || (MODE[m.mode] && m.mode !== "general" ? `${MODE[m.mode].label}: ${stripPlaceholders(q) || q}` : stripPlaceholders(q) || q || "Cadus document"), 80).replace(/\?+$/, "");
+    // `m` is the version on screen (regenerated answers keep earlier versions).
+    const doc: CanvasDoc = { id: uid(), title, text: m.content, sessionId: active?.id, msgId: m.id, mode: m.mode, createdAt: Date.now(), updatedAt: Date.now(), history: [] };
+    setDocs((d) => [doc, ...d]);
+    setCanvasId(doc.id);
+    setPop(null);
+  };
+  /** A blank document: type it yourself or ask Cadus to write it. */
+  const newDocument = () => {
+    const doc: CanvasDoc = { id: uid(), title: "Untitled document", text: "", createdAt: Date.now(), updatedAt: Date.now(), history: [] };
+    setDocs((d) => [doc, ...d]);
+    setCanvasId(doc.id);
+    setPop(null);
+    setSidebarOpen(false);
+  };
+  const closeCanvas = () => {
+    // A blank document that was never written in isn't kept.
+    if (canvasDoc && !canvasDoc.text.trim()) {
+      const id = canvasDoc.id;
+      setDocs((d) => d.filter((x) => x.id !== id));
+    }
+    setCanvasId("");
+  };
+  const deleteDoc = (id: string) => {
+    setDocs((d) => d.filter((x) => x.id !== id));
+    if (canvasId === id) setCanvasId("");
+    toast("Document deleted");
+  };
+  const updateDoc = (doc: CanvasDoc) => setDocs((d) => d.map((x) => (x.id === doc.id ? doc : x)));
+  const canvasEdit = async (text: string, instruction: string): Promise<string> => {
+    // The privacy guard covers Canvas edits too.
+    const guard = (t: string) => (prefs.privacyGuard ? deidentify(t) : { text: t, total: 0 });
+    const doc = guard(text);
+    const ask = guard(instruction);
+    const hidden = doc.total + ask.total;
+    if (hidden) toast(`Privacy guard hid ${hidden === 1 ? "1 identifier" : `${hidden} identifiers`} before sending`);
+    const r = await invokeCadus({ action: "canvas-edit", document: doc.text, instruction: ask.text, mode: canvasDoc?.mode, language: prefs.language, model: prefs.model });
+    if (typeof r?.document !== "string" || !r.document.trim()) throw new Error("The edit came back empty. Please try again.");
+    return r.document as string;
+  };
+
+  /** Archive keeps a chat out of the sidebar without deleting it. */
+  const setArchived = (id: string, archived: boolean) => {
+    setSessions((p) => p.map((x) => (x.id === id ? { ...x, archived, pinned: archived ? false : x.pinned } : x)));
+    setPop(null);
+    if (archived && id === activeId) setActiveId("");
+    toast(archived ? "Chat archived. Find it in Settings, Data and privacy." : "Chat restored");
+  };
+
+  /** Voice mode: ask in the current chat and resolve with the spoken answer. */
+  const sendRef = useRef(send);
+  sendRef.current = send;
+  const voiceAsk = useCallback(async (text: string) => {
+    const reply = await sendRef.current(text, undefined, { voice: true });
+    return reply && !reply.error ? reply.content : "";
+  }, []);
+  const canVoice = voiceSupported();
+  const startVoice = () => {
+    if (!voiceSupported()) { toast("Voice mode needs a browser with speech recognition, such as Chrome, Edge or Safari"); return; }
+    if (pending) { toast("Wait for the current answer to finish"); return; }
+    if (view !== "chat") setView("chat");
+    if (mode === "slides" || mode === "image") setMode("general");
+    setPop(null);
+    setSidebarOpen(false);
+    setVoiceOpen(true);
+  };
+
+  /** Desktop notifications when an answer is ready in a background tab. */
+  const toggleNotify = async () => {
+    if (prefs.notify) { setPrefs((p) => ({ ...p, notify: false })); return; }
+    if (typeof Notification === "undefined") { toast("This browser doesn't support notifications"); return; }
+    let perm = Notification.permission;
+    if (perm === "default") {
+      try { perm = await Notification.requestPermission(); } catch { /* treated as blocked */ }
+    }
+    if (perm === "granted") {
+      setPrefs((p) => ({ ...p, notify: true }));
+      toast("Cadus will notify you when an answer is ready");
+    } else toast("Notifications are blocked for this site. Allow them in your browser settings.");
+  };
+
+  /** Drag files anywhere onto the chat to attach them. */
+  const hasFiles = (e: ReactDragEvent) => Array.from(e.dataTransfer?.types ?? []).includes("Files");
+  const dropHandlers = {
+    onDragEnter: (e: ReactDragEvent) => { if (hasFiles(e)) { e.preventDefault(); setDragDepth((d) => d + 1); } },
+    onDragOver: (e: ReactDragEvent) => { if (hasFiles(e)) e.preventDefault(); },
+    onDragLeave: (e: ReactDragEvent) => { if (hasFiles(e)) setDragDepth((d) => Math.max(0, d - 1)); },
+    onDrop: (e: ReactDragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      setDragDepth(0);
+      if (view !== "chat" && view !== "project") setView("chat");
+      void onFiles(e.dataTransfer.files);
+    },
+  };
+
+  /** Copy buttons on tables and code blocks in answers. */
+  const onThreadClick = (e: ReactMouseEvent<HTMLDivElement>) => {
+    const btn = (e.target as HTMLElement).closest?.(".md-copy") as HTMLElement | null;
+    if (!btn) return;
+    const box = btn.parentElement;
+    const table = box?.querySelector("table");
+    const text = table
+      ? Array.from(table.querySelectorAll("tr")).map((tr) => Array.from(tr.querySelectorAll("th,td")).map((c) => (c.textContent || "").trim()).join("\t")).join("\n")
+      : box?.querySelector("pre")?.textContent || "";
+    if (!text) return;
+    void navigator.clipboard?.writeText(text).then(
+      () => { btn.textContent = "Copied"; toast(table ? "Table copied (paste into Excel or Word)" : "Code copied"); window.setTimeout(() => { btn.textContent = "Copy"; }, 1500); },
+      () => toast("Couldn't copy to the clipboard"),
+    );
   };
 
   const toggleVoice = () => {
@@ -1284,7 +1765,7 @@ export default function CadusAI() {
   const pickMode = (id: ModeId) => {
     setMode(id);
     setPop(null);
-    if (id === "image" && !image) fileRef.current?.click();
+    if (id === "image" && !attachments.some((a) => a.kind === "image")) fileRef.current?.click();
     focusComposer();
   };
 
@@ -1325,6 +1806,13 @@ export default function CadusAI() {
       { key: "a:ix", label: "Open the interaction checker", icon: Pill, run: () => openCalculators({ tab: "ix" }) },
       { key: "a:practice", label: "Open practice", icon: Target, run: () => openPractice() },
       { key: "a:profile", label: profile ? "Edit your profile" : "Personalise Cadus", icon: UserCog, run: () => setProfileOpen(true) },
+      { key: "a:temp", label: "New temporary chat", hint: "Not saved", icon: MessageSquareDashed, run: () => { newChat(); setTempNext(true); } },
+      { key: "a:voice", label: "Start voice mode", icon: AudioLines, run: () => startVoice() },
+      { key: "a:think", label: think ? "Turn off Think deeper" : "Think deeper on the next answer", icon: Lightbulb, run: () => { setThink(!think); focusComposer(); } },
+      { key: "a:newdoc", label: "New document", hint: "Canvas", icon: FilePen, run: () => newDocument() },
+      { key: "a:archived", label: "Archived chats", icon: Archive, run: () => { setArchivedOpen(true); openSettings("data"); } },
+      { key: "a:memory", label: "Manage memory and custom instructions", icon: Brain, run: () => openSettings("personal") },
+      { key: "a:docs", label: "Open documents", icon: FilePen, run: () => { setLibTab("docs"); setView("library"); } },
       { key: "a:theme", label: dark ? "Switch to light theme" : "Switch to dark theme", icon: dark ? Sun : Moon, run: () => setPrefs((p) => ({ ...p, theme: dark ? "light" : "dark" })) },
       { key: "a:font", label: serif ? "Use sans-serif answers" : "Use serif answers", icon: Palette, run: () => setPrefs((p) => ({ ...p, answerFont: serif ? "sans" : "serif" })) },
       { key: "a:settings", label: "Open settings", icon: Settings, run: () => openSettings() },
@@ -1342,9 +1830,9 @@ export default function CadusAI() {
       }))
       : [];
     const chats: PaletteItem[] = sessions
-      .filter((s) => match(s.title) || (q.length > 2 && s.messages.some((m) => m.content.toLowerCase().includes(q))))
+      .filter((s) => !s.temp && (match(s.title) || (q.length > 2 && s.messages.some((m) => m.content.toLowerCase().includes(q)))))
       .slice(0, 8)
-      .map((s) => ({ key: `c:${s.id}`, label: s.title, hint: relTime(s.updatedAt), icon: MODE[sessionMode(s)].icon, run: () => openSession(s.id) }));
+      .map((s) => ({ key: `c:${s.id}`, label: s.title, hint: s.archived ? "Archived" : relTime(s.updatedAt), icon: MODE[sessionMode(s)].icon, run: () => openSession(s.id) }));
     return [
       { label: "Chats", items: chats },
       { label: "Projects", items: projectItems },
@@ -1392,13 +1880,22 @@ export default function CadusAI() {
 
   const composer = (placement: "hero" | "dock") => (
     <div ref={composerRef} className={`cx-composer ${placement === "hero" ? "is-hero" : ""} ${listening ? "is-rec" : ""}`}>
-      {image && (
+      {attachments.length > 0 && (
         <div className="cx-att-row">
-          <div className="cx-att">
-            <img src={image} alt="Attached" />
-            <div><b>Image attached</b><small>Ready to analyse</small></div>
-            <button onClick={() => setImage("")} aria-label="Remove image"><X size={14} /></button>
-          </div>
+          {attachments.map((a) => (
+            <div key={a.id} className={`cx-att ${a.kind}`} title={describeAttachment(a)}>
+              {a.kind === "image" && a.data ? (
+                <img src={a.data} alt="" />
+              ) : (
+                <span className={`cx-att-ic ${a.kind}`}><FileText size={16} /><em>{a.kind === "pdf" ? "PDF" : "TXT"}</em></span>
+              )}
+              <div>
+                <b>{a.name}</b>
+                <small>{a.kind === "image" ? "Image" : a.kind === "pdf" ? (a.pages ? `PDF · ${a.pages} page${a.pages === 1 ? "" : "s"}` : "PDF") : "Text"} · {formatSize(a.size)}</small>
+              </div>
+              <button onClick={() => setAttachments((l) => l.filter((x) => x.id !== a.id))} aria-label={`Remove ${a.name}`}><X size={14} /></button>
+            </div>
+          ))}
         </div>
       )}
       {liveGuard && liveGuard.total > 0 && (
@@ -1423,8 +1920,12 @@ export default function CadusAI() {
         aria-label="Message Cadus"
         onChange={(e) => setInput(e.target.value)}
         onPaste={(e) => {
-          const f = Array.from(e.clipboardData.files).find((x) => x.type.startsWith("image/"));
-          if (f) { e.preventDefault(); void onFile(f); }
+          const files = Array.from(e.clipboardData.files);
+          if (!files.length) return;
+          // Copying from Word or Excel also puts a picture of the selection on the clipboard: keep the text.
+          if (e.clipboardData.getData("text/plain").trim() && files.every((f) => f.type.startsWith("image/"))) return;
+          e.preventDefault();
+          void onFiles(files);
         }}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey && prefs.enterToSend && !e.nativeEvent.isComposing) {
@@ -1435,7 +1936,7 @@ export default function CadusAI() {
       />
       <div className="cx-cbar">
         <div className="cx-cbar-l">
-          <button className={`cx-cbtn bordered cx-tip ${pop === "add" ? "open" : ""}`} data-pop="add" data-tip="Add image" onClick={() => toggleComposerMenu("add", placement)} aria-label="Add image"><Plus size={18} /></button>
+          <button className={`cx-cbtn bordered cx-tip ${pop === "add" ? "open" : ""}`} data-pop="add" data-tip="Add files and more" onClick={() => toggleComposerMenu("add", placement)} aria-label="Add files and more"><Plus size={18} /></button>
           <button className={`cx-cbtn cx-tools-btn ${pop === "tools" ? "open" : ""}`} data-pop="tools" onClick={() => toggleComposerMenu("tools", placement)} aria-haspopup="menu" aria-expanded={pop === "tools"}>
             <SlidersHorizontal size={16} /><span>Tools</span>
           </button>
@@ -1447,6 +1948,16 @@ export default function CadusAI() {
           >
             <Globe size={16} /><span>Sources</span>
           </button>
+          {!ROLEPLAY.has(mode) && mode !== "slides" && (
+            <button
+              className={`cx-cbtn cx-think-btn cx-tip ${think ? "on" : ""}`}
+              data-tip={think ? "Think deeper is on: slower, more careful reasoning" : "Think deeper for complex cases"}
+              aria-pressed={think}
+              onClick={() => setThink((v) => !v)}
+            >
+              <Lightbulb size={16} /><span>Think</span>
+            </button>
+          )}
           {mode !== "general" && (
             <span className="cx-mode-pill">
               <modeDef.icon size={14} />
@@ -1460,17 +1971,27 @@ export default function CadusAI() {
           <button className={`cx-cbtn cx-tip ${listening ? "rec" : ""}`} data-tip={listening ? "Stop dictation" : "Dictate"} onClick={toggleVoice} aria-label="Dictate"><Mic size={18} /></button>
           {pending ? (
             <button className="cx-send cx-tip" data-tip="Stop" onClick={stop} aria-label="Stop response"><Square size={12} fill="currentColor" /></button>
+          ) : !input.trim() && !attachments.length && canVoice ? (
+            <button className="cx-send voice cx-tip" data-tip="Voice mode" onClick={startVoice} aria-label="Start voice mode"><AudioLines size={18} /></button>
           ) : (
-            <button className="cx-send" onClick={() => send()} disabled={!input.trim() && !image} aria-label="Send"><ArrowUp size={18} /></button>
+            <button className="cx-send" onClick={() => send()} disabled={!input.trim() && !attachments.length} aria-label="Send"><ArrowUp size={18} /></button>
           )}
         </div>
       </div>
       {pop === "add" && (
         <div className={`cx-pop cx-add-menu ${placement === "hero" ? "down" : "up"}`} data-pop="add" role="menu" style={{ maxHeight: menuMax }}>
-          <button className="cx-pop-i" onClick={() => { setPop(null); fileRef.current?.click(); }}><ImagePlus size={16} /> Upload an image <span className="r">X-ray, ECG, report</span></button>
+          <button className="cx-pop-i" onClick={() => { setPop(null); fileRef.current?.click(); }}><Paperclip size={16} /> Add photos and files <span className="r">Images, PDFs</span></button>
           <button className="cx-pop-i" onClick={() => { setPop(null); setCameraOpen(true); }}><Camera size={16} /> Take a photo</button>
           <div className="cx-pop-sep" />
-          <p className="cx-pop-gl">Tip: paste an image straight into the message box</p>
+          {!ROLEPLAY.has(mode) && mode !== "slides" && (
+            <button className="cx-pop-i" onClick={() => { setThink((v) => !v); setPop(null); focusComposer(); }}>
+              <Lightbulb size={16} /> Think deeper {think && <Check size={15} className="r" />}
+            </button>
+          )}
+          <button className="cx-pop-i" onClick={() => pickMode("research")}><Telescope size={16} /> Deep research {mode === "research" && <Check size={15} className="r" />}</button>
+          <button className="cx-pop-i" onClick={() => newDocument()}><FilePen size={16} /> New document <span className="r">Canvas</span></button>
+          <div className="cx-pop-sep" />
+          <p className="cx-pop-gl">Tip: drag files onto Cadus, or paste an image into the message box</p>
         </div>
       )}
       {pop === "tools" && (
@@ -1511,12 +2032,25 @@ export default function CadusAI() {
   const HOME_CALCS: [string, string][] = [
     ["crcl", "CrCl"], ["egfr", "eGFR"], ["gcs", "GCS"], ["curb65", "CURB-65"], ["chads", "CHA₂DS₂-VASc"], ["qtc", "QTc"], ["edd", "Due date"], ["pedsdose", "Paediatric dose"],
   ];
-  const recentChats = [...sessions].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 7);
+  const recentChats = [...listed].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 7);
   const projectName = (id?: string) => (id ? projects.find((p) => p.id === id)?.name : undefined);
   const todayLabel = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
 
+  /** A temporary chat starts from a plain page that says what it means. */
+  const renderTempHome = () => (
+    <section className="cx-home">
+      <div className="cx-temp-home">
+        <span className="cx-temp-ic"><MessageSquareDashed size={22} /></span>
+        <h1>Temporary chat</h1>
+        <p>This chat won't appear in your history, won't use or update memory, and is deleted when you leave it. Your custom instructions, the privacy guard and the safety review still apply.</p>
+        {showHeroComposer && <div className="cx-hero-c">{composer("hero")}</div>}
+        <button className="cx-btn" onClick={() => setTempNext(false)}>Turn off temporary chat</button>
+      </div>
+    </section>
+  );
+
   /** The home page is a small workspace dashboard: ask, then pick up recent work. */
-  const renderHome = () => (
+  const renderHome = () => tempNext ? renderTempHome() : (
     <section className="cx-home">
       <div className="cx-dash">
         <header className="cx-dash-h">
@@ -1552,7 +2086,7 @@ export default function CadusAI() {
             <section className="cx-panel">
               <header className="cx-panel-h">
                 <b><History size={15} /> Recent chats</b>
-                {sessions.length > 0 && <button onClick={openPalette}><Search size={13} /> Search</button>}
+                {listed.length > 0 && <button onClick={openPalette}><Search size={13} /> Search</button>}
               </header>
               <div className="cx-panel-b">
                 {recentChats.length ? recentChats.map((s) => {
@@ -1741,18 +2275,66 @@ export default function CadusAI() {
     return !q || x.question.toLowerCase().includes(q) || x.answer.toLowerCase().includes(q);
   });
 
+  const docsFiltered = docs.filter((d) => {
+    const q = libQuery.trim().toLowerCase();
+    return !q || d.title.toLowerCase().includes(q) || d.text.toLowerCase().includes(q);
+  });
+
   const renderLibrary = () => (
     <section className="cx-page">
       <header className="cx-page-h">
-        <div><h1>Library</h1><p>Answers you've saved for quick reference. Saved items stay even if you delete the chat.</p></div>
-        {library.length > 0 && (
-          <label className="cx-search">
-            <Search size={15} />
-            <input value={libQuery} onChange={(e) => setLibQuery(e.target.value)} placeholder="Search saved answers" />
-          </label>
-        )}
+        <div>
+          <h1>Library</h1>
+          <p>{libTab === "docs" ? "Documents you've made or edited in Canvas: notes, letters and summaries, ready to export to Word or PDF." : "Answers you've saved for quick reference. Saved items stay even if you delete the chat."}</p>
+        </div>
+        <div className="cx-page-acts">
+          {(libTab === "docs" ? docs.length : library.length) > 0 && (
+            <label className="cx-search">
+              <Search size={15} />
+              <input value={libQuery} onChange={(e) => setLibQuery(e.target.value)} placeholder={libTab === "docs" ? "Search documents" : "Search saved answers"} />
+            </label>
+          )}
+          {libTab === "docs" && <button className="cx-btn primary" onClick={newDocument}><Plus size={15} /> New document</button>}
+        </div>
       </header>
-      {library.length === 0 ? (
+      <div className="cx-tabs cx-lib-tabs" role="tablist">
+        <button role="tab" aria-selected={libTab === "saved"} className={libTab === "saved" ? "on" : ""} onClick={() => setLibTab("saved")}>Saved answers{library.length ? ` · ${library.length}` : ""}</button>
+        <button role="tab" aria-selected={libTab === "docs"} className={libTab === "docs" ? "on" : ""} onClick={() => setLibTab("docs")}>Documents{docs.length ? ` · ${docs.length}` : ""}</button>
+      </div>
+      {libTab === "docs" ? (
+        docs.length === 0 ? (
+          <div className="cx-empty-state">
+            <span className="cx-proj-ic" style={{ marginBottom: 0 }}><FilePen size={20} /></span>
+            <h3>No documents yet</h3>
+            <p>Open any answer in Canvas to edit it as a document, or start a blank one. Cadus can shorten, formalise, translate or rewrite it for patients, and you can download it for Word or as a PDF.</p>
+            <button className="cx-btn" onClick={newDocument}><Plus size={15} /> New document</button>
+          </div>
+        ) : docsFiltered.length === 0 ? (
+          <div className="cx-empty-state"><h3>No matches</h3><p>Try a different search term.</p></div>
+        ) : (
+          <div className="cx-lib">
+            {docsFiltered.map((d) => {
+              const m = d.mode ? MODE[d.mode as ModeId] : undefined;
+              return (
+                <article key={d.id} className="cx-lib-card cx-doc">
+                  <div className="cx-lib-meta">
+                    <span className="cx-badge"><FilePen size={12} /> {m && m.id !== "general" ? m.label : "Document"}</span>
+                    <span>Edited {relTime(d.updatedAt)}</span>
+                  </div>
+                  <h3>{d.title}</h3>
+                  <p>{markdownToText(d.text) || "Empty document"}</p>
+                  <div className="cx-lib-acts">
+                    <button onClick={() => setCanvasId(d.id)}><FilePen size={13} /> Open</button>
+                    <button onClick={() => downloadWord(d.title, d.text)} disabled={!d.text.trim()}><FileDown size={13} /> Word</button>
+                    <button onClick={() => void exportPdf(d.title, [{ who: "", text: d.text }])} disabled={!d.text.trim()}><Download size={13} /> PDF</button>
+                    <button className="danger" onClick={() => deleteDoc(d.id)}><Trash2 size={13} /> Delete</button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )
+      ) : library.length === 0 ? (
         <div className="cx-empty-state">
           <CadusMark size={40} />
           <h3>Nothing saved yet</h3>
@@ -1834,7 +2416,7 @@ export default function CadusAI() {
 
   const renderProject = () => {
     if (!project) return null;
-    const list = sessions.filter((s) => s.projectId === project.id);
+    const list = listed.filter((s) => s.projectId === project.id);
     const ids = new Set(list.map((s) => s.id));
     const saved = library.filter((x) => ids.has(x.sessionId)).length;
     const last = Math.max(project.updatedAt, projectStats[project.id]?.last ?? 0);
@@ -1995,13 +2577,316 @@ export default function CadusAI() {
   /** A viva or OSCE that hasn't been scored yet. */
   const sim = lastUser && ROLEPLAY.has(lastUser.mode) && !/##\s*(Scorecard|Examiner feedback)/i.test(lastAssistant?.content ?? "") ? lastUser.mode : null;
 
+  /** Thumbs-down form: what was wrong, and an option to get a better answer straight away. */
+  const renderFeedback = () => fb && (
+    <div className="cx-fb" role="group" aria-label="Feedback on this answer">
+      <div className="cx-fb-h">
+        <b>What could be better?</b>
+        <button className="cx-ib" onClick={() => setFb(null)} aria-label="Close feedback"><X size={16} /></button>
+      </div>
+      <div className="cx-fb-chips">
+        {FEEDBACK_REASONS.map((r) => {
+          const on = fb.reasons.includes(r);
+          return (
+            <button key={r} className={on ? "on" : ""} aria-pressed={on} onClick={() => setFb({ ...fb, reasons: on ? fb.reasons.filter((x) => x !== r) : [...fb.reasons, r] })}>{r}</button>
+          );
+        })}
+      </div>
+      <textarea
+        value={fb.comment}
+        onChange={(e) => setFb({ ...fb, comment: e.target.value })}
+        placeholder="Add details (optional), for example the dose or guideline that should be used"
+        maxLength={600}
+        aria-label="Feedback details"
+      />
+      <div className="cx-fb-f">
+        <span>Saved with this answer on this device.</span>
+        <button className="cx-btn" onClick={() => submitFeedback(false)}>Submit</button>
+        <button className="cx-btn primary" onClick={() => submitFeedback(true)} disabled={!!pending}><RefreshCw size={14} /> Improve this answer</button>
+      </div>
+    </div>
+  );
+
+  /** One answer, with its versions (from regenerating), actions and follow-ups. */
+  const renderAnswer = (m: Msg) => {
+    const all = allVersions(m);
+    const want = versionView[m.id];
+    const vi = want === undefined || want < 0 || want >= all.length ? all.length - 1 : want;
+    const v = all[vi];
+    // The version on screen, under this message's id, for copy, save, read aloud and export.
+    const shown: Msg = vi === all.length - 1 ? m : { ...v, id: m.id, versions: m.versions, feedback: m.feedback };
+    const src = safeSources(v.sources);
+    const doc = docByMsg.get(m.id);
+    const partial = !!m.stopped && !!m.content.trim() && m.content !== "Response stopped.";
+    const menuKey = `msg:${m.id}`;
+    return (
+      <div key={m.id} className="cx-a">
+        <div className="cx-a-h">
+          <CadusMark size={20} title="Cadus" />
+          {v.review && (
+            <span className="cx-rv"><ShieldCheck size={13} /> Safety-reviewed{v.review.changes.length ? ` · ${v.review.changes.length} correction${v.review.changes.length > 1 ? "s" : ""}` : ""}</span>
+          )}
+          {v.review && <span className={`cx-conf ${v.review.confidence}`}>{CONF_LABEL[v.review.confidence]}</span>}
+          {v.library && (
+            <span className="cx-libchip" title={`Library mode: ${v.library.reason}`}>
+              <Library size={13} /> Medical Library · {v.library.mode === "llm" ? "written by the backup model" : "quoted"}
+            </span>
+          )}
+        </div>
+        {m.error ? (
+          <div className="cx-err">
+            <AlertTriangle size={16} />
+            <span>{m.content}</span>
+            <button onClick={() => regenerate(m.id)} disabled={!!pending}><RefreshCw size={13} /> Retry</button>
+          </div>
+        ) : m.stopped ? (
+          <>
+            {partial && <MdBlock text={m.content} className="is-stopped" />}
+            <div className="cx-stopped">
+              <span>
+                {!partial ? "Response stopped." : prefs.safetyReview && !ROLEPLAY.has(m.mode) ? "Stopped before it was finished. This part wasn't safety-reviewed." : "Stopped before it was finished."}
+              </span>
+              <button onClick={() => regenerate(m.id)} disabled={!!pending}><RefreshCw size={13} /> Regenerate</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <MdBlock text={v.content} cites={src.length} />
+            {src.length > 0 && (
+              <div className="cx-sources">
+                <p className="cx-src-h"><Globe size={14} /> Sources</p>
+                <ol>
+                  {src.map((x) => (
+                    <li key={x.n}>
+                      <a href={x.url} target="_blank" rel="noopener noreferrer" title={x.title}>
+                        <span className="n">{x.n}</span><span className="t">{x.title}</span><span className="d">{hostOf(x.url)}</span>
+                      </a>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+            {v.review && (
+              <details className="cx-rvd">
+                <summary><ShieldCheck size={14} /> Safety review details <ChevronDown size={14} className="chev" /></summary>
+                <div className="cx-rvd-b">
+                  {v.review.checked.length > 0 && (
+                    <div className="cx-rvd-row"><span>Checked</span><div className="chips">{v.review.checked.map((c) => <em key={c}>{c}</em>)}</div></div>
+                  )}
+                  <div className="cx-rvd-row">
+                    <span>Corrections</span>
+                    {v.review.changes.length ? <ul>{v.review.changes.map((c) => <li key={c}>{c}</li>)}</ul> : <p>None needed. The draft was approved as written.</p>}
+                  </div>
+                  <p className="cx-rvd-note">Automated review by {modelLabel(v.review.model, v.review.provider)}. It catches most errors but cannot guarantee there are none. Confirm doses and decisions against current guidelines and your local protocols.</p>
+                </div>
+              </details>
+            )}
+            {v.reviewNote && <div className="cx-rvwarn"><ShieldAlert size={15} /> {v.reviewNote}</div>}
+            {(answerContext[m.id]?.ix.length ?? 0) > 0 && (
+              <InteractionNotice
+                matches={answerContext[m.id].ix}
+                onOpen={() => openCalculators({ tab: "ix", drugs: checkText(answerContext[m.id].q).drugs.map((d) => d.label) })}
+              />
+            )}
+            {v.deck && (
+              <div className="cx-deck">
+                <span className="cx-deck-ic"><Presentation size={21} /></span>
+                <span className="cx-deck-t"><b>{v.deck.title}</b><small>{v.deck.slides.length} slides · Lecture deck</small></span>
+                <button className="cx-deck-go" onClick={() => setDeck(v.deck!)}><Play size={13} fill="currentColor" /> Present</button>
+              </div>
+            )}
+            {doc ? (
+              <button className="cx-cvcard" onClick={() => setCanvasId(doc.id)}>
+                <span className="ic"><FilePen size={18} /></span>
+                <span className="t"><b>{doc.title}</b><small>Document · edited {relTime(doc.updatedAt)}</small></span>
+                <span className="go">Open <ArrowRight size={14} /></span>
+              </button>
+            ) : DOC_MODES.has(m.mode) && !v.deck ? (
+              <button className="cx-cvcard offer" onClick={() => openCanvas(shown)}>
+                <span className="ic"><FilePen size={18} /></span>
+                <span className="t"><b>Edit as a document</b><small>Refine or translate it, then download it for Word or as a PDF</small></span>
+                <span className="go">Open in Canvas <ArrowRight size={14} /></span>
+              </button>
+            ) : null}
+            <div className="cx-a-acts">
+              {all.length > 1 && (
+                <span className="cx-ver" role="group" aria-label={`Answer ${vi + 1} of ${all.length}`}>
+                  <button onClick={() => setVersionView((x) => ({ ...x, [m.id]: vi - 1 }))} disabled={vi === 0} aria-label="Previous answer"><ChevronLeft size={15} /></button>
+                  <span>{vi + 1} / {all.length}</span>
+                  <button onClick={() => setVersionView((x) => ({ ...x, [m.id]: vi + 1 }))} disabled={vi === all.length - 1} aria-label="Next answer"><ChevronRight size={15} /></button>
+                </span>
+              )}
+              <button className="cx-act cx-tip" data-tip={copied === m.id ? "Copied" : "Copy"} onClick={() => copy(shown)} aria-label="Copy">{copied === m.id ? <Check size={16} /> : <Copy size={16} />}</button>
+              <button className={`cx-act cx-tip ${m.feedback === "up" ? "on" : ""}`} data-tip="Good answer" onClick={() => thumb(m, "up")} aria-label="Good answer" aria-pressed={m.feedback === "up"}><ThumbsUp size={16} /></button>
+              <button className={`cx-act cx-tip ${m.feedback === "down" ? "on" : ""}`} data-tip="Bad answer" onClick={() => thumb(m, "down")} aria-label="Bad answer" aria-pressed={m.feedback === "down"}><ThumbsDown size={16} /></button>
+              <button className={`cx-act cx-tip ${speakingId === m.id ? "on" : ""}`} data-tip={speakingId === m.id ? "Stop reading" : "Read aloud"} onClick={() => speak(shown)} aria-label="Read aloud">
+                {speakingId === m.id ? <VolumeX size={16} /> : <Volume2 size={16} />}
+              </button>
+              <button className="cx-act cx-tip" data-tip="Regenerate" onClick={() => regenerate(m.id)} disabled={!!pending} aria-label="Regenerate"><RefreshCw size={16} /></button>
+              <button className={`cx-act cx-tip ${savedIds.has(m.id) ? "on" : ""}`} data-tip={savedIds.has(m.id) ? "Saved to Library" : "Save to Library"} onClick={() => toggleSave(shown)} aria-label="Save to Library">
+                {savedIds.has(m.id) ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
+              </button>
+              <div className="cx-rel" data-pop={menuKey}>
+                <button className={`cx-act cx-tip ${pop === menuKey ? "open" : ""}`} data-tip="More" onClick={() => togglePop(menuKey)} aria-label="More actions" aria-haspopup="menu" aria-expanded={pop === menuKey}><Ellipsis size={16} /></button>
+                {pop === menuKey && (
+                  <div className="cx-pop cx-msg-menu" role="menu">
+                    <button className="cx-pop-i" onClick={() => { setPop(null); openCanvas(shown); }}><FilePen size={16} /> {doc ? "Open in Canvas" : "Edit in Canvas"}</button>
+                    <button className="cx-pop-i" onClick={() => { setPop(null); downloadWord(clip(stripPlaceholders(questionFor(m)) || active?.title || "Cadus answer", 80), withSources(v.content, v.sources)); }}><FileDown size={16} /> Download for Word</button>
+                    <button className="cx-pop-i" onClick={() => { setPop(null); exportAnswer(shown); }}><Download size={16} /> Download as PDF</button>
+                    <button className="cx-pop-i" onClick={() => { setPop(null); void shareAnswer(shown); }}><Share2 size={16} /> Share</button>
+                  </div>
+                )}
+              </div>
+              <span className="cx-a-by">
+                {v.library
+                  ? `${v.library.mode === "llm" ? BACKUP_MODEL : "Quoted"} · Cadus Medical Library`
+                  : shortModel(modelLabel(v.model, v.provider))}
+                {v.review ? ` · reviewed by ${shortModel(modelLabel(v.review.model, v.review.provider))}` : ""}
+                {v.took ? ` · ${fmtTook(v.took)}` : ""}
+              </span>
+            </div>
+            {fb?.id === m.id && renderFeedback()}
+            {m.id === lastAssistant?.id && !pending && (() => {
+              const ctx = answerContext[m.id];
+              if (!ctx || ROLEPLAY.has(m.mode)) return null;
+              const calcs = STUDY_MODES.has(m.mode) ? [] : suggestCalculators(ctx.q, m.content);
+              const ward = CASE_MODES.has(m.mode) || (m.mode === "general" && looksLikeCase(ctx.q));
+              if (!calcs.length && !ward) return null;
+              const lang = wardLang || prefs.language;
+              return (
+                <div className="cx-next">
+                  {ward && (
+                    <div className="cx-next-row">
+                      <span className="cx-next-l">Next for this patient</span>
+                      {WARD_ACTIONS.filter((w) => w.mode !== m.mode).map((w) => (w.id === "patient" ? (
+                        <span key={w.id} className="cx-ward-lang">
+                          <button className="cx-chip2" onClick={() => send(w.prompt(lang), "patient", { lang })}><Users size={14} /> {w.label}</button>
+                          <select value={lang} onChange={(e) => setWardLang(e.target.value)} aria-label="Language for the patient">
+                            {LANGUAGES.map((l) => <option key={l}>{l}</option>)}
+                          </select>
+                        </span>
+                      ) : (
+                        <button key={w.id} className="cx-chip2" onClick={() => send(w.prompt(prefs.language), w.mode)}>
+                          {w.id === "rounds" ? <ClipboardCheck size={14} /> : w.id === "referral" ? <Mail size={14} /> : <FileText size={14} />} {w.label}
+                        </button>
+                      )))}
+                    </div>
+                  )}
+                  {calcs.length > 0 && (
+                    <div className="cx-next-row">
+                      <span className="cx-next-l">Calculate</span>
+                      {calcs.map((c) => (
+                        <button key={c.id} className="cx-chip2" onClick={() => openCalculators({ calc: c.id })}><Calculator size={14} /> {c.name}</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+            {m.id === lastAssistant?.id && !pending && FOLLOW[m.mode].length > 0 && (
+              <div className="cx-follow">
+                <p>Suggested follow-ups</p>
+                {FOLLOW[m.mode].map((f) => (
+                  <button key={f.text} onClick={() => send(f.text, f.mode ?? m.mode)}><CornerDownRight size={15} /> {f.text}</button>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
+  };
+
+  /** The answer being written: progress steps, then the text as it streams in. */
+  const renderPending = (p: NonNullable<typeof pending>) => {
+    const reviewer = STUDY_MODES.has(p.mode) ? MODEL_DEF.medius.short : MODEL_DEF.magnus.short;
+    const draftLabel = p.think
+      ? `Thinking it through carefully${p.search ? " and searching trusted sources" : ""}`
+      : p.doc ? `Reading the attached document${p.search ? " and searching trusted sources" : ""}`
+      : p.search ? "Searching trusted medical sources and drafting"
+      : p.image ? "Reviewing the image"
+      : MODE[p.mode].busy;
+    const status = p.mode === "slides" ? "Designing your deck"
+      : p.stage === "review" ? "Safety review"
+      : p.stage === "library" ? "Library mode"
+      : p.think ? "Thinking deeply"
+      : "Drafting";
+    const skeleton = (
+      <div className="cx-sk-wrap" aria-hidden>
+        <i className="cx-sk" style={{ width: "94%" }} />
+        <i className="cx-sk" style={{ width: "82%" }} />
+        <i className="cx-sk" style={{ width: "60%" }} />
+      </div>
+    );
+    return (
+      <div className="cx-live-a">
+        <div className="cx-a-h">
+          <CadusMark size={20} thinking title="Cadus is working" />
+          <span className="cx-live-st">{status}{elapsed > 0 && <em> · {elapsed}s</em>}</span>
+        </div>
+        <div className="cx-think">
+          <div className="cx-steps">
+            {p.mode === "slides" ? (
+              <div className="cx-step on"><i className="cx-spin" /> {p.review ? "Designing your deck and fact-checking every slide" : "Designing your deck"}</div>
+            ) : (
+              <>
+                {p.stage === "library" ? (
+                  <>
+                    <div className="cx-step done"><AlertTriangle size={15} className="warn" /> The main AI is unavailable (no AI credits). Switching to Library mode</div>
+                    <div className="cx-step on"><i className="cx-spin" /> Searching the Cadus Medical Library and preparing the answer</div>
+                  </>
+                ) : (
+                  <div className={`cx-step ${p.stage === "draft" ? "on" : "done"}`}>
+                    {p.stage === "draft" ? <i className="cx-spin" /> : <Check size={15} />}
+                    {draftLabel}
+                  </div>
+                )}
+                {p.review && (
+                  <div className={`cx-step ${p.stage === "review" ? "on" : "todo"}`}>
+                    {p.stage === "review" ? <i className="cx-spin" /> : <i className="cx-dot" />}
+                    Safety review by {reviewer}: doses, interactions, red flags
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+          {p.mode === "slides" ? skeleton : (
+            <LiveAnswer store={streamStore} writing={p.stage === "draft"} onGrow={followStream} placeholder={skeleton} />
+          )}
+          {p.stage === "review" && (
+            <p className="cx-live-note"><ShieldCheck size={14} /> You're reading the draft. {reviewer} is checking it, and the reviewed answer will replace it.</p>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const renderThread = () => (
-    <div className="cx-thread">
+    <div className="cx-thread" onClick={onThreadClick}>
       {messages.map((m) =>
         m.role === "user" ? (
           <div key={m.id} className="cx-u">
             {m.mode !== "general" && (() => { const I = MODE[m.mode].icon; return <span className="cx-u-mode"><I size={13} /> {MODE[m.mode].label}</span>; })()}
-            {m.image && <img src={m.image} alt="Attached by you" className="cx-u-img" />}
+            {m.image && <img src={m.image} alt="Attached by you" className="cx-u-img" onClick={() => setLightbox(m.image || "")} />}
+            {m.files?.length ? (
+              <div className={`cx-u-files ${m.files.filter((f) => f.kind === "image" && f.data).length > 1 ? "multi" : ""}`}>
+                {m.files.map((f) => (f.kind === "image" && f.data ? (
+                  <img key={f.id} src={f.data} alt={f.name} className="cx-u-img" onClick={() => setLightbox(f.data || "")} />
+                ) : (
+                  <span
+                    key={f.id}
+                    className={`cx-u-file ${f.data ? "" : "gone"}`}
+                    title={f.data ? describeAttachment(f) : `${describeAttachment(f)}. Not kept after reloading: attach it again to ask about it.`}
+                  >
+                    <span className={`cx-att-ic ${f.kind}`}><FileText size={16} /><em>{f.kind === "pdf" ? "PDF" : f.kind === "image" ? "IMG" : "TXT"}</em></span>
+                    <span className="t">
+                      <b>{f.name}</b>
+                      <small>{f.kind === "pdf" ? (f.pages ? `PDF · ${f.pages} page${f.pages === 1 ? "" : "s"}` : "PDF") : f.kind === "image" ? "Image" : "Text"} · {formatSize(f.size)}</small>
+                    </span>
+                  </span>
+                )))}
+              </div>
+            ) : null}
             {editing?.id === m.id ? (
               <div className="cx-u-edit">
                 <textarea
@@ -2023,7 +2908,7 @@ export default function CadusAI() {
             ) : (
               <>
                 <div className="cx-u-b">{m.content}</div>
-                {(m.privacy?.total || (m.lang && m.lang !== "English")) && (
+                {(!!m.privacy?.total || (!!m.lang && m.lang !== "English") || !!m.think || !!m.voice) && (
                   <div className="cx-u-notes">
                     {m.privacy && m.privacy.total > 0 && (
                       <span className="cx-u-priv" title="Cadus's privacy guard replaced these details before your message was sent. The originals were not stored.">
@@ -2031,6 +2916,8 @@ export default function CadusAI() {
                       </span>
                     )}
                     {m.lang && m.lang !== "English" && <span className="cx-u-priv"><Languages size={13} /> Reply in {m.lang}</span>}
+                    {m.think && <span className="cx-u-priv tag"><Lightbulb size={13} /> Think deeper</span>}
+                    {m.voice && <span className="cx-u-priv tag"><AudioLines size={13} /> Voice</span>}
                   </div>
                 )}
                 <div className="cx-u-acts">
@@ -2040,181 +2927,9 @@ export default function CadusAI() {
               </>
             )}
           </div>
-        ) : (
-          <div key={m.id} className="cx-a">
-            <div className="cx-a-h">
-              <CadusMark size={20} title="Cadus" />
-              {m.review && (
-                <span className="cx-rv"><ShieldCheck size={13} /> Safety-reviewed{m.review.changes.length ? ` · ${m.review.changes.length} correction${m.review.changes.length > 1 ? "s" : ""}` : ""}</span>
-              )}
-              {m.review && <span className={`cx-conf ${m.review.confidence}`}>{CONF_LABEL[m.review.confidence]}</span>}
-              {m.library && (
-                <span className="cx-libchip" title={`Library mode: ${m.library.reason}`}>
-                  <Library size={13} /> Medical Library · {m.library.mode === "llm" ? "written by the backup model" : "quoted"}
-                </span>
-              )}
-            </div>
-            {m.error ? (
-              <div className="cx-err">
-                <AlertTriangle size={16} />
-                <span>{m.content}</span>
-                <button onClick={() => regenerate(m.id)} disabled={!!pending}><RefreshCw size={13} /> Retry</button>
-              </div>
-            ) : m.stopped ? (
-              <div className="cx-stopped">
-                <span>Response stopped.</span>
-                <button onClick={() => regenerate(m.id)} disabled={!!pending}><RefreshCw size={13} /> Regenerate</button>
-              </div>
-            ) : (
-              <>
-                <div className="cx-md" dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content, { cites: safeSources(m.sources).length }) }} />
-                {safeSources(m.sources).length > 0 && (
-                  <div className="cx-sources">
-                    <p className="cx-src-h"><Globe size={14} /> Sources</p>
-                    <ol>
-                      {safeSources(m.sources).map((x) => (
-                        <li key={x.n}>
-                          <a href={x.url} target="_blank" rel="noopener noreferrer" title={x.title}>
-                            <span className="n">{x.n}</span><span className="t">{x.title}</span><span className="d">{hostOf(x.url)}</span>
-                          </a>
-                        </li>
-                      ))}
-                    </ol>
-                  </div>
-                )}
-                {m.review && (
-                  <details className="cx-rvd">
-                    <summary><ShieldCheck size={14} /> Safety review details <ChevronDown size={14} className="chev" /></summary>
-                    <div className="cx-rvd-b">
-                      {m.review.checked.length > 0 && (
-                        <div className="cx-rvd-row"><span>Checked</span><div className="chips">{m.review.checked.map((c) => <em key={c}>{c}</em>)}</div></div>
-                      )}
-                      <div className="cx-rvd-row">
-                        <span>Corrections</span>
-                        {m.review.changes.length ? <ul>{m.review.changes.map((c) => <li key={c}>{c}</li>)}</ul> : <p>None needed. The draft was approved as written.</p>}
-                      </div>
-                      <p className="cx-rvd-note">Automated review by {modelLabel(m.review.model, m.review.provider)}. It catches most errors but cannot guarantee there are none. Confirm doses and decisions against current guidelines and your local protocols.</p>
-                    </div>
-                  </details>
-                )}
-                {m.reviewNote && <div className="cx-rvwarn"><ShieldAlert size={15} /> {m.reviewNote}</div>}
-                {(answerContext[m.id]?.ix.length ?? 0) > 0 && (
-                  <InteractionNotice
-                    matches={answerContext[m.id].ix}
-                    onOpen={() => openCalculators({ tab: "ix", drugs: checkText(answerContext[m.id].q).drugs.map((d) => d.label) })}
-                  />
-                )}
-                {m.deck && (
-                  <div className="cx-deck">
-                    <span className="cx-deck-ic"><Presentation size={21} /></span>
-                    <span className="cx-deck-t"><b>{m.deck.title}</b><small>{m.deck.slides.length} slides · Lecture deck</small></span>
-                    <button className="cx-deck-go" onClick={() => setDeck(m.deck!)}><Play size={13} fill="currentColor" /> Present</button>
-                  </div>
-                )}
-                <div className="cx-a-acts">
-                  <button className="cx-act cx-tip" data-tip={copied === m.id ? "Copied" : "Copy"} onClick={() => copy(m)} aria-label="Copy">{copied === m.id ? <Check size={16} /> : <Copy size={16} />}</button>
-                  <button className="cx-act cx-tip" data-tip="Regenerate" onClick={() => regenerate(m.id)} disabled={!!pending} aria-label="Regenerate"><RefreshCw size={16} /></button>
-                  <button className={`cx-act cx-tip ${savedIds.has(m.id) ? "on" : ""}`} data-tip={savedIds.has(m.id) ? "Saved to Library" : "Save to Library"} onClick={() => toggleSave(m)} aria-label="Save to Library">
-                    {savedIds.has(m.id) ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
-                  </button>
-                  <button className={`cx-act cx-tip ${speakingId === m.id ? "on" : ""}`} data-tip={speakingId === m.id ? "Stop reading" : "Read aloud"} onClick={() => speak(m)} aria-label="Read aloud">
-                    {speakingId === m.id ? <VolumeX size={16} /> : <Volume2 size={16} />}
-                  </button>
-                  <button className="cx-act cx-tip" data-tip="Export as PDF" onClick={() => exportAnswer(m)} aria-label="Export as PDF"><Download size={16} /></button>
-                  <span className="cx-a-by">
-                    {m.library
-                      ? `${m.library.mode === "llm" ? BACKUP_MODEL : "Quoted"} · Cadus Medical Library`
-                      : shortModel(modelLabel(m.model, m.provider))}
-                    {m.review ? ` · reviewed by ${shortModel(modelLabel(m.review.model, m.review.provider))}` : ""}
-                  </span>
-                </div>
-                {m.id === lastAssistant?.id && !pending && (() => {
-                  const ctx = answerContext[m.id];
-                  if (!ctx || ROLEPLAY.has(m.mode)) return null;
-                  const calcs = STUDY_MODES.has(m.mode) ? [] : suggestCalculators(ctx.q, m.content);
-                  const ward = CASE_MODES.has(m.mode) || (m.mode === "general" && looksLikeCase(ctx.q));
-                  if (!calcs.length && !ward) return null;
-                  const lang = wardLang || prefs.language;
-                  return (
-                    <div className="cx-next">
-                      {ward && (
-                        <div className="cx-next-row">
-                          <span className="cx-next-l">Next for this patient</span>
-                          {WARD_ACTIONS.filter((w) => w.mode !== m.mode).map((w) => (w.id === "patient" ? (
-                            <span key={w.id} className="cx-ward-lang">
-                              <button className="cx-chip2" onClick={() => send(w.prompt(lang), "patient", { lang })}><Users size={14} /> {w.label}</button>
-                              <select value={lang} onChange={(e) => setWardLang(e.target.value)} aria-label="Language for the patient">
-                                {LANGUAGES.map((l) => <option key={l}>{l}</option>)}
-                              </select>
-                            </span>
-                          ) : (
-                            <button key={w.id} className="cx-chip2" onClick={() => send(w.prompt(prefs.language), w.mode)}>
-                              {w.id === "rounds" ? <ClipboardCheck size={14} /> : w.id === "referral" ? <Mail size={14} /> : <FileText size={14} />} {w.label}
-                            </button>
-                          )))}
-                        </div>
-                      )}
-                      {calcs.length > 0 && (
-                        <div className="cx-next-row">
-                          <span className="cx-next-l">Calculate</span>
-                          {calcs.map((c) => (
-                            <button key={c.id} className="cx-chip2" onClick={() => openCalculators({ calc: c.id })}><Calculator size={14} /> {c.name}</button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-                {m.id === lastAssistant?.id && !pending && FOLLOW[m.mode].length > 0 && (
-                  <div className="cx-follow">
-                    <p>Suggested follow-ups</p>
-                    {FOLLOW[m.mode].map((f) => (
-                      <button key={f.text} onClick={() => send(f.text, f.mode ?? m.mode)}><CornerDownRight size={15} /> {f.text}</button>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        ),
+        ) : renderAnswer(m),
       )}
-      {pending && pending.sid === activeId && (
-        <div className="cx-a">
-          <div className="cx-a-h">
-            <CadusMark size={20} thinking title="Cadus is working" />
-          </div>
-          <div className="cx-think">
-            <div className="cx-steps">
-              {pending.mode === "slides" ? (
-                <div className="cx-step on"><i className="cx-spin" /> {pending.review ? "Designing your deck and fact-checking every slide" : "Designing your deck"}</div>
-              ) : (
-                <>
-                  {pending.stage === "library" ? (
-                    <>
-                      <div className="cx-step done"><AlertTriangle size={15} className="warn" /> The main AI is unavailable (no AI credits). Switching to Library mode</div>
-                      <div className="cx-step on"><i className="cx-spin" /> Searching the Cadus Medical Library and preparing the answer</div>
-                    </>
-                  ) : (
-                  <div className={`cx-step ${pending.stage === "draft" ? "on" : "done"}`}>
-                    {pending.stage === "draft" ? <i className="cx-spin" /> : <Check size={15} />}
-                    {pending.search ? "Searching trusted medical sources and drafting" : pending.image ? "Reviewing the image" : MODE[pending.mode].busy}
-                  </div>
-                  )}
-                  {pending.review && (
-                    <div className={`cx-step ${pending.stage === "review" ? "on" : "todo"}`}>
-                      {pending.stage === "review" ? <i className="cx-spin" /> : <i className="cx-dot" />}
-                      Safety review by {STUDY_MODES.has(pending.mode) ? MODEL_DEF.medius.short : MODEL_DEF.magnus.short}: doses, interactions, red flags
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-            <i className="cx-sk" style={{ width: "94%" }} />
-            <i className="cx-sk" style={{ width: "82%" }} />
-            <i className="cx-sk" style={{ width: "60%" }} />
-          </div>
-        </div>
-      )}
+      {pending && pending.sid === activeId && renderPending(pending)}
     </div>
   );
 
@@ -2267,6 +2982,15 @@ export default function CadusAI() {
         <button className="cx-pop-i" onClick={() => newProject(s.id)}><FolderPlus size={16} /> New project…</button>
         <button className="cx-pop-i" onClick={() => setMoveFor("")}><ArrowLeft size={16} /> Back</button>
       </>
+    ) : dlFor === s.id ? (
+      <>
+        <p className="cx-pop-gl">Download this chat</p>
+        <button className="cx-pop-i" onClick={() => exportSessionAs("word", s)}><FileDown size={16} /> Word document (.docx)</button>
+        <button className="cx-pop-i" onClick={() => exportSession(s)}><Download size={16} /> PDF</button>
+        <button className="cx-pop-i" onClick={() => exportSessionAs("md", s)}><FileText size={16} /> Markdown (.md)</button>
+        <div className="cx-pop-sep" />
+        <button className="cx-pop-i" onClick={() => setDlFor("")}><ArrowLeft size={16} /> Back</button>
+      </>
     ) : confirmDelete === s.id ? (
       <>
         <p className="cx-pop-gl">Delete “{clip(s.title, 28)}”?</p>
@@ -2280,7 +3004,10 @@ export default function CadusAI() {
         <button className="cx-pop-i" onClick={() => (projects.length ? setMoveFor(s.id) : newProject(s.id))}>
           <FolderInput size={16} /> {s.projectId ? "Change project" : "Add to project"} <ChevronRight size={15} className="r" />
         </button>
-        <button className="cx-pop-i" onClick={() => exportSession(s)}><Download size={16} /> Export as PDF</button>
+        <button className="cx-pop-i" onClick={() => setDlFor(s.id)}><Download size={16} /> Download <ChevronRight size={15} className="r" /></button>
+        <button className="cx-pop-i" onClick={() => setArchived(s.id, !s.archived)}>
+          {s.archived ? <ArchiveRestore size={16} /> : <Archive size={16} />} {s.archived ? "Restore from archive" : "Archive"}
+        </button>
         <div className="cx-pop-sep" />
         <button className="cx-pop-i danger" onClick={() => setConfirmDelete(s.id)}><Trash2 size={16} /> Delete</button>
       </>
@@ -2292,10 +3019,11 @@ export default function CadusAI() {
 
   return (
     <div
-      className={`cx ${dark ? "cx-dark" : "cx-light"} ${serif ? "ans-serif" : "ans-sans"} ${collapsed && isDesktop ? "is-collapsed" : ""}`}
+      className={`cx ${dark ? "cx-dark" : "cx-light"} ${serif ? "ans-serif" : "ans-sans"} ${collapsed && isDesktop ? "is-collapsed" : ""} ${canvasDoc ? "has-canvas" : ""}`}
       style={{ ["--acc" as string]: dark ? accent.dark : accent.light, ["--fs" as string]: `${fontSize}px`, ["--fs-u" as string]: `${sansSize}px` }}
+      {...dropHandlers}
     >
-      <style>{CADUS_CSS + CADUS_TOOLS_CSS}</style>
+      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS}</style>
 
       {/* ============================================== sidebar */}
       <div className={`cx-scrim ${sidebarOpen ? "on" : ""}`} onClick={() => setSidebarOpen(false)} />
@@ -2415,12 +3143,17 @@ export default function CadusAI() {
                 <button onClick={() => setChatFilter("all")}>Show all</button>
               </div>
             )}
-            {sessions.length === 0 ? (
+            {listed.length === 0 ? (
               <div className="cx-hist-empty">Your chats will appear here. History is saved only in this browser.</div>
             ) : chatList.length === 0 ? (
-              <p className="cx-hist-none">{pinned.length === sessions.length && !chatQuery && chatFilter === "all" ? "All your chats are pinned." : "No chats match."}</p>
+              <p className="cx-hist-none">{pinned.length === listed.length && !chatQuery && chatFilter === "all" ? "All your chats are pinned." : "No chats match."}</p>
             ) : (
               chatList.map(sessionRow)
+            )}
+            {archivedList.length > 0 && !chatQuery && chatFilter === "all" && (
+              <button className="cx-arch-link" onClick={() => { setArchivedOpen(true); openSettings("data"); }}>
+                <Archive size={14} /> Archived chats <em>{archivedList.length}</em>
+              </button>
             )}
           </div>
         </div>
@@ -2531,7 +3264,9 @@ export default function CadusAI() {
                     <span className="cx-crumb-sep" aria-hidden>/</span>
                   </>
                 )}
-                {renaming?.id === active.id && renaming.where === "top" ? (
+                {active.temp ? (
+                  <span className="cx-title-btn static" title="Not saved to your history"><MessageSquareDashed size={14} /> <span>Temporary chat</span></span>
+                ) : renaming?.id === active.id && renaming.where === "top" ? (
                   <input
                     className="cx-title-in"
                     autoFocus
@@ -2543,7 +3278,7 @@ export default function CadusAI() {
                   />
                 ) : (
                   <div className="cx-title-wrap" data-pop="title">
-                    <button className={`cx-title-btn ${pop === "title" ? "open" : ""}`} onClick={() => { setConfirmDelete(""); setMoveFor(""); togglePop("title"); }}>
+                    <button className={`cx-title-btn ${pop === "title" ? "open" : ""}`} onClick={() => { setConfirmDelete(""); setMoveFor(""); setDlFor(""); togglePop("title"); }}>
                       <span>{active.title}</span><ChevronDown size={14} />
                     </button>
                     {pop === "title" && <div className="cx-pop cx-title-menu" role="menu">{sessionMenuItems(active, "top")}</div>}
@@ -2582,8 +3317,34 @@ export default function CadusAI() {
                 {prefs.safetyReview ? <ShieldCheck size={14} /> : <ShieldAlert size={14} />} Safety review {prefs.safetyReview ? "on" : "off"}
               </button>
             )}
+            {view === "chat" && !active && (
+              <button
+                className={`cx-ib cx-temp-tg ${tempNext ? "on" : ""}`}
+                title={tempNext ? "Temporary chat is on. Click to turn it off" : "Temporary chat: not saved, no memory"}
+                onClick={() => { setTempNext((t) => !t); focusComposer(); }}
+                aria-pressed={tempNext}
+                aria-label="Temporary chat"
+              >
+                <MessageSquareDashed size={18} />
+              </button>
+            )}
+            {view === "chat" && active?.temp && <span className="cx-temp-pill cx-m"><MessageSquareDashed size={14} /> Temporary</span>}
             {view === "chat" && active && messages.length > 0 && (
-              <button className="cx-ghost cx-dt" onClick={() => exportSession()}><Download size={15} /> Export</button>
+              <div className="cx-rel cx-dt" data-pop="export">
+                <button className={`cx-ghost ${pop === "export" ? "open" : ""}`} onClick={() => togglePop("export")} aria-haspopup="menu" aria-expanded={pop === "export"}>
+                  <Download size={15} /> Export <ChevronDown size={14} />
+                </button>
+                {pop === "export" && (
+                  <div className="cx-pop cx-export-menu" role="menu">
+                    <p className="cx-pop-gl">Download this chat</p>
+                    <button className="cx-pop-i" onClick={() => exportSessionAs("word")}><FileDown size={16} /> Word document (.docx)</button>
+                    <button className="cx-pop-i" onClick={() => exportSession()}><Download size={16} /> PDF</button>
+                    <button className="cx-pop-i" onClick={() => exportSessionAs("md")}><FileText size={16} /> Markdown (.md)</button>
+                    <div className="cx-pop-sep" />
+                    <button className="cx-pop-i" onClick={() => { setPop(null); void copyText("chat", chatMarkdown(active)); }}><Copy size={16} /> Copy the whole chat</button>
+                  </div>
+                )}
+              </div>
             )}
             <button className="cx-ib cx-dt" title={dark ? "Light theme" : "Dark theme"} onClick={() => setPrefs((p) => ({ ...p, theme: dark ? "light" : "dark" }))} aria-label="Toggle theme">
               {dark ? <Sun size={18} /> : <Moon size={18} />}
@@ -2597,7 +3358,9 @@ export default function CadusAI() {
           ref={scrollRef}
           onScroll={(e) => {
             const el = e.currentTarget;
-            setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 160);
+            const near = el.scrollHeight - el.scrollTop - el.clientHeight < 160;
+            atBottomRef.current = near;
+            setAtBottom(near);
           }}
         >
           {view === "calculators" ? (
@@ -2635,6 +3398,12 @@ export default function CadusAI() {
               <button className="cx-scrolldown" onClick={() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" })} aria-label="Scroll to latest"><ArrowDown size={17} /></button>
             )}
             <div className="cx-dock-in">
+              {(active?.temp || (isHome && tempNext)) && (
+                <div className="cx-temp-bar">
+                  <MessageSquareDashed size={14} />
+                  <span><b>Temporary chat.</b> Not saved to your history, and memory isn't used or updated.</span>
+                </div>
+              )}
               {sim && !pending && (
                 <div className="cx-sim-bar">
                   <span>
@@ -2657,8 +3426,21 @@ export default function CadusAI() {
             </div>
           </div>
         )}
-        <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { void onFile(e.target.files?.[0]); e.target.value = ""; }} />
+        <input ref={fileRef} type="file" accept={ACCEPT_ATTACH} multiple hidden onChange={(e) => { void onFiles(e.target.files); e.target.value = ""; }} />
       </main>
+
+      {/* ============================================== canvas */}
+      {canvasDoc && (
+        <CanvasPanel
+          key={canvasDoc.id}
+          doc={canvasDoc}
+          onChange={updateDoc}
+          onClose={closeCanvas}
+          aiEdit={canvasEdit}
+          exportPdf={(title, text) => void exportPdf(title, [{ who: "", text }])}
+          toast={toast}
+        />
+      )}
 
       {/* row menu (fixed so the scrolling list doesn't clip it) */}
       {rowMenuSession && rowPos && (
@@ -2823,6 +3605,10 @@ export default function CadusAI() {
                       <div><b>Search sources by default</b><small>Cite live sources from WHO, NICE, ICMR, PubMed and other trusted medical sites. Deep research always searches.</small></div>
                       <button className={`cx-switch ${prefs.sources ? "on" : ""}`} role="switch" aria-checked={prefs.sources} aria-label="Search sources by default" onClick={() => setPrefs({ ...prefs, sources: !prefs.sources })} />
                     </div>
+                    <div className="cx-set-row">
+                      <div><b><Bell size={14} className="cx-set-ic" /> Notifications</b><small>Get a notification when an answer is ready while Cadus is in a background tab, handy during long reviews and deep research.</small></div>
+                      <button className={`cx-switch ${prefs.notify ? "on" : ""}`} role="switch" aria-checked={prefs.notify} aria-label="Notifications" onClick={() => void toggleNotify()} />
+                    </div>
                   </>
                 )}
                 {settingsTab === "personal" && (
@@ -2831,6 +3617,8 @@ export default function CadusAI() {
                       <div><b>Your profile</b><small>{profile ? `${profileSummary(profile)}. Answers, quick actions and practice questions are tailored to you.` : "Tell Cadus whether you're a student, an exam aspirant, an intern or a doctor, and answers are pitched at your level."}</small></div>
                       <button className="cx-btn" onClick={() => setProfileOpen(true)}><UserCog size={14} /> {profile ? "Edit" : "Set up"}</button>
                     </div>
+                    <PersonalSettings personal={personal} setPersonal={setPersonal} toast={toast} />
+                    <p className="cx-set-sub">Appearance</p>
                     <div className="cx-set-row">
                       <div><b>Answer font</b><small>Serif reads like a well-set textbook and is easier on long answers. Tables and doses always use the sans.</small></div>
                       <div className="cx-seg">
@@ -2870,8 +3658,26 @@ export default function CadusAI() {
                 {settingsTab === "data" && (
                   <>
                     <div className="cx-set-row">
-                      <div><b>Where your data lives</b><small>Chats, projects, Library items, your profile and practice progress are stored only in this browser. Messages and project instructions are sent securely to the AI to generate answers.</small></div>
+                      <div><b>Where your data lives</b><small>Chats, projects, documents, Library items, memory, your profile and practice progress are stored only in this browser, so they don't sync between devices yet. Messages, attachments, custom instructions and memory are sent securely to the AI to generate answers. Temporary chats are never stored.</small></div>
                     </div>
+                    <div className="cx-set-row">
+                      <div>
+                        <b>Archived chats</b>
+                        <small>{archivedList.length ? `${archivedList.length} archived chat${archivedList.length === 1 ? "" : "s"}. They're hidden from the sidebar but kept, and still show up in search.` : "Archive a chat from its menu to hide it from the sidebar without deleting it."}</small>
+                      </div>
+                      <button className="cx-btn" disabled={!archivedList.length} onClick={() => setArchivedOpen((o) => !o)}><Archive size={14} /> {archivedOpen && archivedList.length ? "Hide" : "Manage"}</button>
+                    </div>
+                    {archivedOpen && archivedList.length > 0 && (
+                      <ul className="cx-arch">
+                        {archivedList.map((x) => (
+                          <li key={x.id}>
+                            <button className="cx-arch-t" onClick={() => { setSettingsOpen(false); openSession(x.id); }}><b>{x.title}</b><small>{relTime(x.updatedAt)}</small></button>
+                            <button className="cx-ib" title="Restore" onClick={() => setArchived(x.id, false)} aria-label={`Restore ${x.title}`}><ArchiveRestore size={16} /></button>
+                            <button className="cx-ib danger" title="Delete" onClick={() => deleteSession(x.id)} aria-label={`Delete ${x.title}`}><Trash2 size={16} /></button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                     <div className="cx-set-row">
                       <div><b>Privacy guard</b><small>Before a message is sent, Cadus replaces patient identifiers with placeholders: names, phone numbers, Aadhaar and ABHA numbers, UHID and other record numbers, dates of birth, addresses and email addresses. It is a safety net, so still avoid typing identifiers. Recommended.</small></div>
                       <button className={`cx-switch ${prefs.privacyGuard ? "on" : ""}`} role="switch" aria-checked={prefs.privacyGuard} aria-label="Privacy guard" onClick={() => setPrefs({ ...prefs, privacyGuard: !prefs.privacyGuard })} />
@@ -2910,8 +3716,14 @@ export default function CadusAI() {
                       </div>
                     )}
                     <div className="cx-set-row">
-                      <div><b>Export all chats</b><small>{sessions.length} chats, {projects.length} projects and {library.length} saved answers as a JSON file</small></div>
-                      <button className="cx-btn" onClick={() => downloadJSON(`cadus-export-${today()}.json`, { exportedAt: new Date().toISOString(), sessions, projects, library })} disabled={!sessions.length && !library.length && !projects.length}><Download size={14} /> Export</button>
+                      <div><b>Export all chats</b><small>{listed.length + archivedList.length} chats, {projects.length} projects, {docs.length} documents and {library.length} saved answers, with your memory and custom instructions, as a JSON file</small></div>
+                      <button
+                        className="cx-btn"
+                        onClick={() => downloadJSON(`cadus-export-${today()}.json`, { exportedAt: new Date().toISOString(), sessions: sessions.filter((x) => !x.temp), projects, library, documents: docs, personalisation: personal })}
+                        disabled={!sessions.length && !library.length && !projects.length && !docs.length}
+                      >
+                        <Download size={14} /> Export
+                      </button>
                     </div>
                     <div className="cx-set-row">
                       <div><b>Clear Library</b><small>Remove all {library.length} saved answers</small></div>
@@ -2941,8 +3753,13 @@ export default function CadusAI() {
                     <div><span>New chat</span><span><kbd>{MOD}</kbd><kbd>⇧</kbd><kbd>O</kbd></span></div>
                     <div><span>Send message</span><span><kbd>Enter</kbd></span></div>
                     <div><span>New line</span><span><kbd>⇧</kbd><kbd>Enter</kbd></span></div>
-                    <div><span>Paste an image into the message</span><span><kbd>{MOD}</kbd><kbd>V</kbd></span></div>
-                    <div><span>Close menus and dialogs</span><span><kbd>Esc</kbd></span></div>
+                    <div><span>Copy the last answer</span><span><kbd>{MOD}</kbd><kbd>⇧</kbd><kbd>C</kbd></span></div>
+                    <div><span>Show or hide the sidebar</span><span><kbd>{MOD}</kbd><kbd>⇧</kbd><kbd>S</kbd></span></div>
+                    <div><span>Delete this chat (press twice)</span><span><kbd>{MOD}</kbd><kbd>⇧</kbd><kbd>⌫</kbd></span></div>
+                    <div><span>Focus the message box</span><span><kbd>⇧</kbd><kbd>Esc</kbd></span></div>
+                    <div><span>Show keyboard shortcuts</span><span><kbd>{MOD}</kbd><kbd>/</kbd></span></div>
+                    <div><span>Paste an image or file into the message</span><span><kbd>{MOD}</kbd><kbd>V</kbd></span></div>
+                    <div><span>Close menus, dialogs and Canvas</span><span><kbd>Esc</kbd></span></div>
                   </div>
                 )}
                 {settingsTab === "about" && (
@@ -2970,6 +3787,22 @@ export default function CadusAI() {
       {toastMsg && <div className="cx-toast" role="status"><Check size={15} /> {toastMsg}</div>}
       {cameraOpen && <CameraModal onClose={() => setCameraOpen(false)} onCapture={(f) => { setCameraOpen(false); void onFile(f); }} />}
       {deck && <PresentationViewer data={deck} onClose={() => setDeck(null)} />}
+      {voiceOpen && <VoiceMode language={prefs.language} ask={voiceAsk} onClose={() => setVoiceOpen(false)} />}
+      {lightbox && (
+        <div className="cx-lightbox" onClick={() => setLightbox("")} role="dialog" aria-modal="true" aria-label="Image preview">
+          <img src={lightbox} alt="Attached image, enlarged" />
+          <button className="cx-ib" onClick={() => setLightbox("")} aria-label="Close preview"><X size={20} /></button>
+        </div>
+      )}
+      {dragDepth > 0 && (
+        <div className="cx-drop" aria-hidden>
+          <div className="cx-drop-card">
+            <span className="cx-drop-ic"><Paperclip size={24} /></span>
+            <b>Drop files to attach</b>
+            <small>Images, PDFs and text files, such as X-rays, ECGs, lab reports and discharge summaries</small>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

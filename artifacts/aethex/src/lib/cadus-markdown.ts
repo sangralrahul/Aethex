@@ -32,7 +32,12 @@ function splitRow(line: string): string[] {
 export interface RenderOptions {
   /** Number of cited sources; [n] markers up to this number become citation badges. */
   cites?: number;
+  /** Add "Copy" buttons to tables and code blocks (handled by the page). */
+  copy?: boolean;
 }
+
+const COPY_BTN = (what: string) =>
+  `<button type="button" class="md-copy" data-copy="${what}" aria-label="Copy ${what}">Copy</button>`;
 
 export function renderMarkdown(md: string, opts: RenderOptions = {}, nested = false): string {
   const lines = md.replace(/\r\n/g, "\n").split("\n");
@@ -48,7 +53,11 @@ export function renderMarkdown(md: string, opts: RenderOptions = {}, nested = fa
       i++;
       while (i < lines.length && !/^```/.test(lines[i])) buf.push(lines[i++]);
       i++;
-      out.push(`<pre><code>${esc(buf.join("\n"))}</code></pre>`);
+      out.push(
+        opts.copy
+          ? `<div class="md-code">${COPY_BTN("code")}<pre><code>${esc(buf.join("\n"))}</code></pre></div>`
+          : `<pre><code>${esc(buf.join("\n"))}</code></pre>`,
+      );
       continue;
     }
     if (/^\s*$/.test(line)) { i++; continue; }
@@ -69,9 +78,9 @@ export function renderMarkdown(md: string, opts: RenderOptions = {}, nested = fa
       const rows: string[][] = [];
       while (i < lines.length && lines[i].includes("|") && lines[i].trim()) rows.push(splitRow(lines[i++]));
       out.push(
-        `<div class="md-table"><table><thead><tr>${head.map((c) => `<th>${inline(c)}</th>`).join("")}</tr></thead><tbody>${rows
+        `${opts.copy ? `<div class="md-tablewrap">${COPY_BTN("table")}` : ""}<div class="md-table"><table><thead><tr>${head.map((c) => `<th>${inline(c)}</th>`).join("")}</tr></thead><tbody>${rows
           .map((r) => `<tr>${r.map((c) => `<td>${inline(c)}</td>`).join("")}</tr>`)
-          .join("")}</tbody></table></div>`,
+          .join("")}</tbody></table></div>${opts.copy ? "</div>" : ""}`,
       );
       continue;
     }

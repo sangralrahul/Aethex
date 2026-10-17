@@ -1,7 +1,12 @@
 // Cadus AI endpoint. Pass `action` in the JSON body.
 //
 //   chat / analyze-image  Draft an answer (Claude Haiku 5.5), optionally with live,
-//                         cited sources from trusted medical sites.
+//                         cited sources from trusted medical sites. With
+//                         stream: true the answer is streamed as server-sent
+//                         events (start, delta, reset, done, error). Accepts
+//                         attachments (images, PDFs, text files) in `files`;
+//                         filesEarlier: true marks files resent from an earlier
+//                         message so follow-up questions can refer to them.
 //   review                Safety review of a draft: Claude Sonnet 5.5 for clinical
 //                         answers, Claude Haiku 5.5 for study content. Returns the
 //                         corrected final answer plus review metadata.
@@ -9,6 +14,9 @@
 //                         an answer using only passages from the offline medical library.
 //   generate-slides       Lecture deck JSON, fact-checked by a second pass.
 //   practice-mcqs         Exam practice questions as checked JSON for the practice hub.
+//   title                 A short title for a new chat.
+//   canvas-edit           Applies an instruction to a document open in Canvas
+//                         (or writes a blank document from scratch).
 //   deep-research         Legacy endpoint used by the classic page.
 //   med-knowledge         Study Hub content.
 import {
@@ -130,7 +138,23 @@ const STYLE_PROMPTS: Record<string, string> = {
   concise: "LENGTH: Be brief. Keep the answer under about 200 words unless a table or dose calculation needs more. Never drop safety-critical information to save space.",
   balanced: "",
   detailed: "LENGTH: Be thorough. Cover nuances, special populations and edge cases.",
+  voice: "VOICE: This answer will be read aloud in a voice conversation. Ignore the format rules above: reply in plain, natural spoken sentences, under about 120 words, with no headings, tables, bullet points, bold text or citations. Put the single most important point first and keep every safety-critical warning.",
 };
+
+const DOCUMENT_NOTE = `ATTACHMENTS: The user attached documents (for example lab reports, discharge summaries, prescriptions or papers). Read them carefully before answering. Quote values exactly, with their units and reference ranges, and flag abnormal results. Never invent content that is not in the documents; if a page or value is unreadable, say so. When a document contains patient identifiers, do not repeat them.`;
+const IMAGES_NOTE = `ATTACHMENTS: The user attached images. Read them carefully and say which image you mean when there are several. If an image is unreadable or not medical, say so instead of guessing.`;
+const EARLIER_FILES_NOTE = `These attachments were shared earlier in this conversation and are included again so you can refer back to them. Use them when the user's new message is about them; otherwise answer the new message as usual.`;
+
+const CANVAS_SYSTEM = `You are Cadus, editing a document that a doctor or medical student has open in Canvas (a document editor).
+Apply the user's instruction to the document and reply with ONLY the complete revised document in markdown: no preamble, no explanation, no code fences.
+Rules:
+- Keep every clinical fact, dose, unit, warning and red flag unless the instruction explicitly asks to remove it. Never invent results, doses, names, dates or references.
+- Keep placeholders such as [patient], [record no.], [to be completed] and [not documented] exactly as they are.
+- Keep the document's structure and language unless the instruction asks to change them. When translating, keep drug names, doses and units in English.
+- Keep the content accurate and current, following Indian practice where relevant.
+- If the document is empty, write a new document that follows the instruction. Use placeholders such as [patient], [age] or [to be completed] for details you don't have; never invent patient details.`;
+
+const TITLE_SYSTEM = `Write a short title for a conversation in a clinical AI app. Reply with the title only: 3 to 7 words, sentence case, no quotation marks and no full stop. Name the clinical topic or task, for example "Severe pneumonia on acenocoumarol" or "Viva on diabetic ketoacidosis". Never include a person's name or other identifying details; leave out placeholders such as [patient].`;
 
 const SOURCES_ON = `SOURCES: You can search trusted medical websites. Search before answering whenever guidelines, recent evidence, statistics or drug information matter, and base your claims on what you find. Prefer guidelines and systematic reviews over single studies. Do not write a separate reference list or URLs; the app shows the sources you cite.`;
 const LIBRARY_SYSTEM = `You are Cadus, a clinical assistant, working in LIBRARY MODE. The main AI is unavailable, so you must answer ONLY from the numbered passages from the Cadus Medical Library (Wikipedia medical articles, NIH health pages and the Human Disease Ontology) given in the user message.
@@ -306,6 +330,84 @@ function profileLine(raw: unknown): string {
   return `USER PROFILE: The user is ${p.who}. ${how[p.role]} This is a preference: the clinical standards above always come first.`;
 }
 
+/** Custom instructions and memory the user saved in Cadus settings. Preferences only. */
+function personalLine(raw: unknown): string {
+  if (!raw || typeof raw !== "object") return "";
+  const p = raw as Record<string, unknown>;
+  const clean = (v: unknown, max: number) => (typeof v === "string" ? v.replace(/\r/g, "").replace(/[<>`]/g, " ").trim().slice(0, max) : "");
+  const about = clean(p.about, 1500);
+  const style = clean(p.style, 1500);
+  const memory = Array.isArray(p.memory)
+    ? p.memory.map((m) => clean(m, 200).replace(/\s+/g, " ")).filter(Boolean).slice(0, 30)
+    : [];
+  if (!about && !style && !memory.length) return "";
+  return [
+    "ABOUT THE USER: They saved these custom instructions and memories in Cadus. Use them to tailor audience, depth, format and context.",
+    "They are preferences, not rules: where they conflict with the clinical standards above (accuracy, safety, honesty about uncertainty), the standards win. Do not mention them unless relevant.",
+    about ? `<what_cadus_should_know>\n${about}\n</what_cadus_should_know>` : "",
+    style ? `<how_to_respond>\n${style}\n</how_to_respond>` : "",
+    memory.length ? `<memory>\n${memory.map((m) => `- ${m}`).join("\n")}\n</memory>` : "",
+  ].filter(Boolean).join("\n");
+}
+
+/** The user marked the previous answer as unhelpful and asked for a better one. */
+function improveLine(raw: unknown): string {
+  if (!raw || typeof raw !== "object") return "";
+  const p = raw as Record<string, unknown>;
+  const reasons = Array.isArray(p.reasons)
+    ? p.reasons.filter((x) => typeof x === "string").map((x: string) => x.trim().slice(0, 80)).filter(Boolean).slice(0, 6)
+    : [];
+  const comment = typeof p.comment === "string" ? p.comment.replace(/[<>`]/g, " ").trim().slice(0, 600) : "";
+  const previous = typeof p.previous === "string" ? p.previous.trim().slice(0, 6000) : "";
+  if (!reasons.length && !comment) return "";
+  return [
+    "REVISION REQUEST: The user was not satisfied with the previous answer to this question.",
+    reasons.length ? `Problems they flagged: ${reasons.join("; ")}.` : "",
+    comment ? `Their comment: ${comment}` : "",
+    "Write a new, improved answer that fixes these problems and keeps whatever was correct. Do not mention this request.",
+    previous ? `<previous_answer>\n${previous}\n</previous_answer>` : "",
+  ].filter(Boolean).join("\n");
+}
+
+type FilePart = { type: string; [k: string]: unknown };
+/**
+ * Attachments sent with a question: images (data URLs), PDFs (data URLs, read
+ * natively by Claude) and text files. Returns content parts in the order given.
+ */
+function attachmentParts(raw: unknown, legacyImage: string): { parts: FilePart[]; images: number; documents: number } {
+  const parts: FilePart[] = [];
+  let images = 0;
+  let documents = 0;
+  let budget = 30_000_000; // characters of base64 across all attachments
+  if (legacyImage) {
+    parts.push({ type: "image_url", image_url: { url: legacyImage } });
+    images += 1;
+    budget -= legacyImage.length;
+  }
+  for (const f of Array.isArray(raw) ? raw.slice(0, 10) : []) {
+    if (!f || typeof f !== "object") continue;
+    const kind = String((f as any).kind);
+    const name = typeof (f as any).name === "string" ? (f as any).name.replace(/[\r\n<>`"]/g, " ").trim().slice(0, 120) || "attachment" : "attachment";
+    const data = typeof (f as any).data === "string" ? (f as any).data : "";
+    if (!data || data.length > budget) continue;
+    if (kind === "image" && /^data:image\/(png|jpe?g|gif|webp);base64,/.test(data) && images < 6) {
+      parts.push({ type: "image_url", image_url: { url: data } });
+      images += 1;
+      budget -= data.length;
+    } else if (kind === "pdf" && data.startsWith("data:application/pdf;base64,") && documents < 3) {
+      parts.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: data.slice(data.indexOf(",") + 1) }, title: name });
+      documents += 1;
+      budget -= data.length;
+    } else if (kind === "text") {
+      const text = data.slice(0, 120_000);
+      parts.push({ type: "text", text: `<attached_file name="${name}">\n${text}\n</attached_file>` });
+      documents += 1;
+      budget -= text.length;
+    }
+  }
+  return { parts, images, documents };
+}
+
 type ReviewMeta = { verdict: "approved" | "corrected"; confidence: "high" | "moderate" | "low"; checked: string[]; changes: string[] };
 
 function parseReviewBlock(text: string, bodyTag: "answer" | "deck"): { meta: ReviewMeta | null; body: string } {
@@ -351,6 +453,52 @@ function normaliseDeck(deck: any, topic: string) {
 /** The model a Cadus user picked: Cadus Medius 3.1 runs the fast model, Cadus Magnus 3.6 the deeper one. */
 const answerModel = (choice: unknown) => (choice === "magnus" ? CLAUDE_REVIEW_MODEL : CLAUDE_DRAFT_MODEL);
 
+/**
+ * Stream a drafted answer to the browser as server-sent events:
+ *   start {search} · delta {t} (answer text as it arrives) · reset {} (discard the
+ *   text so far: the backup model is answering) · done {message, provider, model,
+ *   sources, queries, searched} or {libraryMode, reason} · error {error, status}.
+ * "done" carries the final answer (with citation markers), which replaces the
+ * streamed text.
+ */
+function streamAnswer(opts: Parameters<typeof callGroq>[0], meta: { libraryAware: boolean; search: boolean }): Response {
+  const enc = new TextEncoder();
+  const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
+  const writer = writable.getWriter();
+  let open = true;
+  // When the browser goes away (the user pressed Stop), stop paying for the answer.
+  const upstream = new AbortController();
+  const write = (chunk: string) => {
+    if (!open) return;
+    writer.write(enc.encode(chunk)).catch(() => {
+      open = false;
+      upstream.abort();
+    });
+  };
+  const send = (event: string, data: unknown) => write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  // Comments keep the connection alive while the model searches or thinks.
+  const keepAlive = setInterval(() => write(": keep-alive\n\n"), 15000);
+  (async () => {
+    try {
+      send("start", { search: meta.search });
+      const r = await callGroq({ ...opts, signal: upstream.signal, onText: (t) => send("delta", { t }), onReset: () => send("reset", {}) });
+      if (!r.ok && r.outage && meta.libraryAware) send("done", { libraryMode: true, reason: r.outage });
+      else if (!r.ok) send("error", { error: r.error, status: r.status });
+      else send("done", { message: r.content, provider: r.provider, model: r.model, sources: r.sources ?? [], queries: r.queries ?? [], searched: meta.search });
+    } catch (e) {
+      if (!upstream.signal.aborted) console.error("stream failed", e);
+      send("error", { error: "The AI service hit an unexpected error. Please try again.", status: 500 });
+    } finally {
+      clearInterval(keepAlive);
+      open = false;
+      writer.close().catch(() => {});
+    }
+  })();
+  return new Response(readable, {
+    headers: { ...cors, "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-cache, no-transform", "x-accel-buffering": "no" },
+  });
+}
+
 /* ------------------------------------------------------------------ handler */
 
 Deno.serve(async (req) => {
@@ -364,18 +512,28 @@ Deno.serve(async (req) => {
       const message = String(body.message || "").trim();
       const history = Array.isArray(body.history) ? body.history : [];
       const image = typeof body.image === "string" && body.image.startsWith("data:image/") ? body.image : "";
-      if (!message && !image) return jsonResponse({ error: "message is required" }, 400);
+      const attached = attachmentParts(body.files, image);
+      if (!message && !attached.parts.length) return jsonResponse({ error: "message is required" }, 400);
+      // Files from an earlier message, sent again so follow-up questions can refer to them.
+      const earlier = body.filesEarlier === true && attached.parts.length > 0;
       const mode = MODE_LABELS[String(body.mode)] ? String(body.mode) : "general";
       const style = String(body.style || "balanced");
       const search = mode === "research" || body.search === true;
       const roleplay = mode === "viva" || mode === "osce";
+      // A single image in the image tool (or with no tool) gets the systematic image read.
+      const imageRead = !earlier && attached.images > 0 && !attached.documents && (mode === "image" || mode === "general");
       const system = [
         CORE_SYSTEM,
-        image ? IMAGE_TASK : MODE_PROMPTS[mode] ?? "",
+        imageRead ? IMAGE_TASK : MODE_PROMPTS[mode] ?? "",
+        !imageRead && attached.images ? IMAGES_NOTE : "",
+        attached.documents ? DOCUMENT_NOTE : "",
+        earlier ? EARLIER_FILES_NOTE : "",
         STYLE_PROMPTS[style] ?? "",
         search ? SOURCES_ON : SOURCES_OFF,
         projectLine(body.instructions),
         roleplay ? "" : profileLine(body.profile),
+        roleplay ? "" : personalLine(body.personal),
+        improveLine(body.improve),
         languageLine(body.language),
       ].filter(Boolean).join("\n\n");
       const messages: any[] = [{ role: "system", content: system }];
@@ -385,22 +543,26 @@ Deno.serve(async (req) => {
         }
       }
       messages.push(
-        image
-          ? { role: "user", content: [{ type: "image_url", image_url: { url: image } }, { type: "text", text: message || "Please analyse this image." }] }
+        attached.parts.length
+          ? { role: "user", content: [...attached.parts, { type: "text", text: message || (attached.documents ? "Please review the attached document." : "Please analyse this image.") }] }
           : { role: "user", content: message },
       );
       // When the AI has no credits, the Cadus workspace (which sends library: true) switches
-      // to the offline medical library. Images (which the library can't read), explicit
+      // to the offline medical library. Attachments (which the library can't read), explicit
       // fallbacks and the other pages on the site keep using the backup model.
-      const libraryAware = body.library === true && !image && body.allowFallback !== true;
-      const r = await callGroq({
+      const libraryAware = body.library === true && !attached.parts.length && body.allowFallback !== true;
+      // "Think deeper" asks for the most careful reasoning; voice replies are short.
+      const effort: Effort = body.think === true ? "high" : style === "voice" ? "medium" : draftEffort(mode, style, attached.parts.length > 0);
+      const callOpts = {
         model: answerModel(body.model),
         messages,
-        effort: draftEffort(mode, style, !!image),
+        effort,
         maxTokens: 16000,
         webSearch: search ? { maxUses: mode === "research" ? 5 : 3 } : undefined,
-        onOutage: libraryAware ? "report" : "fallback",
-      });
+        onOutage: (libraryAware ? "report" : "fallback") as "report" | "fallback",
+      };
+      if (body.stream === true) return streamAnswer(callOpts, { libraryAware, search });
+      const r = await callGroq(callOpts);
       if (!r.ok && r.outage && libraryAware) return jsonResponse({ libraryMode: true, reason: r.outage });
       if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
       return jsonResponse({
@@ -420,6 +582,7 @@ Deno.serve(async (req) => {
       if (!question || !draft) return jsonResponse({ error: "question and draft are required" }, 400);
       const mode = MODE_LABELS[String(body.mode)] ? String(body.mode) : "general";
       const image = typeof body.image === "string" && body.image.startsWith("data:image/") ? body.image : "";
+      const attached = attachmentParts(body.files, image);
       const sources: Source[] = Array.isArray(body.sources)
         ? body.sources.filter((s: any) => s && typeof s.url === "string").slice(0, 20)
         : [];
@@ -435,6 +598,13 @@ Deno.serve(async (req) => {
         profileLine(body.profile)
           ? `THE DRAFT IS TAILORED TO THIS USER (keep that tailoring, such as a closing High-yield section, unless safety requires otherwise):\n${profileLine(body.profile)}`
           : "",
+        personalLine(body.personal)
+          ? `THE USER'S SAVED PREFERENCES (keep the draft consistent with them unless safety requires otherwise):\n${personalLine(body.personal)}`
+          : "",
+        attached.documents ? "The user attached the documents shown above; check the draft against them." : "",
+        body.style === "voice"
+          ? "THE DRAFT IS A SPOKEN ANSWER (voice mode): keep the corrected answer as plain, natural spoken sentences under about 120 words, with no headings, lists, tables, bold text or citations."
+          : "",
         `USER QUESTION:\n${question}`,
         sources.length
           ? `SOURCES CITED IN THE DRAFT (keep these [n] markers; do not add new numbers):\n${sources.map((s) => `[${s.n}] ${s.title} (${s.url})`).join("\n")}`
@@ -445,8 +615,8 @@ Deno.serve(async (req) => {
         model: reviewModel,
         messages: [
           { role: "system", content: [REVIEW_SYSTEM, languageLine(body.language)].filter(Boolean).join("\n\n") },
-          image
-            ? { role: "user", content: [{ type: "image_url", image_url: { url: image } }, { type: "text", text: userText }] }
+          attached.parts.length
+            ? { role: "user", content: [...attached.parts, { type: "text", text: userText }] }
             : { role: "user", content: userText },
         ],
         effort: mode === "dosage" || mode === "drugs" ? "high" : "medium",
@@ -567,6 +737,50 @@ Deno.serve(async (req) => {
         searchQueries: r.queries ?? [query],
         hasGoogleSearch: !!r.sources?.length,
       });
+    }
+
+    // ---------------------------------------------------------------- chat title
+    if (action === "title") {
+      const message = String(body.message || "").replace(/\s+/g, " ").trim().slice(0, 2000);
+      const answer = String(body.answer || "").replace(/\s+/g, " ").trim().slice(0, 1500);
+      if (!message) return jsonResponse({ error: "message is required" }, 400);
+      const r = await callGroq({
+        model: CLAUDE_DRAFT_MODEL,
+        messages: [
+          { role: "system", content: TITLE_SYSTEM },
+          { role: "user", content: `QUESTION: ${message}${answer ? `\n\nANSWER (start): ${answer}` : ""}` },
+        ],
+        effort: "low",
+        maxTokens: 40,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error }, r.status);
+      const title = r.content.split("\n")[0].replace(/^["'“”‘’#*\s]+|["'“”‘’*.\s]+$/g, "").replace(/\[[^\]]*\]/g, "").replace(/\s+/g, " ").trim().slice(0, 70);
+      if (!title) return jsonResponse({ error: "No title" }, 502);
+      return jsonResponse({ title });
+    }
+
+    // ---------------------------------------------------------------- canvas
+    if (action === "canvas-edit") {
+      const doc = String(body.document || "").replace(/\r/g, "").slice(0, 40000);
+      const instruction = String(body.instruction || "").replace(/[<>`]/g, " ").trim().slice(0, 800);
+      if (!instruction) return jsonResponse({ error: "instruction is required" }, 400);
+      // An empty document is written from scratch (a blank document in Canvas).
+      const task = doc.trim()
+        ? `INSTRUCTION: ${instruction}\n\n<document>\n${doc}\n</document>`
+        : `INSTRUCTION: ${instruction}\n\nThe document is empty, so write it from scratch.`;
+      const r = await callGroq({
+        model: answerModel(body.model),
+        messages: [
+          { role: "system", content: [CANVAS_SYSTEM, languageLine(body.language)].filter(Boolean).join("\n\n") },
+          { role: "user", content: task },
+        ],
+        effort: "medium",
+        maxTokens: 16000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const out = r.content.replace(/^\s*```(?:markdown|md)?\s*\n/i, "").replace(/\n```\s*$/, "").replace(/^<document>\s*|\s*<\/document>$/g, "").trim();
+      if (!out) return jsonResponse({ error: "The edit came back empty. Please try again." }, 502);
+      return jsonResponse({ document: out, provider: r.provider, model: r.model });
     }
 
     // ---------------------------------------------------------------- practice

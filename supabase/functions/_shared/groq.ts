@@ -13,7 +13,11 @@
 // The function keeps its historical name `callGroq` (alias of `callAI`) so every
 // existing edge function picks up Claude automatically. Messages use the OpenAI
 // shape ({role, content}); content may be a string or an array of
-// {type:"text"} / {type:"image_url"} parts and is converted for Claude.
+// {type:"text"} / {type:"image_url"} parts and is converted for Claude. Claude's
+// own {type:"document"} parts (PDFs) pass through; for Groq they become a note.
+//
+// Streaming: pass `onText` and Claude's answer is streamed, calling onText for
+// every piece of text as it arrives (the result is the same as without it).
 
 export const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -124,6 +128,12 @@ export type CallOpts = {
    * `outage` set so the caller can use the offline medical library instead.
    */
   onOutage?: "fallback" | "report";
+  /** Stream the answer: called with each new piece of text as it arrives. */
+  onText?: (text: string) => void;
+  /** Called when text already streamed should be discarded (the answer restarts with the backup model). */
+  onReset?: () => void;
+  /** Cancels the request, for example when the browser has gone away. */
+  signal?: AbortSignal;
 };
 
 // ---------------------------------------------------------------- Claude
@@ -180,6 +190,73 @@ export function extractClaudeAnswer(blocks: any[]): { text: string; sources: Sou
   return { text: text.trim(), sources, queries };
 }
 
+/**
+ * Read a streamed Claude response (server-sent events) back into content blocks,
+ * calling onText for each piece of answer text as it arrives.
+ */
+export async function readClaudeStream(
+  resp: Response,
+  onText: (text: string) => void,
+): Promise<{ blocks: any[]; stopReason: string; error: string }> {
+  const blocks: any[] = [];
+  const partialJson: Record<number, string> = {};
+  let stopReason = "";
+  let error = "";
+  const handle = (ev: any) => {
+    switch (ev?.type) {
+      case "content_block_start": {
+        const b = { ...(ev.content_block ?? {}) };
+        if (b.type === "text" && typeof b.text !== "string") b.text = "";
+        blocks[ev.index] = b;
+        if (b.type === "text" && b.text) onText(b.text);
+        break;
+      }
+      case "content_block_delta": {
+        const b = blocks[ev.index] ?? (blocks[ev.index] = { type: "text", text: "" });
+        const d = ev.delta ?? {};
+        if (d.type === "text_delta" && typeof d.text === "string") {
+          b.text = (b.text ?? "") + d.text;
+          if (d.text) onText(d.text);
+        } else if (d.type === "citations_delta" && d.citation) {
+          (b.citations ??= []).push(d.citation);
+        } else if (d.type === "input_json_delta") {
+          partialJson[ev.index] = (partialJson[ev.index] ?? "") + String(d.partial_json ?? "");
+        }
+        break;
+      }
+      case "content_block_stop":
+        if (partialJson[ev.index] !== undefined && blocks[ev.index]) {
+          try { blocks[ev.index].input = JSON.parse(partialJson[ev.index] || "{}"); } catch { /* keep partial */ }
+        }
+        break;
+      case "message_delta":
+        if (ev.delta?.stop_reason) stopReason = String(ev.delta.stop_reason);
+        break;
+      case "error":
+        error = String(ev.error?.message || ev.error?.type || "The AI stream failed.");
+        break;
+    }
+  };
+  const reader = resp.body?.getReader();
+  if (!reader) return { blocks, stopReason, error: "The AI returned no stream." };
+  const dec = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true }).replace(/\r\n/g, "\n");
+    let cut: number;
+    while ((cut = buf.indexOf("\n\n")) >= 0) {
+      const raw = buf.slice(0, cut);
+      buf = buf.slice(cut + 2);
+      const data = raw.split("\n").filter((l) => l.startsWith("data:")).map((l) => l.slice(5).trimStart()).join("\n");
+      if (!data) continue;
+      try { handle(JSON.parse(data)); } catch { /* not JSON: ignore */ }
+    }
+  }
+  return { blocks: blocks.filter(Boolean), stopReason, error };
+}
+
 async function callClaude(apiKey: string, opts: CallOpts): Promise<AiResult> {
   const systemParts: string[] = [];
   const messages: { role: "user" | "assistant"; content: unknown }[] = [];
@@ -222,6 +299,8 @@ async function callClaude(apiKey: string, opts: CallOpts): Promise<AiResult> {
     }];
   }
 
+  const streaming = typeof opts.onText === "function";
+  if (streaming) body.stream = true;
   const collected: any[] = [];
   for (let turn = 0; turn < 3; turn++) {
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -232,6 +311,7 @@ async function callClaude(apiKey: string, opts: CallOpts): Promise<AiResult> {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify(body),
+      signal: opts.signal,
     });
     if (!resp.ok) {
       const detail = await resp.text().catch(() => "");
@@ -252,11 +332,24 @@ async function callClaude(apiKey: string, opts: CallOpts): Promise<AiResult> {
         ...(outage ? { outage } : {}),
       };
     }
-    const data = await resp.json();
-    const blocks = Array.isArray(data?.content) ? data.content : [];
+    let blocks: any[] = [];
+    let stopReason = "";
+    if (streaming) {
+      const r = await readClaudeStream(resp, opts.onText as (t: string) => void);
+      if (r.error) {
+        console.error(`Claude ${model} stream error: ${r.error}`);
+        return { ok: false, status: 502, error: "The AI service was interrupted. Please try again.", detail: r.error.slice(0, 400) };
+      }
+      blocks = r.blocks;
+      stopReason = r.stopReason;
+    } else {
+      const data = await resp.json();
+      blocks = Array.isArray(data?.content) ? data.content : [];
+      stopReason = String(data?.stop_reason ?? "");
+    }
     collected.push(...blocks);
     // Long server-side tool turns can pause; send the partial turn back to continue.
-    if (data?.stop_reason === "pause_turn") {
+    if (stopReason === "pause_turn") {
       messages.push({ role: "assistant", content: blocks });
       continue;
     }
@@ -277,7 +370,23 @@ async function callClaude(apiKey: string, opts: CallOpts): Promise<AiResult> {
 
 // ---------------------------------------------------------------- Groq
 
+/** Groq can't read PDFs: replace Claude document parts with a short note. */
+function forGroq(messages: Msg[]): Msg[] {
+  return messages.map((m) => {
+    if (!Array.isArray(m.content)) return m;
+    return {
+      ...m,
+      content: (m.content as any[]).map((p) =>
+        p?.type === "document"
+          ? { type: "text", text: `[A PDF named "${String(p.title || "document").slice(0, 80)}" was attached, but the backup model cannot read PDFs. Say so and answer from the rest of the message.]` }
+          : p
+      ),
+    };
+  });
+}
+
 async function callGroqApi(apiKey: string, opts: CallOpts): Promise<AiResult> {
+  opts = { ...opts, messages: forGroq(opts.messages) };
   const hasImage = opts.messages.some(
     (m) => Array.isArray(m.content) && (m.content as any[]).some((p) => p?.type === "image_url"),
   );
@@ -294,6 +403,7 @@ async function callGroqApi(apiKey: string, opts: CallOpts): Promise<AiResult> {
     method: "POST",
     headers: { "content-type": "application/json", Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify(body),
+    signal: opts.signal,
   });
   if (!resp.ok) {
     const detail = await resp.text().catch(() => "");
@@ -311,6 +421,8 @@ async function callGroqApi(apiKey: string, opts: CallOpts): Promise<AiResult> {
   }
   const data = await resp.json();
   const content: string = data?.choices?.[0]?.message?.content ?? "";
+  // Groq isn't streamed: hand the whole answer over in one piece.
+  if (content && opts.onText) opts.onText(content);
   return { ok: true, content, provider: "groq", model, raw: data };
 }
 
@@ -326,8 +438,11 @@ export async function callAI(opts: CallOpts): Promise<AiResult> {
     if (r.ok) return r;
     // No credits / bad key: let the caller switch to the offline medical library.
     if (report && r.outage) return r;
-    if (!groqKey) return r;
+    // The user pressed Stop: don't start the backup model.
+    if (!groqKey || opts.signal?.aborted) return r;
     // Claude failed (outage, rate limit or bad request): keep Cadus answering via Groq.
+    // Any text Claude streamed before failing is discarded first.
+    opts.onReset?.();
     const g = await callGroqApi(groqKey, opts);
     return g.ok ? { ...g, fallbackReason: r.error } : r;
   }
