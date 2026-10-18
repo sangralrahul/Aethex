@@ -81,6 +81,8 @@ import { CADUS_PRO_CSS } from "@/components/cadus/cadus-pro-styles";
 import { CADUS_REF_CSS } from "@/components/cadus/cadus-ref-styles";
 import { CADUS_WS_CSS } from "@/components/cadus/cadus-ws-styles";
 import { CADUS_CLINIC_CSS } from "@/components/cadus/cadus-clinic-styles";
+import { CADUS_LOOKS_CSS, LOOKS } from "@/components/cadus/cadus-looks-styles";
+type LookId = (typeof LOOKS)[number]["id"];
 import { CADUS_VERSION, LEGAL_PATH } from "@/lib/cadus/legal";
 import SourcesPanel from "@/components/cadus/SourcesPanel";
 import SafetyView from "@/components/cadus/SafetyView";
@@ -226,6 +228,8 @@ interface Prefs {
   privacyGuard: boolean;
   /** A quiet pattern behind the chat and home page. */
   wallpaper: WallpaperId;
+  /** The overall look: clinical (default), editorial or mono. */
+  look: LookId;
   /** Show a notification when an answer is ready and Cadus is in a background tab. */
   notify: boolean;
   /** Units in answers: conventional (mg/dL, as Indian laboratories report) or SI. */
@@ -394,7 +398,7 @@ const PROJECTS_KEY = "cadus3.projects";
 const UI_KEY = "cadus3.ui";
 const DOCS_KEY = "cadus3.docs";
 const FREE_DAILY = 20;
-const DEFAULT_PREFS: Prefs = { theme: "light", accent: "navy", textSize: "m", style: "balanced", language: "English", enterToSend: true, safetyReview: true, sources: false, answerFont: "sans", model: "medius", privacyGuard: true, notify: false, units: "conventional", nlem: false, density: "comfortable", wallpaper: "none" };
+const DEFAULT_PREFS: Prefs = { theme: "light", accent: "navy", textSize: "m", style: "balanced", language: "English", enterToSend: true, safetyReview: true, sources: false, answerFont: "sans", model: "medius", privacyGuard: true, notify: false, units: "conventional", nlem: false, density: "comfortable", wallpaper: "none", look: "clinical" };
 /** Bumped when the default look changes, so saved settings move to the new theme, colour and answer font once. */
 const PREFS_VERSION = 4;
 
@@ -407,6 +411,7 @@ function loadPrefs(): Prefs {
   }
   const prefs = { ...DEFAULT_PREFS, ...saved };
   if (!isWallpaper(prefs.wallpaper)) prefs.wallpaper = "none";
+  if (!LOOKS.some((l) => l.id === prefs.look)) prefs.look = "clinical";
   return prefs;
 }
 const PROJECT_IDEAS = ["Cardiology rotation", "NEET-PG revision", "Thesis literature review"];
@@ -1010,7 +1015,8 @@ export default function CadusAI() {
   );
   const styleDef = STYLES.find((s) => s.id === prefs.style) ?? STYLES[1];
   const modelDef = MODEL_DEF[prefs.model] ?? MODEL_DEF.medius;
-  const firstName = (user?.name || "").trim().split(/\s+/)[0] || "";
+  // "Dr Ananya Rao" greets as Ananya: titles are skipped.
+  const firstName = (user?.name || "").trim().split(/\s+/).filter((w) => !/^(dr|prof|mr|mrs|ms|miss|sr|smt|shri)\.?$/i.test(w))[0] || "";
   const serif = prefs.answerFont !== "sans";
   // Newsreader has a smaller x-height than the sans, so serif answers are set a little larger to read the same.
   const sansSize = prefs.textSize === "s" ? 14 : prefs.textSize === "l" ? 16.5 : 15.5;
@@ -3515,10 +3521,11 @@ export default function CadusAI() {
   return (
     <div
       className={`cx ${dark ? "cx-dark" : "cx-light"} ${serif ? "ans-serif" : "ans-sans"} ${collapsed && isDesktop ? "is-collapsed" : ""} ${canvasDoc || sourcesFor ? "has-canvas" : ""} ${prefs.density === "compact" ? "is-compact" : ""}`}
+      data-look={prefs.look}
       style={{ ["--acc" as string]: dark ? accent.dark : accent.light, ["--fs" as string]: `${fontSize}px`, ["--fs-u" as string]: `${sansSize}px` }}
       {...dropHandlers}
     >
-      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS}</style>
+      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS}</style>
 
       {/* ============================================== sidebar */}
       <div className={`cx-scrim ${sidebarOpen ? "on" : ""}`} onClick={() => setSidebarOpen(false)} />
@@ -4305,6 +4312,17 @@ export default function CadusAI() {
                     </div>
                     <PersonalSettings personal={personal} setPersonal={setPersonal} toast={toast} />
                     <p className="cx-set-sub">Appearance</p>
+                    <div className="cx-set-row cx-set-look">
+                      <div><b>Look</b><small>Three complete looks. Each sets the typefaces, surfaces, spacing and corners; your colour and font choices below apply on top.</small></div>
+                      <div className="cx-look-pick" role="radiogroup" aria-label="Look">
+                        {LOOKS.map((l) => (
+                          <button key={l.id} role="radio" aria-checked={prefs.look === l.id} className={`look-${l.id} ${prefs.look === l.id ? "on" : ""}`} title={l.hint} onClick={() => setPrefs({ ...prefs, look: l.id })}>
+                            <span className="cx-look-prev" aria-hidden="true"><i /><em><b /><b /><b /></em></span>
+                            <b>{l.name}</b><small>{l.hint}</small>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                     <div className="cx-set-row">
                       <div><b>Answer font</b><small>Serif reads like a well-set textbook and is easier on long answers. Tables and doses always use the sans.</small></div>
                       <div className="cx-seg">

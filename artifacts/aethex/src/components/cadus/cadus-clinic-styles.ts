@@ -68,8 +68,8 @@ export const CADUS_CLINIC_CSS = `
 .cx-a-kind{font-weight:600;color:var(--text)}
 .cx-a-model,.cx-a-time{color:var(--t3);font-size:12.5px}
 .cx-a-model::before,.cx-a-time::before{content:"·";margin-right:10px;color:var(--line2)}
-.cx-a-h .cx-rv,.cx-a-h .cx-conf{margin-left:auto;height:22px}
-.cx-a-h .cx-rv+.cx-conf{margin-left:0}
+.cx-a-h .cx-rv,.cx-a-h .cx-conf{height:22px}
+.cx-a-h .cx-rv{margin-left:4px}
 .cx-rv{background:transparent;border:1px solid var(--line2);color:var(--t2)}
 .cx-sources{border:1px solid var(--line);background:var(--surface)}
 .cx-src-h{font-size:12.5px}
@@ -95,5 +95,20 @@ export const CADUS_CLINIC_CSS = `
 .cx-home-legal a:hover{color:var(--text);text-decoration:underline}
 .cx-set-legal{display:flex;gap:12px;flex-shrink:0}
 .cx-si-foot a{color:var(--t2);text-decoration:underline;text-underline-offset:2px}
-@media (max-width:860px){.cx .cx-fh-premium .cx-fh-h h1{font-size:23px}.cx-home-legal{margin-left:0}}
+.cx-set-look{align-items:flex-start}
+.cx-look-pick{display:grid;grid-template-columns:repeat(3,112px);gap:8px;flex-shrink:0}
+.cx-look-pick button{display:flex;flex-direction:column;gap:4px;padding:6px;border:1px solid var(--line);border-radius:var(--r);text-align:left;background:var(--surface)}
+.cx-look-pick button:hover{border-color:var(--line2)}
+.cx-look-pick button.on{border-color:var(--acc);box-shadow:0 0 0 2px color-mix(in srgb,var(--acc) 20%,transparent)}
+.cx-look-pick b{font-size:12.5px;font-weight:600;color:var(--text)}
+.cx-look-pick small{font-size:11px;line-height:1.3;color:var(--t3);white-space:normal}
+.cx-look-prev{display:flex;gap:4px;width:100%;height:46px;padding:5px;border-radius:4px;overflow:hidden}
+.cx-look-prev i{width:22%;border-radius:2px}
+.cx-look-prev em{flex:1;display:flex;flex-direction:column;gap:4px;padding-top:4px}
+.cx-look-prev em b{display:block;height:4px;border-radius:2px;width:70%}
+.cx-look-prev em b:nth-child(2){width:95%;height:3px}.cx-look-prev em b:nth-child(3){width:55%;height:3px}
+.look-clinical .cx-look-prev{background:#F6F7F9;border:1px solid #E2E6EC}.look-clinical .cx-look-prev i{background:#1F3F7A}.look-clinical .cx-look-prev em b{background:#9AA5B8}
+.look-editorial .cx-look-prev{background:#FBFAF6;border:1px solid #E6E2D8}.look-editorial .cx-look-prev i{background:#F4F2EB;border:1px solid #D6D1C4}.look-editorial .cx-look-prev em b{background:#1C1A17}.look-editorial .cx-look-prev em b:first-child{height:6px;width:60%}
+.look-mono .cx-look-prev{background:#FFFFFF;border:1px solid #E6E6E6}.look-mono .cx-look-prev i{background:#FAFAFA;border:1px solid #E6E6E6}.look-mono .cx-look-prev em b{background:#171717;height:3px}
+@media (max-width:860px){.cx .cx-fh-premium .cx-fh-h h1{font-size:23px}.cx-home-legal{margin-left:0}.cx-look-pick{grid-template-columns:repeat(3,minmax(0,1fr));width:100%}}
 `;

@@ -9,6 +9,7 @@ import { CADUS_REF_CSS } from "@/components/cadus/cadus-ref-styles";
 import { CADUS_WS_CSS } from "@/components/cadus/cadus-ws-styles";
 import { CADUS_SIGNIN_CSS } from "@/components/cadus/cadus-signin-styles";
 import { CADUS_CLINIC_CSS } from "@/components/cadus/cadus-clinic-styles";
+import { CADUS_LOOKS_CSS } from "@/components/cadus/cadus-looks-styles";
 import { CADUS_VERSION, LEGAL, LEGAL_PATH, RELEASES, SUPPORT_EMAIL, type LegalKind } from "@/lib/cadus/legal";
 import { isCadusHost } from "@/lib/host";
 
@@ -19,10 +20,11 @@ export default function CadusLegal({ kind }: { kind: LegalKind }) {
   const page = LEGAL[kind];
   const cadus = isCadusHost();
   const home = cadus ? "/" : "/ai-assistant";
+  const look = (() => { try { const l = JSON.parse(localStorage.getItem("cadus3.prefs") || "{}").look; return ["clinical", "editorial", "mono"].includes(l) ? l : "clinical"; } catch { return "clinical"; } })();
   const dark = (() => { try { return JSON.parse(localStorage.getItem("cadus3.prefs") || "{}").theme === "dark"; } catch { return false; } })();
   return (
-    <div className={`cx cx-legal ${dark ? "cx-dark" : "cx-light"} ans-sans`} style={{ ["--fs" as string]: "15.5px" }}>
-      <style>{CADUS_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_SIGNIN_CSS + CADUS_CLINIC_CSS + LEGAL_CSS}</style>
+    <div className={`cx cx-legal ${dark ? "cx-dark" : "cx-light"} ans-sans`} data-look={look} style={{ ["--fs" as string]: "15.5px" }}>
+      <style>{CADUS_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_SIGNIN_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + LEGAL_CSS}</style>
       <header className="cx-shared-top">
         <a className="cx-si-brand small" href={home} style={{ display: "flex", marginBottom: 0 }}><CadusMark size={24} /><span>Cadus</span></a>
         <nav className="cx-legal-nav" aria-label="Trust pages">

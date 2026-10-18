@@ -16,6 +16,7 @@ import CadusMark from "@/components/cadus/CadusMark";
 import { CADUS_CSS } from "@/components/cadus/cadus-styles";
 import { CADUS_SIGNIN_CSS } from "@/components/cadus/cadus-signin-styles";
 import { CADUS_CLINIC_CSS } from "@/components/cadus/cadus-clinic-styles";
+import { CADUS_LOOKS_CSS } from "@/components/cadus/cadus-looks-styles";
 const legalPath = (kind: "terms" | "privacy" | "disclaimer") => LEGAL_PATH(kind, isCadusHost());
 
 type Method = "password" | "email" | "phone";
@@ -43,6 +44,7 @@ export default function CadusSignIn() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const look = (() => { try { const l = JSON.parse(localStorage.getItem("cadus3.prefs") || "{}").look; return ["clinical", "editorial", "mono"].includes(l) ? l : "clinical"; } catch { return "clinical"; } })();
   const dark = typeof window !== "undefined" && (() => { try { return JSON.parse(localStorage.getItem("cadus3.prefs") || "{}").theme === "dark"; } catch { return false; } })();
   const confirmation = useRef<ConfirmationResult | null>(null);
   const verifier = useRef<RecaptchaVerifier | null>(null);
@@ -122,8 +124,8 @@ export default function CadusSignIn() {
 
   const title = done ? "Signed in" : mode === "up" ? "Create your Cadus account" : "Sign in to Cadus";
   return (
-    <div className={`cx cx-si ${dark ? "cx-dark" : "cx-light"}`}>
-      <style>{CADUS_CSS + CADUS_SIGNIN_CSS + CADUS_CLINIC_CSS}</style>
+    <div className={`cx cx-si ${dark ? "cx-dark" : "cx-light"}`} data-look={look}>
+      <style>{CADUS_CSS + CADUS_SIGNIN_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS}</style>
       <aside className="cx-si-side" aria-hidden>
         <div className="cx-si-brand"><CadusMark size={30} /><span>Cadus<small>Clinical AI by Aethex</small></span></div>
         <div className="cx-si-pitch">

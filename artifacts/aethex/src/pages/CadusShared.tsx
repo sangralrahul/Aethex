@@ -10,6 +10,7 @@ import { CADUS_REF_CSS } from "@/components/cadus/cadus-ref-styles";
 import { CADUS_WS_CSS } from "@/components/cadus/cadus-ws-styles";
 import { CADUS_SIGNIN_CSS } from "@/components/cadus/cadus-signin-styles";
 import { CADUS_CLINIC_CSS } from "@/components/cadus/cadus-clinic-styles";
+import { CADUS_LOOKS_CSS } from "@/components/cadus/cadus-looks-styles";
 import { MdBlock } from "@/components/cadus/LiveAnswer";
 import { addComment, decodeShare, readComments, removeComment, shareKey, type Comment, type Shared } from "@/lib/cadus/share";
 import { isCadusHost } from "@/lib/host";
@@ -19,6 +20,7 @@ export default function CadusShared() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [by, setBy] = useState("");
   const [text, setText] = useState("");
+  const look = (() => { try { const l = JSON.parse(localStorage.getItem("cadus3.prefs") || "{}").look; return ["clinical", "editorial", "mono"].includes(l) ? l : "clinical"; } catch { return "clinical"; } })();
   const dark = (() => { try { return JSON.parse(localStorage.getItem("cadus3.prefs") || "{}").theme === "dark"; } catch { return false; } })();
   useEffect(() => {
     const load = () => decodeShare(window.location.hash).then((s) => { setItem(s); if (s) setComments(readComments(shareKey(s))); });
@@ -30,8 +32,8 @@ export default function CadusShared() {
   const home = isCadusHost() ? "/" : "/ai-assistant";
   const when = item ? new Date(item.at).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }) : "";
   return (
-    <div className={`cx cx-shared ${dark ? "cx-dark" : "cx-light"} ans-sans`} style={{ ["--fs" as string]: "15.5px" }}>
-      <style>{CADUS_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_SIGNIN_CSS + CADUS_CLINIC_CSS}</style>
+    <div className={`cx cx-shared ${dark ? "cx-dark" : "cx-light"} ans-sans`} data-look={look} style={{ ["--fs" as string]: "15.5px" }}>
+      <style>{CADUS_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_SIGNIN_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS}</style>
       <header className="cx-shared-top">
         <a className="cx-si-brand small" href={home} style={{ display: "flex", marginBottom: 0 }}><CadusMark size={24} /><span>Cadus</span></a>
         <span className="cx-shared-tag">Shared {item?.kind === "case" ? "case" : "answer"} · read-only</span>
