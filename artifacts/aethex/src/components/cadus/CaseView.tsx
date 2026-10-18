@@ -5,7 +5,7 @@
  */
 import { useMemo, useState } from "react";
 import {
-  Activity, ArrowLeft, BedDouble, ClipboardList, FileText, MessageSquare, Plus, Search, Send, ShieldAlert, Sparkles, Trash2, X,
+  Activity, ArrowLeft, BedDouble, ClipboardList, FileText, MessageSquare, Plus, Search, Send, Share2, ShieldAlert, Sparkles, Trash2, X,
 } from "lucide-react";
 import {
   CASE_ACTIONS, CASE_LIMITS, caseLabel, caseWho, ENTRY_LABEL, EXAMPLE_CASE, latestVitals, missingSections, newCase, newEntry, vitalFlags,
@@ -45,13 +45,14 @@ function Section({ title, value, onChange, max, rows = 3, placeholder }: { title
   );
 }
 
-export default function CaseView({ cases, onChange, chatsFor, onAsk, onOpenChat, onAddToWard, toast, openId, setOpenId }: {
+export default function CaseView({ cases, onChange, chatsFor, onAsk, onOpenChat, onAddToWard, onShare, toast, openId, setOpenId }: {
   cases: PatientCase[];
   onChange: (list: PatientCase[]) => void;
   chatsFor: (caseId: string) => CaseChat[];
   onAsk: (c: PatientCase, mode: string, question: string, title: string) => boolean;
   onOpenChat: (sid: string) => void;
   onAddToWard: (c: PatientCase) => void;
+  onShare: (c: PatientCase) => void;
   toast: (t: string) => void;
   openId: string;
   setOpenId: (id: string) => void;
@@ -175,6 +176,7 @@ export default function CaseView({ cases, onChange, chatsFor, onAsk, onOpenChat,
         </div>
         <div className="cx-page-acts">
           <button className="cx-btn" onClick={() => onAddToWard(c)} title="Add this patient to today's ward round"><BedDouble size={15} /> Add to ward round</button>
+          <button className="cx-btn" onClick={() => onShare(c)} title="Share the de-identified case as a link or QR code"><Share2 size={15} /> Share</button>
           <button className="cx-btn" onClick={() => { update({ status: c.status === "active" ? "closed" : "active" }); toast(c.status === "active" ? "Case closed" : "Case reopened"); }}>{c.status === "active" ? "Close case" : "Reopen"}</button>
           <button
             className={`cx-btn danger ${armed ? "armed" : ""}`}

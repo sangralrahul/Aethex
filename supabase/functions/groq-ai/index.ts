@@ -164,6 +164,79 @@ Skip the Bottom line.`,
   mcq: `TASK: Exam practice (NEET-PG, INI-CET and USMLE style). Write five high-quality single-best-answer MCQs on the topic. For each: a clinical vignette stem, options A to D, then "**Answer:**" with a two-to-three-line explanation that includes why the strongest distractor is wrong. Separate questions with a horizontal rule. Make sure every question has exactly one unambiguously correct answer, and spread the answers across A to D. Skip the Bottom line.`,
 };
 
+/** Reading protocols by image or document type, chosen by the user in the Read tool. */
+const READING_TASKS: Record<string, string> = {
+  xray: `TASK: Chest or skeletal X-ray read, as a radiologist would report it.
+**Bottom line:** the impression in one sentence, with how confident you are.
+## Technical (projection and view, rotation, penetration, inspiration, artefacts, any lines or devices)
+## Systematic review (chest: airway, breathing (lung fields, zones, pleura), circulation (heart size, mediastinum, hila), diaphragm and below, everything else (bones, soft tissue, devices); skeletal: alignment, bone, cartilage and joint, soft tissue)
+## Findings (each with location and size where it can be estimated; say what is normal too)
+## Impression (most likely diagnosis, then differentials in order, with the finding that separates them)
+## Recommended next steps (further views or imaging, correlation needed, urgency)
+## Limitations
+A single image without the clinical story cannot confirm a diagnosis; say what the clinician should correlate. Never report a finding you cannot see.`,
+  ecg: `TASK: 12-lead ECG read, as a cardiologist would report it.
+**Bottom line:** the rhythm and the one finding that matters most, with whether it needs action now.
+## Technical (calibration, paper speed, lead placement problems, artefact)
+## Rate and rhythm (rate by method, regularity, P waves and their relation to QRS)
+## Axis and intervals (PR, QRS duration, QT and QTc with the formula used)
+## Morphology by territory (P, QRS, ST segments and T waves: inferior II, III, aVF; lateral I, aVL, V5–V6; anterior V1–V4; reciprocal changes)
+## Findings (a table: Finding | Leads | Significance)
+## Interpretation (diagnosis, differentials, and what would confirm it)
+## Immediate actions (if any: for example STEMI pathway, treat hyperkalaemia, pacing)
+## Limitations
+If the strip is a single lead or a monitor trace, say so and read what can be read.`,
+  skin: `TASK: Dermatology photo read.
+**Bottom line:** the most likely diagnosis, with how confident you are.
+## Description (morphology, number, size, colour, surface, border, configuration and distribution; Fitzpatrick skin type if evident; sites involved)
+## Differential diagnosis (a table: Diagnosis | For | Against | Test)
+## Red flags (features of melanoma, severe drug reaction, necrotising infection, systemic illness)
+## Recommended next steps (dermoscopy, scraping, biopsy, bloods, referral and urgency)
+## Management of the most likely diagnosis (first-line, with doses and duration; Indian availability)
+## Limitations
+Photographs change colour and scale; say what examination in person would add.`,
+  ct: `TASK: CT or MRI image read, as a radiologist would report it.
+**Bottom line:** the impression in one sentence, with how confident you are.
+## Technical (modality, plane, sequence or phase and contrast if evident, level shown, quality)
+## Systematic review of the region shown
+## Findings (location, size, density or signal, enhancement, mass effect, where estimable)
+## Impression (most likely diagnosis, then differentials, with the separating features)
+## Recommended next steps (full study review, further sequences or imaging, urgent referral if needed)
+## Limitations
+A single slice is a small part of a study: say so, and never extrapolate to what is not shown.`,
+  lab: `TASK: Laboratory report interpretation.
+**Bottom line:** the pattern the results show and the most important abnormal value.
+## Results (a table: Test | Value | Reference range | Flag (H, L, critical)); quote values and units exactly as printed
+## Pattern (what the abnormalities point to together, for example microcytic anaemia, cholestatic liver picture, pre-renal AKI, with the calculations that help: anion gap, corrected calcium, eGFR, ratios)
+## Differential causes, most likely first
+## What to do now (repeat tests, further tests, treatment if a value is dangerous, with thresholds)
+## Critical values (anything that needs action today)
+## Limitations (unreadable values, missing reference ranges, timing)
+Never invent a value; if a line is unreadable say so.`,
+  rx: `TASK: Prescription or medicine photo review (a pharmacist's and physician's check).
+**Bottom line:** whether the prescription looks safe, and the most important problem if any.
+## What is prescribed (a table: Medicine | Strength | Dose | Frequency | Duration, with generics for brand names; mark anything illegible)
+## Checks (dose and frequency against usual ranges; duplications; interactions with severity; renal, hepatic, pregnancy or paediatric cautions; missing items such as a PPI with dual antiplatelets, or a laxative with opioids)
+## Questions to clarify with the prescriber
+## Counselling points for the patient (how to take each medicine, what to avoid, when to come back)
+## Limitations
+Do not repeat any patient name or identifier that appears on the paper.`,
+  fundus: `TASK: Fundus or anterior-segment eye photo read.
+**Bottom line:** the most likely diagnosis, with how confident you are.
+## Description (disc: margins, cup-to-disc ratio, colour; vessels: calibre, crossings, tortuosity; macula; background retina: haemorrhages, exudates, cotton-wool spots, neovascularisation; media clarity)
+## Grading (diabetic retinopathy or hypertensive retinopathy grade if applicable, with the features that set the grade)
+## Differential diagnosis
+## Recommended next steps (OCT, fluorescein angiography, laser or anti-VEGF referral, urgency; systemic control)
+## Limitations`,
+  usg: `TASK: Ultrasound image read.
+**Bottom line:** the impression, with how confident you are.
+## Technical (probe and plane if evident, organ or region, quality)
+## Findings (echogenicity, size with measurements shown, borders, vascularity if Doppler, free fluid)
+## Impression and differentials
+## Recommended next steps
+## Limitations (a static image from an operator-dependent study)`,
+};
+
 const IMAGE_TASK = `TASK: Clinical image interpretation.
 **Bottom line:** the most likely impression.
 ## Image (type, view or technique, and quality: adequacy, rotation, exposure, artefacts)
@@ -231,6 +304,18 @@ const DOSE_CARD_OPTIONAL = `DOSE CARDS: If the answer centres on the dose of one
 /** Clinical tools whose answers carry evidence labels (not notes, letters, exam questions or role-play). */
 const EVIDENCE_TAG_MODES = new Set(["general", "ddx", "drugs", "dosage", "labs", "image", "procedure", "research"]);
 
+/** The depth a senior consultant brings: reasoning you can follow, numbers, mechanism, pitfalls and a plan. Clinical tools only. */
+const EXPERT_DEPTH = `EXPERT DEPTH: Write as the most experienced specialist in the room would, not as a textbook summary.
+- Show your reasoning: say why the leading diagnosis or choice beats the alternatives, naming the one or two findings that decide it.
+- Use numbers where they change decisions: thresholds, sensitivities and specificities of key tests, risk scores, time windows, numbers needed to treat, target ranges. Give the figure, not "high" or "low", when you know it.
+- Explain the mechanism in one line where it makes the plan easier to remember (why the drug, why the dose, why the test).
+- Name the pitfalls: the two or three mistakes commonly made in this situation (missed diagnoses, wrong doses, tests ordered too early or too late).
+- Monitoring and reassessment: what to check, when, and what result changes the plan.
+- Where a decision depends on a detail you don't have, say which detail and give the plan for each branch briefly, rather than hedging.
+- End with "## What I'd do": one short paragraph, first person, giving the plan as you would state it to a colleague on the ward, with the first three actions in order.
+Keep it tight: depth comes from specifics, not length.`;
+const EXPERT_DEPTH_MODES = new Set(["general", "ddx", "drugs", "dosage", "labs", "image", "procedure"]);
+
 const REVIEW_SYSTEM = `You are Cadus Safety Review: a senior physician and clinical pharmacologist who audits AI-drafted clinical answers before they reach doctors and medical students in India.
 
 You receive the user's question (with any earlier conversation) and a DRAFT answer written by another model. Do the following:
@@ -238,7 +323,7 @@ You receive the user's question (with any earlier conversation) and a DRAFT answ
 2. Check the clinical reasoning: are the can't-miss diagnoses and red flags present? Is anything unsafe, outdated, overconfident or wrongly prioritised?
 3. Check for fabrication: remove or correct any study, statistic, guideline year, brand name or reference you cannot confirm.
 4. Write the FINAL answer. Keep the draft's structure, language and good content; fix every error; add missing safety-critical information; remove anything wrong. Keep citation markers such as [1] that refer to the listed sources and do not add new numbers. Never mention the review, the draft or yourself inside the final answer.
-5. Keep the draft's special formats exactly: {{evidence:...}} labels (change a label that overstates or understates the evidence, remove one you cannot judge) and \`\`\`dose blocks (check every value in them like any other dose, and keep them consistent with the text).
+5. Keep the draft's special formats exactly: {{evidence:...}} labels (change a label that overstates or understates the evidence, remove one you cannot judge) and \`\`\`dose blocks (check every value in them like any other dose, and keep them consistent with the text). Keep the draft's reasoning, numbers, pitfalls and its closing "## What I'd do" plan (correct them if wrong; never strip them to make the answer shorter).
 
 Reply in exactly this format and nothing else:
 <review>{"verdict":"approved or corrected","confidence":"high, moderate or low","checked":["short labels for what you verified, e.g. Doses and units"],"changes":["one short sentence per correction you made; empty list if none"]}</review>
@@ -643,16 +728,18 @@ Deno.serve(async (req) => {
       const search = mode !== "evidence" && (mode === "research" || body.search === true);
       const roleplay = mode === "viva" || mode === "osce";
       // A single image in the image tool (or with no tool) gets the systematic image read.
-      const imageRead = !earlier && attached.images > 0 && !attached.documents && (mode === "image" || mode === "general");
+      const reading = typeof body.reading === "string" && READING_TASKS[body.reading] ? body.reading : "";
+      const imageRead = !earlier && (attached.images > 0 || (!!reading && attached.documents)) && (mode === "image" || mode === "general") && (!attached.documents || !!reading);
       const system = [
         CORE_SYSTEM,
-        imageRead ? IMAGE_TASK : MODE_PROMPTS[mode] ?? "",
+        imageRead ? (READING_TASKS[String(body.reading)] ?? IMAGE_TASK) : MODE_PROMPTS[mode] ?? "",
         !imageRead && attached.images ? IMAGES_NOTE : "",
         attached.documents ? DOCUMENT_NOTE : "",
         earlier ? EARLIER_FILES_NOTE : "",
         STYLE_PROMPTS[style] ?? "",
         mode === "evidence" ? SOURCES_RECORDS : search ? SOURCES_ON : SOURCES_OFF,
         // Spoken answers have no labels or cards.
+        style !== "voice" && style !== "concise" && EXPERT_DEPTH_MODES.has(mode) ? EXPERT_DEPTH : "",
         style !== "voice" && EVIDENCE_TAG_MODES.has(mode) ? EVIDENCE_TAGS : "",
         style !== "voice" ? (mode === "dosage" ? DOSE_CARD_FORMAT : mode === "general" ? DOSE_CARD_OPTIONAL : "") : "",
         projectLine(body.instructions),

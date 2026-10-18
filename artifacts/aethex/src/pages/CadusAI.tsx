@@ -19,7 +19,7 @@ import {
   Plus, Presentation, RefreshCw, RotateCcw, Scale, Search, Settings, ShieldAlert, ShieldCheck, ShoppingBag, SlidersHorizontal,
   Sparkles, Square, SquarePen, Stethoscope, Sun, Syringe, Telescope, Trash2, Users, Volume2, VolumeX, X, Zap, Palette,
   BedDouble, BookMarked, BookOpenText, ChartLine, ClipboardPlus, FileBadge, FileSignature, Microscope, NotebookPen, NotepadText,
-  Printer, Scissors, ScrollText, Sigma, PanelRight, EyeOff, Compass, Rows3, WifiOff, Building2,
+  Printer, Scissors, ScrollText, Sigma, PanelRight, EyeOff, Compass, Rows3, WifiOff, Building2, ScanSearch,
   type LucideIcon,
 } from "lucide-react";
 import { invokeAi } from "@/lib/ai-functions";
@@ -65,6 +65,11 @@ import { contentWords, institutionPayload, readInstitution, saveInstitution, typ
 import { caseLabel, caseSummary, newCase, newEntry, readCases, saveCases, type PatientCase } from "@/lib/cadus/cases";
 import { isWallpaper, wallpaperCss, WALLPAPERS, type WallpaperId } from "@/lib/cadus/wallpaper";
 import CaseView from "@/components/cadus/CaseView";
+import LearnView from "@/components/cadus/LearnView";
+import { readLearn, saveLearn, type LearnState } from "@/lib/cadus/learn";
+import DrugsView from "@/components/cadus/DrugsView";
+import ShareDialog from "@/components/cadus/ShareDialog";
+import type { Shared } from "@/lib/cadus/share";
 import { printMarkdown } from "@/lib/cadus/printdoc";
 import { evidenceRecords, evidenceSources, readReading, type Paper } from "@/lib/cadus/pubmed";
 import { localDate, readWard } from "@/lib/cadus/wardlist";
@@ -95,7 +100,9 @@ type ModeId =
   | "soap" | "discharge" | "referral" | "handover" | "patient" | "research" | "mcq" | "slides" | "viva" | "osce"
   | "admission" | "progress" | "opnote" | "death" | "certificate" | "rx" | "evidence";
 type Provider = "claude" | "groq" | "library";
-type View = "chat" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "safety" | "history" | "privacy";
+type View = "chat" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy";
+/** Views reached from the Tools hub, so the hub stays highlighted in the sidebar. */
+const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks"]);
 type ToolTab = "all" | "clinical" | "documentation" | "learning";
 type SettingsTab = "general" | "personal" | "letterhead" | "institution" | "data" | "shortcuts" | "about";
 type StyleId = "concise" | "balanced" | "detailed";
@@ -143,6 +150,8 @@ interface Msg {
   files?: Attachment[];
   /** user message: "Think deeper" was on */
   think?: boolean;
+  /** user message: the Read tool's image or report type (xray, ecg, skin, ct, lab, rx, fundus, usg) */
+  reading?: string;
   /** user message: asked in voice mode (short, spoken answer) */
   voice?: boolean;
   /** user message: numbered records attached for an evidence summary; they become the answer's sources */
@@ -361,6 +370,17 @@ const ACCENTS = [
   { id: "graphite", name: "Graphite", light: "#344054", dark: "#CBD5E1" },
 ];
 
+/** The Read tool's image and report types (the server has a reading protocol for each). */
+const READINGS: { id: string; label: string; hint: string }[] = [
+  { id: "xray", label: "X-ray", hint: "Chest or skeletal X-ray, read systematically" },
+  { id: "ecg", label: "ECG", hint: "12-lead ECG or rhythm strip" },
+  { id: "skin", label: "Skin", hint: "Dermatology photo" },
+  { id: "ct", label: "CT / MRI", hint: "A CT or MRI slice" },
+  { id: "usg", label: "Ultrasound", hint: "An ultrasound image" },
+  { id: "fundus", label: "Eye", hint: "Fundus or anterior segment photo" },
+  { id: "lab", label: "Lab report", hint: "A laboratory report (photo or PDF)" },
+  { id: "rx", label: "Prescription", hint: "A prescription or medicine photo, checked like a pharmacist" },
+];
 const LANGUAGES = ["English", "Hindi", "Hinglish", "Bengali", "Tamil", "Telugu", "Marathi", "Gujarati", "Kannada", "Malayalam", "Punjabi", "Urdu"];
 
 const SESSIONS_KEY = "cadus3.sessions";
@@ -895,11 +915,14 @@ export default function CadusAI() {
   const [profile, setProfile] = useState<MedicalProfile | null>(readProfile);
   const [profileOpen, setProfileOpen] = useState(false);
   const [practice, setPracticeState] = useState<PracticeState>(readPractice);
+  const [learn, setLearnState] = useState<LearnState>(readLearn);
   const [toolsInit, setToolsInit] = useState<{ calc?: string; tab?: ToolsTab; drugs?: string[]; key: number }>({ key: 0 });
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
   const [wardLang, setWardLang] = useState("");
   const [personal, setPersonalState] = useState<Personal>(readPersonal);
   const [think, setThink] = useState(false);
+  /** The Read tool: what kind of image or report is attached. */
+  const [reading, setReading] = useState("");
   const [tempNext, setTempNext] = useState(false);
   const [versionView, setVersionView] = useState<Record<string, number>>({});
   const [fb, setFb] = useState<{ id: string; reasons: string[]; comment: string } | null>(null);
@@ -919,6 +942,8 @@ export default function CadusAI() {
   const [institution, setInstitution] = useState<Institution>(readInstitution);
   const [cases, setCases] = useState<PatientCase[]>(readCases);
   const [caseOpen, setCaseOpen] = useState("");
+  const [shareItem, setShareItem] = useState<Shared | null>(null);
+  const [drugsInit, setDrugsInit] = useState<{ tab?: "reference" | "prescriber"; query?: string; key: number }>({ key: 0 });
   const [researchInit, setResearchInit] = useState<{ tab?: ResearchTab; query?: string; key: number }>({ key: 0 });
   const [homeQuery, setHomeQuery] = useState("");
   const [wardInfo, setWardInfo] = useState(() => readWard());
@@ -1096,6 +1121,7 @@ export default function CadusAI() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvasId]);
   useEffect(() => savePractice(practice), [practice]);
+  useEffect(() => saveLearn(learn), [learn]);
   useEffect(() => {
     if (view === "project" && !project) setView("projects");
   }, [view, project]);
@@ -1460,6 +1486,7 @@ export default function CadusAI() {
             action: hasImage ? "analyze-image" : "chat",
             message: userMsg.content,
             image: userMsg.image,
+            ...(userMsg.reading ? { reading: userMsg.reading } : {}),
             ...(files.length ? { files, ...(filesEarlier ? { filesEarlier: true } : {}) } : {}),
             mode: userMsg.mode,
             style,
@@ -1616,6 +1643,7 @@ export default function CadusAI() {
       ...(guard.total ? { privacy: { total: guard.total, hits: guard.hits } } : {}),
       ...(extra?.lang ? { lang: extra.lang } : {}),
       ...(think && textOverride === undefined ? { think: true } : {}),
+      ...(reading && atts.length && textOverride === undefined ? { reading } : {}),
       ...(extra?.voice ? { voice: true } : {}),
     };
     const history = sessions.find((s) => s.id === sid)?.messages ?? [];
@@ -1628,6 +1656,7 @@ export default function CadusAI() {
     if (textOverride === undefined) {
       setInput("");
       setAttachments([]);
+      setReading("");
     }
     // Carrying on in an archived chat brings it back to the sidebar.
     if (!isNew && sessions.find((s) => s.id === sid)?.archived) setSessions((p) => p.map((s) => (s.id === sid ? { ...s, archived: false } : s)));
@@ -1711,6 +1740,7 @@ export default function CadusAI() {
   };
 
   const setPractice = useCallback((fn: (s: PracticeState) => PracticeState) => setPracticeState(fn), []);
+  const setLearn = useCallback((fn: (s: LearnState) => LearnState) => setLearnState(fn), []);
 
   const openCalculators = (opts: { calc?: string; tab?: ToolsTab; drugs?: string[] } = {}) => {
     setToolsInit({ ...opts, key: Date.now() });
@@ -1735,6 +1765,12 @@ export default function CadusAI() {
 
   const openWard = () => {
     setView("ward");
+    setSidebarOpen(false);
+    setPop(null);
+  };
+  const openDrugs = (opts: { tab?: "reference" | "prescriber"; query?: string } = {}) => {
+    setDrugsInit({ ...opts, key: Date.now() });
+    setView("drugs");
     setSidebarOpen(false);
     setPop(null);
   };
@@ -1804,7 +1840,7 @@ export default function CadusAI() {
       saveProfile(r.profile);
     }
     setPrefs((p) => ({ ...p, units: r.units, nlem: r.nlem, language: r.language }));
-    if (r.tour) window.setTimeout(() => setTourOpen(true), 300);
+    if (r.tour) { setMoreOpen(true); window.setTimeout(() => setTourOpen(true), 300); }
     else focusComposer();
   };
   const startTour = () => {
@@ -1814,6 +1850,7 @@ export default function CadusAI() {
     setPaletteOpen(false);
     setPop(null);
     setSidebarOpen(false);
+    setMoreOpen(true); // the ward, research and calculator steps point into the More drawer
     window.setTimeout(() => setTourOpen(true), 250);
   };
   const endTour = () => {
@@ -1825,6 +1862,9 @@ export default function CadusAI() {
     { selector: ".cx-composer", title: "Ask anything clinical", text: "Describe a case or ask a question. Cadus drafts the answer, a second model checks it, and you see its confidence, corrections and sources." },
     { selector: ".cx-tools-btn", title: "Pick a tool", text: "Differentials, dose calculations, notes, letters, certificates and prescriptions each give a structured answer you can use straight away." },
     { selector: ".cx-src", title: "Cite sources", text: "Turn on Sources and Cadus searches WHO, ICMR, NICE and PubMed, and cites what it finds. Hover a numbered badge to preview the source." },
+    { selector: '[data-tour="cases"]', title: "Cases", text: "A workspace per patient: problems, timeline, tasks and a handover summary, kept de-identified on this device." },
+    { selector: '[data-tour="practice"]', title: "Learn", text: "A daily question set, spaced-repetition review, timed mocks with analysis, and a syllabus tracker for NEET-PG, INI-CET and university exams." },
+    { selector: '[data-tour="tools"]', title: "Tools", text: `Ward round, research, the drug database and prescriber, ${CALCULATORS.length} calculators, projects and decks, plus every specialised answer mode.` },
     { selector: '[data-tour="ward"]', title: "Ward round", text: "Today's patients by bed number, with jobs, a round checklist and a one-click handover. It stays on this device." },
     { selector: '[data-tour="research"]', title: "Research", text: "Search PubMed, keep a reading list, export citations and get evidence summaries, plus sample sizes for your thesis." },
     { selector: '[data-tour="calculators"]', title: "Calculators and lab trends", text: `${CALCULATORS.length} bedside calculators, lab trend charts and the interaction checker, computed in your browser without AI.` },
@@ -2252,6 +2292,8 @@ export default function CadusAI() {
       { key: "a:tools", label: "Browse clinical tools", icon: LayoutGrid, run: () => setView("tools") },
       { key: "a:ward", label: "Open ward round", hint: "Your patient list", icon: BedDouble, run: () => openWard() },
       { key: "a:cases", label: "Patient cases", hint: "Case sheets with a timeline", icon: ClipboardList, run: () => openCases() },
+      { key: "a:drugs", label: "Drug reference", hint: "Doses, NLEM, kidney and liver notes", icon: Pill, run: () => openDrugs() },
+      { key: "a:rx", label: "New prescription", hint: "Build, check and print on your letterhead", icon: Pill, run: () => openDrugs({ tab: "prescriber" }) },
       { key: "a:newcase", label: "New patient case", hint: "Start a de-identified case sheet", icon: ClipboardList, run: () => { const c = newCase(); setCases((l) => [c, ...l]); openCases(c.id); } },
       { key: "a:pubmed", label: "Search PubMed", hint: "Research", icon: Microscope, run: () => openResearch({ tab: "search" }) },
       { key: "a:reading", label: "Open reading list", icon: BookMarked, run: () => openResearch({ tab: "reading" }) },
@@ -2266,7 +2308,7 @@ export default function CadusAI() {
       { key: "a:institution", label: "Institution protocols", hint: "Local protocols, formulary, team pack", icon: Building2, run: () => openSettings("institution") },
       { key: "a:calc", label: "Open calculators", icon: Calculator, run: () => openCalculators() },
       { key: "a:ix", label: "Open the interaction checker", icon: Pill, run: () => openCalculators({ tab: "ix" }) },
-      { key: "a:practice", label: "Open practice", icon: Target, run: () => openPractice() },
+      { key: "a:practice", label: "Open Learn", hint: "Daily set, mocks, syllabus, practice", icon: GraduationCap, run: () => openPractice() },
       { key: "a:profile", label: profile ? "Edit your profile" : "Personalise Cadus", icon: UserCog, run: () => setProfileOpen(true) },
       { key: "a:temp", label: "New temporary chat", hint: "Not saved", icon: MessageSquareDashed, run: () => { newChat(); setTempNext(true); } },
       { key: "a:voice", label: "Start voice mode", icon: AudioLines, run: () => startVoice() },
@@ -2344,6 +2386,14 @@ export default function CadusAI() {
 
   const composer = (placement: "hero" | "dock") => (
     <div ref={composerRef} className={`cx-composer ${placement === "hero" ? "is-hero" : ""} ${listening ? "is-rec" : ""}`}>
+      {attachments.length > 0 && (
+        <div className="cx-read-pick" role="radiogroup" aria-label="What is attached">
+          <span>Read as</span>
+          {READINGS.map((r) => (
+            <button key={r.id} type="button" role="radio" aria-checked={reading === r.id} className={reading === r.id ? "on" : ""} onClick={() => { setReading(reading === r.id ? "" : r.id); if (mode === "general" || mode === "image") setMode("image"); }} title={r.hint}>{r.label}</button>
+          ))}
+        </div>
+      )}
       {attachments.length > 0 && (
         <div className="cx-att-row">
           {attachments.map((a) => (
@@ -2514,10 +2564,34 @@ export default function CadusAI() {
   const runShortcut = (t: { calc?: string; mode?: string }) => (t.calc ? openCalculators({ calc: t.calc }) : t.mode ? startTool(t.mode as ModeId) : undefined);
 
   /** The home page: one question box, shortcuts for your role and specialty, and your recent work. */
+  /** The workspaces, as tiles on the home and the Tools hub. */
+  const openJobs = wardInfo.patients.reduce((n, p) => n + p.jobs.filter((j) => !j.done).length, 0);
+  const WORKSPACES: { id: string; icon: LucideIcon; tone: string; title: string; sub: string; go: () => void }[] = [
+    { id: "cases", icon: ClipboardList, tone: "teal", title: "Cases", sub: activeCases ? `${activeCases} active` : "Problems, timeline, handover", go: () => openCases() },
+    { id: "learn", icon: GraduationCap, tone: "violet", title: "Learn", sub: ptot.attempted ? `${accuracy(ptot) ?? 0}% accuracy · ${streak(practice.days)}-day streak` : "Daily set, mocks, syllabus", go: openPractice },
+    { id: "drugs", icon: Pill, tone: "rose", title: "Drugs", sub: "Database, doses, prescriber", go: () => openDrugs() },
+    { id: "research", icon: Microscope, tone: "amber", title: "Research", sub: readingCount ? `${readingCount} paper${readingCount === 1 ? "" : "s"} to read` : "PubMed, citations, thesis", go: () => openResearch() },
+    { id: "ward", icon: BedDouble, tone: "sky", title: "Ward round", sub: wardInfo.patients.length ? `${wardInfo.patients.length} patient${wardInfo.patients.length === 1 ? "" : "s"} · ${openJobs} job${openJobs === 1 ? "" : "s"}` : "Beds, jobs, handover", go: openWard },
+    { id: "calculators", icon: Calculator, tone: "lime", title: "Calculators", sub: `${CALCULATORS.length} scores and formulas`, go: () => openCalculators() },
+  ];
+  const workspaceTiles = (compact = false) => (
+    <div className={`cx-ws-grid ${compact ? "compact" : ""}`}>
+      {WORKSPACES.map((w, i) => (
+        <button key={w.id} className={`cx-ws-tile tone-${w.tone}`} style={{ ["--i" as string]: i }} onClick={w.go} data-ws={w.id}>
+          <span className="cx-ws-ic"><w.icon size={compact ? 18 : 20} strokeWidth={1.9} /></span>
+          <span className="cx-ws-t"><b>{w.title}</b><small>{w.sub}</small></span>
+          <ArrowRight size={14} className="cx-ws-go" />
+        </button>
+      ))}
+    </div>
+  );
+
   const renderHome = () => tempNext ? renderTempHome() : (
-    <section className="cx-home cx-fh">
+    <section className="cx-home cx-fh cx-fh-premium">
+      <div className="cx-fh-wash" aria-hidden="true"><i /><i /><i /></div>
       <div className="cx-fh-in">
         <header className="cx-fh-h">
+          <span className="cx-fh-eyebrow"><span className="cx-fh-mark"><CadusMark size={18} /></span>Cadus · Clinical AI<span className="cx-fh-eb2"><i /><ShieldCheck size={12} /> Second-model checked</span></span>
           <h1>{greeting()}{firstName ? `, ${firstName}` : ""}</h1>
           <p>
             {profile ? (
@@ -2549,6 +2623,11 @@ export default function CadusAI() {
           {!specTools.length && <button className="cx-q" onClick={() => openCalculators()} title="Bedside scores and formulas"><Calculator size={15} /> Calculators</button>}
           <button className="cx-q" onClick={() => openResearch()} title="PubMed search and the thesis kit"><Microscope size={15} /> Research</button>
           <button className="cx-q more" onClick={() => setView("tools")}><LayoutGrid size={15} /> All tools</button>
+        </div>
+
+        <div className="cx-fh-ws">
+          <div className="cx-fh-sh"><span>Workspaces</span><button onClick={() => setView("tools")}><LayoutGrid size={13} /> All tools</button></div>
+          {workspaceTiles()}
         </div>
 
         <div className="cx-fh-recent">
@@ -2609,10 +2688,23 @@ export default function CadusAI() {
   const renderTools = () => (
     <section className="cx-page">
       <header className="cx-page-h">
-        <div><h1>Clinical tools</h1><p>{TOOL_MODES.length} specialised modes. Each one changes how Cadus structures its answer, from ranked differentials and referral letters to viva practice and ready-to-present lecture decks.</p></div>
-        {toolTabs}
+        <div><h1>Tools</h1><p>Six workspaces and {TOOL_MODES.length} specialised answer modes, from ranked differentials and referral letters to viva practice and ready-to-present lecture decks.</p></div>
       </header>
-      <div className="cx-grid">{toolsFiltered.map((m) => toolCard(m, true))}</div>
+      <section className="cx-section cx-tools-ws">
+        <div className="cx-section-h"><div><h2>Workspaces</h2><p>Each keeps its own data on this device</p></div></div>
+        {workspaceTiles(true)}
+        <div className="cx-ws-more">
+          <button className="cx-btn" onClick={openProjects}><Folder size={14} /> Projects{projects.length ? ` · ${projects.length}` : ""}</button>
+          <button className="cx-btn" onClick={() => setView("decks")}><Presentation size={14} /> Decks{decks.length ? ` · ${decks.length}` : ""}</button>
+          <button className="cx-btn" onClick={() => setView("library")}><Library size={14} /> Library{library.length ? ` · ${library.length}` : ""}</button>
+          <button className="cx-btn" onClick={() => setView("safety")}><ShieldCheck size={14} /> Clinical safety</button>
+          <button className="cx-btn" onClick={() => setView("privacy")}><EyeOff size={14} /> Privacy centre</button>
+        </div>
+      </section>
+      <section className="cx-section">
+        <div className="cx-section-h"><div><h2>Answer modes</h2><p>Each one changes how Cadus structures its answer</p></div>{toolTabs}</div>
+        <div className="cx-grid">{toolsFiltered.map((m) => toolCard(m, true))}</div>
+      </section>
       <section className="cx-section">
         <div className="cx-section-h"><div><h2>Try an example</h2><p>Run a sample case to see how Cadus reasons and checks its answer</p></div></div>
         <div className="cx-ex-grid">
@@ -3113,7 +3205,8 @@ export default function CadusAI() {
                     <button className="cx-pop-i" onClick={() => { setPop(null); downloadWord(answerTitle(m, v.content), withSources(v.content, v.sources), m.mode); }}><FileDown size={16} /> Download for Word</button>
                     <button className="cx-pop-i" onClick={() => { setPop(null); exportAnswer(shown); }}><Download size={16} /> Download as PDF</button>
                     <button className="cx-pop-i" onClick={() => { setPop(null); printDoc(answerTitle(m, v.content), liftKeyPoints(v.content), { mode: m.mode, sources: src, large: m.mode === "patient" }); }}><Printer size={16} /> {m.mode === "patient" ? "Print handout" : "Print"}</button>
-                    <button className="cx-pop-i" onClick={() => { setPop(null); void shareAnswer(shown); }}><Share2 size={16} /> Share</button>
+                    <button className="cx-pop-i" onClick={() => { setPop(null); setShareItem({ kind: "answer", title: answerTitle(m, v.content), question: stripPlaceholders(questionFor(m)) || questionFor(m), answer: referenceForDocument(v.content), sources: src.length ? src : undefined, reviewed: !!v.review, at: Date.now() }); }}><Share2 size={16} /> Share link or QR</button>
+                    {typeof navigator !== "undefined" && "share" in navigator && <button className="cx-pop-i" onClick={() => { setPop(null); void shareAnswer(shown); }}><Share2 size={16} /> Send with…</button>}
                     {active?.caseId && cases.some((c) => c.id === active.caseId) && (
                       <button className="cx-pop-i" onClick={() => { setPop(null); addAnswerToCase(active.caseId!, shown); }}><ClipboardList size={16} /> Add to case timeline</button>
                     )}
@@ -3267,7 +3360,7 @@ export default function CadusAI() {
       {messages.map((m) =>
         m.role === "user" ? (
           <div key={m.id} className="cx-u">
-            {m.mode !== "general" && (() => { const I = MODE[m.mode].icon; return <span className="cx-u-mode"><I size={13} /> {MODE[m.mode].label}</span>; })()}
+            {m.reading ? <span className="cx-u-mode"><ScanSearch size={13} /> Read: {READINGS.find((r) => r.id === m.reading)?.label ?? m.reading}</span> : m.mode !== "general" && (() => { const I = MODE[m.mode].icon; return <span className="cx-u-mode"><I size={13} /> {MODE[m.mode].label}</span>; })()}
             {m.image && <img src={m.image} alt="Attached by you" className="cx-u-img" onClick={() => setLightbox(m.image || "")} />}
             {m.files?.length ? (
               <div className={`cx-u-files ${m.files.filter((f) => f.kind === "image" && f.data).length > 1 ? "multi" : ""}`}>
@@ -3448,18 +3541,15 @@ export default function CadusAI() {
             <span className="cx-new-ic"><Plus size={15} strokeWidth={2.6} /></span><span className="cx-nav-l">New chat</span><kbd>{MOD} ⇧ O</kbd>
           </button>
           {([
-            ["ward", BedDouble, "Ward round", wardInfo.patients.length, openWard],
             ["cases", ClipboardList, "Cases", activeCases, () => openCases()],
-            ["research", Microscope, "Research", 0, () => openResearch()],
-            ["calculators", Calculator, "Calculators", 0, () => openCalculators()],
-            ["practice", Target, "Practice", 0, openPractice],
-            ["projects", Folder, "Projects", projects.length, openProjects],
+            ["practice", GraduationCap, "Learn", 0, openPractice],
+            ["tools", LayoutGrid, "Tools", 0, () => { setView("tools"); setSidebarOpen(false); }],
             ["library", Library, "Library", library.length, () => { setView("library"); setSidebarOpen(false); }],
           ] as [View, LucideIcon, string, number, () => void][]).map(([id, Icon, label, count, go]) => (
             <button
               key={id}
               data-tour={id}
-              className={`cx-nav-i ${view === id || (id === "projects" && view === "project") ? "on" : ""}`}
+              className={`cx-nav-i ${view === id || (id === "tools" && TOOL_VIEWS.has(view)) ? "on" : ""}`}
               onClick={go}
               title={label}
               aria-current={view === id ? "page" : undefined}
@@ -3467,17 +3557,24 @@ export default function CadusAI() {
               <Icon size={17} /><span className="cx-nav-l">{label}</span>{count > 0 && <em>{count}</em>}
             </button>
           ))}
-          <button className="cx-nav-i" onClick={() => openSettings("personal")} title="Customize"><Palette size={17} /><span className="cx-nav-l">Customize</span></button>
           <button className={`cx-nav-i ${moreOpen ? "open" : ""}`} onClick={() => setMoreOpen((o) => !o)} title="More" aria-expanded={moreOpen}>
             <MoreHorizontal size={17} /><span className="cx-nav-l">More</span><ChevronDown size={14} className="cx-chev" />
           </button>
           {moreOpen && (
             <div className="cx-more">
+              <p className="cx-more-gl">Workspaces</p>
+              <button data-tour="ward" className={`cx-nav-i ${view === "ward" ? "on" : ""}`} onClick={openWard} title="Ward round"><BedDouble size={16} /><span className="cx-nav-l">Ward round</span>{wardInfo.patients.length > 0 && <em>{wardInfo.patients.length}</em>}</button>
+              <button data-tour="research" className={`cx-nav-i ${view === "research" ? "on" : ""}`} onClick={() => openResearch()} title="Research"><Microscope size={16} /><span className="cx-nav-l">Research</span></button>
+              <button className={`cx-nav-i ${view === "drugs" ? "on" : ""}`} onClick={() => openDrugs()} title="Drugs and prescriber"><Pill size={16} /><span className="cx-nav-l">Drugs</span></button>
+              <button data-tour="calculators" className={`cx-nav-i ${view === "calculators" ? "on" : ""}`} onClick={() => openCalculators()} title="Calculators"><Calculator size={16} /><span className="cx-nav-l">Calculators</span></button>
+              <button className={`cx-nav-i ${view === "projects" || view === "project" ? "on" : ""}`} onClick={openProjects} title="Projects"><Folder size={16} /><span className="cx-nav-l">Projects</span>{projects.length > 0 && <em>{projects.length}</em>}</button>
               <button className={`cx-nav-i ${view === "decks" ? "on" : ""}`} onClick={() => { setView("decks"); setSidebarOpen(false); }} title="Decks"><Presentation size={16} /><span className="cx-nav-l">Decks</span>{decks.length > 0 && <em>{decks.length}</em>}</button>
-              <button className={`cx-nav-i ${view === "tools" ? "on" : ""}`} onClick={() => { setView("tools"); setSidebarOpen(false); }} title="Clinical tools"><LayoutGrid size={16} /><span className="cx-nav-l">Clinical tools</span></button>
+              <p className="cx-more-gl">Trust</p>
               <button className={`cx-nav-i ${view === "safety" ? "on" : ""}`} onClick={() => { setView("safety"); setSidebarOpen(false); }} title="Clinical safety"><ShieldCheck size={16} /><span className="cx-nav-l">Clinical safety</span></button>
               <button className={`cx-nav-i ${view === "history" ? "on" : ""}`} onClick={() => { setView("history"); setSidebarOpen(false); }} title="Answer history"><History size={16} /><span className="cx-nav-l">Answer history</span></button>
               <button className={`cx-nav-i ${view === "privacy" ? "on" : ""}`} onClick={() => { setView("privacy"); setSidebarOpen(false); }} title="Privacy centre"><EyeOff size={16} /><span className="cx-nav-l">Privacy centre</span></button>
+              <p className="cx-more-gl">App</p>
+              <button className="cx-nav-i" onClick={() => openSettings("personal")} title="Customize"><Palette size={16} /><span className="cx-nav-l">Customize</span></button>
               <button className="cx-nav-i" onClick={openPalette} title="Search"><Search size={16} /><span className="cx-nav-l">Search</span><kbd>{MOD} K</kbd></button>
               <button className="cx-nav-i" onClick={() => openSettings("shortcuts")} title="Keyboard shortcuts"><Keyboard size={16} /><span className="cx-nav-l">Keyboard shortcuts</span></button>
               <a className="cx-nav-i" href="/ai-assistant-classic" title="Classic Cadus"><RotateCcw size={16} /><span className="cx-nav-l">Classic Cadus</span></a>
@@ -3702,9 +3799,9 @@ export default function CadusAI() {
             )}
             {view !== "chat" && (() => {
               const [Icon, label]: [LucideIcon, string] =
-                view === "tools" ? [LayoutGrid, "Clinical tools"]
+                view === "tools" ? [LayoutGrid, "Tools"]
                 : view === "calculators" ? [Calculator, "Calculators"]
-                : view === "practice" ? [Target, "Practice"]
+                : view === "practice" ? [GraduationCap, "Learn"]
                 : view === "library" ? [Library, "Library"]
                 : view === "decks" ? [Presentation, "Decks"]
                 : view === "research" ? [Microscope, "Research"]
@@ -3713,6 +3810,7 @@ export default function CadusAI() {
                 : view === "privacy" ? [EyeOff, "Privacy centre"]
                 : view === "ward" ? [BedDouble, "Ward round"]
                 : view === "cases" ? [ClipboardList, "Patient cases"]
+                : view === "drugs" ? [Pill, "Drugs"]
                 : view === "project" && project ? [Folder, project.name]
                 : [Folder, "Projects"];
               return <span className="cx-title-btn static"><Icon size={14} /> <span>{label}</span></span>;
@@ -3793,14 +3891,17 @@ export default function CadusAI() {
               toast={toast}
             />
           ) : view === "practice" ? (
-            <PracticeView
+            <LearnView
               profile={profile}
               practice={practice}
               setPractice={setPractice}
+              learn={learn}
+              setLearn={setLearn}
               generate={(body) => invokeCadus({ ...body, model: prefs.model })}
               onChat={(t, m, title) => send(t, m, { title })}
               onEditProfile={() => setProfileOpen(true)}
               friendlyError={friendlyError}
+              toast={toast}
             />
           )
             : view === "research" ? (
@@ -3821,6 +3922,19 @@ export default function CadusAI() {
                 toast={toast}
               />
             )
+            : view === "drugs" ? (
+              <DrugsView
+                key={drugsInit.key}
+                initialTab={drugsInit.tab}
+                initialQuery={drugsInit.query}
+                letterhead={!!lh}
+                onPrint={(title, md) => printDoc(title, md, { mode: "rx" })}
+                onWord={(title, md) => downloadWord(title, md, "rx")}
+                onAsk={(q, m) => { if (pending) { toast("Wait for the current answer to finish"); return; } void send(q, (m && MODE[m as ModeId] ? m : "general") as ModeId); }}
+                onCheck={(drugs) => openCalculators({ tab: "ix", drugs })}
+                toast={toast}
+              />
+            )
             : view === "cases" ? (
               <CaseView
                 cases={cases}
@@ -3829,6 +3943,7 @@ export default function CadusAI() {
                 onAsk={askAboutCase}
                 onOpenChat={(sid) => openSession(sid)}
                 onAddToWard={addCaseToWard}
+                onShare={(c) => setShareItem({ kind: "case", title: caseLabel(c), summary: caseSummary(c), at: Date.now() })}
                 toast={toast}
                 openId={caseOpen}
                 setOpenId={setCaseOpen}
@@ -4385,6 +4500,7 @@ export default function CadusAI() {
       )}
 
       {profileOpen && <ProfileDialog profile={profile} onSave={updateProfile} onClose={() => setProfileOpen(false)} />}
+      {shareItem && <ShareDialog item={shareItem} onClose={() => setShareItem(null)} toast={toast} dark={dark} />}
       {onboardOpen && (
         <Onboarding
           languages={LANGUAGES}

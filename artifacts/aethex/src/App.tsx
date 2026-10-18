@@ -85,6 +85,7 @@ const Flashcards = lazyPage(() => import("@/pages/Flashcards"));
 const AiAssistant = lazyPage(() => import("@/pages/AiAssistant"));
 const CadusAI = lazyPage(() => import("@/pages/CadusAI"));
 const CadusSignIn = lazyPage(() => import("@/pages/CadusSignIn"));
+const CadusShared = lazyPage(() => import("@/pages/CadusShared"));
 const OrderTracking = lazyPage(() => import("@/pages/OrderTracking"));
 const Orders = lazyPage(() => import("@/pages/Orders"));
 const MyReviews = lazyPage(() => import("@/pages/MyReviews"));
@@ -235,6 +236,7 @@ function Router() {
         <Route path="/" component={CadusAI} />
         <Route path="/login" component={CadusSignIn} />
         <Route path="/sign-in" component={CadusSignIn} />
+        <Route path="/shared" component={CadusShared} />
         <Route path="/ai-assistant" component={CadusAI} />
         <Route path="/ai-assistant-classic" component={AiAssistant} />
         <Route path="/cadus-standalone" component={CadusAI} />
@@ -248,6 +250,7 @@ function Router() {
       {/* Full-screen pages (no Navbar/Footer) */}
       <Route path="/ai-assistant" component={CadusAI} />
       <Route path="/ai-assistant/sign-in" component={CadusSignIn} />
+      <Route path="/ai-assistant/shared" component={CadusShared} />
       <Route path="/ai-assistant-classic" component={AiAssistant} />
       <Route path="/cadus-standalone" component={CadusAI} />
 
