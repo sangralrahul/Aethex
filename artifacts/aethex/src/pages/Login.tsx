@@ -6,6 +6,7 @@ import { auth } from "@/lib/firebase";
 import { signInWithPhoneNumber, RecaptchaVerifier, type ConfirmationResult } from "firebase/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { isLoginHost, mainUrl, loginUrl } from "@/lib/host";
+import { completeSignIn } from "@/lib/handoff";
 
 
 const LOGO = `${import.meta.env.BASE_URL}aethex-logo.jpg`;
@@ -51,7 +52,7 @@ export default function Login() {
   const [success, setSuccess] = useState(false);
 
   const goHome = () => {
-    if (isLoginHost()) window.location.href = mainUrl("/");
+    if (isLoginHost()) void completeSignIn("main", "/");
     else setLocation("/");
   };
 

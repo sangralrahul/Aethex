@@ -6,6 +6,7 @@ import { auth } from "@/lib/firebase";
 import { signInWithPhoneNumber, RecaptchaVerifier, type ConfirmationResult } from "firebase/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { isLoginHost, mainUrl, loginUrl } from "@/lib/host";
+import { completeSignIn } from "@/lib/handoff";
 
 
 type Role = "Doctor" | "Medical Student" | "Patient";
@@ -53,7 +54,7 @@ export default function Signup() {
   const [success, setSuccess] = useState(false);
 
   const goHome = () => {
-    if (isLoginHost()) window.location.href = mainUrl("/");
+    if (isLoginHost()) void completeSignIn("main", "/");
     else setLocation("/");
   };
 
@@ -107,7 +108,7 @@ export default function Signup() {
       const res = signup(name.trim(), email, password);
       if (!res.success) { setError(res.error || "Signup failed. Please try again."); return; }
       localStorage.removeItem("aethex_onboarded");
-      if (isLoginHost()) window.location.href = mainUrl("/onboarding");
+      if (isLoginHost()) void completeSignIn("main", "/onboarding", "/onboarding");
       else setLocation("/onboarding");
     } finally { setLoading(false); }
 

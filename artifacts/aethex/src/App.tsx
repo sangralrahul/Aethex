@@ -6,7 +6,7 @@ import { Component, Suspense, lazy, useState, useEffect, type ComponentType, typ
 import { auth } from "@/lib/firebase";
 import { getRedirectResult } from "firebase/auth";
 import { useUserAuth } from "@/hooks/use-user-auth";
-import { isLoginHost, isCadusHost, isMainHost, loginUrl, cadusUrl } from "@/lib/host";
+import { isLoginHost, isCadusHost, isAuthHost, isMainHost, loginUrl, cadusUrl } from "@/lib/host";
 
 
 /**
@@ -219,6 +219,20 @@ function Router() {
           <LegalPage />
         </main>
       </div>
+    );
+  }
+
+  // auth.aethex.in: the Cadus sign-in, with the pages it links to.
+  if ((typeof window !== "undefined" && isAuthHost()) || forcedApp === "auth") {
+    return (
+      <Switch>
+        <Route path="/terms" component={LegalTerms} />
+        <Route path="/privacy" component={LegalPrivacy} />
+        <Route path="/disclaimer" component={LegalDisclaimer} />
+        <Route path="/about" component={LegalAbout} />
+        <Route path="/plans" component={CadusPlans} />
+        <Route component={CadusSignIn} />
+      </Switch>
     );
   }
 

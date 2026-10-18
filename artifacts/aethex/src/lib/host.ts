@@ -3,8 +3,12 @@
  *
  * Domains:
  * - aethex.in / www.aethex.in  → main app
- * - login.aethex.in            → authentication page
- * - cadus.aethex.in            → AI assistant
+ * - login.aethex.in            → sign-in for the store and the rest of aethex.in
+ * - auth.aethex.in             → sign-in for Cadus
+ * - cadus.aethex.in            → Cadus, the clinical AI
+ *
+ * Each subdomain has its own browser storage, so a sign-in is carried back to
+ * the app by a one-time hand-off (see lib/handoff.ts).
  */
 
 export function currentHost(): string {
@@ -19,6 +23,10 @@ export function isMainHost(): boolean {
 
 export function isLoginHost(): boolean {
   return currentHost() === "login.aethex.in" || currentHost() === "www.login.aethex.in";
+}
+
+export function isAuthHost(): boolean {
+  return currentHost() === "auth.aethex.in" || currentHost() === "www.auth.aethex.in";
 }
 
 export function isCadusHost(): boolean {
@@ -73,4 +81,15 @@ export function mainUrl(path = "/"): string {
   const suffix = path.startsWith("/") ? path : `/${path}`;
   if (onOtherHost()) return sameSite(suffix);
   return `https://aethex.in${suffix}`;
+}
+
+/** The Cadus sign-in page: auth.aethex.in, or /ai-assistant/sign-in on other hosts. */
+export function authUrl(path = "/", query?: Record<string, string>): string {
+  const suffix = path.startsWith("/") ? path : `/${path}`;
+  if (onOtherHost()) return sameSite(suffix === "/" ? "/ai-assistant/sign-in" : suffix, query);
+  const url = new URL(`https://auth.aethex.in${suffix}`);
+  if (query) {
+    for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value);
+  }
+  return url.toString();
 }

@@ -208,6 +208,11 @@ export function useUserAuth() {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(JWT_KEY);
     localStorage.removeItem("cadus3.authKey");
+    localStorage.removeItem("aethex.firebaseToken");
+    // End the Google/email and phone sessions too, so the sign-in page does not pick them up again.
+    localStorage.removeItem("aethex-supabase-auth");
+    import("@/integrations/supabase/client").then(({ supabase }) => supabase.auth.signOut({ scope: "local" })).catch(() => {});
+    import("@/lib/firebase").then(({ auth }) => auth.signOut()).catch(() => {});
     setUser(null);
   };
 

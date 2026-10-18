@@ -11,7 +11,8 @@ import { useUserAuth } from "@/hooks/use-user-auth";
 import { auth } from "@/lib/firebase";
 import { signInWithPhoneNumber, RecaptchaVerifier, type ConfirmationResult } from "firebase/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { cadusUrl, isCadusHost, isLoginHost, mainUrl } from "@/lib/host";
+import { isAuthHost, isCadusHost, mainUrl } from "@/lib/host";
+import { completeSignIn } from "@/lib/handoff";
 import { LEGAL_PATH } from "@/lib/cadus/legal";
 import { passwordKey, rememberPasswordKey } from "@/lib/cadus/profileSync";
 import CadusMark from "@/components/cadus/CadusMark";
@@ -20,8 +21,10 @@ import { CADUS_CSS } from "@/components/cadus/cadus-styles";
 import { CADUS_SIGNIN_CSS } from "@/components/cadus/cadus-signin-styles";
 import { CADUS_CLINIC_CSS } from "@/components/cadus/cadus-clinic-styles";
 import { CADUS_LOOKS_CSS } from "@/components/cadus/cadus-looks-styles";
-const legalPath = (kind: "terms" | "privacy" | "disclaimer") => LEGAL_PATH(kind, isCadusHost());
-const plansPath = () => (isCadusHost() ? "/plans" : "/ai-assistant/plans");
+// auth.aethex.in has the same short paths as cadus.aethex.in.
+const shortPaths = () => isCadusHost() || isAuthHost();
+const legalPath = (kind: "terms" | "privacy" | "disclaimer") => LEGAL_PATH(kind, shortPaths());
+const plansPath = () => (shortPaths() ? "/plans" : "/ai-assistant/plans");
 /** Where to go after signing in: a same-site path from ?next=, else Cadus. */
 const nextPath = () => { try { const n = new URLSearchParams(window.location.search).get("next") || ""; return /^\/(?!\/)/.test(n) ? n : ""; } catch { return ""; } };
 
@@ -58,7 +61,7 @@ export default function CadusSignIn() {
 
   const toCadus = () => {
     const next = nextPath();
-    if (isLoginHost()) window.location.href = cadusUrl(next || "/");
+    if (isAuthHost()) void completeSignIn("cadus", next || "/");
     else if (next) setLocation(next);
     else if (isCadusHost()) setLocation("/");
     else setLocation("/ai-assistant");
@@ -83,6 +86,9 @@ export default function CadusSignIn() {
   const finish = () => { setDone(true); window.setTimeout(toCadus, 700); };
 
   const withPassword = (e: FormEvent) => { e.preventDefault(); void run(async () => {
+    // The key that lets this account read its profile from the server on any device.
+    // Made before signing in, so it is stored by the time the hand-off reads it.
+    const key = await passwordKey(email, password);
     if (mode === "up") {
       if (name.trim().length < 2) throw new Error("Please enter your name.");
       if (password.length < 8) throw new Error("Use a password of at least 8 characters.");
@@ -92,8 +98,7 @@ export default function CadusSignIn() {
       const r = login(email.trim(), password);
       if (!r.success) throw new Error(r.error);
     }
-    // The key that lets this account read its profile from the server on any device.
-    rememberPasswordKey(await passwordKey(email, password));
+    rememberPasswordKey(key);
     finish();
   }); };
   const sendEmailCode = (e: FormEvent) => { e.preventDefault(); void run(async () => {

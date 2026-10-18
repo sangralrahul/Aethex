@@ -5,6 +5,7 @@
  * that exist only on the device, a key derived from the email and password.
  */
 import type { MedicalProfile } from "./profile";
+import { FB_TOKEN_KEY, handoffReady } from "@/lib/handoff";
 
 export const AUTH_KEY_KEY = "cadus3.authKey";
 
@@ -22,6 +23,7 @@ export type Credential = { provider: "supabase" | "firebase" | "password"; token
 
 /** The credential of the current sign-in, or null when there is none. */
 export async function credential(): Promise<Credential | null> {
+  await handoffReady();
   try {
     const { supabase } = await import("@/integrations/supabase/client");
     const { data } = await supabase.auth.getSession();
@@ -32,6 +34,11 @@ export async function credential(): Promise<Credential | null> {
     const u = auth.currentUser;
     if (u) return { provider: "firebase", token: await u.getIdToken() };
   } catch { /* not configured */ }
+  try {
+    // A phone sign-in handed over from auth.aethex.in: its ID token, while it lasts.
+    const fb = JSON.parse(localStorage.getItem(FB_TOKEN_KEY) || "null") as { token?: string; exp?: number } | null;
+    if (fb?.token && (fb.exp ?? 0) > Date.now() + 60_000) return { provider: "firebase", token: fb.token };
+  } catch { /* none */ }
   try {
     const k = localStorage.getItem(AUTH_KEY_KEY);
     if (k && k.startsWith("pk1.")) return { provider: "password", token: k };
