@@ -753,6 +753,8 @@ const sessionCat = (s: Session): ModeDef["cat"] => MODE[sessionMode(s)].cat;
 
 /** Links to other Aethex apps must point at the main domain when Cadus runs on its own subdomain. */
 const legalPath = (kind: "terms" | "privacy" | "disclaimer" | "about") => LEGAL_PATH(kind, isCadusHost());
+/** Running inside the Cadus desktop app (its window tags the user agent). */
+const IN_DESKTOP_APP = typeof navigator !== "undefined" && /CadusDesktop\//.test(navigator.userAgent);
 const appHref = (path: string) => (!isCadusHost() ? path : mainUrl(path));
 
 const clip = (s: string, n: number) => {
@@ -3678,6 +3680,7 @@ export default function CadusAI() {
               <button className="cx-nav-i" onClick={() => openSettings("shortcuts")} title="Keyboard shortcuts"><Keyboard size={16} /><span className="cx-nav-l">Keyboard shortcuts</span></button>
               <button className="cx-nav-i" onClick={startTour} title="Take the tour"><Compass size={16} /><span className="cx-nav-l">Take the tour</span></button>
               <button className="cx-nav-i" onClick={() => openSettings("about")} title="Help and about"><CircleQuestionMark size={16} /><span className="cx-nav-l">Help and about</span></button>
+              {!IN_DESKTOP_APP && <a className="cx-nav-i" href="/downloads" title="Cadus for Windows and Linux"><Download size={16} /><span className="cx-nav-l">Desktop app</span></a>}
             </div>
           )}
           {collapsed && isDesktop && (

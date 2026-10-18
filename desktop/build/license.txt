@@ -1,0 +1,13 @@
+Cadus by Aethex
+
+Cadus is clinical decision support for qualified healthcare professionals and
+students of medicine, dentistry, nursing and allied health. It does not replace
+professional judgement, examination of the patient, current guidelines or
+specialist advice. You are responsible for every clinical decision you make
+with Cadus.
+
+By installing and using Cadus you agree to the Cadus Terms of use
+(https://cadus.aethex.in/terms), Privacy policy (https://cadus.aethex.in/privacy)
+and Medical disclaimer (https://cadus.aethex.in/disclaimer).
+
+Copyright (c) 2026 Aethex. All rights reserved.

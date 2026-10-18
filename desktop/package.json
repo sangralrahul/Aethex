@@ -1,0 +1,102 @@
+{
+  "name": "cadus-desktop",
+  "productName": "Cadus",
+  "version": "1.0.0",
+  "description": "Cadus, clinical AI for doctors and medical students, by Aethex.",
+  "homepage": "https://aethex.in/downloads",
+  "author": {
+    "name": "Aethex",
+    "email": "support@aethex.in"
+  },
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist:win-x64": "electron-builder --win nsis --x64",
+    "dist:win-arm64": "electron-builder --win nsis --arm64",
+    "dist:linux": "electron-builder --linux AppImage deb --x64",
+    "dist": "npm run dist:win-x64 && npm run dist:win-arm64 && npm run dist:linux && node scripts/manifest.mjs"
+  },
+  "devDependencies": {
+    "electron": "44.5.1",
+    "electron-builder": "26.16.1",
+    "resedit": "3.1.0",
+    "pe-library": "2.0.1"
+  },
+  "build": {
+    "appId": "in.aethex.cadus",
+    "productName": "Cadus",
+    "copyright": "Copyright \u00a9 2026 Aethex",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "offline.html",
+      "build/icon.png",
+      "package.json"
+    ],
+    "afterPack": "scripts/after-pack.cjs",
+    "win": {
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false,
+      "artifactName": "Cadus-Setup-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "Cadus",
+      "menuCategory": false,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "uninstallDisplayName": "Cadus",
+      "license": "build/license.txt",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "linux": {
+      "icon": "build/icons",
+      "category": "Science",
+      "synopsis": "Clinical AI for doctors and medical students",
+      "description": "Cadus, the clinical AI by Aethex: answers checked by a second model, with sources, for doctors and medical students in India.",
+      "maintainer": "Aethex <support@aethex.in>",
+      "vendor": "Aethex",
+      "artifactName": "Cadus-${version}-${arch}.${ext}",
+      "desktop": {
+        "entry": {
+          "Name": "Cadus",
+          "Comment": "Clinical AI by Aethex",
+          "StartupWMClass": "Cadus"
+        }
+      },
+      "syncDesktopName": true
+    },
+    "deb": {
+      "depends": [
+        "libgtk-3-0",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0",
+        "libuuid1",
+        "libsecret-1-0"
+      ]
+    },
+    "publish": null,
+    "compression": "maximum",
+    "electronLanguages": [
+      "en-US",
+      "en-GB",
+      "hi"
+    ]
+  },
+  "desktopName": "cadus.desktop"
+}
