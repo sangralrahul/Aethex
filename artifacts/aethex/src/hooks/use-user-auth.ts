@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { AUTH_EVENT, signIn, signOut, signUp } from "@/lib/account";
 
 export interface UserProfile {
   id: string;
@@ -34,198 +35,61 @@ export interface Address {
 }
 
 const STORAGE_KEY = "aethex_user";
-const USERS_KEY = "aethex_users_db";
-const JWT_KEY = "aethex_jwt";
 
-function getUsers(): Record<string, UserProfile & { passwordHash: string }> {
+const readUser = (): UserProfile | null => {
   try {
-    return JSON.parse(localStorage.getItem(USERS_KEY) || "{}");
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
   } catch {
-    return {};
+    return null;
   }
-}
+};
 
-function saveUsers(users: Record<string, UserProfile & { passwordHash: string }>) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
-
-function simpleHash(str: string): string {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return hash.toString(36);
-}
-
+/**
+ * The signed-in account. Accounts live on Cloudflare (lib/account.ts); this
+ * hook keeps the local copy in step and adds the local-only extras.
+ */
 export function useUserAuth() {
-  const [user, setUser] = useState<UserProfile | null>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [user, setUser] = useState<UserProfile | null>(readUser);
+
+  // Stay in step with sign-in and sign-out from other components and tabs.
+  useEffect(() => {
+    const sync = () => setUser(readUser());
+    window.addEventListener(AUTH_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => { window.removeEventListener(AUTH_EVENT, sync); window.removeEventListener("storage", sync); };
+  }, []);
 
   const saveUser = (u: UserProfile) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
     setUser(u);
   };
 
-  const signup = (
-    name: string,
-    email: string,
-    password: string,
-    role?: "student" | "doctor" | "other",
-    college?: string,
-    hospital?: string,
-  ): { success: boolean; error?: string } => {
-    const users = getUsers();
-    const emailKey = email.toLowerCase();
-    if (users[emailKey]) {
-      return { success: false, error: "An account with this email already exists." };
-    }
-    const newUser: UserProfile & { passwordHash: string } = {
-      id: Date.now().toString(),
-      name,
-      email: emailKey,
-      isPro: false,
-      role,
-      college,
-      hospital,
-      addresses: [],
-      wishlist: [],
-      cadusDailyCount: 0,
-      cadusLastDate: "",
-      passwordHash: simpleHash(password),
-    };
-    users[emailKey] = newUser;
-    saveUsers(users);
-    const { passwordHash: _ph, ...profile } = newUser;
-    saveUser(profile);
-    return { success: true };
+  /** Starts a sign-up; the account is created when the emailed code is entered (verifyEmailCode). */
+  const signup = async (name: string, email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    const r = await signUp(name, email, password);
+    return r.ok ? { success: true } : { success: false, error: r.error };
   };
 
-  const login = (email: string, password: string): { success: boolean; error?: string } => {
-    const users = getUsers();
-    const emailKey = email.toLowerCase();
-    const stored = users[emailKey];
-    if (!stored) {
-      return { success: false, error: "No account found with this email." };
-    }
-    if (stored.passwordHash !== simpleHash(password)) {
-      return { success: false, error: "Incorrect password." };
-    }
-    const { passwordHash: _ph, ...profile } = stored;
-    saveUser(profile);
-    return { success: true };
+  /** Signs in with email and password. */
+  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    const r = await signIn(email, password);
+    return r.ok ? { success: true } : { success: false, error: r.error };
   };
 
-  const otpLogin = (email: string, jwt: string): void => {
-    localStorage.setItem(JWT_KEY, jwt);
-    const users = getUsers();
-    const emailKey = email.toLowerCase();
-    let profile: UserProfile;
-    if (users[emailKey]) {
-      const { passwordHash: _ph, ...existing } = users[emailKey];
-      profile = existing;
-    } else {
-      const namePart = email.split("@")[0] ?? "Doctor";
-      const name = namePart.charAt(0).toUpperCase() + namePart.slice(1);
-      profile = {
-        id: Date.now().toString(),
-        name,
-        email: emailKey,
-        isPro: false,
-        addresses: [],
-        wishlist: [],
-        cadusDailyCount: 0,
-        cadusLastDate: "",
-      };
-      users[emailKey] = { ...profile, passwordHash: "" };
-      saveUsers(users);
-    }
-    saveUser(profile);
-  };
+  /** Legacy pages send this as a bearer token; the session itself is the cookie. */
+  const getJwt = (): string | null => (user ? "session" : null);
 
-  const googleLogin = (firebaseUser: { uid: string; displayName: string | null; email: string | null; photoURL: string | null }): void => {
-    const emailKey = (firebaseUser.email || `google:${firebaseUser.uid}`).toLowerCase();
-    const users = getUsers();
-    let profile: UserProfile;
-    if (users[emailKey]) {
-      const { passwordHash: _ph, ...existing } = users[emailKey];
-      profile = { ...existing, avatar: firebaseUser.photoURL || existing.avatar };
-    } else {
-      const name = firebaseUser.displayName || (firebaseUser.email?.split("@")[0] ?? "Doctor");
-      profile = {
-        id: firebaseUser.uid,
-        name,
-        email: emailKey,
-        avatar: firebaseUser.photoURL || undefined,
-        isPro: false,
-        addresses: [],
-        wishlist: [],
-        cadusDailyCount: 0,
-        cadusLastDate: "",
-      };
-      users[emailKey] = { ...profile, passwordHash: "" };
-      saveUsers(users);
-    }
-    saveUser(profile);
-  };
-
-  const phoneLogin = (phone: string, jwt: string): void => {
-    localStorage.setItem(JWT_KEY, jwt);
-    const phoneKey = `phone:${phone}`;
-    const users = getUsers();
-    let profile: UserProfile;
-    if (users[phoneKey]) {
-      const { passwordHash: _ph, ...existing } = users[phoneKey];
-      profile = existing;
-    } else {
-      profile = {
-        id: Date.now().toString(),
-        name: "Doctor",
-        email: "",
-        phone,
-        isPro: false,
-        addresses: [],
-        wishlist: [],
-        cadusDailyCount: 0,
-        cadusLastDate: "",
-      };
-      users[phoneKey] = { ...profile, passwordHash: "" };
-      saveUsers(users);
-    }
-    saveUser(profile);
-  };
-
-  const getJwt = (): string | null => localStorage.getItem(JWT_KEY);
-
+  /** Signs out of every aethex.in site. */
   const logout = () => {
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(JWT_KEY);
-    localStorage.removeItem("cadus3.authKey");
-    localStorage.removeItem("aethex.firebaseToken");
-    // End the Google/email and phone sessions too, so the sign-in page does not pick them up again.
-    localStorage.removeItem("aethex-supabase-auth");
-    import("@/integrations/supabase/client").then(({ supabase }) => supabase.auth.signOut({ scope: "local" })).catch(() => {});
-    import("@/lib/firebase").then(({ auth }) => auth.signOut()).catch(() => {});
-    setUser(null);
+    // Ends the session on the server, then forgets the account here (the
+    // change reaches every component through AUTH_EVENT).
+    void signOut();
   };
 
   const updateProfile = (updates: Partial<UserProfile>) => {
     if (!user) return;
-    const updated = { ...user, ...updates };
-    const users = getUsers();
-    const emailKey = user.email.toLowerCase();
-    if (users[emailKey]) {
-      users[emailKey] = { ...users[emailKey], ...updates };
-      saveUsers(users);
-    }
-    saveUser(updated);
+    saveUser({ ...user, ...updates });
   };
 
   const toggleWishlist = (productId: number) => {
@@ -266,9 +130,6 @@ export function useUserAuth() {
     isPro: user?.isPro ?? false,
     signup,
     login,
-    otpLogin,
-    googleLogin,
-    phoneLogin,
     getJwt,
     logout,
     updateProfile,

@@ -1,5 +1,4 @@
 import { useEffect, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
 
 interface CartItem {
   productId?: number | string;
@@ -14,9 +13,9 @@ interface CartLike {
 }
 
 /**
- * Syncs the signed-in user's current cart to `abandoned_carts` so the
- * `send-abandoned-cart` edge function can email a reminder after 1h.
- * Debounces upserts to avoid spamming the DB on every quantity change.
+ * Saves the signed-in shopper's cart with their account on Cloudflare
+ * (PUT /api/cart, worker/auth.ts), so the hourly job can email a reminder
+ * when it is left for over an hour. Debounced; a no-op when signed out.
  */
 export function useAbandonedCartTracker(cart: CartLike | undefined | null) {
   const lastKeyRef = useRef<string>("");
@@ -33,28 +32,12 @@ export function useAbandonedCartTracker(cart: CartLike | undefined | null) {
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user?.id || !user.email) return;
-
-        if (count === 0) {
-          await supabase.from("abandoned_carts").delete().eq("user_id", user.id);
-          return;
-        }
-
-        await supabase.from("abandoned_carts").upsert({
-          user_id: user.id,
-          email: user.email,
-          items: items.map((i) => ({
-            productId: i.productId,
-            name: i.name,
-            price: i.price,
-            quantity: i.quantity,
-          })),
-          item_count: count,
+        if (!localStorage.getItem("aethex_user")) return;
+        const payload = count === 0 ? { items: [], total: 0 } : {
+          items: items.map((i) => ({ productId: i.productId, name: i.name, price: i.price, quantity: i.quantity })),
           total,
-          updated_at: new Date().toISOString(),
-          notified_at: null,
-        }, { onConflict: "user_id" });
+        };
+        await fetch("/api/cart", { method: "PUT", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
       } catch {
         // silent - non-critical
       }

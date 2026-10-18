@@ -1,18 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
-import { Eye, EyeOff, Sparkles, GraduationCap, ShoppingBag, BrainCircuit, ShieldCheck, Mail, Phone, RefreshCw, CheckCircle2 } from "lucide-react";
+import { Eye, EyeOff, Sparkles, GraduationCap, ShoppingBag, BrainCircuit, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { useUserAuth } from "@/hooks/use-user-auth";
-import { auth } from "@/lib/firebase";
-import { signInWithPhoneNumber, RecaptchaVerifier, type ConfirmationResult } from "firebase/auth";
-import { supabase } from "@/integrations/supabase/client";
 import { isLoginHost, mainUrl, loginUrl } from "@/lib/host";
-import { completeSignIn } from "@/lib/handoff";
+import { authErrorMessage, googleSignInHref, signedInDestination, verifyEmailCode } from "@/lib/account";
 
 
 type Role = "Doctor" | "Medical Student" | "Patient";
 const ROLES: Role[] = ["Doctor", "Medical Student", "Patient"];
-type AuthTab = "email" | "phone";
-type PhoneMode = "phone-enter" | "phone-verify";
 
 const LOGO = `${import.meta.env.BASE_URL}aethex-logo.jpg`;
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -26,9 +21,8 @@ const features = [
 
 export default function Signup() {
   const [, setLocation] = useLocation();
-  const { signup, phoneLogin, googleLogin, isLoggedIn } = useUserAuth();
+  const { signup, isLoggedIn } = useUserAuth();
 
-  const [tab, setTab] = useState<AuthTab>("email");
 
   // Email signup
   const [name, setName] = useState("");
@@ -37,129 +31,72 @@ export default function Signup() {
   const [role, setRole] = useState<Role>("Doctor");
   const [showPassword, setShowPassword] = useState(false);
 
-  // Phone signup
-  const [phone, setPhone] = useState("");
-  const [phoneName, setPhoneName] = useState("");
-  const [phoneRole, setPhoneRole] = useState<Role>("Doctor");
-  const [phoneMode, setPhoneMode] = useState<PhoneMode>("phone-enter");
-  const [phoneOtp, setPhoneOtp] = useState("");
-  const [phoneTimer, setPhoneTimer] = useState(0);
-  const confirmationResultRef = useRef<ConfirmationResult | null>(null);
-  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
-  const recaptchaContainerRef = useRef<HTMLDivElement>(null);
-
   // Common
-  const [error, setError] = useState("");
+  const [error, setError] = useState(authErrorMessage);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-
-  const goHome = () => {
-    if (isLoginHost()) void completeSignIn("main", "/");
-    else setLocation("/");
-  };
-
-  useEffect(() => { if (isLoggedIn) goHome(); }, [isLoggedIn]);
-
-  // Pick up a returning Google OAuth session (full-page redirect flow).
+  // After the form, the emailed code confirms the address and creates the account.
+  const [awaitingCode, setAwaitingCode] = useState(false);
+  const [code, setCode] = useState("");
+  const [codeTimer, setCodeTimer] = useState(0);
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user && !isLoggedIn) {
-        googleLogin({
-          uid: user.id,
-          displayName: (user.user_metadata?.full_name as string | undefined) ?? null,
-          email: user.email ?? null,
-          photoURL: (user.user_metadata?.avatar_url as string | undefined) ?? null,
-        });
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleGoogle = async () => {
-    setError("");
-    setLoading(true);
-    try {
-      const { error: oauthError } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: window.location.origin },
-      });
-      if (oauthError) { setError(oauthError.message ?? "Google sign-in failed."); return; }
-      // browser is navigating to Google
-    } catch {
-      setError("Google sign-in failed. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (phoneTimer <= 0) return;
-    const id = setInterval(() => setPhoneTimer(t => (t <= 1 ? (clearInterval(id), 0) : t - 1)), 1000);
+    if (codeTimer <= 0) return;
+    const id = setInterval(() => setCodeTimer(t => (t <= 1 ? (clearInterval(id), 0) : t - 1)), 1000);
     return () => clearInterval(id);
-  }, [phoneTimer]);
+  }, [codeTimer]);
 
-  const switchTab = (t: AuthTab) => { setTab(t); setError(""); };
+  // From login.aethex.in back to aethex.in; elsewhere, on this site. The first call wins
+  // (a new account goes to onboarding, not home).
+  const leaving = useRef(false);
+  const go = (path: string) => {
+    if (leaving.current) return;
+    leaving.current = true;
+    const away = signedInDestination(path);
+    if (away) window.location.href = away;
+    else setLocation(path);
+  };
+  const goHome = () => go("/");
+
+  const signingUp = useRef(false);
+  useEffect(() => { if (isLoggedIn && !signingUp.current) goHome(); }, [isLoggedIn]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Google sign-up runs through the Worker; a new account then sees onboarding.
+  const handleGoogle = () => {
+    setLoading(true);
+    try { localStorage.removeItem("aethex_onboarded"); } catch { /* blocked */ }
+    window.location.href = googleSignInHref(signedInDestination("/onboarding") ?? `${window.location.origin}/onboarding`);
+  };
 
   const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault(); setError(""); setLoading(true);
     try {
       if (!name.trim()) { setError("Please enter your full name."); return; }
-      if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
-      const res = signup(name.trim(), email, password);
-      if (!res.success) { setError(res.error || "Signup failed. Please try again."); return; }
+      if (password.length < 8) { setError("Password must be at least 8 characters."); return; }
       localStorage.removeItem("aethex_onboarded");
-      if (isLoginHost()) void completeSignIn("main", "/onboarding", "/onboarding");
-      else setLocation("/onboarding");
+      const res = await signup(name.trim(), email, password);
+      if (!res.success) { setError(res.error || "Signup failed. Please try again."); return; }
+      setCode(""); setAwaitingCode(true); setCodeTimer(60);
     } finally { setLoading(false); }
 
   };
 
-  const formatPhone = (raw: string) => {
-    const d = raw.replace(/\D/g, "");
-    return d.length === 10 ? `+91${d}` : raw;
-  };
-
-  const handleSendPhoneOtp = async (e: React.FormEvent) => {
+  const handleVerifyCode = async (e: React.FormEvent) => {
     e.preventDefault(); setError(""); setLoading(true);
     try {
-      if (!recaptchaVerifierRef.current) {
-        recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerRef.current!, { size: "invisible" });
-      }
-      const result = await signInWithPhoneNumber(auth, formatPhone(phone), recaptchaVerifierRef.current);
-      confirmationResultRef.current = result;
-      setPhoneMode("phone-verify"); setPhoneTimer(60);
-    } catch (err: any) {
-      setError(err.message || "Failed to send OTP. Check your number.");
-      recaptchaVerifierRef.current?.clear();
-      recaptchaVerifierRef.current = null;
+      signingUp.current = true;
+      const r = await verifyEmailCode(email, code, name.trim());
+      if (!r.ok) { signingUp.current = false; setError(r.error); return; }
+      go("/onboarding");
     } finally { setLoading(false); }
   };
-
-  const handleVerifyPhoneOtp = async (e: React.FormEvent) => {
-    e.preventDefault(); setError(""); setLoading(true);
+  const resendCode = async () => {
+    if (codeTimer > 0) return;
+    setError(""); setLoading(true);
     try {
-      if (!confirmationResultRef.current) { setError("Session expired. Please resend OTP."); return; }
-      const result = await confirmationResultRef.current.confirm(phoneOtp);
-      const u = result.user;
-      phoneLogin(u.phoneNumber || phone, "");
-      setSuccess(true);
-      setTimeout(() => { localStorage.removeItem("aethex_onboarded"); setLocation("/onboarding"); }, 1000);
-    } catch { setError("Invalid OTP. Please check and try again."); }
-    finally { setLoading(false); }
-  };
-
-  const resendPhoneOtp = async () => {
-    if (phoneTimer > 0) return;
-    setLoading(true); setError("");
-    try {
-      recaptchaVerifierRef.current?.clear();
-      recaptchaVerifierRef.current = null;
-      recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerRef.current!, { size: "invisible" });
-      const result = await signInWithPhoneNumber(auth, formatPhone(phone), recaptchaVerifierRef.current);
-      confirmationResultRef.current = result;
-      setPhoneOtp(""); setPhoneTimer(60);
-    } catch (err: any) { setError(err.message || "Failed to resend OTP."); }
-    finally { setLoading(false); }
+      const res = await signup(name.trim(), email, password);
+      if (!res.success) { setError(res.error || "The code couldn't be sent."); return; }
+      setCode(""); setCodeTimer(60);
+    } finally { setLoading(false); }
   };
 
   return (
@@ -236,26 +173,26 @@ export default function Signup() {
                 <h2 style={headingStyle}>Create your account</h2>
                 <p style={subStyle}>Join thousands of medical professionals on aethex</p>
 
-                {/* Tab switcher */}
-                <div style={{ display: "flex", gap: 8, marginBottom: 24, background: "#F2F2F7", borderRadius: 12, padding: 4 }}>
-                  {([["email", Mail, "Email"], ["phone", Phone, "Phone"]] as const).map(([t, Icon, label]) => (
-                    <button key={t} type="button" onClick={() => switchTab(t as AuthTab)}
-                      style={{
-                        flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                        padding: "9px 0", borderRadius: 9, border: "none", cursor: "pointer",
-                        fontSize: 13, fontWeight: 600, transition: "all 0.18s",
-                        background: tab === t ? "#FFFFFF" : "transparent",
-                        color: tab === t ? "#007AFF" : "#636366",
-                        boxShadow: tab === t ? "0 1px 4px rgba(0,0,0,0.1)" : "none",
-                      }}>
-                      <Icon style={{ width: 14, height: 14 }} />
-                      {label}
-                    </button>
-                  ))}
-                </div>
-
                 {/* ── Email tab ── */}
-                {tab === "email" && (
+                {awaitingCode ? (
+                  <form onSubmit={handleVerifyCode} style={formStyle}>
+                    <p style={{ fontSize: 13, color: "#636366", margin: 0, lineHeight: 1.5 }}>
+                      We emailed a 6-digit code to <strong style={{ color: "#1C1C1E" }}>{email}</strong>. Enter it to confirm the address and create your account.
+                    </p>
+                    <div>
+                      <label style={labelStyle}>CODE</label>
+                      <input type="text" inputMode="numeric" pattern="\d{6}" maxLength={6} autoComplete="one-time-code"
+                        value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ""))} required placeholder="• • • • • •"
+                        style={{ ...inputStyle, textAlign: "center", fontSize: 24, letterSpacing: "0.6em", fontFamily: "monospace" }} />
+                    </div>
+                    {error && <div style={errorStyle}>{error}</div>}
+                    <button type="submit" disabled={loading || code.length !== 6} style={{ ...primaryBtnStyle, display: "flex", alignItems: "center", justifyContent: "center" }}>{loading ? <><BtnSpinner />Checking…</> : "Confirm and create account"}</button>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
+                      <button type="button" onClick={() => { setAwaitingCode(false); setError(""); }} style={{ background: "none", border: "none", color: "#636366", cursor: "pointer" }}>← Change details</button>
+                      <button type="button" disabled={codeTimer > 0 || loading} onClick={() => void resendCode()} style={{ background: "none", border: "none", color: codeTimer > 0 ? "#AEAEB2" : "#007AFF", cursor: codeTimer > 0 ? "not-allowed" : "pointer" }}>{codeTimer > 0 ? `Resend in ${codeTimer}s` : "Resend the code"}</button>
+                    </div>
+                  </form>
+                ) : (
                   <form onSubmit={handleEmailSignup} style={formStyle}>
                     <div>
                       <label style={labelStyle}>FULL NAME</label>
@@ -286,7 +223,7 @@ export default function Signup() {
                       <label style={labelStyle}>PASSWORD</label>
                       <div style={{ position: "relative" }}>
                         <input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} required
-                          placeholder="Min. 6 characters" autoComplete="new-password" style={{ ...inputStyle, paddingRight: 44 }}
+                          placeholder="At least 8 characters" autoComplete="new-password" style={{ ...inputStyle, paddingRight: 44 }}
                           onFocus={e => { e.target.style.borderColor = "#007AFF"; e.target.style.boxShadow = "0 0 0 3px rgba(0,122,255,0.14)"; }}
                           onBlur={e => { e.target.style.borderColor = "rgba(60,60,67,0.2)"; e.target.style.boxShadow = "none"; }} />
                         <button type="button" onClick={() => setShowPassword(s => !s)}
@@ -312,86 +249,6 @@ export default function Signup() {
                       <span>Sign up with Google</span>
                     </button>
                   </form>
-                )}
-
-                {/* ── Phone tab ── */}
-                {tab === "phone" && (
-                  <>
-                    <div ref={recaptchaContainerRef} />
-                    {phoneMode === "phone-verify" ? (
-                      <>
-                        <p style={{ fontSize: 13, color: "#636366", marginBottom: 20 }}>
-                          Enter the 6-digit code sent to <strong style={{ color: "#1C1C1E" }}>+91 {phone}</strong>
-                        </p>
-                        <form onSubmit={handleVerifyPhoneOtp} style={formStyle}>
-                          <div>
-                            <label style={labelStyle}>OTP CODE</label>
-                            <input type="text" inputMode="numeric" pattern="\d{6}" maxLength={6}
-                              value={phoneOtp} onChange={e => setPhoneOtp(e.target.value.replace(/\D/g, ""))}
-                              required placeholder="• • • • • •"
-                              style={{ ...inputStyle, textAlign: "center", fontSize: 24, letterSpacing: "0.6em", fontFamily: "monospace" }}
-                              onFocus={e => { e.target.style.borderColor = "#007AFF"; e.target.style.boxShadow = "0 0 0 3px rgba(0,122,255,0.14)"; }}
-                              onBlur={e => { e.target.style.borderColor = "rgba(60,60,67,0.2)"; e.target.style.boxShadow = "none"; }} />
-                          </div>
-                          {error && <div style={errorStyle}>{error}</div>}
-                          <button type="submit" disabled={loading || phoneOtp.length !== 6} style={{ ...primaryBtnStyle, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            {loading ? <><BtnSpinner />Verifying…</> : "Verify & Create Account"}
-                          </button>
-                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-                            <button type="button" onClick={() => { setPhoneMode("phone-enter"); setPhoneOtp(""); setError(""); }}
-                              style={{ background: "none", border: "none", color: "#636366", cursor: "pointer" }}>← Change number</button>
-                            <button type="button" disabled={phoneTimer > 0 || loading} onClick={resendPhoneOtp}
-                              style={{ background: "none", border: "none", color: phoneTimer > 0 ? "#AEAEB2" : "#007AFF", cursor: phoneTimer > 0 ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-                              <RefreshCw style={{ width: 11, height: 11 }} />
-                              {phoneTimer > 0 ? `Resend in ${phoneTimer}s` : "Resend OTP"}
-                            </button>
-                          </div>
-                        </form>
-                      </>
-                    ) : (
-                      <form onSubmit={handleSendPhoneOtp} style={formStyle}>
-                        <div>
-                          <label style={labelStyle}>FULL NAME</label>
-                          <input type="text" value={phoneName} onChange={e => setPhoneName(e.target.value)}
-                            placeholder="Dr. Priya Sharma" style={inputStyle}
-                            onFocus={e => { e.target.style.borderColor = "#007AFF"; e.target.style.boxShadow = "0 0 0 3px rgba(0,122,255,0.14)"; }}
-                            onBlur={e => { e.target.style.borderColor = "rgba(60,60,67,0.2)"; e.target.style.boxShadow = "none"; }} />
-                        </div>
-                        <div>
-                          <label style={labelStyle}>I AM A</label>
-                          <div style={{ display: "flex", gap: 8 }}>
-                            {ROLES.map(r => (
-                              <button key={r} type="button" onClick={() => setPhoneRole(r)}
-                                style={{ flex: 1, padding: "10px 4px", background: phoneRole === r ? "rgba(0,122,255,0.08)" : "#F2F2F7", border: `1.5px solid ${phoneRole === r ? "#007AFF" : "rgba(60,60,67,0.2)"}`, borderRadius: 10, color: phoneRole === r ? "#007AFF" : "#636366", fontSize: 11, cursor: "pointer", transition: "all 0.18s", fontWeight: phoneRole === r ? 700 : 400 }}>
-                                {r}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        <div>
-                          <label style={labelStyle}>MOBILE NUMBER</label>
-                          <div style={{ display: "flex", gap: 8 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 14px", background: "#F2F2F7", border: "1.5px solid rgba(60,60,67,0.2)", borderRadius: 12, flexShrink: 0 }}>
-                              <span style={{ fontSize: 16 }}>🇮🇳</span>
-                              <span style={{ fontSize: 13, fontWeight: 600, color: "#1C1C1E" }}>+91</span>
-                            </div>
-                            <input type="tel" inputMode="numeric" maxLength={10}
-                              value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                              required placeholder="98765 43210" style={{ ...inputStyle, flex: 1 }}
-                              onFocus={e => { e.target.style.borderColor = "#007AFF"; e.target.style.boxShadow = "0 0 0 3px rgba(0,122,255,0.14)"; }}
-                              onBlur={e => { e.target.style.borderColor = "rgba(60,60,67,0.2)"; e.target.style.boxShadow = "none"; }} />
-                          </div>
-                        </div>
-                        {error && <div style={errorStyle}>{error}</div>}
-                        <button type="submit" disabled={loading || phone.length !== 10} style={{ ...primaryBtnStyle, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          {loading ? <><BtnSpinner />Sending OTP…</> : "Send OTP via SMS"}
-                        </button>
-                        <p style={{ fontSize: 11, color: "#AEAEB2", textAlign: "center", margin: 0, lineHeight: 1.6 }}>
-                          An SMS will be sent to your Indian mobile number via Twilio.
-                        </p>
-                      </form>
-                    )}
-                  </>
                 )}
 
                 <p style={{ fontSize: 12, color: "#AEAEB2", textAlign: "center", margin: "20px 0 4px" }}>

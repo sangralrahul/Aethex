@@ -2,10 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { X, Mail, Lock, User, Eye, EyeOff, Sparkles, ShieldCheck, RefreshCw, GraduationCap, Building2, ChevronDown, Search } from "lucide-react";
 import { useUserAuth } from "@/hooks/use-user-auth";
 import { MEDICAL_COLLEGES, HOSPITALS } from "@/lib/india-institutions";
-import { auth } from "@/lib/firebase";
-import { GoogleAuthProvider, signInWithPopup, signInWithPhoneNumber, RecaptchaVerifier, type ConfirmationResult } from "firebase/auth";
+import { googleSignInHref, patchLocalAccount, sendEmailCode, verifyEmailCode } from "@/lib/account";
 
-const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 interface AuthModalProps {
   open: boolean;
@@ -115,7 +113,9 @@ export function AuthModal({ open, onClose, defaultMode = "login" }: AuthModalPro
   const [hospital, setHospital] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signup, login, otpLogin, googleLogin } = useUserAuth();
+  const { signup, login } = useUserAuth();
+  /** A sign-up waiting for its emailed code (a resend repeats the sign-up). */
+  const pendingSignup = useRef<{ name: string; email: string; password: string; role: Role; college?: string; hospital?: string } | null>(null);
   const [googleLoading, setGoogleLoading] = useState(false);
 
   const [otpStep, setOtpStep] = useState<OtpStep>("email");
@@ -124,15 +124,6 @@ export function AuthModal({ open, onClose, defaultMode = "login" }: AuthModalPro
   const [otpTimer, setOtpTimer] = useState(0);
   const [otpSuccess, setOtpSuccess] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const [otpMethod, setOtpMethod] = useState<"email" | "phone">("email");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [phoneOtpCode, setPhoneOtpCode] = useState("");
-  const [phoneStep, setPhoneStep] = useState<"input" | "verify">("input");
-  const [phoneLoading, setPhoneLoading] = useState(false);
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
-  const recaptchaRef = useRef<HTMLDivElement>(null);
-  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
 
   useEffect(() => {
     if (!open) { setTab(defaultMode); reset(); resetOtp(); }
@@ -153,71 +144,14 @@ export function AuthModal({ open, onClose, defaultMode = "login" }: AuthModalPro
     setOtpStep("email"); setOtpEmail(""); setOtpCode("");
     setOtpTimer(0); setOtpSuccess(false); setError("");
     if (timerRef.current) clearInterval(timerRef.current);
-    setPhoneNumber(""); setPhoneOtpCode(""); setPhoneStep("input");
-    setConfirmationResult(null);
   }
 
-  function switchTab(t: Tab) { setTab(t); reset(); resetOtp(); }
+  function switchTab(t: Tab) { setTab(t); reset(); resetOtp(); pendingSignup.current = null; }
 
-  const handleGoogleSignIn = async () => {
+  // Google sign-in runs through the Aethex Worker and comes back to this page, signed in.
+  const handleGoogleSignIn = () => {
     setGoogleLoading(true);
-    setError("");
-    try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      googleLogin(result.user);
-      onClose();
-    } catch (err: any) {
-      if (err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") {
-      } else if (err.code === "auth/unauthorized-domain") {
-        setError("Google Sign-In is not enabled for this domain.");
-      } else if (err.code === "auth/popup-blocked") {
-        setError("Popup was blocked by your browser. Please allow popups for aethex.in and try again.");
-      } else {
-        setError(err.message || "Google sign-in failed. Please try again.");
-      }
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
-
-  const handleSendPhoneOtp = async () => {
-    setPhoneLoading(true);
-    setError("");
-    try {
-      const digits = phoneNumber.replace(/\D/g, "");
-      const formatted = digits.length === 10 ? `+91${digits}` : digits.startsWith("91") && digits.length === 12 ? `+${digits}` : phoneNumber;
-      if (!recaptchaVerifierRef.current) {
-        recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaRef.current!, { size: "invisible" });
-      }
-      const result = await signInWithPhoneNumber(auth, formatted, recaptchaVerifierRef.current);
-      setConfirmationResult(result);
-      setPhoneStep("verify");
-      startTimer();
-    } catch (err: any) {
-      setError(err.message || "Failed to send OTP. Check your number and try again.");
-      recaptchaVerifierRef.current?.clear();
-      recaptchaVerifierRef.current = null;
-    } finally {
-      setPhoneLoading(false);
-    }
-  };
-
-  const handleVerifyPhoneOtp = async () => {
-    if (!confirmationResult || phoneOtpCode.length !== 6) return;
-    setPhoneLoading(true);
-    setError("");
-    try {
-      const result = await confirmationResult.confirm(phoneOtpCode);
-      const u = result.user;
-      googleLogin({ uid: u.uid, displayName: u.displayName, email: u.email, photoURL: u.photoURL });
-      setOtpSuccess(true);
-      setTimeout(() => onClose(), 1200);
-    } catch (err: any) {
-      setError("Invalid OTP. Please check the code and try again.");
-    } finally {
-      setPhoneLoading(false);
-    }
+    window.location.href = googleSignInHref(window.location.href);
   };
 
   function startTimer() {
@@ -237,14 +171,14 @@ export function AuthModal({ open, onClose, defaultMode = "login" }: AuthModalPro
     try {
       if (tab === "signup") {
         if (!name.trim()) { setError("Please enter your name."); return; }
-        const res = signup(
-          name.trim(), email, password, role,
-          role === "student" ? college || undefined : undefined,
-          role === "doctor" ? hospital || undefined : undefined,
-        );
+        const res = await signup(name.trim(), email, password);
         if (!res.success) { setError(res.error || "Signup failed."); return; }
+        // The emailed code confirms the address and creates the account.
+        pendingSignup.current = { name: name.trim(), email, password, role, college: role === "student" ? college || undefined : undefined, hospital: role === "doctor" ? hospital || undefined : undefined };
+        setTab("otp"); setOtpEmail(email); setOtpCode(""); setOtpStep("verify"); startTimer();
+        return;
       } else {
-        const res = login(email, password);
+        const res = await login(email, password);
         if (!res.success) { setError(res.error || "Login failed."); return; }
       }
       onClose();
@@ -253,21 +187,14 @@ export function AuthModal({ open, onClose, defaultMode = "login" }: AuthModalPro
     }
   };
 
-  const handleSendOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendOtp = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     setError(""); setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/auth/send-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: otpEmail }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error || "Failed to send OTP."); return; }
-      setOtpStep("verify");
+      const r = await sendEmailCode(otpEmail);
+      if (!r.ok) { setError(r.error); return; }
+      setOtpCode(""); setOtpStep("verify");
       startTimer();
-    } catch {
-      setError("Network error. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -277,18 +204,13 @@ export function AuthModal({ open, onClose, defaultMode = "login" }: AuthModalPro
     e.preventDefault();
     setError(""); setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/auth/verify-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: otpEmail, otp: otpCode }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error || "Verification failed."); return; }
-      otpLogin(otpEmail, data.token);
+      const p = pendingSignup.current;
+      const r = await verifyEmailCode(otpEmail, otpCode, p?.name);
+      if (!r.ok) { setError(r.error); return; }
+      // Role, college and hospital chosen at sign-up stay with the account on this device.
+      if (p) { patchLocalAccount({ role: p.role, college: p.college, hospital: p.hospital }); pendingSignup.current = null; }
       setOtpSuccess(true);
       setTimeout(() => onClose(), 1200);
-    } catch {
-      setError("Network error. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -296,21 +218,14 @@ export function AuthModal({ open, onClose, defaultMode = "login" }: AuthModalPro
 
   const handleResendOtp = async () => {
     if (otpTimer > 0) return;
+    const p = pendingSignup.current;
+    if (!p) { await handleSendOtp(); return; }
     setError(""); setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/auth/send-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: otpEmail }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error || "Failed to resend OTP."); return; }
+      const res = await signup(p.name, p.email, p.password);
+      if (!res.success) { setError(res.error || "The code couldn't be sent."); return; }
       setOtpCode(""); startTimer();
-    } catch {
-      setError("Network error. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const roleOptions: { value: Role; label: string; icon: React.ReactNode; desc: string }[] = [
@@ -359,7 +274,6 @@ export function AuthModal({ open, onClose, defaultMode = "login" }: AuthModalPro
 
         {tab === "otp" ? (
           <div className="p-6 pt-2">
-            <div ref={recaptchaRef} />
             {otpSuccess ? (
               <div className="text-center py-8">
                 <div className="w-16 h-16 rounded-full bg-[#00C2A8]/20 flex items-center justify-center mx-auto mb-4">
@@ -370,17 +284,7 @@ export function AuthModal({ open, onClose, defaultMode = "login" }: AuthModalPro
               </div>
             ) : (
               <>
-                {/* Email / Phone toggle */}
-                <div className="flex rounded-xl bg-black/5 p-1 mb-5">
-                  {(["email", "phone"] as const).map(m => (
-                    <button key={m} type="button" onClick={() => { setOtpMethod(m); setError(""); }}
-                      className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${otpMethod === m ? "bg-[#00C2A8] text-[#F5F3EE]" : "text-[#6c6c70] hover:text-[#1c1c1e]"}`}>
-                      {m === "email" ? "Email OTP" : "Phone OTP"}
-                    </button>
-                  ))}
-                </div>
-
-                {otpMethod === "email" ? (
+                {(
                   otpStep === "email" ? (
                     <form onSubmit={handleSendOtp} className="space-y-4">
                       <div>
@@ -427,56 +331,6 @@ export function AuthModal({ open, onClose, defaultMode = "login" }: AuthModalPro
                         </button>
                       </div>
                     </form>
-                  )
-                ) : (
-                  phoneStep === "input" ? (
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-[#3c3c43] mb-1.5">Mobile Number</label>
-                        <div className="flex gap-2">
-                          <div className="flex items-center px-3 py-3 bg-black/5 border border-black/10 rounded-xl text-[#3c3c43] text-sm font-medium shrink-0">
-                            🇮🇳 +91
-                          </div>
-                          <input type="tel" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                            placeholder="10-digit mobile number"
-                            className="flex-1 px-4 py-3 bg-black/5 border border-black/10 rounded-xl text-[#1c1c1e] placeholder-black/30 focus:outline-none focus:border-[#00C2A8] focus:ring-1 focus:ring-[#00C2A8]/30 transition-all" />
-                        </div>
-                      </div>
-                      {error && <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-400">{error}</div>}
-                      <button type="button" onClick={handleSendPhoneOtp} disabled={phoneLoading || phoneNumber.length !== 10}
-                        className="w-full py-3 bg-[#00C2A8] hover:bg-[#00D4B8] text-[#F5F3EE] font-bold rounded-xl transition-all disabled:opacity-60">
-                        {phoneLoading ? "Sending OTP…" : "Send OTP via SMS"}
-                      </button>
-                      <p className="text-center text-xs text-[#8e8e93]">OTP sent via Firebase · Indian numbers only</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="p-3 bg-[#00C2A8]/10 border border-[#00C2A8]/20 rounded-xl text-sm text-[#00C2A8] text-center">
-                        OTP sent to <strong>+91 {phoneNumber}</strong>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-[#3c3c43] mb-1.5">Enter 6-digit OTP</label>
-                        <input type="text" inputMode="numeric" maxLength={6}
-                          value={phoneOtpCode} onChange={e => setPhoneOtpCode(e.target.value.replace(/\D/g, ""))}
-                          placeholder="• • • • • •"
-                          className="w-full text-center text-2xl font-mono tracking-[0.5em] py-4 bg-black/5 border border-black/10 rounded-xl text-[#1c1c1e] placeholder-black/25 focus:outline-none focus:border-[#00C2A8] focus:ring-1 focus:ring-[#00C2A8]/30 transition-all" />
-                      </div>
-                      {error && <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-400">{error}</div>}
-                      <button type="button" onClick={handleVerifyPhoneOtp} disabled={phoneLoading || phoneOtpCode.length !== 6}
-                        className="w-full py-3 bg-[#00C2A8] hover:bg-[#00D4B8] text-[#F5F3EE] font-bold rounded-xl transition-all disabled:opacity-60">
-                        {phoneLoading ? "Verifying…" : "Verify & Login"}
-                      </button>
-                      <div className="flex items-center justify-between text-xs">
-                        <button type="button" onClick={() => { setPhoneStep("input"); setPhoneOtpCode(""); setError(""); }} className="text-[#6c6c70] hover:text-[#1c1c1e] transition-colors">
-                          ← Change number
-                        </button>
-                        <button type="button" onClick={handleSendPhoneOtp} disabled={phoneLoading || otpTimer > 0}
-                          className="flex items-center gap-1 text-[#6c6c70] hover:text-[#00C2A8] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-                          <RefreshCw className="w-3 h-3" />
-                          {otpTimer > 0 ? `Resend in ${otpTimer}s` : "Resend OTP"}
-                        </button>
-                      </div>
-                    </div>
                   )
                 )}
               </>

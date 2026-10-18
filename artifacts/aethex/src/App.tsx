@@ -3,9 +3,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Component, Suspense, lazy, useState, useEffect, type ComponentType, type ReactNode } from "react";
-import { auth } from "@/lib/firebase";
-import { getRedirectResult } from "firebase/auth";
-import { useUserAuth } from "@/hooks/use-user-auth";
 import { isLoginHost, isCadusHost, isAuthHost, isMainHost, loginUrl, cadusUrl } from "@/lib/host";
 
 
@@ -467,21 +464,10 @@ function Router() {
   );
 }
 
-function FirebaseAuthHandler() {
-  const { googleLogin } = useUserAuth();
-  useEffect(() => {
-    getRedirectResult(auth).then((result) => {
-      if (result?.user) googleLogin(result.user);
-    }).catch(() => {});
-  }, []);
-  return null;
-}
-
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <FirebaseAuthHandler />
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
           <ScrollToTop />
           <PageError>

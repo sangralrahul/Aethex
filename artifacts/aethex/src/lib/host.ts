@@ -7,8 +7,8 @@
  * - auth.aethex.in             → sign-in for Cadus
  * - cadus.aethex.in            → Cadus, the clinical AI
  *
- * Each subdomain has its own browser storage, so a sign-in is carried back to
- * the app by a one-time hand-off (see lib/handoff.ts).
+ * All of them share one sign-in:
+ * the Worker sets the session cookie for the whole domain (see lib/account.ts).
  */
 
 export function currentHost(): string {

@@ -21,6 +21,7 @@ export const CADUS_SIGNIN_CSS = `
 .cx .cx-si-lead{margin-top:8px;font-size:14px;line-height:1.55;color:var(--t2)}
 .cx-si-google{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;height:44px;margin-top:22px;border:1px solid var(--line2);border-radius:12px;background:var(--surface);font-size:14px;font-weight:600;color:var(--text);transition:border-color .12s,background .12s}
 .cx-si-google:hover:not(:disabled){border-color:color-mix(in srgb,var(--text) 24%,var(--line2));background:var(--hover)}
+.cx-si-google{text-decoration:none}
 .cx-si-or{display:flex;align-items:center;gap:12px;margin:18px 0 14px;font-size:12px;color:var(--t3)}
 .cx-si-or::before,.cx-si-or::after{content:"";flex:1;height:1px;background:var(--line)}
 .cx-seg.cx-si-seg{display:flex;width:100%;margin-bottom:16px}

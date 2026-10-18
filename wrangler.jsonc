@@ -9,14 +9,16 @@
     "directory": "./dist",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/fn/*", "/api/health", "/api/profile"]
+    "run_worker_first": ["/api/*"]
   },
-  // Cadus profiles (worker/profiles.ts) are kept in a KV namespace. To switch it on:
-  //   1. npx wrangler kv namespace create CADUS_PROFILES   (prints an id)
-  //   2. uncomment the line below and paste the id
-  //   3. in the Cloudflare dashboard, add Worker variables SUPABASE_URL, SUPABASE_ANON_KEY
-  //      and FIREBASE_API_KEY (the public values from artifacts/aethex/.env)
-  // Until then profiles are kept on the device and the app says so.
-  // "kv_namespaces": [{ "binding": "CADUS_PROFILES", "id": "paste-the-id-here" }],
+  // Accounts, sessions, Cadus profiles and store carts live in Cloudflare D1.
+  // One-time setup (see migrations/0001_accounts.sql):
+  //   1. npx wrangler d1 create aethex              (prints a database_id)
+  //   2. paste the id below
+  //   3. npx wrangler d1 migrations apply aethex --remote
+  // Until the id is pasted, deploys fail and the previous version stays live.
+  "d1_databases": [{ "binding": "DB", "database_name": "aethex", "database_id": "PASTE-THE-D1-DATABASE-ID-HERE", "migrations_dir": "migrations" }],
+  // Store cart reminders and clean-up, every hour.
+  "triggers": { "crons": ["17 * * * *"] },
   "observability": { "enabled": true }
 }

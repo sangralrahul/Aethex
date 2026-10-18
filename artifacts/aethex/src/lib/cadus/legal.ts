@@ -33,6 +33,7 @@ export const RELEASES: { version: string; date: string; notes: string[] }[] = [
     "Patient leaflets and consent forms in thirteen Indian languages, printed on the letterhead or sent by WhatsApp.",
     "Sign in first; four plans with an Enterprise option for medical colleges.",
     "Your account profile is set up once after sign-in and kept with your account, so it is ready on every device.",
+    "One Aethex account for aethex.in and Cadus, kept on Cloudflare: sign in with a password, an emailed code or Google.",
   ] },
   { version: "3.0", date: "October 2026", notes: [
     "Hospital-software theme: a restrained navy and grey palette, a steady type scale and answers laid out as clinical reports.",
@@ -98,8 +99,9 @@ export const LEGAL: Record<LegalKind, LegalPage> = {
         "With Sources on, your question is also used to search public medical sources (WHO, ICMR, NICE, PubMed and similar).",
       ] },
       { heading: "Account data", body: [
-        "If you sign in, Aethex holds the details you give at sign-up (name, email address or phone number), processed by Supabase and, for phone sign-in, Google Firebase.",
-        "Your account profile (full name, role, year or exam, specialty, college or hospital, city, state, optional registration number and council, optional mobile number and preferred language) is stored by Aethex on Cloudflare, linked to your sign-in, so it is ready the next time you sign in on any device. It holds no patient information. You can change it at any time in Settings, and ask for it to be deleted.",
+        "If you sign in, Aethex holds your account: your name, email address, a securely hashed password if you set one, your Google account ID if you sign in with Google, and the dates you signed in. Accounts are stored and processed by Aethex on Cloudflare. Sign-in codes are sent by email through Brevo, which receives only your email address and the code. If you choose Google, Google confirms who you are and shares your name, email address and profile picture.",
+        "If you keep items in the store cart while signed in, the cart (product names, quantities and prices) is saved with your account so Aethex can email you one reminder if you leave it.",
+        "Your account profile (full name, role, year or exam, specialty, college or hospital, city, state, optional registration number and council, optional mobile number and preferred language) is stored by Aethex on Cloudflare with your account, so it is ready the next time you sign in on any device. It holds no patient information. You can change it at any time in Settings, and ask for it to be deleted.",
         "A short summary of role, exam and specialty goes with each question so answers fit your level. Your name, registration number, council and mobile number are never sent to the AI.",
       ] },
       { heading: "AI providers", body: [

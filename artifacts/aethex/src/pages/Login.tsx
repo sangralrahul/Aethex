@@ -1,19 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
-import { Eye, EyeOff, RefreshCw, ShieldCheck, Sparkles, GraduationCap, ShoppingBag, BrainCircuit, CheckCircle2, Mail, Phone } from "lucide-react";
+import { Eye, EyeOff, RefreshCw, ShieldCheck, Sparkles, GraduationCap, ShoppingBag, BrainCircuit, CheckCircle2 } from "lucide-react";
 import { useUserAuth } from "@/hooks/use-user-auth";
-import { auth } from "@/lib/firebase";
-import { signInWithPhoneNumber, RecaptchaVerifier, type ConfirmationResult } from "firebase/auth";
-import { supabase } from "@/integrations/supabase/client";
 import { isLoginHost, mainUrl, loginUrl } from "@/lib/host";
-import { completeSignIn } from "@/lib/handoff";
+import { authErrorMessage, googleSignInHref, sendEmailCode, signedInDestination, verifyEmailCode } from "@/lib/account";
 
 
 const LOGO = `${import.meta.env.BASE_URL}aethex-logo.jpg`;
 
-type AuthTab = "email" | "phone";
 type EmailMode = "password" | "otp-email" | "otp-verify";
-type PhoneMode = "phone-enter" | "phone-verify";
 
 const features = [
   { icon: BrainCircuit, label: "Cadus AI", desc: "AI clinical assistant, 20 queries/day free" },
@@ -24,9 +19,7 @@ const features = [
 
 export default function Login() {
   const [, setLocation] = useLocation();
-  const { login, otpLogin, phoneLogin, googleLogin, isLoggedIn } = useUserAuth();
-
-  const [tab, setTab] = useState<AuthTab>("email");
+  const { login, isLoggedIn } = useUserAuth();
 
   // Email states
   const [email, setEmail] = useState("");
@@ -37,57 +30,27 @@ export default function Login() {
   const [otpCode, setOtpCode] = useState("");
   const [otpTimer, setOtpTimer] = useState(0);
 
-  // Phone states
-  const [phone, setPhone] = useState("");
-  const [phoneMode, setPhoneMode] = useState<PhoneMode>("phone-enter");
-  const [phoneOtp, setPhoneOtp] = useState("");
-  const [phoneTimer, setPhoneTimer] = useState(0);
-  const confirmationResultRef = useRef<ConfirmationResult | null>(null);
-  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
-  const recaptchaContainerRef = useRef<HTMLDivElement>(null);
-
   // Common states
-  const [error, setError] = useState("");
+  const [error, setError] = useState(authErrorMessage);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  // From login.aethex.in back to aethex.in; elsewhere, this site's home.
+  const leaving = useRef(false);
   const goHome = () => {
-    if (isLoginHost()) void completeSignIn("main", "/");
+    if (leaving.current) return;
+    leaving.current = true;
+    const away = signedInDestination();
+    if (away) window.location.href = away;
     else setLocation("/");
   };
 
-  useEffect(() => { if (isLoggedIn) goHome(); }, [isLoggedIn]);
+  useEffect(() => { if (isLoggedIn) goHome(); }, [isLoggedIn]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Pick up a returning Google OAuth session (full-page redirect flow).
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user && !isLoggedIn) {
-        googleLogin({
-          uid: user.id,
-          displayName: (user.user_metadata?.full_name as string | undefined) ?? null,
-          email: user.email ?? null,
-          photoURL: (user.user_metadata?.avatar_url as string | undefined) ?? null,
-        });
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleGoogle = async () => {
-    setError("");
+  // Google sign-in runs through the Worker and comes straight back signed in.
+  const handleGoogle = () => {
     setLoading(true);
-    try {
-      const { error: oauthError } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: window.location.origin },
-      });
-      if (oauthError) { setError(oauthError.message ?? "Google sign-in failed."); return; }
-      // browser is navigating to Google
-    } catch {
-      setError("Google sign-in failed. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    window.location.href = googleSignInHref(signedInDestination() ?? `${window.location.origin}/`);
   };
 
   useEffect(() => {
@@ -96,112 +59,34 @@ export default function Login() {
     return () => clearInterval(id);
   }, [otpTimer]);
 
-  useEffect(() => {
-    if (phoneTimer <= 0) return;
-    const id = setInterval(() => setPhoneTimer(t => (t <= 1 ? (clearInterval(id), 0) : t - 1)), 1000);
-    return () => clearInterval(id);
-  }, [phoneTimer]);
-
-  const switchTab = (t: AuthTab) => { setTab(t); setError(""); };
-
   // ── Email handlers ────────────────────────────────────────────────────────
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault(); setError(""); setLoading(true);
     try {
-      const res = login(email, password);
+      const res = await login(email, password);
       if (!res.success) { setError(res.error || "Invalid email or password."); return; }
       goHome();
     } finally { setLoading(false); }
   };
 
 
-  const handleSendEmailOtp = async (e: React.FormEvent) => {
-    e.preventDefault(); setError(""); setLoading(true);
+  const handleSendEmailOtp = async (e?: React.FormEvent) => {
+    e?.preventDefault(); setError(""); setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("send-otp", { body: { email: otpEmail } });
-      if (error || (data && (data as any).error)) {
-        setError(((data as any)?.error) || error?.message || "Failed to send OTP.");
-        return;
-      }
-      setEmailMode("otp-verify"); setOtpTimer(60);
-    } catch { setError("Network error. Please try again."); }
-    finally { setLoading(false); }
+      const r = await sendEmailCode(otpEmail);
+      if (!r.ok) { setError(r.error); return; }
+      setOtpCode(""); setEmailMode("otp-verify"); setOtpTimer(60);
+    } finally { setLoading(false); }
   };
 
   const handleVerifyEmailOtp = async (e: React.FormEvent) => {
     e.preventDefault(); setError(""); setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("verify-otp", {
-        body: { email: otpEmail, otp: otpCode },
-      });
-      if (error || !data || (data as any).error) {
-        setError(((data as any)?.error) || error?.message || "Verification failed.");
-        return;
-      }
-      const payload = data as { hashed_token?: string; email: string };
-      if (payload.hashed_token) {
-        const { error: verifyErr } = await supabase.auth.verifyOtp({
-          type: "magiclink",
-          token_hash: payload.hashed_token,
-        });
-        if (verifyErr) { setError(verifyErr.message); return; }
-      }
-      otpLogin(otpEmail, "supabase");
+      const r = await verifyEmailCode(otpEmail, otpCode);
+      if (!r.ok) { setError(r.error); return; }
       setSuccess(true);
-      setTimeout(() => goHome(), 1000);
-
-    } catch (err) { setError((err as Error).message || "Network error. Please try again."); }
-    finally { setLoading(false); }
-  };
-
-  // ── Phone handlers (Firebase) ─────────────────────────────────────────────
-  const formatPhone = (raw: string) => {
-    const d = raw.replace(/\D/g, "");
-    return d.length === 10 ? `+91${d}` : raw;
-  };
-
-  const handleSendPhoneOtp = async (e: React.FormEvent) => {
-    e.preventDefault(); setError(""); setLoading(true);
-    try {
-      if (!recaptchaVerifierRef.current) {
-        recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerRef.current!, { size: "invisible" });
-      }
-      const result = await signInWithPhoneNumber(auth, formatPhone(phone), recaptchaVerifierRef.current);
-      confirmationResultRef.current = result;
-      setPhoneMode("phone-verify"); setPhoneTimer(60);
-    } catch (err: any) {
-      setError(err.message || "Failed to send OTP. Check your number.");
-      recaptchaVerifierRef.current?.clear();
-      recaptchaVerifierRef.current = null;
+      setTimeout(() => goHome(), 800);
     } finally { setLoading(false); }
-  };
-
-  const handleVerifyPhoneOtp = async (e: React.FormEvent) => {
-    e.preventDefault(); setError(""); setLoading(true);
-    try {
-      if (!confirmationResultRef.current) { setError("Session expired. Please resend OTP."); return; }
-      const result = await confirmationResultRef.current.confirm(phoneOtp);
-      const u = result.user;
-      phoneLogin(u.phoneNumber || phone, "");
-      setSuccess(true);
-      setTimeout(() => goHome(), 1000);
-
-    } catch { setError("Invalid OTP. Please check and try again."); }
-    finally { setLoading(false); }
-  };
-
-  const resendPhoneOtp = async () => {
-    if (phoneTimer > 0) return;
-    setLoading(true); setError("");
-    try {
-      recaptchaVerifierRef.current?.clear();
-      recaptchaVerifierRef.current = null;
-      recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerRef.current!, { size: "invisible" });
-      const result = await signInWithPhoneNumber(auth, formatPhone(phone), recaptchaVerifierRef.current);
-      confirmationResultRef.current = result;
-      setPhoneOtp(""); setPhoneTimer(60);
-    } catch (err: any) { setError(err.message || "Failed to resend OTP."); }
-    finally { setLoading(false); }
   };
 
   return (
@@ -278,26 +163,8 @@ export default function Login() {
                 <h2 style={headingStyle}>Welcome back</h2>
                 <p style={subStyle}>Sign in to your aethex account</p>
 
-                {/* Tab switcher */}
-                <div style={{ display: "flex", gap: 8, marginBottom: 24, background: "#F2F2F7", borderRadius: 12, padding: 4 }}>
-                  {([["email", Mail, "Email"], ["phone", Phone, "Phone"]] as const).map(([t, Icon, label]) => (
-                    <button key={t} type="button" onClick={() => switchTab(t as AuthTab)}
-                      style={{
-                        flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                        padding: "9px 0", borderRadius: 9, border: "none", cursor: "pointer",
-                        fontSize: 13, fontWeight: 600, transition: "all 0.18s",
-                        background: tab === t ? "#FFFFFF" : "transparent",
-                        color: tab === t ? "#007AFF" : "#636366",
-                        boxShadow: tab === t ? "0 1px 4px rgba(0,0,0,0.1)" : "none",
-                      }}>
-                      <Icon style={{ width: 14, height: 14 }} />
-                      {label}
-                    </button>
-                  ))}
-                </div>
-
                 {/* ── Email tab ── */}
-                {tab === "email" && (
+                {(
                   <>
                     {emailMode === "otp-verify" ? (
                       <>
@@ -322,14 +189,7 @@ export default function Login() {
                             <button type="button" onClick={() => { setEmailMode("otp-email"); setOtpCode(""); setError(""); }}
                               style={{ background: "none", border: "none", color: "#636366", cursor: "pointer" }}>← Change email</button>
                             <button type="button" disabled={otpTimer > 0 || loading}
-                              onClick={async () => {
-                                if (otpTimer > 0) return;
-                                setLoading(true);
-                                try {
-                                  const { data, error: fnErr } = await supabase.functions.invoke("send-otp", { body: { email: otpEmail } });
-                                  if (!fnErr && !(data as any)?.error) { setOtpCode(""); setOtpTimer(60); } else setError(((data as any)?.error) || fnErr?.message || "Failed.");
-                                } catch { setError("Network error."); } finally { setLoading(false); }
-                              }}
+                              onClick={() => { if (otpTimer <= 0) void handleSendEmailOtp(); }}
                               style={{ background: "none", border: "none", color: otpTimer > 0 ? "#AEAEB2" : "#007AFF", cursor: otpTimer > 0 ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 4 }}>
                               <RefreshCw style={{ width: 11, height: 11 }} />
                               {otpTimer > 0 ? `Resend in ${otpTimer}s` : "Resend OTP"}
@@ -378,7 +238,7 @@ export default function Login() {
                             </button>
                           </div>
                           <div style={{ textAlign: "right", marginTop: 7 }}>
-                            <button type="button" style={{ background: "none", border: "none", color: "#007AFF", fontSize: 12, cursor: "pointer", padding: 0 }}>Forgot password?</button>
+                            <button type="button" onClick={() => { setEmailMode("otp-email"); setOtpEmail(email); setError(""); }} style={{ background: "none", border: "none", color: "#007AFF", fontSize: 12, cursor: "pointer", padding: 0 }}>Forgot password? Sign in with an email code</button>
                           </div>
                         </div>
                         {error && <div style={errorStyle}>{error}</div>}
@@ -401,68 +261,6 @@ export default function Login() {
                           </svg>
                           <span>Continue with Google</span>
                         </button>
-                      </form>
-                    )}
-                  </>
-                )}
-
-                {/* ── Phone tab ── */}
-                {tab === "phone" && (
-                  <>
-                    <div ref={recaptchaContainerRef} />
-                    {phoneMode === "phone-verify" ? (
-                      <>
-                        <p style={{ fontSize: 13, color: "#636366", marginBottom: 20 }}>
-                          Enter the 6-digit code sent to <strong style={{ color: "#1C1C1E" }}>+91 {phone}</strong>
-                        </p>
-                        <form onSubmit={handleVerifyPhoneOtp} style={formStyle}>
-                          <div>
-                            <label style={labelStyle}>OTP CODE</label>
-                            <input type="text" inputMode="numeric" pattern="\d{6}" maxLength={6}
-                              value={phoneOtp} onChange={e => setPhoneOtp(e.target.value.replace(/\D/g, ""))}
-                              required placeholder="• • • • • •"
-                              style={{ ...inputStyle, textAlign: "center", fontSize: 24, letterSpacing: "0.6em", fontFamily: "monospace" }}
-                              onFocus={e => { e.target.style.borderColor = "#007AFF"; e.target.style.boxShadow = "0 0 0 3px rgba(0,122,255,0.14)"; }}
-                              onBlur={e => { e.target.style.borderColor = "rgba(60,60,67,0.2)"; e.target.style.boxShadow = "none"; }} />
-                          </div>
-                          {error && <div style={errorStyle}>{error}</div>}
-                          <button type="submit" disabled={loading || phoneOtp.length !== 6} style={{ ...primaryBtnStyle, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            {loading ? <><BtnSpinner />Verifying…</> : "Verify & Sign In"}
-                          </button>
-                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-                            <button type="button" onClick={() => { setPhoneMode("phone-enter"); setPhoneOtp(""); setError(""); }}
-                              style={{ background: "none", border: "none", color: "#636366", cursor: "pointer" }}>← Change number</button>
-                            <button type="button" disabled={phoneTimer > 0 || loading} onClick={resendPhoneOtp}
-                              style={{ background: "none", border: "none", color: phoneTimer > 0 ? "#AEAEB2" : "#007AFF", cursor: phoneTimer > 0 ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-                              <RefreshCw style={{ width: 11, height: 11 }} />
-                              {phoneTimer > 0 ? `Resend in ${phoneTimer}s` : "Resend OTP"}
-                            </button>
-                          </div>
-                        </form>
-                      </>
-                    ) : (
-                      <form onSubmit={handleSendPhoneOtp} style={formStyle}>
-                        <div>
-                          <label style={labelStyle}>MOBILE NUMBER</label>
-                          <div style={{ display: "flex", gap: 8 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 14px", background: "#F2F2F7", border: "1.5px solid rgba(60,60,67,0.2)", borderRadius: 12, flexShrink: 0 }}>
-                              <span style={{ fontSize: 16 }}>🇮🇳</span>
-                              <span style={{ fontSize: 13, fontWeight: 600, color: "#1C1C1E" }}>+91</span>
-                            </div>
-                            <input type="tel" inputMode="numeric" maxLength={10}
-                              value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                              required placeholder="98765 43210" style={{ ...inputStyle, flex: 1 }}
-                              onFocus={e => { e.target.style.borderColor = "#007AFF"; e.target.style.boxShadow = "0 0 0 3px rgba(0,122,255,0.14)"; }}
-                              onBlur={e => { e.target.style.borderColor = "rgba(60,60,67,0.2)"; e.target.style.boxShadow = "none"; }} />
-                          </div>
-                        </div>
-                        {error && <div style={errorStyle}>{error}</div>}
-                        <button type="submit" disabled={loading || phone.length !== 10} style={{ ...primaryBtnStyle, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          {loading ? <><BtnSpinner />Sending OTP…</> : "Send OTP via SMS"}
-                        </button>
-                        <p style={{ fontSize: 11, color: "#AEAEB2", textAlign: "center", margin: 0, lineHeight: 1.6 }}>
-                          An SMS will be sent to your Indian mobile number via Twilio.
-                        </p>
                       </form>
                     )}
                   </>
