@@ -6,7 +6,7 @@
  * clinical decision-support software.
  */
 
-export const CADUS_VERSION = "3.0";
+export const CADUS_VERSION = "3.1";
 export const LEGAL_UPDATED = "18 October 2026";
 export const SUPPORT_EMAIL = "support@aethex.in";
 
@@ -26,6 +26,13 @@ export interface LegalPage {
 }
 
 export const RELEASES: { version: string; date: string; notes: string[] }[] = [
+  { version: "3.1", date: "October 2026", notes: [
+    "Scribe: dictate or type a consultation and get a SOAP, admission, follow-up, procedure or discharge note with ICD-10 codes, gaps to fill, signing and printing.",
+    "Emergencies: timed protocol checklists (sepsis, STEMI, DKA, anaphylaxis, status epilepticus, cardiac arrest in adults and children, stroke, hyperkalaemia, snakebite, organophosphate poisoning) with a handover text, and the crash-cart drug card by weight, all offline.",
+    "Paediatrics and obstetrics: weight-based doses for the formulary, growth percentiles with plain flags, the national immunisation schedule from a date of birth, pregnancy dating and the antenatal schedule.",
+    "Patient leaflets and consent forms in thirteen Indian languages, printed on the letterhead or sent by WhatsApp.",
+    "Sign in first; four plans with an Enterprise option for medical colleges.",
+  ] },
   { version: "3.0", date: "October 2026", notes: [
     "Hospital-software theme: a restrained navy and grey palette, a steady type scale and answers laid out as clinical reports.",
     "Drug formulary with doses for about 100 common generics, and a prescriber that checks interactions and prints on your letterhead.",

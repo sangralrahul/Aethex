@@ -15,7 +15,7 @@ import {
   ThumbsDown, ThumbsUp,
   Database, Download, ExternalLink, FileText, FlaskConical, Folder, FolderInput, FolderMinus, FolderPlus, Globe,
   GraduationCap, Grip, History, House, ImagePlus, Info, Keyboard, Laptop, Layers, LayoutGrid, Library, ListFilter, LogIn,
-  LogOut, Menu, MessageSquare, Mic, Moon, MoreHorizontal, PanelLeftClose, PanelLeftOpen, Pencil, Pill, Pin, PinOff, Play,
+  LogOut, Menu, MessageSquare, Mic, Moon, Siren, Baby, MoreHorizontal, PanelLeftClose, PanelLeftOpen, Pencil, Pill, Pin, PinOff, Play,
   Plus, Presentation, RefreshCw, Scale, Search, Settings, ShieldAlert, ShieldCheck, ShoppingBag, SlidersHorizontal,
   Sparkles, Square, SquarePen, Stethoscope, Sun, Syringe, Telescope, Trash2, Users, Volume2, VolumeX, X, Zap, Palette,
   BedDouble, BookMarked, BookOpenText, ChartLine, ClipboardPlus, FileBadge, FileSignature, Microscope, NotebookPen, NotepadText,
@@ -82,6 +82,14 @@ import { CADUS_REF_CSS } from "@/components/cadus/cadus-ref-styles";
 import { CADUS_WS_CSS } from "@/components/cadus/cadus-ws-styles";
 import { CADUS_CLINIC_CSS } from "@/components/cadus/cadus-clinic-styles";
 import { CADUS_LOOKS_CSS, LOOKS } from "@/components/cadus/cadus-looks-styles";
+import ScribeView from "@/components/cadus/ScribeView";
+import { NOTES_KEY as NOTES_KEY_EXPORT } from "@/lib/cadus/scribe";
+import { LEAFLETS_KEY as LEAFLETS_KEY_EXPORT } from "@/lib/cadus/leaflets";
+import { RX_KEY as RX_KEY_EXPORT } from "@/lib/cadus/formulary";
+import { LEARN_KEY as LEARN_KEY_EXPORT } from "@/lib/cadus/learn";
+import EmergencyView from "@/components/cadus/EmergencyView";
+import PaedsView from "@/components/cadus/PaedsView";
+import LeafletsView from "@/components/cadus/LeafletsView";
 type LookId = (typeof LOOKS)[number]["id"];
 import { CADUS_VERSION, LEGAL_PATH } from "@/lib/cadus/legal";
 import { PLAN_BY_ID, limitsOf, planFor, planOf, type PlanId } from "@/lib/cadus/plans";
@@ -105,9 +113,9 @@ type ModeId =
   | "soap" | "discharge" | "referral" | "handover" | "patient" | "research" | "mcq" | "slides" | "viva" | "osce"
   | "admission" | "progress" | "opnote" | "death" | "certificate" | "rx" | "evidence";
 type Provider = "claude" | "groq" | "library";
-type View = "chat" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy";
+type View = "chat" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets";
 /** Views reached from the Tools hub, so the hub stays highlighted in the sidebar. */
-const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks"]);
+const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets"]);
 type ToolTab = "all" | "clinical" | "documentation" | "learning";
 type SettingsTab = "general" | "personal" | "letterhead" | "institution" | "data" | "shortcuts" | "about";
 type StyleId = "concise" | "balanced" | "detailed";
@@ -1789,6 +1797,7 @@ export default function CadusAI() {
     setSidebarOpen(false);
     setPop(null);
   };
+  const openView = (v: View) => { setView(v); setSidebarOpen(false); setPop(null); };
   const openDrugs = (opts: { tab?: "reference" | "prescriber"; query?: string } = {}) => {
     setDrugsInit({ ...opts, key: Date.now() });
     setView("drugs");
@@ -1843,6 +1852,10 @@ export default function CadusAI() {
     letterhead: { ...letterhead, logo: undefined },
     institution,
     patientCases: cases,
+    prescriptions: readJSON(RX_KEY_EXPORT, []),
+    notes: readJSON(NOTES_KEY_EXPORT, []),
+    leaflets: readJSON(LEAFLETS_KEY_EXPORT, []),
+    learning: readJSON(LEARN_KEY_EXPORT, null),
   });
   /** Removes everything Cadus keeps in this browser (Quick Consult too) and starts afresh. */
   const deleteEverything = () => {
@@ -2315,6 +2328,10 @@ export default function CadusAI() {
       { key: "a:cases", label: "Patient cases", hint: "Case sheets with a timeline", icon: ClipboardList, run: () => openCases() },
       { key: "a:drugs", label: "Drug reference", hint: "Doses, NLEM, kidney and liver notes", icon: Pill, run: () => openDrugs() },
       { key: "a:rx", label: "New prescription", hint: "Build, check and print on your letterhead", icon: Pill, run: () => openDrugs({ tab: "prescriber" }) },
+      { key: "a:scribe", label: "Scribe: dictate a note", hint: "SOAP, admission, follow-up, procedure, discharge, with ICD-10", icon: Mic, run: () => openView("scribe") },
+      { key: "a:emergency", label: "Emergency protocols", hint: "Sepsis, STEMI, DKA, anaphylaxis, arrest, with a clock; crash-cart doses", icon: Siren, run: () => openView("emergency") },
+      { key: "a:paeds", label: "Paediatrics and obstetrics", hint: "Doses by weight, growth, immunisation, EDD", icon: Baby, run: () => openView("paeds") },
+      { key: "a:leaflets", label: "Patient leaflet or consent form", hint: "In the patient's language, on your letterhead", icon: FileText, run: () => openView("leaflets") },
       { key: "a:newcase", label: "New patient case", hint: "Start a de-identified case sheet", icon: ClipboardList, run: () => { const c = newCase(); setCases((l) => [c, ...l]); openCases(c.id); } },
       { key: "a:pubmed", label: "Search PubMed", hint: "Research", icon: Microscope, run: () => openResearch({ tab: "search" }) },
       { key: "a:reading", label: "Open reading list", icon: BookMarked, run: () => openResearch({ tab: "reading" }) },
@@ -2594,6 +2611,10 @@ export default function CadusAI() {
     { id: "research", icon: Microscope, tone: "amber", title: "Research", sub: readingCount ? `${readingCount} paper${readingCount === 1 ? "" : "s"} to read` : "PubMed, citations, thesis", go: () => openResearch() },
     { id: "ward", icon: BedDouble, tone: "sky", title: "Ward round", sub: wardInfo.patients.length ? `${wardInfo.patients.length} patient${wardInfo.patients.length === 1 ? "" : "s"} · ${openJobs} job${openJobs === 1 ? "" : "s"}` : "Beds, jobs, handover", go: openWard },
     { id: "calculators", icon: Calculator, tone: "lime", title: "Calculators", sub: `${CALCULATORS.length} scores and formulas`, go: () => openCalculators() },
+    { id: "scribe", icon: Mic, tone: "teal", title: "Scribe", sub: "Dictate a note, ICD-10, sign", go: () => openView("scribe") },
+    { id: "emergency", icon: Siren, tone: "rose", title: "Emergencies", sub: "Timed protocols, crash-cart doses", go: () => openView("emergency") },
+    { id: "paeds", icon: Baby, tone: "sky", title: "Paeds and obstetrics", sub: "Doses by weight, growth, EDD", go: () => openView("paeds") },
+    { id: "leaflets", icon: FileText, tone: "amber", title: "Patient leaflets", sub: "In the patient's language", go: () => openView("leaflets") },
   ];
   const workspaceTiles = (compact = false) => (
     <div className={`cx-ws-grid ${compact ? "compact" : ""}`}>
@@ -3596,6 +3617,10 @@ export default function CadusAI() {
               <button data-tour="ward" className={`cx-nav-i ${view === "ward" ? "on" : ""}`} onClick={openWard} title="Ward round"><BedDouble size={16} /><span className="cx-nav-l">Ward round</span>{wardInfo.patients.length > 0 && <em>{wardInfo.patients.length}</em>}</button>
               <button data-tour="research" className={`cx-nav-i ${view === "research" ? "on" : ""}`} onClick={() => openResearch()} title="Research"><Microscope size={16} /><span className="cx-nav-l">Research</span></button>
               <button className={`cx-nav-i ${view === "drugs" ? "on" : ""}`} onClick={() => openDrugs()} title="Drugs and prescriber"><Pill size={16} /><span className="cx-nav-l">Drugs</span></button>
+              <button className={`cx-nav-i ${view === "scribe" ? "on" : ""}`} onClick={() => openView("scribe")} title="Scribe: dictated notes"><Mic size={16} /><span className="cx-nav-l">Scribe</span></button>
+              <button className={`cx-nav-i ${view === "emergency" ? "on" : ""}`} onClick={() => openView("emergency")} title="Emergency protocols"><Siren size={16} /><span className="cx-nav-l">Emergencies</span></button>
+              <button className={`cx-nav-i ${view === "paeds" ? "on" : ""}`} onClick={() => openView("paeds")} title="Paediatrics and obstetrics"><Baby size={16} /><span className="cx-nav-l">Paeds and obstetrics</span></button>
+              <button className={`cx-nav-i ${view === "leaflets" ? "on" : ""}`} onClick={() => openView("leaflets")} title="Patient leaflets and consent"><FileText size={16} /><span className="cx-nav-l">Leaflets</span></button>
               <button data-tour="calculators" className={`cx-nav-i ${view === "calculators" ? "on" : ""}`} onClick={() => openCalculators()} title="Calculators"><Calculator size={16} /><span className="cx-nav-l">Calculators</span></button>
               <button className={`cx-nav-i ${view === "projects" || view === "project" ? "on" : ""}`} onClick={openProjects} title="Projects"><Folder size={16} /><span className="cx-nav-l">Projects</span>{projects.length > 0 && <em>{projects.length}</em>}</button>
               <button className={`cx-nav-i ${view === "decks" ? "on" : ""}`} onClick={() => { setView("decks"); setSidebarOpen(false); }} title="Decks"><Presentation size={16} /><span className="cx-nav-l">Decks</span>{decks.length > 0 && <em>{decks.length}</em>}</button>
@@ -3842,6 +3867,10 @@ export default function CadusAI() {
                 : view === "ward" ? [BedDouble, "Ward round"]
                 : view === "cases" ? [ClipboardList, "Patient cases"]
                 : view === "drugs" ? [Pill, "Drugs"]
+                : view === "scribe" ? [Mic, "Scribe"]
+                : view === "emergency" ? [Siren, "Emergencies"]
+                : view === "paeds" ? [Baby, "Paediatrics and obstetrics"]
+                : view === "leaflets" ? [FileText, "Patient leaflets"]
                 : view === "project" && project ? [Folder, project.name]
                 : [Folder, "Projects"];
               return <span className="cx-title-btn static"><Icon size={14} /> <span>{label}</span></span>;
@@ -3966,6 +3995,36 @@ export default function CadusAI() {
                 onAsk={(q, m) => { if (pending) { toast("Wait for the current answer to finish"); return; } void send(q, (m && MODE[m as ModeId] ? m : "general") as ModeId); }}
                 onCheck={(drugs) => openCalculators({ tab: "ix", drugs })}
                 toast={toast}
+              />
+            )
+            : view === "scribe" ? (
+              <ScribeView
+                generate={(body) => invokeCadus({ ...body, model: prefs.model, language: prefs.language, institution: institutionPayload(institution, "")?.payload })}
+                onPrint={(title, md) => printDoc(title, md, { mode: "note" })}
+                onWord={(title, md) => downloadWord(title, md, "note")}
+                onAsk={(q) => { if (pending) { toast("Wait for the current answer to finish"); return; } void send(q, "general"); }}
+                friendlyError={friendlyError}
+                toast={toast}
+                letterhead={!!lh}
+                signer={lh ? [lh.name, lh.registration].filter(Boolean).join(", ") : ""}
+                language={prefs.language}
+              />
+            )
+            : view === "emergency" ? (
+              <EmergencyView toast={toast} onAsk={(q) => { if (pending) { toast("Wait for the current answer to finish"); return; } void send(q, "general"); }} />
+            )
+            : view === "paeds" ? (
+              <PaedsView onAsk={(q) => { if (pending) { toast("Wait for the current answer to finish"); return; } void send(q, "general"); }} />
+            )
+            : view === "leaflets" ? (
+              <LeafletsView
+                generate={(body) => { if (!limits.reading && body.kind === "consent") { /* consent is open to all plans */ } return invokeCadus({ ...body, model: prefs.model, institution: institutionPayload(institution, "")?.payload }); }}
+                onPrint={(title, md) => printDoc(title, md, { mode: "leaflet", large: true })}
+                onWord={(title, md) => downloadWord(title, md, "leaflet")}
+                friendlyError={friendlyError}
+                toast={toast}
+                letterhead={!!lh}
+                defaultLanguage={prefs.language}
               />
             )
             : view === "cases" ? (
