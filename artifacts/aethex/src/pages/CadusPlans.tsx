@@ -4,7 +4,7 @@
  * that opens a ready-made email to Aethex (and is remembered on this device).
  */
 import { useMemo, useState, type FormEvent } from "react";
-import { ArrowRight, Building2, Check, Copy, Mail, MessageCircle, ShieldCheck, X } from "lucide-react";
+import { ArrowRight, Building2, Check, Copy, FileCheck2, Laptop, Mail, MessageCircle, ShieldCheck, X } from "lucide-react";
 import CadusMark from "@/components/cadus/CadusMark";
 import { CADUS_CSS } from "@/components/cadus/cadus-styles";
 import { CADUS_REF_CSS } from "@/components/cadus/cadus-ref-styles";
@@ -66,6 +66,7 @@ export default function CadusPlans() {
       </header>
       <main className="cx-plans-main">
         <section className="cx-plans-hero">
+          <p className="cx-si-eyebrow">Plans and pricing</p>
           <h1>Plans for every stage of medicine</h1>
           <p>Start free. Move up when the wards, the exam or the clinic ask more of you. Medical colleges and hospitals get Cadus for every seat, with their own protocols inside every answer.</p>
           <div className="cx-seg cx-plans-cycle" role="tablist" aria-label="Billing cycle">
@@ -96,8 +97,7 @@ export default function CadusPlans() {
                 <h2>{p.name}</h2>
                 <p className="cx-plan-tag">{p.tagline}</p>
                 <p className="cx-plan-price">
-                  {amount === null ? <b>Quote</b> : amount === 0 ? <b>Free</b> : <><b>{rupees(amount)}</b><small>per user, {cycle === "yearly" ? "a year" : "a month"}</small></>}
-                  {amount !== null && amount > 0 && cycle === "yearly" && <small className="cx-plan-eq">about {rupees(Math.round(amount / 12))} a month</small>}
+                  {amount === null ? <><b>Quote</b><small>per seat, billed yearly</small></> : amount === 0 ? <><b>Free</b><small>for ever, for one user</small></> : cycle === "yearly" ? <><b>{rupees(Math.round(amount / 12))}</b><small>per user a month, billed {rupees(amount)} a year</small></> : <><b>{rupees(amount)}</b><small>per user a month, billed monthly</small></>}
                 </p>
                 <p className="cx-plan-aud">{p.audience}</p>
                 <ul>{p.includes.map((x) => <li key={x}><Check size={14} /> {x}</li>)}</ul>
@@ -115,6 +115,12 @@ export default function CadusPlans() {
             );
           })}
         </div>
+
+        <section className="cx-plans-trust" aria-label="On every plan">
+          <span><ShieldCheck size={16} /> Every answer reviewed by a second model</span>
+          <span><Laptop size={16} /> Chats, cases and prescriptions stay on your device</span>
+          <span><FileCheck2 size={16} /> GST invoice and DPDP-aligned privacy policy</span>
+        </section>
 
         <section className="cx-plans-table-wrap">
           <h2>Compare the plans</h2>
@@ -206,7 +212,10 @@ const PLANS_CSS = `
 .cx-plan-card .cx-btn{justify-content:center;height:38px}
 .cx-plan-cur{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:38px;font-size:13.5px;font-weight:600;color:var(--ok)}
 .cx-plan-cta{text-align:center;font-size:12px;color:var(--t3);margin-top:4px}
-.cx-plans-table-wrap{margin-top:48px}
+.cx-plans-trust{display:flex;flex-wrap:wrap;justify-content:center;gap:10px 28px;margin:28px 0 0;padding:16px 20px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-size:13.5px;color:var(--t2)}
+.cx-plans-trust span{display:inline-flex;align-items:center;gap:8px}
+.cx-plans-trust svg{color:var(--ok)}
+.cx-plans-table-wrap{margin-top:40px}
 .cx .cx-plans-table-wrap h2,.cx .cx-plans-ent h2,.cx .cx-plans-faq h2{font-size:22px;font-weight:600;margin-bottom:14px}
 .cx-plans-table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--line);border-radius:var(--r-lg,10px);overflow:hidden;font-size:13.5px}
 .cx-plans-table th,.cx-plans-table td{padding:11px 14px;border-bottom:1px solid var(--line);text-align:center}

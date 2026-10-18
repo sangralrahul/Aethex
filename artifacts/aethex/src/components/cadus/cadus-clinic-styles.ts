@@ -123,6 +123,7 @@ export const CADUS_CLINIC_CSS = `
 .cx-usage-up:hover{text-decoration:underline}
 .cx-nav-plan{font-size:10.5px!important;text-transform:uppercase;letter-spacing:.05em}
 .cx-locked{align-items:flex-start;text-align:left}
+.cx-si-eyebrow{font-size:11.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);margin-bottom:12px}
 .cx-si-plans{max-width:440px;margin-top:24px;font-size:13.5px;line-height:1.6;color:var(--t2)}
 .cx-si-plans a{color:var(--text);text-decoration:underline;text-underline-offset:2px}
 a.cx-plan{text-decoration:none}a.cx-plan:hover{text-decoration:underline}

@@ -19,6 +19,11 @@ export const CADUS_LOOKS_CSS = `
 .cx-dark[data-look="editorial"]{--bg:#15130F;--side:#110F0C;--surface:#1C1915;--s2:#231F1A;--s3:#2C2721;--line:#2A251F;--line2:#3A342C;--text:#F1ECE2;--t2:#C4BBAD;--t3:#8F877A;--primary:#F1ECE2;--primary-ink:#15130F;--user:#231F1A;--code:#17140F}
 .cx[data-look="editorial"] .cx-wm,.cx[data-look="editorial"] .cx-page-h h1,.cx[data-look="editorial"] .cx-home.cx-fh .cx-fh-h h1,.cx[data-look="editorial"] .cx-fh-premium .cx-fh-h h1,.cx[data-look="editorial"] .cx-section-h h2,.cx[data-look="editorial"] .cx-dialog-h h3,.cx[data-look="editorial"] .cx-legal-doc h1,.cx[data-look="editorial"] .cx-legal-doc h2,.cx[data-look="editorial"] .cx-shared-card h1,.cx[data-look="editorial"] .cx-ln-card h2{font-family:var(--display);font-weight:500;letter-spacing:-.01em}
 .cx[data-look="editorial"] .cx-wm{font-size:20px}
+.cx[data-look="editorial"] .cx-si-pitch h2,.cx[data-look="editorial"] .cx-si-card h1,.cx[data-look="editorial"] .cx-plans-hero h1,.cx[data-look="editorial"] .cx-plan-card h2,.cx[data-look="editorial"] .cx-plans-table-wrap h2,.cx[data-look="editorial"] .cx-plans-ent h2,.cx[data-look="editorial"] .cx-plans-faq h2,.cx[data-look="editorial"] .cx-upgrade h3,.cx[data-look="editorial"] .cx-plan-ask h3{font-family:var(--display);font-weight:500;letter-spacing:-.01em}
+.cx[data-look="editorial"] .cx-si-pitch h2{font-size:40px;line-height:1.12}
+.cx[data-look="editorial"] .cx-si-card h1{font-size:30px}
+.cx[data-look="editorial"] .cx-plans-hero h1{font-size:44px}
+.cx[data-look="editorial"] .cx-plan-price b{font-family:var(--display);font-weight:500}
 .cx[data-look="editorial"] .cx-page-h h1,.cx[data-look="editorial"] .cx-home.cx-fh .cx-fh-h h1,.cx[data-look="editorial"] .cx-fh-premium .cx-fh-h h1{font-size:36px;line-height:1.15}
 .cx[data-look="editorial"] .cx-legal-doc h1{font-size:40px}
 .cx[data-look="editorial"] .cx-fh-h p{font-size:15px;color:var(--t2)}

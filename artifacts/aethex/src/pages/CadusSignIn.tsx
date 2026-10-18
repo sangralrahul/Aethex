@@ -135,7 +135,8 @@ export default function CadusSignIn() {
       <aside className="cx-si-side" aria-hidden>
         <div className="cx-si-brand"><CadusMark size={30} /><span>Cadus<small>Clinical AI by Aethex</small></span></div>
         <div className="cx-si-pitch">
-          <h2>Clinical answers you can check, for doctors in India.</h2>
+          <p className="cx-si-eyebrow">Clinical AI for India</p>
+          <h2>Clinical answers you can check, for doctors and medical students.</h2>
           <ul>{WHY.map((w) => <li key={w.title}><w.icon size={18} /><span><b>{w.title}.</b> {w.text}</span></li>)}</ul>
           <p className="cx-si-plans">Every account starts on the free Starter plan. <a href={plansPath()}>Core, Professional and Enterprise plans</a> add sources, image reading, the prescriber and institution-wide features.</p>
         </div>
@@ -150,7 +151,7 @@ export default function CadusSignIn() {
           ) : (
             <>
               <h1 id="cx-si-title">{title}</h1>
-              <p className="cx-si-lead">{mode === "up" ? "A free account starts you on the Starter plan. Your chats and cases stay on this device." : "Use your Aethex account, or carry on as a guest."}</p>
+              <p className="cx-si-lead">{mode === "up" ? "A free account starts you on the Starter plan. Your chats and cases stay on this device." : "Cadus is for signed-in clinicians and students. Use your Aethex account to continue."}</p>
 
               <button type="button" className="cx-si-google" onClick={withGoogle} disabled={busy}>
                 <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.5l6.7-6.7C35.6 2.5 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.3l7.8 6C12.3 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8C43.8 38 46.5 31.8 46.5 24.5z"/><path fill="#FBBC05" d="M10.4 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.8-6A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.7l7.8-6z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.7-4.1-13.6-9.9l-7.8 6C6.5 42.6 14.6 48 24 48z"/></svg>
@@ -216,7 +217,7 @@ export default function CadusSignIn() {
               <p className="cx-si-switch">
                 {mode === "up" ? <>Already have an account? <button type="button" onClick={() => { setMode("in"); setError(""); }}>Sign in</button></> : <>New to Aethex? <button type="button" onClick={() => { setMode("up"); pick("password"); }}>Create an account</button></>}
               </p>
-              <p className="cx-si-legal">By continuing you agree to the <a href={mainUrl("/terms-of-service")}>Terms</a> and <a href={mainUrl("/privacy-policy")}>Privacy policy</a>.</p>
+              <p className="cx-si-legal">By continuing you agree to the <a href={legalPath("terms")}>Terms of use</a> and <a href={legalPath("privacy")}>Privacy policy</a>. Cadus is decision support, not a substitute for clinical judgement.</p>
             </>
           )}
         </div>
