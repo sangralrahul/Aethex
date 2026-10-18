@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cadusUrl, isCadusHost, isLoginHost, mainUrl } from "@/lib/host";
 import { LEGAL_PATH } from "@/lib/cadus/legal";
 import CadusMark from "@/components/cadus/CadusMark";
+import SignInScene, { SIGNIN_SCENE_CSS } from "@/components/cadus/SignInScene";
 import { CADUS_CSS } from "@/components/cadus/cadus-styles";
 import { CADUS_SIGNIN_CSS } from "@/components/cadus/cadus-signin-styles";
 import { CADUS_CLINIC_CSS } from "@/components/cadus/cadus-clinic-styles";
@@ -131,12 +132,13 @@ export default function CadusSignIn() {
   const title = done ? "Signed in" : mode === "up" ? "Create your Cadus account" : "Sign in to Cadus";
   return (
     <div className={`cx cx-si ${dark ? "cx-dark" : "cx-light"}`} data-look={look}>
-      <style>{CADUS_CSS + CADUS_SIGNIN_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS}</style>
+      <style>{CADUS_CSS + CADUS_SIGNIN_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + SIGNIN_SCENE_CSS}</style>
       <aside className="cx-si-side" aria-hidden>
         <div className="cx-si-brand"><CadusMark size={30} /><span>Cadus<small>Clinical AI by Aethex</small></span></div>
         <div className="cx-si-pitch">
           <p className="cx-si-eyebrow">Clinical AI for India</p>
           <h2>Clinical answers you can check, for doctors and medical students.</h2>
+          <SignInScene />
           <ul>{WHY.map((w) => <li key={w.title}><w.icon size={18} /><span><b>{w.title}.</b> {w.text}</span></li>)}</ul>
           <p className="cx-si-plans">Every account starts on the free Starter plan. <a href={plansPath()}>Core, Professional and Enterprise plans</a> add sources, image reading, the prescriber and institution-wide features.</p>
         </div>

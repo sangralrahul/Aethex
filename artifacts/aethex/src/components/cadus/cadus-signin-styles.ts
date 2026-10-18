@@ -1,17 +1,17 @@
 /** Styles for the Cadus sign-in page (src/pages/CadusSignIn.tsx). Layered over the base Cadus tokens. */
 export const CADUS_SIGNIN_CSS = `
 .cx.cx-si{position:fixed;inset:0;display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);overflow:auto;background:var(--bg)}
-.cx-si-side{position:relative;display:flex;flex-direction:column;justify-content:space-between;gap:32px;padding:36px 48px 32px;background:var(--side);border-right:1px solid var(--line);overflow:hidden}
+.cx-si-side{position:relative;display:flex;flex-direction:column;justify-content:space-between;gap:20px;padding:30px 48px 26px;background:var(--side);border-right:1px solid var(--line);overflow:hidden}
 .cx-si-side::before{content:"";position:absolute;inset:0;background:radial-gradient(60% 50% at 20% 0%,color-mix(in srgb,var(--acc) 14%,transparent),transparent 70%),radial-gradient(50% 40% at 100% 100%,color-mix(in srgb,var(--acc) 8%,transparent),transparent 70%);pointer-events:none}
 .cx-si-side>*{position:relative}
 .cx-si-brand{display:flex;align-items:center;gap:11px;font-size:19px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
 .cx-si-brand span{display:flex;flex-direction:column;gap:3px}
 .cx-si-brand small{font-size:12px;font-weight:500;letter-spacing:0;color:var(--t3)}
 .cx-si-brand.small{display:none;font-size:17px;margin-bottom:22px}
-.cx-si-pitch{margin:auto 0;padding:24px 0}
-.cx .cx-si-pitch h2{max-width:440px;font-size:34px;font-weight:650;line-height:1.2;letter-spacing:-.03em}
-.cx-si-pitch ul{display:flex;flex-direction:column;gap:16px;max-width:440px;margin:28px 0 0;padding:0;list-style:none}
-.cx-si-pitch li{display:flex;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--surface) 70%,transparent);font-size:14px;line-height:1.55;color:var(--t2)}
+.cx-si-pitch{margin:auto 0;padding:12px 0}
+.cx .cx-si-pitch h2{max-width:520px;font-size:34px;font-weight:650;line-height:1.2;letter-spacing:-.03em}
+.cx-si-pitch ul{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:520px;margin:10px 0 0;padding:0;list-style:none}
+.cx-si-pitch li{display:flex;flex-direction:column;gap:6px;padding:0 4px;border:0;background:transparent;font-size:12.5px;line-height:1.5;color:var(--t2)}
 .cx-si-pitch li>svg{flex-shrink:0;margin-top:2px;color:var(--acc)}
 .cx-si-pitch b{font-weight:650;color:var(--text)}
 .cx .cx-si-foot{max-width:440px;font-size:12px;line-height:1.5;color:var(--t3)}
