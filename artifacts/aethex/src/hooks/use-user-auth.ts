@@ -207,6 +207,7 @@ export function useUserAuth() {
   const logout = () => {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(JWT_KEY);
+    localStorage.removeItem("cadus3.authKey");
     setUser(null);
   };
 

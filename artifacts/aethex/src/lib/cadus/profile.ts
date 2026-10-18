@@ -24,6 +24,16 @@ export interface MedicalProfile {
   council?: string;
   /** They confirmed the registration details are theirs and correct. */
   declared?: boolean;
+  /** Full name as it should appear on documents (set up after sign-in). */
+  fullName?: string;
+  /** College, hospital or clinic. */
+  institution?: string;
+  city?: string;
+  phone?: string;
+  /** Preferred language for patient-facing material. */
+  languagePref?: string;
+  /** When the sign-in profile was completed; the setup screen is skipped once this is set. */
+  completedAt?: number;
 }
 
 export const PROFILE_KEY = "cadus3.profile";
@@ -67,6 +77,12 @@ export function readProfile(): MedicalProfile | null {
       registration: str(raw.registration, 40),
       council: str(raw.council, 80),
       declared: raw.declared === true ? true : undefined,
+      fullName: str(raw.fullName, 80),
+      institution: str(raw.institution, 160),
+      city: str(raw.city, 60),
+      phone: str(raw.phone, 20),
+      languagePref: str(raw.languagePref, 40),
+      completedAt: Number.isFinite(raw.completedAt) ? Number(raw.completedAt) : undefined,
     };
   } catch {
     return null;

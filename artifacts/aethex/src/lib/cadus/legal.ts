@@ -32,6 +32,7 @@ export const RELEASES: { version: string; date: string; notes: string[] }[] = [
     "Paediatrics and obstetrics: weight-based doses for the formulary, growth percentiles with plain flags, the national immunisation schedule from a date of birth, pregnancy dating and the antenatal schedule.",
     "Patient leaflets and consent forms in thirteen Indian languages, printed on the letterhead or sent by WhatsApp.",
     "Sign in first; four plans with an Enterprise option for medical colleges.",
+    "Your account profile is set up once after sign-in and kept with your account, so it is ready on every device.",
   ] },
   { version: "3.0", date: "October 2026", notes: [
     "Hospital-software theme: a restrained navy and grey palette, a steady type scale and answers laid out as clinical reports.",
@@ -97,7 +98,9 @@ export const LEGAL: Record<LegalKind, LegalPage> = {
         "With Sources on, your question is also used to search public medical sources (WHO, ICMR, NICE, PubMed and similar).",
       ] },
       { heading: "Account data", body: [
-        "If you sign in, Aethex holds the details you give at sign-up (name, email address or phone number, role, college or hospital), processed by Supabase and, for phone sign-in, Google Firebase. Your self-declared profession, specialty, exam and registration are kept on your device; a short summary of role, exam and specialty goes with each question so answers fit your level. Your registration number and council are never sent.",
+        "If you sign in, Aethex holds the details you give at sign-up (name, email address or phone number), processed by Supabase and, for phone sign-in, Google Firebase.",
+        "Your account profile (full name, role, year or exam, specialty, college or hospital, city, state, optional registration number and council, optional mobile number and preferred language) is stored by Aethex on Cloudflare, linked to your sign-in, so it is ready the next time you sign in on any device. It holds no patient information. You can change it at any time in Settings, and ask for it to be deleted.",
+        "A short summary of role, exam and specialty goes with each question so answers fit your level. Your name, registration number, council and mobile number are never sent to the AI.",
       ] },
       { heading: "AI providers", body: [
         "Answers are drafted and reviewed by third-party AI models reached through their commercial APIs, whose terms do not allow your content to be used to train those models; the providers may hold requests briefly for abuse monitoring under their own policies. Aethex does not store your questions, attachments or answers on its servers.",

@@ -83,6 +83,8 @@ import { CADUS_WS_CSS } from "@/components/cadus/cadus-ws-styles";
 import { CADUS_CLINIC_CSS } from "@/components/cadus/cadus-clinic-styles";
 import { CADUS_LOOKS_CSS, LOOKS } from "@/components/cadus/cadus-looks-styles";
 import ScribeView from "@/components/cadus/ScribeView";
+import ProfileSetup, { PROFILE_SETUP_CSS } from "@/components/cadus/ProfileSetup";
+import { fetchRemoteProfile, pushRemoteProfile } from "@/lib/cadus/profileSync";
 import { NOTES_KEY as NOTES_KEY_EXPORT } from "@/lib/cadus/scribe";
 import { LEAFLETS_KEY as LEAFLETS_KEY_EXPORT } from "@/lib/cadus/leaflets";
 import { RX_KEY as RX_KEY_EXPORT } from "@/lib/cadus/formulary";
@@ -1762,10 +1764,37 @@ export default function CadusAI() {
   };
 
   const updateProfile = (p: MedicalProfile | null) => {
-    setProfile(p);
-    saveProfile(p);
+    const next = p ? { ...profile, ...p, completedAt: p.completedAt ?? profile?.completedAt ?? Date.now() } : null;
+    setProfile(next);
+    saveProfile(next);
     setProfileOpen(false);
     toast(p ? "Profile saved. Answers are now tailored to you." : "Profile cleared");
+    if (next) void pushRemoteProfile(next).then((r) => { if (!r.ok && r.reason !== "not-set-up" && r.reason !== "no-credential") toast(r.message); });
+  };
+  /** After sign-in: the profile saved on the server for this account, so the setup is skipped on a new device. */
+  const [setupState, setSetupState] = useState<"checking" | "needed" | "done">(() => (readProfile()?.completedAt ? "done" : "checking"));
+  const [setupSaving, setSetupSaving] = useState(false);
+  const [serverNote, setServerNote] = useState("Your profile is saved to your Aethex account.");
+  useEffect(() => {
+    if (!user || setupState !== "checking") return;
+    let live = true;
+    fetchRemoteProfile().then((r) => {
+      if (!live) return;
+      if (r.ok && r.profile?.completedAt) { setProfile(r.profile); saveProfile(r.profile); setSetupState("done"); return; }
+      if (!r.ok && (r.reason === "not-set-up" || r.reason === "no-credential")) setServerNote("Your profile is kept on this device for now; it will be saved to your account once the profile store is switched on.");
+      if (!r.ok && r.reason === "offline") setServerNote("You are offline: the profile is kept on this device and saved to your account when you are back online.");
+      setSetupState("needed");
+    });
+    return () => { live = false; };
+  }, [user, setupState]);
+  const finishSetup = async (p: MedicalProfile) => {
+    setSetupSaving(true);
+    setProfile(p);
+    saveProfile(p);
+    const r = await pushRemoteProfile(p);
+    setSetupSaving(false);
+    setSetupState("done");
+    toast(r.ok ? "Profile saved to your account" : r.reason === "not-set-up" || r.reason === "no-credential" ? "Profile saved on this device" : r.message);
   };
 
   const setPractice = useCallback((fn: (s: PracticeState) => PracticeState) => setPracticeState(fn), []);
@@ -1870,8 +1899,10 @@ export default function CadusAI() {
     setFlag(ONBOARD_KEY);
     setOnboardOpen(false);
     if (r.profile) {
-      setProfile(r.profile);
-      saveProfile(r.profile);
+      const merged = { ...profile, ...r.profile, completedAt: profile?.completedAt ?? Date.now() };
+      setProfile(merged);
+      saveProfile(merged);
+      void pushRemoteProfile(merged);
     }
     setPrefs((p) => ({ ...p, units: r.units, nlem: r.nlem, language: r.language }));
     if (r.tour) { setMoreOpen(true); window.setTimeout(() => setTourOpen(true), 300); }
@@ -3552,6 +3583,18 @@ export default function CadusAI() {
 
   // Without an account, the sign-in page (shared and trust pages stay open).
   useEffect(() => { if (gated) window.location.replace(`${signInHref}?next=${encodeURIComponent(window.location.pathname + window.location.search)}`); }, [gated]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!gated && setupState !== "done") {
+    return (
+      <div className={`cx ${dark ? "cx-dark" : "cx-light"} ans-sans`} data-look={prefs.look}>
+        <style>{CADUS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + PROFILE_SETUP_CSS}</style>
+        {setupState === "checking" ? (
+          <div className="cx-gate"><div className="cx-gate-in"><CadusMark size={36} /><p>Opening your profile…</p></div></div>
+        ) : (
+          <ProfileSetup initial={profile} accountName={user?.name ?? ""} accountEmail={user?.email || user?.phone || ""} onDone={finishSetup} saving={setupSaving} serverNote={serverNote} />
+        )}
+      </div>
+    );
+  }
   if (gated) {
     return (
       <div className={`cx cx-gate ${dark ? "cx-dark" : "cx-light"}`} data-look={prefs.look}>
@@ -4006,7 +4049,7 @@ export default function CadusAI() {
                 friendlyError={friendlyError}
                 toast={toast}
                 letterhead={!!lh}
-                signer={lh ? [lh.name, lh.registration].filter(Boolean).join(", ") : ""}
+                signer={lh ? [lh.name, lh.registration].filter(Boolean).join(", ") : profile?.fullName ? [profile.fullName, profile.registration].filter(Boolean).join(", ") : ""}
                 language={prefs.language}
               />
             )
@@ -4392,7 +4435,7 @@ export default function CadusAI() {
                   <>
                     <div className="cx-set-row">
                       <div><b>Your profile</b><small>{profile ? `${profileSummary(profile)}${profile.state ? ` · ${profile.state}` : ""}. Answers, quick actions and practice questions are tailored to you.` : "Tell Cadus whether you're a student, an exam aspirant, an intern or a doctor, and answers are pitched at your level."}</small>{badge && <span className="cx-set-badge"><ShieldCheck size={13} /> {badge} · self-declared</span>}</div>
-                      <button className="cx-btn" onClick={() => setProfileOpen(true)}><UserCog size={14} /> {profile ? "Edit" : "Set up"}</button>
+                      <span className="cx-set-legal"><button className="cx-btn" onClick={() => setProfileOpen(true)}><UserCog size={14} /> {profile ? "Edit" : "Set up"}</button><button className="cx-btn" onClick={() => { setSettingsOpen(false); setSetupState("needed"); }} title="Name, institution, registration and contact, saved to your account">Account profile</button></span>
                     </div>
                     <PersonalSettings personal={personal} setPersonal={setPersonal} toast={toast} />
                     <p className="cx-set-sub">Appearance</p>

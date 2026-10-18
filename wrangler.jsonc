@@ -9,7 +9,14 @@
     "directory": "./dist",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/fn/*", "/api/health"]
+    "run_worker_first": ["/api/fn/*", "/api/health", "/api/profile"]
   },
+  // Cadus profiles (worker/profiles.ts) are kept in a KV namespace. To switch it on:
+  //   1. npx wrangler kv namespace create CADUS_PROFILES   (prints an id)
+  //   2. uncomment the line below and paste the id
+  //   3. in the Cloudflare dashboard, add Worker variables SUPABASE_URL, SUPABASE_ANON_KEY
+  //      and FIREBASE_API_KEY (the public values from artifacts/aethex/.env)
+  // Until then profiles are kept on the device and the app says so.
+  // "kv_namespaces": [{ "binding": "CADUS_PROFILES", "id": "paste-the-id-here" }],
   "observability": { "enabled": true }
 }

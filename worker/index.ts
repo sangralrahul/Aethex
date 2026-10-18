@@ -10,7 +10,13 @@
 //   ANTHROPIC_API_KEY  Claude (main AI)
 //   GROQ_API_KEY       optional backup model, also writes Library-mode answers
 // Login, OTP emails and the database stay on Supabase.
+//
+// Cadus profiles are kept on Cloudflare KV (GET/PUT /api/profile, worker/profiles.ts):
+//   CADUS_PROFILES     KV namespace binding (wrangler.jsonc "kv_namespaces")
+//   SUPABASE_URL, SUPABASE_ANON_KEY   to check Supabase sign-ins (public values)
+//   FIREBASE_API_KEY   to check phone sign-ins (the public web API key)
 import { functionHandler, functionNames, useEnv } from "./deno-shim";
+import { handleProfile, type ProfileEnv } from "./profiles";
 import "./names/groq-ai";
 import "../supabase/functions/groq-ai/index.ts";
 import "./names/analyze-drug-interactions";
@@ -22,7 +28,7 @@ import "../supabase/functions/predict-symptoms/index.ts";
 import "./names/analyze-radiology";
 import "../supabase/functions/analyze-radiology/index.ts";
 
-interface Env {
+interface Env extends ProfileEnv {
   ASSETS: { fetch: (request: Request) => Promise<Response> };
   ANTHROPIC_API_KEY?: string;
   GROQ_API_KEY?: string;
@@ -43,7 +49,18 @@ export default {
 
     if (url.pathname === "/api/health") {
       // Shows whether the keys are set (never their values), to check the setup.
-      return json({ ok: true, functions: functionNames(), anthropic: !!env.ANTHROPIC_API_KEY, groq: !!env.GROQ_API_KEY });
+      return json({ ok: true, functions: functionNames(), anthropic: !!env.ANTHROPIC_API_KEY, groq: !!env.GROQ_API_KEY, profiles: !!env.CADUS_PROFILES });
+    }
+
+    if (url.pathname === "/api/profile") {
+      const origin = request.headers.get("origin");
+      if (origin && !ALLOWED_ORIGIN.test(origin)) return json({ error: "Origin not allowed" }, 403);
+      try {
+        return await handleProfile(request, env);
+      } catch (e) {
+        console.error("api/profile failed", e);
+        return json({ error: "Could not reach the profile store. Please try again." }, 500);
+      }
     }
 
     const match = /^\/api\/fn\/([a-z0-9-]+)\/?$/.exec(url.pathname);

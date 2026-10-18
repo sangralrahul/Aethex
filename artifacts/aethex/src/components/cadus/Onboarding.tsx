@@ -30,8 +30,11 @@ export default function Onboarding({ languages, language: initialLanguage, profi
   /** Only when setup is run again: close without changing anything. */
   onCancel?: () => void;
 }) {
+  // The welcome acknowledgement is always read on the first run; after the
+  // sign-in profile setup the role and details are known, so Get started
+  // goes straight to Preferences. Run again from Settings, it is already acknowledged.
   const [step, setStep] = useState(0);
-  const [ack, setAck] = useState(!!initial);
+  const [ack, setAck] = useState(!!onCancel);
   const [role, setRole] = useState<ProfileRole | null>(initial?.role ?? null);
   const [year, setYear] = useState(initial?.year ?? "");
   const [exam, setExam] = useState(initial?.exam ?? "NEET-PG");
@@ -46,6 +49,7 @@ export default function Onboarding({ languages, language: initialLanguage, profi
   const [language, setLanguage] = useState(initialLanguage || "English");
 
   const profile = (): MedicalProfile | null => role ? {
+    ...(initial ?? {}),
     role,
     year: role === "student" && year ? year : undefined,
     exam: role === "aspirant" ? exam : undefined,
@@ -228,11 +232,11 @@ export default function Onboarding({ languages, language: initialLanguage, profi
         )}
 
         <div className="cx-ob-f">
-          {step > 0 && step < 4 && <button type="button" className="cx-btn" onClick={() => setStep(step - 1)}><ArrowLeft size={15} /> Back</button>}
+          {step > 0 && step < 4 && <button type="button" className="cx-btn" onClick={() => setStep(step === 3 && initial?.completedAt ? 0 : step - 1)}><ArrowLeft size={15} /> Back</button>}
           {step > 0 && step < 4 && <button type="button" className="cx-ob-skip" onClick={() => setStep(4)}>Skip for now</button>}
           <span className="cx-ob-sp" />
           {step < 4 ? (
-            <button type="button" className="cx-btn primary" disabled={!canNext} onClick={() => setStep(step + 1)}>{step === 0 ? "Get started" : "Continue"} <ArrowRight size={15} /></button>
+            <button type="button" className="cx-btn primary" disabled={!canNext} onClick={() => setStep(step === 0 && initial?.completedAt ? 3 : step + 1)}>{step === 0 ? "Get started" : "Continue"} <ArrowRight size={15} /></button>
           ) : (
             <>
               <button type="button" className="cx-btn" onClick={() => finish(false)}>Start using Cadus</button>

@@ -123,7 +123,7 @@ export default function ScribeView({ generate, onPrint, onWord, onAsk, friendlyE
               </div>
               <div className="cx-sc-acts">
                 {open.signed ? <span className="cx-sc-signed"><ShieldCheck size={14} /> Signed by {open.signed.by}</span> : (
-                  <button className="cx-btn" onClick={() => { if (!signer) { toast("Add your name and registration in Settings › Letterhead to sign"); return; } patch(open.id, { signed: { by: signer, at: Date.now() } }); setEditing(false); toast("Note signed"); }}><FileSignature size={14} /> Sign</button>
+                  <button className="cx-btn" onClick={() => { if (!signer) { toast("Add your name in your account profile or the letterhead to sign"); return; } patch(open.id, { signed: { by: signer, at: Date.now() } }); setEditing(false); toast("Note signed"); }}><FileSignature size={14} /> Sign</button>
                 )}
                 {!open.signed && <button className={`cx-btn ${editing ? "on" : ""}`} onClick={() => setEditing(!editing)}>{editing ? <><Check size={14} /> Done</> : <><Pencil size={14} /> Edit</>}</button>}
                 <button className="cx-btn" onClick={() => onPrint(open.title || "Clinical note", noteMarkdown(open))}><Printer size={14} /> Print{letterhead ? " on letterhead" : ""}</button>

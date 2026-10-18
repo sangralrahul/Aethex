@@ -13,6 +13,7 @@ import { signInWithPhoneNumber, RecaptchaVerifier, type ConfirmationResult } fro
 import { supabase } from "@/integrations/supabase/client";
 import { cadusUrl, isCadusHost, isLoginHost, mainUrl } from "@/lib/host";
 import { LEGAL_PATH } from "@/lib/cadus/legal";
+import { passwordKey, rememberPasswordKey } from "@/lib/cadus/profileSync";
 import CadusMark from "@/components/cadus/CadusMark";
 import SignInScene, { SIGNIN_SCENE_CSS } from "@/components/cadus/SignInScene";
 import { CADUS_CSS } from "@/components/cadus/cadus-styles";
@@ -81,7 +82,7 @@ export default function CadusSignIn() {
   };
   const finish = () => { setDone(true); window.setTimeout(toCadus, 700); };
 
-  const withPassword = (e: FormEvent) => { e.preventDefault(); void run(() => {
+  const withPassword = (e: FormEvent) => { e.preventDefault(); void run(async () => {
     if (mode === "up") {
       if (name.trim().length < 2) throw new Error("Please enter your name.");
       if (password.length < 8) throw new Error("Use a password of at least 8 characters.");
@@ -91,6 +92,8 @@ export default function CadusSignIn() {
       const r = login(email.trim(), password);
       if (!r.success) throw new Error(r.error);
     }
+    // The key that lets this account read its profile from the server on any device.
+    rememberPasswordKey(await passwordKey(email, password));
     finish();
   }); };
   const sendEmailCode = (e: FormEvent) => { e.preventDefault(); void run(async () => {
