@@ -13,8 +13,3 @@ uri = "file://export.json"
 type = "unspecified"
 title = "Database Export"
 
-[[outputs]]
-id = "vfIrugrvDO1nlJas_7LbI"
-uri = "file://artifacts/cadus-ai/cadus-ai-full-code.md"
-type = "text"
-title = "Cadus AI - Complete Source Code (14,216 lines)"

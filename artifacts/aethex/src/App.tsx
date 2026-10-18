@@ -1,4 +1,4 @@
-import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+import { Switch, Route, Redirect, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -82,7 +82,6 @@ const BookDetail = lazyPage(() => import("@/pages/BookDetail"));
 const Cart = lazyPage(() => import("@/pages/Cart"));
 const Wishlist = lazyPage(() => import("@/pages/Wishlist"));
 const Flashcards = lazyPage(() => import("@/pages/Flashcards"));
-const AiAssistant = lazyPage(() => import("@/pages/AiAssistant"));
 const CadusAI = lazyPage(() => import("@/pages/CadusAI"));
 const CadusSignIn = lazyPage(() => import("@/pages/CadusSignIn"));
 const CadusShared = lazyPage(() => import("@/pages/CadusShared"));
@@ -245,7 +244,7 @@ function Router() {
         <Route path="/disclaimer" component={LegalDisclaimer} />
         <Route path="/about" component={LegalAbout} />
         <Route path="/ai-assistant" component={CadusAI} />
-        <Route path="/ai-assistant-classic" component={AiAssistant} />
+        <Route path="/ai-assistant-classic">{() => <Redirect to="/" />}</Route>
         <Route path="/cadus-standalone" component={CadusAI} />
         <Route component={CadusAI} />
       </Switch>
@@ -262,7 +261,7 @@ function Router() {
       <Route path="/ai-assistant/privacy" component={LegalPrivacy} />
       <Route path="/ai-assistant/disclaimer" component={LegalDisclaimer} />
       <Route path="/ai-assistant/about" component={LegalAbout} />
-      <Route path="/ai-assistant-classic" component={AiAssistant} />
+      <Route path="/ai-assistant-classic">{() => <Redirect to="/ai-assistant" />}</Route>
       <Route path="/cadus-standalone" component={CadusAI} />
 
       <Route path="/settings" component={SettingsPage} />

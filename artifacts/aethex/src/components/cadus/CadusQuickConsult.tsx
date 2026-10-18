@@ -5,7 +5,7 @@ import { invokeAi } from "@/lib/ai-functions";
 import { isCadusHost } from "@/lib/host";
 
 const STORAGE_KEY = "cadus_quick_chat_v2";
-const HIDDEN_ROUTES = ["/ai-assistant", "/ai-assistant-classic", "/cadus-standalone"];
+const HIDDEN_ROUTES = ["/ai-assistant", "/cadus-standalone"];
 
 interface Message {
   role: "user" | "assistant";

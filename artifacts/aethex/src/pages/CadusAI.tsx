@@ -16,7 +16,7 @@ import {
   Database, Download, ExternalLink, FileText, FlaskConical, Folder, FolderInput, FolderMinus, FolderPlus, Globe,
   GraduationCap, Grip, History, House, ImagePlus, Info, Keyboard, Laptop, Layers, LayoutGrid, Library, ListFilter, LogIn,
   LogOut, Menu, MessageSquare, Mic, Moon, MoreHorizontal, PanelLeftClose, PanelLeftOpen, Pencil, Pill, Pin, PinOff, Play,
-  Plus, Presentation, RefreshCw, RotateCcw, Scale, Search, Settings, ShieldAlert, ShieldCheck, ShoppingBag, SlidersHorizontal,
+  Plus, Presentation, RefreshCw, Scale, Search, Settings, ShieldAlert, ShieldCheck, ShoppingBag, SlidersHorizontal,
   Sparkles, Square, SquarePen, Stethoscope, Sun, Syringe, Telescope, Trash2, Users, Volume2, VolumeX, X, Zap, Palette,
   BedDouble, BookMarked, BookOpenText, ChartLine, ClipboardPlus, FileBadge, FileSignature, Microscope, NotebookPen, NotepadText,
   Printer, Scissors, ScrollText, Sigma, PanelRight, EyeOff, Compass, Rows3, WifiOff, Building2, ScanSearch,
@@ -425,7 +425,6 @@ const APPS: { label: string; path: string; icon: LucideIcon }[] = [
   { label: "Medical books", path: "/books", icon: BookOpen },
   { label: "Flashcards", path: "/flashcards", icon: Layers },
   { label: "Shop", path: "/shop", icon: ShoppingBag },
-  { label: "Classic Cadus", path: "/ai-assistant-classic", icon: History },
 ];
 /** Study content is reviewed by Haiku 5.5; clinical answers by Sonnet 5.5. */
 const STUDY_MODES = new Set<ModeId>(["mcq", "research", "slides"]);
@@ -744,7 +743,7 @@ const sessionCat = (s: Session): ModeDef["cat"] => MODE[sessionMode(s)].cat;
 
 /** Links to other Aethex apps must point at the main domain when Cadus runs on its own subdomain. */
 const legalPath = (kind: "terms" | "privacy" | "disclaimer" | "about") => LEGAL_PATH(kind, isCadusHost());
-const appHref = (path: string) => (path === "/ai-assistant-classic" || !isCadusHost() ? path : mainUrl(path));
+const appHref = (path: string) => (!isCadusHost() ? path : mainUrl(path));
 
 const clip = (s: string, n: number) => {
   const flat = s.replace(/\s+/g, " ").trim();
@@ -1834,7 +1833,7 @@ export default function CadusAI() {
     institution,
     patientCases: cases,
   });
-  /** Removes everything Cadus keeps in this browser (Classic Cadus and Quick Consult too) and starts afresh. */
+  /** Removes everything Cadus keeps in this browser (Quick Consult too) and starts afresh. */
   const deleteEverything = () => {
     try {
       Object.keys(localStorage).filter((k) => /^cadus(?:3\.|[._-])/.test(k)).forEach((k) => localStorage.removeItem(k));
@@ -3586,7 +3585,6 @@ export default function CadusAI() {
               <button className="cx-nav-i" onClick={() => openSettings("personal")} title="Customize"><Palette size={16} /><span className="cx-nav-l">Customize</span></button>
               <button className="cx-nav-i" onClick={openPalette} title="Search"><Search size={16} /><span className="cx-nav-l">Search</span><kbd>{MOD} K</kbd></button>
               <button className="cx-nav-i" onClick={() => openSettings("shortcuts")} title="Keyboard shortcuts"><Keyboard size={16} /><span className="cx-nav-l">Keyboard shortcuts</span></button>
-              <a className="cx-nav-i" href="/ai-assistant-classic" title="Classic Cadus"><RotateCcw size={16} /><span className="cx-nav-l">Classic Cadus</span></a>
               <button className="cx-nav-i" onClick={startTour} title="Take the tour"><Compass size={16} /><span className="cx-nav-l">Take the tour</span></button>
               <button className="cx-nav-i" onClick={() => openSettings("about")} title="Help and about"><CircleQuestionMark size={16} /><span className="cx-nav-l">Help and about</span></button>
             </div>
@@ -4510,10 +4508,6 @@ export default function CadusAI() {
                     <div className="cx-set-row">
                       <div><b>Terms, privacy and disclaimer</b><small>The terms of use, how data is handled, and what Cadus is not. Release notes are on the About page.</small></div>
                       <span className="cx-set-legal"><a className="cx-link" href={legalPath("about")}>About</a><a className="cx-link" href={legalPath("terms")}>Terms</a><a className="cx-link" href={legalPath("privacy")}>Privacy</a><a className="cx-link" href={legalPath("disclaimer")}>Disclaimer</a></span>
-                    </div>
-                    <div className="cx-set-row">
-                      <div><b>Classic Cadus</b><small>The previous version, with its original modes</small></div>
-                      <a className="cx-link" href="/ai-assistant-classic">Open <ExternalLink size={13} /></a>
                     </div>
                   </>
                 )}
