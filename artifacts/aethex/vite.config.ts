@@ -33,7 +33,7 @@ function appShell(): Plugin {
 }
 
 function spaRouteFallbacks(): Plugin {
-  const routes = ["login", "sign-in", "signup", "onboarding", "ai-assistant", "ai-assistant/sign-in", "shared", "ai-assistant/shared", "ai-assistant-classic", "cadus-standalone"];
+  const routes = ["login", "sign-in", "signup", "onboarding", "ai-assistant", "ai-assistant/sign-in", "shared", "ai-assistant/shared", "terms", "privacy", "disclaimer", "about", "ai-assistant/terms", "ai-assistant/privacy", "ai-assistant/disclaimer", "ai-assistant/about", "ai-assistant-classic", "cadus-standalone"];
 
   return {
     name: "aethex-spa-route-fallbacks",

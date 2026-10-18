@@ -9,6 +9,7 @@ import { CADUS_CSS } from "@/components/cadus/cadus-styles";
 import { CADUS_REF_CSS } from "@/components/cadus/cadus-ref-styles";
 import { CADUS_WS_CSS } from "@/components/cadus/cadus-ws-styles";
 import { CADUS_SIGNIN_CSS } from "@/components/cadus/cadus-signin-styles";
+import { CADUS_CLINIC_CSS } from "@/components/cadus/cadus-clinic-styles";
 import { MdBlock } from "@/components/cadus/LiveAnswer";
 import { addComment, decodeShare, readComments, removeComment, shareKey, type Comment, type Shared } from "@/lib/cadus/share";
 import { isCadusHost } from "@/lib/host";
@@ -30,7 +31,7 @@ export default function CadusShared() {
   const when = item ? new Date(item.at).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }) : "";
   return (
     <div className={`cx cx-shared ${dark ? "cx-dark" : "cx-light"} ans-sans`} style={{ ["--fs" as string]: "15.5px" }}>
-      <style>{CADUS_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_SIGNIN_CSS}</style>
+      <style>{CADUS_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_SIGNIN_CSS + CADUS_CLINIC_CSS}</style>
       <header className="cx-shared-top">
         <a className="cx-si-brand small" href={home} style={{ display: "flex", marginBottom: 0 }}><CadusMark size={24} /><span>Cadus</span></a>
         <span className="cx-shared-tag">Shared {item?.kind === "case" ? "case" : "answer"} · read-only</span>
@@ -49,7 +50,7 @@ export default function CadusShared() {
                   {item.question && <blockquote className="cx-shared-q">{item.question}</blockquote>}
                   <MdBlock text={item.answer} cites={item.sources?.length ?? 0} />
                   {item.sources?.length ? (
-                    <div className="cx-sources"><div className="cx-src-h">Sources · {item.sources.length}</div><ol>{item.sources.map((s, i) => <li key={`${s.n}-${i}`}><a href={s.url} target="_blank" rel="noopener noreferrer" title={s.title}><span className="n">{s.n}</span><span className="t">{s.title}</span></a></li>)}</ol></div>
+                    <div className="cx-sources"><div className="cx-src-h">References · {item.sources.length}</div><ol>{item.sources.map((s, i) => <li key={`${s.n}-${i}`}><a href={s.url} target="_blank" rel="noopener noreferrer" title={s.title}><span className="n">{s.n}</span><span className="t">{s.title}</span></a></li>)}</ol></div>
                   ) : null}
                 </>
               ) : (

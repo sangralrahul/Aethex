@@ -80,6 +80,8 @@ import LetterheadSettings from "@/components/cadus/LetterheadSettings";
 import { CADUS_PRO_CSS } from "@/components/cadus/cadus-pro-styles";
 import { CADUS_REF_CSS } from "@/components/cadus/cadus-ref-styles";
 import { CADUS_WS_CSS } from "@/components/cadus/cadus-ws-styles";
+import { CADUS_CLINIC_CSS } from "@/components/cadus/cadus-clinic-styles";
+import { CADUS_VERSION, LEGAL_PATH } from "@/lib/cadus/legal";
 import SourcesPanel from "@/components/cadus/SourcesPanel";
 import SafetyView from "@/components/cadus/SafetyView";
 import HistoryView from "@/components/cadus/HistoryView";
@@ -362,6 +364,7 @@ const MODELS: { id: ModelId; name: string; short: string; desc: string; icon: Lu
 const MODEL_DEF = Object.fromEntries(MODELS.map((m) => [m.id, m])) as Record<ModelId, (typeof MODELS)[number]>;
 
 const ACCENTS = [
+  { id: "navy", name: "Clinical navy", light: "#1F3F7A", dark: "#8DB4F5" },
   { id: "aethex", name: "Aethex teal", light: "#007A6C", dark: "#2DD4BF" },
   { id: "blue", name: "Hospital blue", light: "#1D4ED8", dark: "#60A5FA" },
   { id: "teal", name: "Clinical teal", light: "#0E8F84", dark: "#2DD4BF" },
@@ -391,9 +394,9 @@ const PROJECTS_KEY = "cadus3.projects";
 const UI_KEY = "cadus3.ui";
 const DOCS_KEY = "cadus3.docs";
 const FREE_DAILY = 20;
-const DEFAULT_PREFS: Prefs = { theme: "light", accent: "aethex", textSize: "m", style: "balanced", language: "English", enterToSend: true, safetyReview: true, sources: false, answerFont: "sans", model: "medius", privacyGuard: true, notify: false, units: "conventional", nlem: false, density: "comfortable", wallpaper: "none" };
+const DEFAULT_PREFS: Prefs = { theme: "light", accent: "navy", textSize: "m", style: "balanced", language: "English", enterToSend: true, safetyReview: true, sources: false, answerFont: "sans", model: "medius", privacyGuard: true, notify: false, units: "conventional", nlem: false, density: "comfortable", wallpaper: "none" };
 /** Bumped when the default look changes, so saved settings move to the new theme, colour and answer font once. */
-const PREFS_VERSION = 3;
+const PREFS_VERSION = 4;
 
 function loadPrefs(): Prefs {
   const { v, ...saved } = readJSON<Partial<Prefs> & { v?: number }>(PREFS_KEY, {});
@@ -734,6 +737,7 @@ function sessionMode(s: Session): ModeId {
 const sessionCat = (s: Session): ModeDef["cat"] => MODE[sessionMode(s)].cat;
 
 /** Links to other Aethex apps must point at the main domain when Cadus runs on its own subdomain. */
+const legalPath = (kind: "terms" | "privacy" | "disclaimer" | "about") => LEGAL_PATH(kind, isCadusHost());
 const appHref = (path: string) => (path === "/ai-assistant-classic" || !isCadusHost() ? path : mainUrl(path));
 
 const clip = (s: string, n: number) => {
@@ -2674,6 +2678,7 @@ export default function CadusAI() {
       <p className="cx-home-note">
         <ShieldCheck size={13} /> Clinical decision support. {prefs.safetyReview ? "Every answer is checked by a second model, but" : "Cadus can make mistakes, so"} always verify before acting.
         <button onClick={() => setView("safety")}>How Cadus keeps answers safe</button>
+        <span className="cx-home-legal"><a href={legalPath("terms")}>Terms</a><a href={legalPath("privacy")}>Privacy</a><a href={legalPath("disclaimer")}>Disclaimer</a></span>
       </p>
     </section>
   );
@@ -3076,6 +3081,9 @@ export default function CadusAI() {
       <div key={m.id} className="cx-a" data-mid={m.id}>
         <div className="cx-a-h">
           <CadusMark size={20} title="Cadus" />
+          <span className="cx-a-kind">{MODE[v.mode]?.label ?? "Answer"}</span>
+          {!m.error && !m.stopped && <span className="cx-a-model" title={v.library ? "Answered from the Medical Library" : "The model that drafted this answer"}>{v.library ? "Medical Library" : modelLabel(v.model, v.provider)}</span>}
+          <time className="cx-a-time" dateTime={new Date(v.at).toISOString()}>{new Date(v.at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</time>
           {v.review && (
             <span className="cx-rv"><ShieldCheck size={13} /> Safety-reviewed{v.review.changes.length ? ` · ${v.review.changes.length} correction${v.review.changes.length > 1 ? "s" : ""}` : ""}</span>
           )}
@@ -3113,7 +3121,7 @@ export default function CadusAI() {
             {src.length > 0 && (
               <div className="cx-sources">
                 <div className="cx-src-h">
-                  <Globe size={14} /> <span>Sources · {src.length}</span>
+                  <Globe size={14} /> <span>References · {src.length}</span>
                   <button onClick={() => openSources(m.id)} title="Open the sources beside the chat"><PanelRight size={13} /> View all</button>
                 </div>
                 <ol>
@@ -3510,7 +3518,7 @@ export default function CadusAI() {
       style={{ ["--acc" as string]: dark ? accent.dark : accent.light, ["--fs" as string]: `${fontSize}px`, ["--fs-u" as string]: `${sansSize}px` }}
       {...dropHandlers}
     >
-      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS}</style>
+      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS}</style>
 
       {/* ============================================== sidebar */}
       <div className={`cx-scrim ${sidebarOpen ? "on" : ""}`} onClick={() => setSidebarOpen(false)} />
@@ -3663,7 +3671,7 @@ export default function CadusAI() {
               {avatar}
               <div className="cx-acct-t">
                 <b>{user ? user.name || "Aethex member" : "Guest"}</b>
-                <small>{user ? (isPro ? "Pro plan" : "Free plan") : "Not signed in"}</small>
+                <small>{user ? (profile?.specialty ? `${profile.specialty}${badge ? " · Registered" : ""}` : isPro ? "Pro plan" : "Free plan") : "Not signed in"}</small>
               </div>
               <ChevronsUpDown size={15} />
             </button>
@@ -4471,7 +4479,7 @@ export default function CadusAI() {
                   <>
                     <div className="cx-about">
                       <CadusMark size={48} />
-                      <div><h4>Cadus 2.0</h4><p>Clinical AI by Aethex</p></div>
+                      <div><h4>Cadus {CADUS_VERSION}</h4><p>Clinical AI by Aethex</p></div>
                     </div>
                     <div className="cx-set-row"><div><b>How Cadus answers</b><small>1. Cadus Medius 3.1, or Cadus Magnus 3.6 if you pick it, drafts each answer to the Cadus clinical standards: evidence-based, structured, dose-checked and aware of Indian guidance. 2. Cadus Magnus 3.6 audits clinical answers for doses, interactions, red flags and invented facts, and corrects them (Medius 3.1 checks study content). 3. With Sources on, Cadus searches trusted medical sites and cites them. 4. If the AI credits run out, Cadus switches to Library mode: it answers from its offline medical library (Wikipedia, NIH and the Disease Ontology), cites each article and labels the answer. A backup model covers other outages.</small></div></div>
                     <div className="cx-set-row"><div><b>Built-in tools</b><small>{CALCULATORS.length} clinical calculators, lab trend charts, the thesis kit's sample-size formulas and the interaction checker run in your browser from published formulas and a curated drug list, so they are exact and not generated by AI. PubMed search returns real papers with their PMIDs and DOIs; Cadus summarises only the abstracts you select. The ward round list, practice progress and reading list stay on this device. The privacy guard hides patient identifiers before anything is sent.</small></div></div>
@@ -4479,6 +4487,10 @@ export default function CadusAI() {
                     <div className="cx-set-links">
                       <button onClick={() => { setSettingsOpen(false); setView("safety"); }}><ShieldCheck size={16} /><span><b>Clinical safety</b><small>How answers are drafted, checked and sourced</small></span></button>
                       <button onClick={startTour}><Compass size={16} /><span><b>Take the tour</b><small>Thirty seconds on where things are</small></span></button>
+                    </div>
+                    <div className="cx-set-row">
+                      <div><b>Terms, privacy and disclaimer</b><small>The terms of use, how data is handled, and what Cadus is not. Release notes are on the About page.</small></div>
+                      <span className="cx-set-legal"><a className="cx-link" href={legalPath("about")}>About</a><a className="cx-link" href={legalPath("terms")}>Terms</a><a className="cx-link" href={legalPath("privacy")}>Privacy</a><a className="cx-link" href={legalPath("disclaimer")}>Disclaimer</a></span>
                     </div>
                     <div className="cx-set-row">
                       <div><b>Classic Cadus</b><small>The previous version, with its original modes</small></div>

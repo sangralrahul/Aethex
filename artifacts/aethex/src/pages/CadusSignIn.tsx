@@ -11,9 +11,12 @@ import { auth } from "@/lib/firebase";
 import { signInWithPhoneNumber, RecaptchaVerifier, type ConfirmationResult } from "firebase/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { cadusUrl, isCadusHost, isLoginHost, mainUrl } from "@/lib/host";
+import { LEGAL_PATH } from "@/lib/cadus/legal";
 import CadusMark from "@/components/cadus/CadusMark";
 import { CADUS_CSS } from "@/components/cadus/cadus-styles";
 import { CADUS_SIGNIN_CSS } from "@/components/cadus/cadus-signin-styles";
+import { CADUS_CLINIC_CSS } from "@/components/cadus/cadus-clinic-styles";
+const legalPath = (kind: "terms" | "privacy" | "disclaimer") => LEGAL_PATH(kind, isCadusHost());
 
 type Method = "password" | "email" | "phone";
 type Step = "enter" | "verify";
@@ -120,14 +123,14 @@ export default function CadusSignIn() {
   const title = done ? "Signed in" : mode === "up" ? "Create your Cadus account" : "Sign in to Cadus";
   return (
     <div className={`cx cx-si ${dark ? "cx-dark" : "cx-light"}`}>
-      <style>{CADUS_CSS + CADUS_SIGNIN_CSS}</style>
+      <style>{CADUS_CSS + CADUS_SIGNIN_CSS + CADUS_CLINIC_CSS}</style>
       <aside className="cx-si-side" aria-hidden>
         <div className="cx-si-brand"><CadusMark size={30} /><span>Cadus<small>Clinical AI by Aethex</small></span></div>
         <div className="cx-si-pitch">
           <h2>Clinical answers you can check, for doctors in India.</h2>
           <ul>{WHY.map((w) => <li key={w.title}><w.icon size={18} /><span><b>{w.title}.</b> {w.text}</span></li>)}</ul>
         </div>
-        <p className="cx-si-foot">Decision support for qualified professionals and students. Not a substitute for clinical judgement.</p>
+        <p className="cx-si-foot">Decision support for qualified professionals and students. Not a substitute for clinical judgement. <a href={legalPath("terms")}>Terms</a> · <a href={legalPath("privacy")}>Privacy</a> · <a href={legalPath("disclaimer")}>Disclaimer</a></p>
       </aside>
 
       <main className="cx-si-main">

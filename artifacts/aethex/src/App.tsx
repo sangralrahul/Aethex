@@ -86,6 +86,9 @@ const AiAssistant = lazyPage(() => import("@/pages/AiAssistant"));
 const CadusAI = lazyPage(() => import("@/pages/CadusAI"));
 const CadusSignIn = lazyPage(() => import("@/pages/CadusSignIn"));
 const CadusShared = lazyPage(() => import("@/pages/CadusShared"));
+const CadusLegal = lazyPage(() => import("@/pages/CadusLegal"));
+const legal = (kind: "terms" | "privacy" | "disclaimer" | "about") => () => <CadusLegal kind={kind} />;
+const LegalTerms = legal("terms"), LegalPrivacy = legal("privacy"), LegalDisclaimer = legal("disclaimer"), LegalAbout = legal("about");
 const OrderTracking = lazyPage(() => import("@/pages/OrderTracking"));
 const Orders = lazyPage(() => import("@/pages/Orders"));
 const MyReviews = lazyPage(() => import("@/pages/MyReviews"));
@@ -237,6 +240,10 @@ function Router() {
         <Route path="/login" component={CadusSignIn} />
         <Route path="/sign-in" component={CadusSignIn} />
         <Route path="/shared" component={CadusShared} />
+        <Route path="/terms" component={LegalTerms} />
+        <Route path="/privacy" component={LegalPrivacy} />
+        <Route path="/disclaimer" component={LegalDisclaimer} />
+        <Route path="/about" component={LegalAbout} />
         <Route path="/ai-assistant" component={CadusAI} />
         <Route path="/ai-assistant-classic" component={AiAssistant} />
         <Route path="/cadus-standalone" component={CadusAI} />
@@ -251,6 +258,10 @@ function Router() {
       <Route path="/ai-assistant" component={CadusAI} />
       <Route path="/ai-assistant/sign-in" component={CadusSignIn} />
       <Route path="/ai-assistant/shared" component={CadusShared} />
+      <Route path="/ai-assistant/terms" component={LegalTerms} />
+      <Route path="/ai-assistant/privacy" component={LegalPrivacy} />
+      <Route path="/ai-assistant/disclaimer" component={LegalDisclaimer} />
+      <Route path="/ai-assistant/about" component={LegalAbout} />
       <Route path="/ai-assistant-classic" component={AiAssistant} />
       <Route path="/cadus-standalone" component={CadusAI} />
 
