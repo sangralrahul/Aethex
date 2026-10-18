@@ -435,11 +435,11 @@ export const CADUS_WS_CSS = `
 
 .cx-fh-premium{position:relative;isolation:isolate}
 .cx-fh-wash{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
-.cx-fh-wash i{position:absolute;border-radius:50%;filter:blur(70px);opacity:.55;animation:cxDrift 18s ease-in-out infinite alternate}
-.cx-fh-wash i:nth-child(1){width:520px;height:520px;left:-140px;top:-200px;background:color-mix(in srgb,var(--acc) 32%,transparent)}
-.cx-fh-wash i:nth-child(2){width:420px;height:420px;right:-120px;top:-60px;background:color-mix(in srgb,#7C5CFF 24%,transparent);animation-delay:-6s;animation-duration:22s}
-.cx-fh-wash i:nth-child(3){width:380px;height:380px;left:35%;bottom:-220px;background:color-mix(in srgb,#19B5A3 22%,transparent);animation-delay:-11s;animation-duration:26s}
-.cx-dark .cx-fh-wash i{opacity:.38}
+.cx-fh-wash i{position:absolute;border-radius:50%;background:radial-gradient(circle at center,var(--wash) 0%,transparent 68%);opacity:.5;animation:cxDrift 18s ease-in-out infinite alternate}
+.cx-fh-wash i:nth-child(1){width:520px;height:520px;left:-140px;top:-200px;--wash:color-mix(in srgb,var(--acc) 26%,transparent)}
+.cx-fh-wash i:nth-child(2){width:420px;height:420px;right:-120px;top:-60px;--wash:color-mix(in srgb,#7C5CFF 18%,transparent);animation-delay:-6s;animation-duration:22s}
+.cx-fh-wash i:nth-child(3){width:380px;height:380px;left:35%;bottom:-220px;--wash:color-mix(in srgb,#19B5A3 16%,transparent);animation-delay:-11s;animation-duration:26s}
+.cx-dark .cx-fh-wash i{opacity:.4}
 @keyframes cxDrift{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(60px,40px,0) scale(1.12)}}
 .cx-main[style*="background-image"] .cx-fh-wash{display:none}
 
@@ -449,7 +449,7 @@ export const CADUS_WS_CSS = `
 .cx-fh-eb2 svg{color:var(--ok,#1E8E5A)}
 .cx-fh-mark{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:color-mix(in srgb,var(--acc) 14%,var(--surface));animation:cxPulseRing 3.6s ease-out infinite}
 @keyframes cxPulseRing{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--acc) 40%,transparent)}70%{box-shadow:0 0 0 9px transparent}100%{box-shadow:0 0 0 0 transparent}}
-.cx .cx-fh-premium .cx-fh-h h1{font-size:34px;letter-spacing:-.035em;background:linear-gradient(120deg,var(--text) 40%,color-mix(in srgb,var(--acc) 70%,var(--text)));-webkit-background-clip:text;background-clip:text;color:transparent}
+.cx .cx-fh-premium .cx-fh-h h1{font-size:32px;letter-spacing:-.03em}
 .cx-fh-premium .cx-fh-h,.cx-fh-premium .cx-fh-chips,.cx-fh-premium .cx-fh-ws,.cx-fh-premium .cx-fh-recent{animation:cxRise .5s cubic-bezier(.2,.7,.2,1) both}
 /* The composer holds popover menus, so it is never animated or transformed (that would trap their z-index). */
 .cx-fh-premium .cx-hero-c{position:relative;z-index:3}
@@ -478,10 +478,17 @@ export const CADUS_WS_CSS = `
 .cx-tools-ws .cx-ws-grid{margin-top:4px}
 .cx-ws-grid.compact .cx-ws-tile{animation:none}
 .cx-ws-more{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-.cx-fh-premium .cx-fh-row{border-radius:12px}
+.cx-fh-premium .cx-fh-chips{margin-top:12px;gap:4px}
+.cx-fh-premium .cx-fh-chips .cx-q{height:32px;border-color:transparent;background:transparent;color:var(--t2);font-weight:500}
+.cx-fh-premium .cx-fh-chips .cx-q:hover{background:var(--hover);color:var(--text)}
+.cx-fh-premium .cx-fh-chips .cx-q.more{color:var(--acc)}
+.cx-fh-premium .cx-fh-recent{margin-top:44px}
+.cx-fh-premium .cx-fh-list{border:0;background:transparent;border-radius:0}
+.cx-fh-premium .cx-fh-row{border-radius:10px;border-bottom:0;min-height:46px}
+.cx-fh-premium .cx-fh-row:hover{background:var(--hover)}
+.cx-fh-premium .cx-fh-row .cx-li-ic{background:transparent;border:1px solid var(--line)}
 .cx-fh-premium .cx-fh-status button{border-radius:12px;background:color-mix(in srgb,var(--surface) 78%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
-.cx-dark .cx-fh-premium .cx-fh-h h1{background:linear-gradient(120deg,#fff 30%,color-mix(in srgb,var(--acc) 80%,#fff));-webkit-background-clip:text;background-clip:text}
-@media (max-width:860px){.cx-ws-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cx .cx-fh-premium .cx-fh-h h1{font-size:26px}.cx-fh-wash i{filter:blur(50px)}}
+@media (max-width:860px){.cx-ws-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cx .cx-fh-premium .cx-fh-h h1{font-size:25px}}
 @media (max-width:480px){.cx-ws-grid{grid-template-columns:1fr}.cx-fh-eb2{display:none}}
 @media (prefers-reduced-motion:reduce){.cx-fh-wash i,.cx-fh-mark,.cx-ws-tile,.cx-fh-premium .cx-fh-h,.cx-fh-premium .cx-fh-chips,.cx-fh-premium .cx-fh-ws,.cx-fh-premium .cx-fh-recent{animation:none}}
 `;

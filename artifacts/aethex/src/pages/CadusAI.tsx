@@ -2591,7 +2591,6 @@ export default function CadusAI() {
       <div className="cx-fh-wash" aria-hidden="true"><i /><i /><i /></div>
       <div className="cx-fh-in">
         <header className="cx-fh-h">
-          <span className="cx-fh-eyebrow"><span className="cx-fh-mark"><CadusMark size={18} /></span>Cadus · Clinical AI<span className="cx-fh-eb2"><i /><ShieldCheck size={12} /> Second-model checked</span></span>
           <h1>{greeting()}{firstName ? `, ${firstName}` : ""}</h1>
           <p>
             {profile ? (
@@ -2611,7 +2610,7 @@ export default function CadusAI() {
         </header>
         {showHeroComposer && <div className="cx-hero-c">{composer("hero")}</div>}
         <div className="cx-quick cx-fh-chips">
-          {quick.slice(0, specTools.length ? 2 : 3).map((id) => {
+          {quick.slice(0, specTools.length ? 1 : 2).map((id) => {
             const m = MODE[id];
             return <button key={id} className="cx-q" onClick={() => startTool(id)} title={m.desc}><m.icon size={15} /> {QUICK_LABEL[id] ?? m.short}</button>;
           })}
@@ -2621,13 +2620,7 @@ export default function CadusAI() {
             </button>
           ))}
           {!specTools.length && <button className="cx-q" onClick={() => openCalculators()} title="Bedside scores and formulas"><Calculator size={15} /> Calculators</button>}
-          <button className="cx-q" onClick={() => openResearch()} title="PubMed search and the thesis kit"><Microscope size={15} /> Research</button>
           <button className="cx-q more" onClick={() => setView("tools")}><LayoutGrid size={15} /> All tools</button>
-        </div>
-
-        <div className="cx-fh-ws">
-          <div className="cx-fh-sh"><span>Workspaces</span><button onClick={() => setView("tools")}><LayoutGrid size={13} /> All tools</button></div>
-          {workspaceTiles()}
         </div>
 
         <div className="cx-fh-recent">
