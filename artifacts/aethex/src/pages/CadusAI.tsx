@@ -398,9 +398,9 @@ const PROJECTS_KEY = "cadus3.projects";
 const UI_KEY = "cadus3.ui";
 const DOCS_KEY = "cadus3.docs";
 const FREE_DAILY = 20;
-const DEFAULT_PREFS: Prefs = { theme: "light", accent: "navy", textSize: "m", style: "balanced", language: "English", enterToSend: true, safetyReview: true, sources: false, answerFont: "sans", model: "medius", privacyGuard: true, notify: false, units: "conventional", nlem: false, density: "comfortable", wallpaper: "none", look: "clinical" };
+const DEFAULT_PREFS: Prefs = { theme: "light", accent: "navy", textSize: "m", style: "balanced", language: "English", enterToSend: true, safetyReview: true, sources: false, answerFont: "sans", model: "medius", privacyGuard: true, notify: false, units: "conventional", nlem: false, density: "comfortable", wallpaper: "none", look: "editorial" };
 /** Bumped when the default look changes, so saved settings move to the new theme, colour and answer font once. */
-const PREFS_VERSION = 4;
+const PREFS_VERSION = 5;
 
 function loadPrefs(): Prefs {
   const { v, ...saved } = readJSON<Partial<Prefs> & { v?: number }>(PREFS_KEY, {});
@@ -408,10 +408,11 @@ function loadPrefs(): Prefs {
     delete saved.theme;
     delete saved.accent;
     delete saved.answerFont;
+    delete saved.look;
   }
   const prefs = { ...DEFAULT_PREFS, ...saved };
   if (!isWallpaper(prefs.wallpaper)) prefs.wallpaper = "none";
-  if (!LOOKS.some((l) => l.id === prefs.look)) prefs.look = "clinical";
+  if (!LOOKS.some((l) => l.id === prefs.look)) prefs.look = "editorial";
   return prefs;
 }
 const PROJECT_IDEAS = ["Cardiology rotation", "NEET-PG revision", "Thesis literature review"];

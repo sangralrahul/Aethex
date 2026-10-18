@@ -44,7 +44,7 @@ export default function CadusSignIn() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
-  const look = (() => { try { const l = JSON.parse(localStorage.getItem("cadus3.prefs") || "{}").look; return ["clinical", "editorial", "mono"].includes(l) ? l : "clinical"; } catch { return "clinical"; } })();
+  const look = (() => { try { const l = JSON.parse(localStorage.getItem("cadus3.prefs") || "{}").look; return ["clinical", "editorial", "mono"].includes(l) ? l : "editorial"; } catch { return "editorial"; } })();
   const dark = typeof window !== "undefined" && (() => { try { return JSON.parse(localStorage.getItem("cadus3.prefs") || "{}").theme === "dark"; } catch { return false; } })();
   const confirmation = useRef<ConfirmationResult | null>(null);
   const verifier = useRef<RecaptchaVerifier | null>(null);

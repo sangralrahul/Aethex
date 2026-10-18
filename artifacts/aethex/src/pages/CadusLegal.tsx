@@ -20,7 +20,7 @@ export default function CadusLegal({ kind }: { kind: LegalKind }) {
   const page = LEGAL[kind];
   const cadus = isCadusHost();
   const home = cadus ? "/" : "/ai-assistant";
-  const look = (() => { try { const l = JSON.parse(localStorage.getItem("cadus3.prefs") || "{}").look; return ["clinical", "editorial", "mono"].includes(l) ? l : "clinical"; } catch { return "clinical"; } })();
+  const look = (() => { try { const l = JSON.parse(localStorage.getItem("cadus3.prefs") || "{}").look; return ["clinical", "editorial", "mono"].includes(l) ? l : "editorial"; } catch { return "editorial"; } })();
   const dark = (() => { try { return JSON.parse(localStorage.getItem("cadus3.prefs") || "{}").theme === "dark"; } catch { return false; } })();
   return (
     <div className={`cx cx-legal ${dark ? "cx-dark" : "cx-light"} ans-sans`} data-look={look} style={{ ["--fs" as string]: "15.5px" }}>

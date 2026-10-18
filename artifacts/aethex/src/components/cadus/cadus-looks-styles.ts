@@ -1,13 +1,13 @@
 /**
  * Three complete looks, chosen in Customize and applied with data-look on the
- * root: "clinical" (the default, the hospital-software theme in
- * cadus-clinic-styles), "editorial" (a journal: serif headings and answers,
- * warm paper, generous spacing) and "mono" (a monochrome tool: Inter, pure
+ * root: "editorial" (the default: a journal: serif headings and answers,
+ * warm paper, generous spacing), "clinical" (the hospital-software theme in
+ * cadus-clinic-styles) and "mono" (a monochrome tool: Inter, pure
  * white, hairlines, 4px corners, compact). Appended after the clinic layer.
  */
 export const LOOKS: { id: "clinical" | "editorial" | "mono"; name: string; hint: string }[] = [
-  { id: "clinical", name: "Clinical", hint: "Hospital software: navy and grey, steady and restrained" },
   { id: "editorial", name: "Editorial", hint: "A medical journal: serif headings and answers on warm paper" },
+  { id: "clinical", name: "Clinical", hint: "Hospital software: navy and grey, steady and restrained" },
   { id: "mono", name: "Mono", hint: "A monochrome tool: Inter, hairlines, compact and sharp" },
 ];
 
@@ -23,6 +23,8 @@ export const CADUS_LOOKS_CSS = `
 .cx[data-look="editorial"] .cx-legal-doc h1{font-size:40px}
 .cx[data-look="editorial"] .cx-fh-h p{font-size:15px;color:var(--t2)}
 .cx[data-look="editorial"] .cx-md{font-family:var(--serif);font-size:calc(var(--fs) + 1px);line-height:1.7}
+.cx.ans-serif[data-look="editorial"] .cx-md{font-size:var(--fs)}
+.cx.is-compact[data-look="editorial"] .cx-md{line-height:1.6}
 .cx[data-look="editorial"] .cx-md :is(h2,h3,h4){font-family:var(--serif);font-weight:600;letter-spacing:-.006em;line-height:1.3}
 .cx[data-look="editorial"] .cx-md h2{font-size:1.35em}
 .cx[data-look="editorial"] .cx-md h3{font-size:1.15em}

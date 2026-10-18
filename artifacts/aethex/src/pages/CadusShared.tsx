@@ -20,7 +20,7 @@ export default function CadusShared() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [by, setBy] = useState("");
   const [text, setText] = useState("");
-  const look = (() => { try { const l = JSON.parse(localStorage.getItem("cadus3.prefs") || "{}").look; return ["clinical", "editorial", "mono"].includes(l) ? l : "clinical"; } catch { return "clinical"; } })();
+  const look = (() => { try { const l = JSON.parse(localStorage.getItem("cadus3.prefs") || "{}").look; return ["clinical", "editorial", "mono"].includes(l) ? l : "editorial"; } catch { return "editorial"; } })();
   const dark = (() => { try { return JSON.parse(localStorage.getItem("cadus3.prefs") || "{}").theme === "dark"; } catch { return false; } })();
   useEffect(() => {
     const load = () => decodeShare(window.location.hash).then((s) => { setItem(s); if (s) setComments(readComments(shareKey(s))); });
