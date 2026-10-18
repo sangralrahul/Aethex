@@ -6,6 +6,9 @@ export interface UserProfile {
   email: string;
   isPro: boolean;
   proExpiry?: string;
+  /** The Cadus plan: starter, core, professional or enterprise (see lib/cadus/plans). */
+  plan?: "starter" | "core" | "professional" | "enterprise";
+  planExpiry?: string;
   avatar?: string;
   phone?: string;
   role?: "student" | "doctor" | "other";
@@ -231,14 +234,14 @@ export function useUserAuth() {
     if (!user) return;
     const expiry = new Date();
     expiry.setMonth(expiry.getMonth() + 1);
-    updateProfile({ isPro: true, proExpiry: expiry.toISOString() });
+    updateProfile({ isPro: true, proExpiry: expiry.toISOString(), plan: "professional", planExpiry: expiry.toISOString() });
   };
 
   const activateProAnnual = () => {
     if (!user) return;
     const expiry = new Date();
     expiry.setFullYear(expiry.getFullYear() + 1);
-    updateProfile({ isPro: true, proExpiry: expiry.toISOString() });
+    updateProfile({ isPro: true, proExpiry: expiry.toISOString(), plan: "professional", planExpiry: expiry.toISOString() });
   };
 
   const incrementCadusCount = (): boolean => {

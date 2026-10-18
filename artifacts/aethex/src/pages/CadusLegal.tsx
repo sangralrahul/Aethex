@@ -62,7 +62,7 @@ export default function CadusLegal({ kind }: { kind: LegalKind }) {
       </main>
       <footer className="cx-legal-foot">
         <span>Cadus {CADUS_VERSION} · Clinical AI by Aethex</span>
-        <nav aria-label="Legal">{ORDER.map((k) => <a key={k} href={LEGAL_PATH(k, cadus)}>{LEGAL[k].title.replace("About Cadus", "About")}</a>)}<a href={`mailto:${SUPPORT_EMAIL}`}>Support</a></nav>
+        <nav aria-label="Legal">{ORDER.map((k) => <a key={k} href={LEGAL_PATH(k, cadus)}>{LEGAL[k].title.replace("About Cadus", "About")}</a>)}<a href={cadus ? "/plans" : "/ai-assistant/plans"}>Plans</a><a href={`mailto:${SUPPORT_EMAIL}`}>Support</a></nav>
       </footer>
     </div>
   );

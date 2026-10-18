@@ -1,7 +1,8 @@
 /**
  * Sign in to Cadus: a calm, clinical sign-in page in the Cadus style. Email and
  * password, a one-time code by email or SMS, or Google, with the same account
- * plumbing as the Aethex login page. Guests can carry on without an account.
+ * plumbing as the Aethex login page. Cadus needs an account, so there is no
+ * guest route; the aside explains the plans.
  */
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useLocation } from "wouter";
@@ -18,6 +19,9 @@ import { CADUS_SIGNIN_CSS } from "@/components/cadus/cadus-signin-styles";
 import { CADUS_CLINIC_CSS } from "@/components/cadus/cadus-clinic-styles";
 import { CADUS_LOOKS_CSS } from "@/components/cadus/cadus-looks-styles";
 const legalPath = (kind: "terms" | "privacy" | "disclaimer") => LEGAL_PATH(kind, isCadusHost());
+const plansPath = () => (isCadusHost() ? "/plans" : "/ai-assistant/plans");
+/** Where to go after signing in: a same-site path from ?next=, else Cadus. */
+const nextPath = () => { try { const n = new URLSearchParams(window.location.search).get("next") || ""; return /^\/(?!\/)/.test(n) ? n : ""; } catch { return ""; } };
 
 type Method = "password" | "email" | "phone";
 type Step = "enter" | "verify";
@@ -51,7 +55,9 @@ export default function CadusSignIn() {
   const captcha = useRef<HTMLDivElement>(null);
 
   const toCadus = () => {
-    if (isLoginHost()) window.location.href = cadusUrl("/");
+    const next = nextPath();
+    if (isLoginHost()) window.location.href = cadusUrl(next || "/");
+    else if (next) setLocation(next);
     else if (isCadusHost()) setLocation("/");
     else setLocation("/ai-assistant");
   };
@@ -131,6 +137,7 @@ export default function CadusSignIn() {
         <div className="cx-si-pitch">
           <h2>Clinical answers you can check, for doctors in India.</h2>
           <ul>{WHY.map((w) => <li key={w.title}><w.icon size={18} /><span><b>{w.title}.</b> {w.text}</span></li>)}</ul>
+          <p className="cx-si-plans">Every account starts on the free Starter plan. <a href={plansPath()}>Core, Professional and Enterprise plans</a> add sources, image reading, the prescriber and institution-wide features.</p>
         </div>
         <p className="cx-si-foot">Decision support for qualified professionals and students. Not a substitute for clinical judgement. <a href={legalPath("terms")}>Terms</a> · <a href={legalPath("privacy")}>Privacy</a> · <a href={legalPath("disclaimer")}>Disclaimer</a></p>
       </aside>
@@ -143,7 +150,7 @@ export default function CadusSignIn() {
           ) : (
             <>
               <h1 id="cx-si-title">{title}</h1>
-              <p className="cx-si-lead">{mode === "up" ? "Your account keeps your Aethex details in one place. Cadus itself works on this device, with or without one." : "Use your Aethex account, or carry on as a guest."}</p>
+              <p className="cx-si-lead">{mode === "up" ? "A free account starts you on the Starter plan. Your chats and cases stay on this device." : "Use your Aethex account, or carry on as a guest."}</p>
 
               <button type="button" className="cx-si-google" onClick={withGoogle} disabled={busy}>
                 <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.5l6.7-6.7C35.6 2.5 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.3l7.8 6C12.3 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8C43.8 38 46.5 31.8 46.5 24.5z"/><path fill="#FBBC05" d="M10.4 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.8-6A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.7l7.8-6z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.7-4.1-13.6-9.9l-7.8 6C6.5 42.6 14.6 48 24 48z"/></svg>
@@ -209,7 +216,6 @@ export default function CadusSignIn() {
               <p className="cx-si-switch">
                 {mode === "up" ? <>Already have an account? <button type="button" onClick={() => { setMode("in"); setError(""); }}>Sign in</button></> : <>New to Aethex? <button type="button" onClick={() => { setMode("up"); pick("password"); }}>Create an account</button></>}
               </p>
-              <button type="button" className="cx-si-guest" onClick={toCadus}>Continue as a guest <ArrowRight size={14} /></button>
               <p className="cx-si-legal">By continuing you agree to the <a href={mainUrl("/terms-of-service")}>Terms</a> and <a href={mainUrl("/privacy-policy")}>Privacy policy</a>.</p>
             </>
           )}

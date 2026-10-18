@@ -84,6 +84,7 @@ import { CADUS_CLINIC_CSS } from "@/components/cadus/cadus-clinic-styles";
 import { CADUS_LOOKS_CSS, LOOKS } from "@/components/cadus/cadus-looks-styles";
 type LookId = (typeof LOOKS)[number]["id"];
 import { CADUS_VERSION, LEGAL_PATH } from "@/lib/cadus/legal";
+import { PLAN_BY_ID, limitsOf, planFor, planOf, type PlanId } from "@/lib/cadus/plans";
 import SourcesPanel from "@/components/cadus/SourcesPanel";
 import SafetyView from "@/components/cadus/SafetyView";
 import HistoryView from "@/components/cadus/HistoryView";
@@ -397,7 +398,6 @@ const LIBRARY_KEY = "cadus3.library";
 const PROJECTS_KEY = "cadus3.projects";
 const UI_KEY = "cadus3.ui";
 const DOCS_KEY = "cadus3.docs";
-const FREE_DAILY = 20;
 const DEFAULT_PREFS: Prefs = { theme: "light", accent: "navy", textSize: "m", style: "balanced", language: "English", enterToSend: true, safetyReview: true, sources: false, answerFont: "sans", model: "medius", privacyGuard: true, notify: false, units: "conventional", nlem: false, density: "comfortable", wallpaper: "none", look: "editorial" };
 /** Bumped when the default look changes, so saved settings move to the new theme, colour and answer font once. */
 const PREFS_VERSION = 5;
@@ -862,7 +862,13 @@ const hist0 = (history: Msg[]) => history.filter((m) => m.role === "user").slice
 /* ================================================================= page */
 
 export default function CadusAI() {
-  const { user, isPro, logout } = useUserAuth();
+  const { user, logout } = useUserAuth();
+  const plan: PlanId = planOf(user);
+  const limits = limitsOf(plan);
+  const isPro = plan === "professional" || plan === "enterprise";
+  const plansHref = isCadusHost() ? "/plans" : "/ai-assistant/plans";
+  // Cadus asks for an account first: without one, the sign-in page.
+  const gated = !user;
   const systemDark = useMedia("(prefers-color-scheme: dark)");
   const isDesktop = useMedia("(min-width: 900px)");
   const narrowDesk = useMedia("(max-width: 1599px)");
@@ -908,6 +914,7 @@ export default function CadusAI() {
   const [palQuery, setPalQuery] = useState("");
   const [palIndex, setPalIndex] = useState(0);
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [upgrade, setUpgrade] = useState<{ reason: string; feature: "questions" | "sources" | "magnus" | "reading" | "prescriber" | "institution" | "mocks" } | null>(null);
   const [deck, setDeck] = useState<PresentationData | null>(null);
   const [toolTab, setToolTab] = useState<ToolTab>("all");
   const [libQuery, setLibQuery] = useState("");
@@ -1629,6 +1636,10 @@ export default function CadusAI() {
     // Attachments in the composer go with what you type there, not with suggestion chips.
     const atts = extra?.files ?? (textOverride === undefined ? attachments : []);
     if ((!raw && !atts.length) || pending) return Promise.resolve(null);
+    if (usage.date === today() && usage.count >= limits.questionsPerDay) {
+      setUpgrade({ reason: `You've used today's ${limits.questionsPerDay} questions on the ${PLAN_BY_ID[plan].name} plan.`, feature: "questions" });
+      return Promise.resolve(null);
+    }
     const guard = guardText(raw, m);
     const text = guard.text;
     const isNew = !(view === "chat" && activeId);
@@ -1648,7 +1659,7 @@ export default function CadusAI() {
       content: text || (onlyImages ? (atts.length > 1 ? "Please analyse these images." : "Please analyse this image.") : "Please review the attached document."),
       ...(atts.length ? { files: atts } : {}),
       // An evidence summary uses only the attached PubMed records.
-      search: !ROLEPLAY.has(m) && m !== "evidence" && (prefs.sources || m === "research"),
+      search: limits.sources && !ROLEPLAY.has(m) && m !== "evidence" && (prefs.sources || m === "research"),
       ...(extra?.refs?.length ? { refs: extra.refs } : {}),
       ...(guard.total ? { privacy: { total: guard.total, hits: guard.hits } } : {}),
       ...(extra?.lang ? { lang: extra.lang } : {}),
@@ -2400,7 +2411,7 @@ export default function CadusAI() {
         <div className="cx-read-pick" role="radiogroup" aria-label="What is attached">
           <span>Read as</span>
           {READINGS.map((r) => (
-            <button key={r.id} type="button" role="radio" aria-checked={reading === r.id} className={reading === r.id ? "on" : ""} onClick={() => { setReading(reading === r.id ? "" : r.id); if (mode === "general" || mode === "image") setMode("image"); }} title={r.hint}>{r.label}</button>
+            <button key={r.id} type="button" role="radio" aria-checked={reading === r.id} className={reading === r.id ? "on" : ""} onClick={() => { if (!limits.reading) { setUpgrade({ reason: "Systematic image and report reading is part of Core and above.", feature: "reading" }); return; } setReading(reading === r.id ? "" : r.id); if (mode === "general" || mode === "image") setMode("image"); }} title={r.hint}>{r.label}</button>
           ))}
         </div>
       )}
@@ -2468,7 +2479,7 @@ export default function CadusAI() {
             className={`cx-cbtn cx-src cx-tip ${prefs.sources || mode === "research" ? "on" : ""}`}
             data-tip={mode === "research" ? "Deep research always searches sources" : prefs.sources ? "Sources on: cites WHO, NICE, ICMR, PubMed" : "Search trusted medical sources"}
             aria-pressed={prefs.sources || mode === "research"}
-            onClick={() => { if (mode !== "research") setPrefs((p) => ({ ...p, sources: !p.sources })); }}
+            onClick={() => { if (!limits.sources) { setUpgrade({ reason: "Live sources with citations are part of Core and above.", feature: "sources" }); return; } if (mode !== "research") setPrefs((p) => ({ ...p, sources: !p.sources })); }}
           >
             <Globe size={16} /><span>Sources</span>
           </button>
@@ -3518,6 +3529,17 @@ export default function CadusAI() {
     ? <div className="cx-av">{(user.name || user.email || "U").slice(0, 1).toUpperCase()}</div>
     : <div className="cx-av guest"><Users size={15} /></div>;
 
+  // Without an account, the sign-in page (shared and trust pages stay open).
+  useEffect(() => { if (gated) window.location.replace(`${signInHref}?next=${encodeURIComponent(window.location.pathname + window.location.search)}`); }, [gated]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (gated) {
+    return (
+      <div className={`cx cx-gate ${dark ? "cx-dark" : "cx-light"}`} data-look={prefs.look}>
+        <style>{CADUS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS}</style>
+        <div className="cx-gate-in"><CadusMark size={36} /><p>Taking you to sign in…</p><a className="cx-btn primary" href={signInHref}>Sign in to Cadus <ArrowRight size={14} /></a></div>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`cx ${dark ? "cx-dark" : "cx-light"} ${serif ? "ans-serif" : "ans-sans"} ${collapsed && isDesktop ? "is-collapsed" : ""} ${canvasDoc || sourcesFor ? "has-canvas" : ""} ${prefs.density === "compact" ? "is-compact" : ""}`}
@@ -3582,6 +3604,7 @@ export default function CadusAI() {
               <button className={`cx-nav-i ${view === "history" ? "on" : ""}`} onClick={() => { setView("history"); setSidebarOpen(false); }} title="Answer history"><History size={16} /><span className="cx-nav-l">Answer history</span></button>
               <button className={`cx-nav-i ${view === "privacy" ? "on" : ""}`} onClick={() => { setView("privacy"); setSidebarOpen(false); }} title="Privacy centre"><EyeOff size={16} /><span className="cx-nav-l">Privacy centre</span></button>
               <p className="cx-more-gl">App</p>
+              <a className="cx-nav-i" href={plansHref} title="Plans and pricing"><Sparkles size={16} /><span className="cx-nav-l">Plans</span><em className="cx-nav-plan">{PLAN_BY_ID[plan].name}</em></a>
               <button className="cx-nav-i" onClick={() => openSettings("personal")} title="Customize"><Palette size={16} /><span className="cx-nav-l">Customize</span></button>
               <button className="cx-nav-i" onClick={openPalette} title="Search"><Search size={16} /><span className="cx-nav-l">Search</span><kbd>{MOD} K</kbd></button>
               <button className="cx-nav-i" onClick={() => openSettings("shortcuts")} title="Keyboard shortcuts"><Keyboard size={16} /><span className="cx-nav-l">Keyboard shortcuts</span></button>
@@ -3677,7 +3700,7 @@ export default function CadusAI() {
               {avatar}
               <div className="cx-acct-t">
                 <b>{user ? user.name || "Aethex member" : "Guest"}</b>
-                <small>{user ? (profile?.specialty ? `${profile.specialty}${badge ? " · Registered" : ""}` : isPro ? "Pro plan" : "Free plan") : "Not signed in"}</small>
+                <small>{user ? (profile?.specialty ? `${profile.specialty}${badge ? " · Registered" : ""}` : `${PLAN_BY_ID[plan].name} plan`) : "Not signed in"}</small>
               </div>
               <ChevronsUpDown size={15} />
             </button>
@@ -3686,11 +3709,12 @@ export default function CadusAI() {
                 <div className="cx-acct-head">
                   {avatar}
                   <div style={{ minWidth: 0 }}><b>{user ? user.name || "Aethex member" : "Guest"}</b><small>{user?.email || "Sign in to use your Aethex account"}</small>{badge && <small className="cx-acct-badge"><ShieldCheck size={12} /> {badge} · self-declared</small>}</div>
-                  <span className="cx-plan" style={{ marginLeft: "auto" }}>{isPro ? "Pro" : "Free"}</span>
+                  <a className="cx-plan" style={{ marginLeft: "auto" }} href={plansHref} title="Plans">{PLAN_BY_ID[plan].name}</a>
                 </div>
                 <div className="cx-usage">
-                  <div className="cx-usage-top"><span>Questions today</span><b>{isPro ? `${usage.count} · Unlimited` : `${usage.count} of ${FREE_DAILY}`}</b></div>
-                  {!isPro && <div className="cx-usage-bar"><i style={{ width: `${Math.min(100, (usage.count / FREE_DAILY) * 100)}%` }} /></div>}
+                  <div className="cx-usage-top"><span>Questions today</span><b>{limits.questionsPerDay === Infinity ? `${usage.count} · Unlimited` : `${usage.count} of ${limits.questionsPerDay}`}</b></div>
+                  {limits.questionsPerDay !== Infinity && <div className="cx-usage-bar"><i style={{ width: `${Math.min(100, (usage.count / limits.questionsPerDay) * 100)}%` }} /></div>}
+                  {plan !== "enterprise" && <a className="cx-usage-up" href={plansHref}><Sparkles size={13} /> {plan === "starter" ? "See plans" : "Change plan"}</a>}
                 </div>
                 <div className="cx-theme-seg">
                   {(["light", "dark", "system"] as const).map((t) => (
@@ -3751,7 +3775,7 @@ export default function CadusAI() {
               <div className="cx-pop cx-picker-menu" role="menu">
                 <p className="cx-pop-gl">Model</p>
                 {MODELS.map((md) => (
-                  <button key={md.id} className={`cx-pick ${prefs.model === md.id ? "on" : ""}`} onClick={() => { setPrefs((p) => ({ ...p, model: md.id })); setPop(null); }}>
+                  <button key={md.id} className={`cx-pick ${prefs.model === md.id ? "on" : ""}`} onClick={() => { if (md.id === "magnus" && !limits.magnus) { setPop(null); setUpgrade({ reason: `${md.name} as the drafting model is part of Professional and above.`, feature: "magnus" }); return; } setPrefs((p) => ({ ...p, model: md.id })); setPop(null); }}>
                     <span className="cx-pick-ic"><md.icon size={16} /></span>
                     <span><b>{md.name}</b><small>{md.desc}</small></span>
                     {prefs.model === md.id && <Check size={16} className="ck" />}
@@ -3909,6 +3933,8 @@ export default function CadusAI() {
               onEditProfile={() => setProfileOpen(true)}
               friendlyError={friendlyError}
               toast={toast}
+              canMock={limits.mocks}
+              onLocked={() => setUpgrade({ reason: "Timed mock tests with NEET-style marks are part of Core and above.", feature: "mocks" })}
             />
           )
             : view === "research" ? (
@@ -3935,8 +3961,8 @@ export default function CadusAI() {
                 initialTab={drugsInit.tab}
                 initialQuery={drugsInit.query}
                 letterhead={!!lh}
-                onPrint={(title, md) => printDoc(title, md, { mode: "rx" })}
-                onWord={(title, md) => downloadWord(title, md, "rx")}
+                onPrint={(title, md) => { if (!limits.prescriber) { setUpgrade({ reason: "Printing prescriptions on your letterhead is part of Professional and above.", feature: "prescriber" }); return; } printDoc(title, md, { mode: "rx" }); }}
+                onWord={(title, md) => { if (!limits.prescriber) { setUpgrade({ reason: "Word export of prescriptions is part of Professional and above.", feature: "prescriber" }); return; } downloadWord(title, md, "rx"); }}
                 onAsk={(q, m) => { if (pending) { toast("Wait for the current answer to finish"); return; } void send(q, (m && MODE[m as ModeId] ? m : "general") as ModeId); }}
                 onCheck={(drugs) => openCalculators({ tab: "ix", drugs })}
                 toast={toast}
@@ -4380,7 +4406,9 @@ export default function CadusAI() {
                   </>
                 )}
                 {settingsTab === "letterhead" && <LetterheadSettings value={letterhead} onChange={setLetterhead} toast={toast} />}
-                {settingsTab === "institution" && <InstitutionSettings value={institution} onChange={setInstitution} letterhead={letterhead} onLetterhead={setLetterhead} toast={toast} />}
+                {settingsTab === "institution" && (limits.institution ? <InstitutionSettings value={institution} onChange={setInstitution} letterhead={letterhead} onLetterhead={setLetterhead} toast={toast} /> : (
+                  <div className="cx-empty-state cx-locked"><span className="cx-proj-ic" style={{ marginBottom: 0 }}><Building2 size={20} /></span><h3>Institution protocols are an Enterprise feature</h3><p>Medical colleges and hospitals on the Enterprise plan put their own protocols and formulary into every answer, with team packs, admin and usage reports for the whole institution.</p><a className="cx-btn primary" href={plansHref}>See the Enterprise plan <ArrowRight size={14} /></a></div>
+                ))}
                 {settingsTab === "data" && (
                   <>
                     <div className="cx-set-links">
@@ -4506,6 +4534,10 @@ export default function CadusAI() {
                       <button onClick={startTour}><Compass size={16} /><span><b>Take the tour</b><small>Thirty seconds on where things are</small></span></button>
                     </div>
                     <div className="cx-set-row">
+                      <div><b>Your plan</b><small>{PLAN_BY_ID[plan].name}: {PLAN_BY_ID[plan].tagline} {limits.questionsPerDay === Infinity ? "Unlimited questions." : `${limits.questionsPerDay} questions a day.`}</small></div>
+                      <a className="cx-link" href={plansHref}>Plans and pricing <ExternalLink size={13} /></a>
+                    </div>
+                    <div className="cx-set-row">
                       <div><b>Terms, privacy and disclaimer</b><small>The terms of use, how data is handled, and what Cadus is not. Release notes are on the About page.</small></div>
                       <span className="cx-set-legal"><a className="cx-link" href={legalPath("about")}>About</a><a className="cx-link" href={legalPath("terms")}>Terms</a><a className="cx-link" href={legalPath("privacy")}>Privacy</a><a className="cx-link" href={legalPath("disclaimer")}>Disclaimer</a></span>
                     </div>
@@ -4532,6 +4564,22 @@ export default function CadusAI() {
       )}
       {tourOpen && <Tour steps={TOUR_STEPS} onClose={endTour} />}
       {toastMsg && <div className="cx-toast" role="status"><Check size={15} /> {toastMsg}</div>}
+      {upgrade && (
+        <div className="cx-overlay center" onMouseDown={() => setUpgrade(null)}>
+          <div className="cx-dialog cx-upgrade" onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="cx-up-t">
+            <div className="cx-dialog-h">
+              <div><h3 id="cx-up-t"><Sparkles size={18} /> {upgrade.feature === "questions" ? "Daily limit reached" : `Part of the ${planFor(upgrade.feature).name} plan`}</h3><p>{upgrade.reason}</p></div>
+              <button className="cx-ib" onClick={() => setUpgrade(null)} aria-label="Close"><X size={18} /></button>
+            </div>
+            <div className="cx-dialog-b">
+              <p className="cx-up-now">You are on <b>{PLAN_BY_ID[plan].name}</b>{limits.questionsPerDay !== Infinity ? ` · ${usage.date === today() ? usage.count : 0} of ${limits.questionsPerDay} questions used today` : ""}.</p>
+              <ul className="cx-up-list">{(upgrade.feature === "questions" ? PLAN_BY_ID.core : planFor(upgrade.feature)).includes.slice(0, 4).map((x) => <li key={x}><Check size={14} /> {x}</li>)}</ul>
+              <div className="cx-up-acts"><a className="cx-btn primary" href={plansHref}>See plans and prices <ArrowRight size={14} /></a><button className="cx-btn" onClick={() => setUpgrade(null)}>Not now</button></div>
+              <p className="cx-up-foot">Plans are activated by invoice: request one and Aethex switches your account on the same day.</p>
+            </div>
+          </div>
+        </div>
+      )}
       {cameraOpen && <CameraModal onClose={() => setCameraOpen(false)} onCapture={(f) => { setCameraOpen(false); void onFile(f); }} />}
       {deck && <PresentationViewer data={deck} onClose={() => setDeck(null)} />}
       {voiceOpen && <VoiceMode language={prefs.language} ask={voiceAsk} onClose={() => setVoiceOpen(false)} />}

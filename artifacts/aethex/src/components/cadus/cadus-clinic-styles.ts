@@ -110,5 +110,21 @@ export const CADUS_CLINIC_CSS = `
 .look-clinical .cx-look-prev{background:#F6F7F9;border:1px solid #E2E6EC}.look-clinical .cx-look-prev i{background:#1F3F7A}.look-clinical .cx-look-prev em b{background:#9AA5B8}
 .look-editorial .cx-look-prev{background:#FBFAF6;border:1px solid #E6E2D8}.look-editorial .cx-look-prev i{background:#F4F2EB;border:1px solid #D6D1C4}.look-editorial .cx-look-prev em b{background:#1C1A17}.look-editorial .cx-look-prev em b:first-child{height:6px;width:60%}
 .look-mono .cx-look-prev{background:#FFFFFF;border:1px solid #E6E6E6}.look-mono .cx-look-prev i{background:#FAFAFA;border:1px solid #E6E6E6}.look-mono .cx-look-prev em b{background:#171717;height:3px}
+.cx-gate{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg);color:var(--text)}
+.cx-gate-in{display:flex;flex-direction:column;align-items:center;gap:14px;font-size:14px;color:var(--t2)}
+.cx-upgrade{max-width:460px}
+.cx-up-now{font-size:13.5px;color:var(--t2);margin-bottom:10px}
+.cx-up-list{margin:0 0 14px;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.cx-up-list li{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;line-height:1.45}
+.cx-up-list li svg{flex-shrink:0;margin-top:3px;color:var(--ok)}
+.cx-up-acts{display:flex;gap:8px}
+.cx-up-foot{margin-top:12px;font-size:12px;color:var(--t3);line-height:1.5}
+.cx-usage-up{display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:12.5px;font-weight:600;color:var(--acc)}
+.cx-usage-up:hover{text-decoration:underline}
+.cx-nav-plan{font-size:10.5px!important;text-transform:uppercase;letter-spacing:.05em}
+.cx-locked{align-items:flex-start;text-align:left}
+.cx-si-plans{max-width:440px;margin-top:24px;font-size:13.5px;line-height:1.6;color:var(--t2)}
+.cx-si-plans a{color:var(--text);text-decoration:underline;text-underline-offset:2px}
+a.cx-plan{text-decoration:none}a.cx-plan:hover{text-decoration:underline}
 @media (max-width:860px){.cx .cx-fh-premium .cx-fh-h h1{font-size:23px}.cx-home-legal{margin-left:0}.cx-look-pick{grid-template-columns:repeat(3,minmax(0,1fr));width:100%}}
 `;

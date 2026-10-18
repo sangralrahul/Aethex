@@ -22,7 +22,7 @@ interface MockRun { preset: (typeof MOCK_PRESETS)[number]; items: MockQ[]; index
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.max(0, s) % 60).padStart(2, "0")}`;
 
-export default function LearnView({ profile, practice, setPractice, learn, setLearn, generate, onChat, onEditProfile, friendlyError, toast, initialTab = "today" }: {
+export default function LearnView({ profile, practice, setPractice, learn, setLearn, generate, onChat, onEditProfile, friendlyError, toast, initialTab = "today", canMock = true, onLocked }: {
   profile: MedicalProfile | null;
   practice: PracticeState;
   setPractice: (fn: (s: PracticeState) => PracticeState) => void;
@@ -34,6 +34,9 @@ export default function LearnView({ profile, practice, setPractice, learn, setLe
   friendlyError: (raw: string) => string;
   toast: (t: string) => void;
   initialTab?: Tab;
+  /** Timed mocks are part of Core and above. */
+  canMock?: boolean;
+  onLocked?: (feature: "mocks") => void;
 }) {
   const [tab, setTab] = useState<Tab>(initialTab);
   const exam = practiceExam(profile) || "NEET-PG";
@@ -106,6 +109,7 @@ export default function LearnView({ profile, practice, setPractice, learn, setLe
 
   const lastSwitch = useRef(Date.now());
   const startMock = async (preset: (typeof MOCK_PRESETS)[number]) => {
+    if (!canMock) { onLocked?.("mocks"); return; }
     setMockLoading(preset.id);
     try {
       const subjects = mockSubjects(preset.subjects);

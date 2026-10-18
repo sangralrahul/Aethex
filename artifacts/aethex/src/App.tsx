@@ -86,6 +86,7 @@ const CadusAI = lazyPage(() => import("@/pages/CadusAI"));
 const CadusSignIn = lazyPage(() => import("@/pages/CadusSignIn"));
 const CadusShared = lazyPage(() => import("@/pages/CadusShared"));
 const CadusLegal = lazyPage(() => import("@/pages/CadusLegal"));
+const CadusPlans = lazyPage(() => import("@/pages/CadusPlans"));
 const legal = (kind: "terms" | "privacy" | "disclaimer" | "about") => () => <CadusLegal kind={kind} />;
 const LegalTerms = legal("terms"), LegalPrivacy = legal("privacy"), LegalDisclaimer = legal("disclaimer"), LegalAbout = legal("about");
 const OrderTracking = lazyPage(() => import("@/pages/OrderTracking"));
@@ -243,6 +244,7 @@ function Router() {
         <Route path="/privacy" component={LegalPrivacy} />
         <Route path="/disclaimer" component={LegalDisclaimer} />
         <Route path="/about" component={LegalAbout} />
+        <Route path="/plans" component={CadusPlans} />
         <Route path="/ai-assistant" component={CadusAI} />
         <Route path="/ai-assistant-classic">{() => <Redirect to="/" />}</Route>
         <Route path="/cadus-standalone" component={CadusAI} />
@@ -261,6 +263,7 @@ function Router() {
       <Route path="/ai-assistant/privacy" component={LegalPrivacy} />
       <Route path="/ai-assistant/disclaimer" component={LegalDisclaimer} />
       <Route path="/ai-assistant/about" component={LegalAbout} />
+      <Route path="/ai-assistant/plans" component={CadusPlans} />
       <Route path="/ai-assistant-classic">{() => <Redirect to="/ai-assistant" />}</Route>
       <Route path="/cadus-standalone" component={CadusAI} />
 
