@@ -11,8 +11,8 @@
       "kind": "Installer (.exe)",
       "file": "Cadus-Setup-1.0.0-x64.exe",
       "url": "https://downloads.aethex.in/cadus/1.0.0/Cadus-Setup-1.0.0-x64.exe",
-      "size": 110868971,
-      "sha256": "eb56ee7ce7757eacc6dbacbbfd88363ff5052314c1bf57dd82e40ba752a51fe2"
+      "size": 110936396,
+      "sha256": "ecf37e8a383b56c49b613cc7c31c944e9970d29cb7afd8a0286140ca9cc0e3fb"
     },
     {
       "id": "win-arm64",
@@ -21,8 +21,8 @@
       "kind": "Installer (.exe)",
       "file": "Cadus-Setup-1.0.0-arm64.exe",
       "url": "https://downloads.aethex.in/cadus/1.0.0/Cadus-Setup-1.0.0-arm64.exe",
-      "size": 105544896,
-      "sha256": "f98b95dd0784bba54fdc5188ba6686dd73697696e15a9495f8146e88c949dfd1"
+      "size": 105582915,
+      "sha256": "6467657719a8d003ee8dfdde102bde05b7a17c34e0de502137a69fbd03e49890"
     },
     {
       "id": "linux-appimage",
@@ -31,8 +31,8 @@
       "kind": "AppImage",
       "file": "Cadus-1.0.0-x86_64.AppImage",
       "url": "https://downloads.aethex.in/cadus/1.0.0/Cadus-1.0.0-x86_64.AppImage",
-      "size": 97316890,
-      "sha256": "51cf6c585a5d0894e560835f81a50c2b54647166d5c050b7f4ed1aa4c260e699"
+      "size": 97325125,
+      "sha256": "dc8c77dbd6a07a46c7153dd0c47a788787bb975fc555b50e247d25e53e2aa5ac"
     },
     {
       "id": "linux-deb",
@@ -41,8 +41,8 @@
       "kind": "Debian / Ubuntu (.deb)",
       "file": "Cadus-1.0.0-amd64.deb",
       "url": "https://downloads.aethex.in/cadus/1.0.0/Cadus-1.0.0-amd64.deb",
-      "size": 97159868,
-      "sha256": "285cc756e6bda217715dfaef17a207807d57c59689ce1e7365d070e71ac0e83d"
+      "size": 97166620,
+      "sha256": "e33b2dca2fa18e95af4c16f0c8f510a5e0828cee0294aa88de05fedabccc88d5"
     }
   ],
   "notes": [
