@@ -592,7 +592,7 @@ const CSS = `
 .ax .tile{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:linear-gradient(160deg,#fff,#eef3f6);border:1px solid var(--line);color:#0f2a3a;box-shadow:0 1px 2px rgba(16,24,40,.06)}
 .ax .tile.sm{width:22px;height:22px;border-radius:6px}
 .ax .tile.lg{width:64px;height:64px;border-radius:18px}
-.ax .word{font-weight:700;font-size:17px;letter-spacing:.32em}
+.ax .word{font-weight:800;font-size:20px;letter-spacing:-.02em;line-height:1}
 .ax .nav nav{display:flex;gap:34px}
 .ax .nav nav a,.ax .nav-link{font-size:15.5px;color:#344054;transition:color .2s}
 .ax .nav nav a:hover,.ax .nav-link:hover{color:var(--ink)}
