@@ -101,7 +101,7 @@ export default function Login() {
   return (
     <AuthShell>
       {emailMode === "otp-verify" ? (
-        <>
+        <div className="au-step" key="verify">
           <h2 className="au-title">Check your email</h2>
           <p className="au-sub">Enter the 6-digit code we sent to <b>{otpEmail}</b>.</p>
           <div className="au-body">
@@ -121,9 +121,9 @@ export default function Login() {
               </div>
             </form>
           </div>
-        </>
+        </div>
       ) : emailMode === "otp-email" ? (
-        <>
+        <div className="au-step" key="code">
           <h2 className="au-title">Sign in with a code</h2>
           <p className="au-sub">We'll email you a 6-digit code. No password needed.</p>
           <div className="au-body">
@@ -138,9 +138,9 @@ export default function Login() {
               <button type="button" className="au-link muted" style={{ alignSelf: "center" }} onClick={() => { setEmailMode("password"); setError(""); }}>Sign in with a password instead</button>
             </form>
           </div>
-        </>
+        </div>
       ) : (
-        <>
+        <div className="au-step" key="password">
           <h2 className="au-title">Sign in to Aethex</h2>
           <p className="au-sub">Welcome back. One account for the store, the Study Hub and Cadus AI.</p>
           <div className="au-body">
@@ -175,7 +175,7 @@ export default function Login() {
             </form>
             <p className="au-switch">New to Aethex? {signupLink}</p>
           </div>
-        </>
+        </div>
       )}
     </AuthShell>
   );

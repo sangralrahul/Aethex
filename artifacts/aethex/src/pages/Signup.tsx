@@ -93,6 +93,7 @@ export default function Signup() {
   if (awaitingCode) {
     return (
       <AuthShell>
+        <div className="au-step" key="confirm">
         <h2 className="au-title">Confirm your email</h2>
         <p className="au-sub">We sent a 6-digit code to <b>{email}</b>. Enter it to confirm the address and create your account.</p>
         <div className="au-body">
@@ -112,12 +113,14 @@ export default function Signup() {
             </div>
           </form>
         </div>
+        </div>
       </AuthShell>
     );
   }
 
   return (
     <AuthShell>
+      <div className="au-step" key="details">
       <h2 className="au-title">Create your Aethex account</h2>
       <p className="au-sub">Free to join. One account for the store, the Study Hub and Cadus AI.</p>
       <div className="au-body">
@@ -150,6 +153,7 @@ export default function Signup() {
           <button type="submit" className="au-btn primary" disabled={loading}>{loading ? <><Spinner />Creating account…</> : "Create account"}</button>
         </form>
         <p className="au-switch">Already have an account? {signinLink}</p>
+      </div>
       </div>
     </AuthShell>
   );
