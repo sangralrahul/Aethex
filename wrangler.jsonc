@@ -17,7 +17,7 @@
   //   2. paste the id below
   //   3. npx wrangler d1 migrations apply aethex --remote
   // Until the id is pasted, deploys fail and the previous version stays live.
-  "d1_databases": [{ "binding": "DB", "database_name": "aethex", "database_id": "PASTE-THE-D1-DATABASE-ID-HERE", "migrations_dir": "migrations" }],
+  "d1_databases": [{ "binding": "DB", "database_name": "aethex", "database_id": "d0cf73ca-7f81-4399-b616-97a4f27c46d8", "migrations_dir": "migrations" }],
   // Store cart reminders and clean-up, every hour.
   "triggers": { "crons": ["17 * * * *"] },
   // The site and its subdomains. Custom domains get their DNS records and
