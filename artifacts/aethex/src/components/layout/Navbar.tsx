@@ -104,12 +104,7 @@ export function BrandSwitcherBar() {
 export function Logo() {
   return (
     <Link href="/" className="ax-logo" aria-label="Aethex home">
-      <span className="ax-logo-tile">
-        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
-          <defs><linearGradient id="axA" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stopColor="#2b7a6f" /><stop offset="1" stopColor="#6375e0" /></linearGradient></defs>
-          <path d="M12 3.2 3.6 20.6h3.3l1.7-3.7h6.8l1.7 3.7h3.3L12 3.2Zm-2.2 11 2.2-4.8 2.2 4.8H9.8Z" fill="url(#axA)" />
-        </svg>
-      </span>
+      <img className="ax-logo-mark" src={`${import.meta.env.BASE_URL}aethex-mark.png`} alt="" width={36} height={36} />
       <span className="ax-logo-word">AETHEX</span>
     </Link>
   );
