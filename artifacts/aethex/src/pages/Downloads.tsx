@@ -71,6 +71,11 @@ function FileRow({ f, primary }: { f: FileEntry; primary?: boolean }) {
 export default function Downloads() {
   const [sys, setSys] = useState<Detected>({ os: "unknown", arch: "unknown" });
   useEffect(() => { void detect().then(setSys); }, []);
+  useEffect(() => {
+    const before = document.title;
+    document.title = "Download Cadus for Windows and Linux · Aethex";
+    return () => { document.title = before; };
+  }, []);
   const look = (() => { try { const l = JSON.parse(localStorage.getItem("cadus3.prefs") || "{}").look; return ["clinical", "editorial", "mono"].includes(l) ? l : "editorial"; } catch { return "editorial"; } })();
   const dark = (() => { try { return JSON.parse(localStorage.getItem("cadus3.prefs") || "{}").theme === "dark"; } catch { return false; } })();
   const openCadus = isCadusHost() ? "/" : cadusUrl("/");

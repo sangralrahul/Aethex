@@ -6,6 +6,7 @@
  * - login.aethex.in            → sign-in for the store and the rest of aethex.in
  * - auth.aethex.in             → sign-in for Cadus
  * - cadus.aethex.in            → Cadus, the clinical AI
+ * - downloads.aethex.in        → the Cadus desktop app download page and installers
  *
  * All of them share one sign-in:
  * the Worker sets the session cookie for the whole domain (see lib/account.ts).
@@ -31,6 +32,10 @@ export function isAuthHost(): boolean {
 
 export function isCadusHost(): boolean {
   return currentHost() === "cadus.aethex.in" || currentHost() === "www.cadus.aethex.in";
+}
+
+export function isDownloadsHost(): boolean {
+  return currentHost() === "downloads.aethex.in";
 }
 
 /** aethex.in and its subdomains, where login and Cadus have their own subdomains. */

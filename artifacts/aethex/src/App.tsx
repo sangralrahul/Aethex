@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Component, Suspense, lazy, useState, useEffect, type ComponentType, type ReactNode } from "react";
-import { isLoginHost, isCadusHost, isAuthHost, isMainHost, loginUrl, cadusUrl } from "@/lib/host";
+import { isLoginHost, isCadusHost, isAuthHost, isMainHost, isDownloadsHost, loginUrl, cadusUrl } from "@/lib/host";
 
 
 /**
@@ -232,6 +232,12 @@ function Router() {
         <Route component={CadusSignIn} />
       </Switch>
     );
+  }
+
+  // downloads.aethex.in: the Cadus download page; the installers themselves are
+  // served by the Worker from R2 at /cadus/<version>/<file>.
+  if ((typeof window !== "undefined" && isDownloadsHost()) || forcedApp === "downloads") {
+    return <Downloads />;
   }
 
   if (isLoginSubdomain || forcedApp === "login") {

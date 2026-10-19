@@ -11,7 +11,7 @@
     "directory": "./dist",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": ["/api/*", "/cadus/*"]
   },
   // Accounts, sessions, Cadus profiles and store carts live in Cloudflare D1.
   // One-time setup (see migrations/0001_accounts.sql):
@@ -20,6 +20,8 @@
   //   3. npx wrangler d1 migrations apply aethex --remote
   // Until the id is pasted, deploys fail and the previous version stays live.
   "d1_databases": [{ "binding": "DB", "database_name": "aethex", "database_id": "d0cf73ca-7f81-4399-b616-97a4f27c46d8", "migrations_dir": "migrations" }],
+  // The Cadus desktop installers (uploaded with desktop\upload-r2.cmd).
+  "r2_buckets": [{ "binding": "DOWNLOADS", "bucket_name": "aethex-downloads" }],
   // Store cart reminders and clean-up, every hour.
   "triggers": { "crons": ["17 * * * *"] },
   // The site and its subdomains. Custom domains get their DNS records and
@@ -29,7 +31,8 @@
     { "pattern": "www.aethex.in", "custom_domain": true },
     { "pattern": "cadus.aethex.in", "custom_domain": true },
     { "pattern": "auth.aethex.in", "custom_domain": true },
-    { "pattern": "login.aethex.in", "custom_domain": true }
+    { "pattern": "login.aethex.in", "custom_domain": true },
+    { "pattern": "downloads.aethex.in", "custom_domain": true }
   ],
   "observability": { "enabled": true }
 }

@@ -1,5 +1,6 @@
 // Cloudflare Worker for aethex.in and its subdomains: cadus.aethex.in (Cadus),
-// auth.aethex.in (Cadus sign-in) and login.aethex.in (store sign-in).
+// auth.aethex.in (Cadus sign-in), login.aethex.in (store sign-in) and
+// downloads.aethex.in (the Cadus download page, with the installers from R2).
 //
 // Serves the website (static files in ./dist), the AI endpoints at
 // POST /api/fn/<name>:
@@ -14,6 +15,7 @@
 //   BREVO_API_KEY, BREVO_FROM_EMAIL          sign-in codes and cart emails
 import { functionHandler, functionNames, useEnv } from "./deno-shim";
 import { handleAuth, handleCart, handleProfile, runScheduled, type AuthEnv } from "./auth";
+import { serveDownload, type R2Bucket } from "./downloads";
 import "./names/cadus";
 import "../supabase/functions/cadus/index.ts";
 import "./names/analyze-drug-interactions";
@@ -28,6 +30,8 @@ import "../supabase/functions/analyze-radiology/index.ts";
 interface Env extends AuthEnv {
   ASSETS: { fetch: (request: Request) => Promise<Response> };
   ANTHROPIC_API_KEY?: string;
+  /** R2 bucket "aethex-downloads": the desktop installers. */
+  DOWNLOADS?: R2Bucket;
   [key: string]: unknown;
 }
 
@@ -45,9 +49,15 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
+    // downloads.aethex.in: installers from R2; every other path is the download page.
+    if (url.hostname === "downloads.aethex.in" && !url.pathname.startsWith("/api/")) {
+      if (url.pathname.startsWith("/cadus/")) return serveDownload(request, env.DOWNLOADS, url.pathname.slice(1));
+      return env.ASSETS.fetch(new Request(new URL("/", url), request));
+    }
+
     if (url.pathname === "/api/health") {
       // Shows whether the keys are set (never their values), to check the setup.
-      return json({ ok: true, functions: functionNames(), anthropic: !!env.ANTHROPIC_API_KEY, accounts: !!env.DB, google: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET), email: !!env.BREVO_API_KEY });
+      return json({ ok: true, functions: functionNames(), anthropic: !!env.ANTHROPIC_API_KEY, accounts: !!env.DB, google: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET), email: !!env.BREVO_API_KEY, downloads: !!env.DOWNLOADS });
     }
 
     const account = url.pathname.startsWith("/api/auth/") || url.pathname === "/api/auth" ? handleAuth : url.pathname === "/api/profile" ? handleProfile : url.pathname === "/api/cart" ? handleCart : null;
