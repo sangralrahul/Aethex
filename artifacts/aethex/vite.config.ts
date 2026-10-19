@@ -91,9 +91,28 @@ export default defineConfig({
           }),
         ],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
-        // /api/* is the Cloudflare Worker (AI endpoints, /api/health), never the app shell.
-        navigateFallbackDenylist: [/^\/api\//],
+        // A new version takes over as soon as it is installed. (Without this it waited
+        // until every tab was closed, and kept serving the previous build's pages, whose
+        // files are gone from the server after a deploy: "This page couldn't load".)
+        skipWaiting: true,
+        clientsClaim: true,
+        // Pages come from the network first, so a deploy shows at once; offline, the last
+        // copy (or the precached shell) is used. Neither "/" nor any other page is answered
+        // from the precache while online: that copy can be an older build than the server's.
+        navigateFallback: null,
+        directoryIndex: null,
         runtimeCaching: [
+          {
+            // /api/* is the Cloudflare Worker (AI endpoints, /api/health), never a page.
+            urlPattern: ({ request, url }: { request: Request; url: URL }) => request.mode === "navigate" && !url.pathname.startsWith("/api/"),
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "aethex-pages",
+              networkTimeoutSeconds: 4,
+              expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              precacheFallback: { fallbackURL: "index.html" },
+            },
+          },
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: "CacheFirst",
@@ -103,7 +122,16 @@ export default defineConfig({
             // Hashed build files and fonts never change, so a cached copy is always right.
             urlPattern: ({ url }: { url: URL }) => url.origin === self.location.origin && (url.pathname.includes("/assets/") || url.pathname.includes("/fonts/")),
             handler: "CacheFirst",
-            options: { cacheName: "aethex-chunks", expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 60 } },
+            options: {
+              cacheName: "aethex-chunks",
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 60 },
+              // A file that is gone (an older build's chunk) is answered with the app's
+              // index.html and status 200: never keep that as a script or a font.
+              plugins: [{
+                cacheWillUpdate: async ({ response }: { response?: Response }) =>
+                  response && response.status === 200 && !(response.headers.get("content-type") || "").includes("text/html") ? response : null,
+              }],
+            },
           },
           {
             urlPattern: /\/api\/.*/i,

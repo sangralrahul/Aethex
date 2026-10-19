@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Component, Suspense, lazy, useState, useEffect, type ComponentType, type ReactNode } from "react";
 import { isLoginHost, isCadusHost, isAuthHost, isMainHost, isDownloadsHost, isAethexDomain, downloadsUrl, loginUrl, cadusUrl } from "@/lib/host";
+import { reloadFresh } from "@/lib/fresh-start";
 
 
 /** The download page lives at downloads.aethex.in; aethex.in/downloads (and the
@@ -18,8 +19,9 @@ function DownloadsRoute() {
 
 /**
  * Pages load on demand, so the first visit downloads only the page it opens.
- * After a new deploy an old tab may ask for a chunk that no longer exists:
- * reload once to pick up the new build.
+ * After a new deploy an old tab (or a browser holding the previous version)
+ * may ask for a chunk that no longer exists: load the current site once,
+ * fresh from the network.
  */
 function lazyPage<T extends ComponentType<any>>(load: () => Promise<{ default: T }>) {
   return lazy(() =>
@@ -28,7 +30,7 @@ function lazyPage<T extends ComponentType<any>>(load: () => Promise<{ default: T
       (err) => {
         let tried = true;
         try { tried = !!sessionStorage.getItem("aethex_chunk_reload"); sessionStorage.setItem("aethex_chunk_reload", "1"); } catch { /* blocked */ }
-        if (!tried && navigator.onLine !== false) { window.location.reload(); return new Promise<{ default: T }>(() => {}); }
+        if (!tried && navigator.onLine !== false) { void reloadFresh(); return new Promise<{ default: T }>(() => {}); }
         throw err;
       },
     ),
@@ -39,6 +41,11 @@ function lazyPage<T extends ComponentType<any>>(load: () => Promise<{ default: T
 class PageError extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch(error: unknown) {
+    console.error("[aethex] the page failed to load:", error);
+    // A newer version of the site taking over (service worker update) fixes most of these: load it.
+    try { navigator.serviceWorker?.addEventListener("controllerchange", () => window.location.reload(), { once: true }); } catch { /* not supported */ }
+  }
   render() {
     if (!this.state.failed) return this.props.children;
     const offline = typeof navigator !== "undefined" && navigator.onLine === false;
@@ -46,7 +53,7 @@ class PageError extends Component<{ children: ReactNode }, { failed: boolean }> 
       <div role="alert" style={{ minHeight: "60vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: 24, textAlign: "center", fontFamily: "system-ui, sans-serif", color: "#0F1729" }}>
         <b style={{ fontSize: 18 }}>{offline ? "You're offline" : "This page couldn't load"}</b>
         <span style={{ maxWidth: 420, fontSize: 14, color: "#4A5264" }}>{offline ? "This page hasn't been opened on this device before, so it needs a connection. Cadus and the pages you've visited still work offline." : "Check your connection and try again."}</span>
-        <button onClick={() => window.location.reload()} style={{ height: 36, padding: "0 16px", border: 0, borderRadius: 10, background: "#0F1729", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Try again</button>
+        <button onClick={() => void reloadFresh()} style={{ height: 36, padding: "0 16px", border: 0, borderRadius: 10, background: "#0F1729", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Try again</button>
       </div>
     );
   }
