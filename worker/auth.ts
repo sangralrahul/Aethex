@@ -8,6 +8,7 @@
 //   POST /api/auth/email/verify  {email, code, name?} signs in, or finishes a sign-up
 //   GET  /api/auth/google?return=<url>&from=<url>     Google sign-in (OAuth code flow)
 //   GET  /api/auth/google/callback
+//   GET  /api/auth/desktop?code=<code>&verifier=<verifier>   finishes a Google sign-in for the desktop app
 //   GET  /api/auth/me            the signed-in account, or 401
 //   POST /api/auth/logout        ?all=1 ends every session of the account
 //   GET|PUT|DELETE /api/profile  the Cadus profile of the signed-in account
@@ -217,7 +218,12 @@ export async function handleAuth(request: Request, env: AuthEnv): Promise<Respon
     if (!(await allow(db, `google-ip:${clientIp(request)}`, 60, 15 * 60_000))) return Response.redirect(withParam(from, "auth_error", "google-busy"), 302);
     const state = b64u(random(24));
     const verifier = b64u(random(32));
-    await env.DB.prepare("INSERT INTO oauth_states (state, verifier, return_to, error_to, expires_at) VALUES (?, ?, ?, ?, ?)").bind(state, verifier, safeReturn(url.searchParams.get("return"), url, fallback), from, Date.now() + 10 * 60_000).run();
+    // The Cadus desktop app opens Google in the system browser (Google refuses
+    // sign-in inside app windows) and sends the SHA-256 of a secret only it knows;
+    // the browser then hands the sign-in back to the app (see /api/auth/desktop).
+    const desktop = url.searchParams.get("desktop") || "";
+    const stored = DESKTOP_CHALLENGE.test(desktop) ? `${verifier}.${desktop}` : verifier;
+    await env.DB.prepare("INSERT INTO oauth_states (state, verifier, return_to, error_to, expires_at) VALUES (?, ?, ?, ?, ?)").bind(state, stored, safeReturn(url.searchParams.get("return"), url, fallback), from, Date.now() + 10 * 60_000).run();
     const g = new URL("https://accounts.google.com/o/oauth2/v2/auth");
     g.searchParams.set("client_id", env.GOOGLE_CLIENT_ID);
     g.searchParams.set("redirect_uri", `${url.origin}/api/auth/google/callback`);
@@ -244,12 +250,13 @@ export async function handleAuth(request: Request, env: AuthEnv): Promise<Respon
     if (!row || row.expires_at < Date.now()) return redirect(`${url.origin}/?auth_error=google-expired`);
     const fail = (why: string) => redirect(withParam(row.error_to, "auth_error", why));
     if (!started || !same(started, state)) return fail("google-expired"); // not started in this browser
+    const [verifier, desktop] = row.verifier.split(".");
     const code = url.searchParams.get("code");
     if (!code || !env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) return fail("google-cancelled");
     const tr = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ code, client_id: env.GOOGLE_CLIENT_ID, client_secret: env.GOOGLE_CLIENT_SECRET, redirect_uri: `${url.origin}/api/auth/google/callback`, grant_type: "authorization_code", code_verifier: row.verifier }),
+      body: new URLSearchParams({ code, client_id: env.GOOGLE_CLIENT_ID, client_secret: env.GOOGLE_CLIENT_SECRET, redirect_uri: `${url.origin}/api/auth/google/callback`, grant_type: "authorization_code", code_verifier: verifier }),
     });
     if (!tr.ok) return fail("google-failed");
     const tok = (await tr.json()) as { id_token?: string };
@@ -270,7 +277,33 @@ export async function handleAuth(request: Request, env: AuthEnv): Promise<Respon
         user = await createUser(db, { email, name: cleanName(claims.name, email), googleSub: claims.sub, avatar: claims.picture ?? null });
       }
     }
+    if (desktop) {
+      // Hand the sign-in to the desktop app: a one-time code, kept for 3 minutes,
+      // that only works together with the app's secret (its hash is the challenge).
+      const handoff = b64u(random(32));
+      await env.DB.prepare("INSERT INTO oauth_states (state, verifier, return_to, error_to, expires_at) VALUES (?, ?, ?, ?, ?)").bind(`desk:${await sha256(handoff)}`, desktop, user.id, row.return_to, Date.now() + 3 * 60_000).run();
+      const h = new Headers({ "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'", "referrer-policy": "no-referrer" });
+      h.append("set-cookie", clear);
+      return new Response(desktopPage(`cadus://signed-in?code=${handoff}`), { status: 200, headers: h });
+    }
     return redirect(row.return_to, [await startSession(db, url, user.id)]);
+  }
+
+  if (path === "/api/auth/desktop" && request.method === "GET") {
+    const fail = () => Response.redirect(`${url.origin}/?auth_error=google-expired`, 302);
+    if (!(await allow(db, `desktop-ip:${clientIp(request)}`, 30, 15 * 60_000))) return fail();
+    const handoff = url.searchParams.get("code") || "";
+    const verifier = url.searchParams.get("verifier") || "";
+    if (!/^[A-Za-z0-9_-]{43}$/.test(handoff) || !/^[A-Za-z0-9_-]{43}$/.test(verifier)) return fail();
+    const row = await env.DB.prepare("DELETE FROM oauth_states WHERE state = ? RETURNING *").bind(`desk:${await sha256(handoff)}`).first<{ verifier: string; return_to: string; error_to: string; expires_at: number }>();
+    if (!row || row.expires_at < Date.now()) return fail();
+    const challenge = b64u(new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(verifier))));
+    if (!same(challenge, row.verifier)) return fail();
+    const user = await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(row.return_to).first<UserRow>();
+    if (!user) return fail();
+    const h = new Headers({ location: safeReturn(row.error_to, url, `${url.origin}/`), "cache-control": "no-store" });
+    h.append("set-cookie", await startSession(db, url, user.id));
+    return new Response(null, { status: 302, headers: h });
   }
 
   // Everything below takes a JSON body.
@@ -373,6 +406,20 @@ async function sendCode(env: AuthEnv & { DB: D1Like }, request: Request, email: 
 const SIGNUP_COOKIE = "aethex_signup";
 const signupCookie = (url: URL, token: string, maxAge: number) =>
   `${SIGNUP_COOKIE}=${token}; Path=/api/auth/email; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${url.protocol === "https:" || onAethex(url.hostname) ? "; Secure" : ""}`;
+
+/** The SHA-256 (base64url) of the desktop app's one-time secret. */
+const DESKTOP_CHALLENGE = /^[A-Za-z0-9_-]{43}$/;
+
+/** Shown in the browser after a Google sign-in started by the desktop app: opens Cadus. */
+const desktopPage = (appUrl: string) => `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Signed in · Cadus</title>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f7f8fa;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#0b1220}
+main{max-width:420px;margin:24px;padding:40px 36px;background:#fff;border:1px solid #e6e9ef;border-radius:20px;text-align:center;box-shadow:0 30px 60px -40px rgba(16,24,40,.35)}
+.ok{width:56px;height:56px;margin:0 auto 18px;border-radius:50%;display:grid;place-items:center;background:#eaf5f2;color:#2b7a6f;font-size:28px}
+h1{margin:0 0 10px;font-size:24px;letter-spacing:-.02em}p{margin:0 0 24px;color:#475467;line-height:1.6}
+a{display:inline-block;padding:14px 24px;border-radius:12px;background:#2b7a6f;color:#fff;font-weight:600;text-decoration:none}small{display:block;margin-top:18px;color:#667085}</style></head>
+<body><main><div class="ok">&#10003;</div><h1>You're signed in</h1><p>Return to the Cadus app to continue. If your browser asks, choose <b>Open Cadus</b>.</p>
+<a href="${appUrl}">Open Cadus</a><small>You can close this tab afterwards.</small></main>
+<script>location.href=${JSON.stringify(appUrl)}</script></body></html>`;
 
 const OAUTH_COOKIE = "aethex_oauth";
 const oauthCookie = (url: URL, state: string, maxAge: number) =>

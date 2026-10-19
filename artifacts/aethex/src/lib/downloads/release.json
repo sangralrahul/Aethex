@@ -1,7 +1,7 @@
 {
   "product": "Cadus",
-  "version": "1.0.0",
-  "released": "2026-10-18",
+  "version": "1.0.1",
+  "released": "2026-10-19",
   "electron": "44.5.1",
   "files": [
     {
@@ -9,44 +9,44 @@
       "os": "windows",
       "arch": "x64",
       "kind": "Installer (.exe)",
-      "file": "Cadus-Setup-1.0.0-x64.exe",
-      "url": "https://downloads.aethex.in/cadus/1.0.0/Cadus-Setup-1.0.0-x64.exe",
-      "size": 110936396,
-      "sha256": "ecf37e8a383b56c49b613cc7c31c944e9970d29cb7afd8a0286140ca9cc0e3fb"
+      "file": "Cadus-Setup-1.0.1-x64.exe",
+      "url": "https://downloads.aethex.in/cadus/1.0.1/Cadus-Setup-1.0.1-x64.exe",
+      "size": 110937423,
+      "sha256": "38d41ff4fd49d806122051d96ed22a8d9fc28dc8b67484ea07af4b44fa08cf9c"
     },
     {
       "id": "win-arm64",
       "os": "windows",
       "arch": "arm64",
       "kind": "Installer (.exe)",
-      "file": "Cadus-Setup-1.0.0-arm64.exe",
-      "url": "https://downloads.aethex.in/cadus/1.0.0/Cadus-Setup-1.0.0-arm64.exe",
-      "size": 105582915,
-      "sha256": "6467657719a8d003ee8dfdde102bde05b7a17c34e0de502137a69fbd03e49890"
+      "file": "Cadus-Setup-1.0.1-arm64.exe",
+      "url": "https://downloads.aethex.in/cadus/1.0.1/Cadus-Setup-1.0.1-arm64.exe",
+      "size": 105583859,
+      "sha256": "f3dee2709626006dd55ad34a14dfad582980f147ad96cfef58b4a558e3f99116"
     },
     {
       "id": "linux-appimage",
       "os": "linux",
       "arch": "x64",
       "kind": "AppImage",
-      "file": "Cadus-1.0.0-x86_64.AppImage",
-      "url": "https://downloads.aethex.in/cadus/1.0.0/Cadus-1.0.0-x86_64.AppImage",
-      "size": 97325125,
-      "sha256": "dc8c77dbd6a07a46c7153dd0c47a788787bb975fc555b50e247d25e53e2aa5ac"
+      "file": "Cadus-1.0.1-x86_64.AppImage",
+      "url": "https://downloads.aethex.in/cadus/1.0.1/Cadus-1.0.1-x86_64.AppImage",
+      "size": 97325105,
+      "sha256": "013f86462766cc65c42a9951cc42df82443e61a3b6681ace663697b1f8d92f42"
     },
     {
       "id": "linux-deb",
       "os": "linux",
       "arch": "x64",
       "kind": "Debian / Ubuntu (.deb)",
-      "file": "Cadus-1.0.0-amd64.deb",
-      "url": "https://downloads.aethex.in/cadus/1.0.0/Cadus-1.0.0-amd64.deb",
-      "size": 97166620,
-      "sha256": "e33b2dca2fa18e95af4c16f0c8f510a5e0828cee0294aa88de05fedabccc88d5"
+      "file": "Cadus-1.0.1-amd64.deb",
+      "url": "https://downloads.aethex.in/cadus/1.0.1/Cadus-1.0.1-amd64.deb",
+      "size": 97167720,
+      "sha256": "0de7dbcc16482289c7e9c1b6e2f16abeb1d08de37c82bbd43c29a853dc5d9836"
     }
   ],
   "notes": [
-    "The first Cadus desktop app for Windows (x64 and ARM) and Linux.",
+    "Continue with Google now works: Google sign-in opens in your usual browser, then brings you back to Cadus signed in.",
     "Opens Cadus in its own window, with your sign-in, chats and settings kept on this computer.",
     "Checks once a day for a newer version and tells you when one is ready."
   ]

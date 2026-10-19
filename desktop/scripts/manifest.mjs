@@ -35,7 +35,7 @@ const manifest = {
   electron: pkg.devDependencies.electron,
   files,
   notes: [
-    "The first Cadus desktop app for Windows (x64 and ARM) and Linux.",
+    "Continue with Google now works: Google sign-in opens in your usual browser, then brings you back to Cadus signed in.",
     "Opens Cadus in its own window, with your sign-in, chats and settings kept on this computer.",
     "Checks once a day for a newer version and tells you when one is ready.",
   ],

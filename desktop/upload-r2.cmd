@@ -2,7 +2,7 @@
 rem Uploads the Cadus installers in desktop\release to Cloudflare R2 (bucket aethex-downloads),
 rem where https://downloads.aethex.in serves them. Run from the Aethex folder:  desktop\upload-r2.cmd
 setlocal
-set VER=1.0.0
+set VER=1.0.1
 set B=aethex-downloads/cadus/%VER%
 set R=desktop\release
 call npx wrangler r2 object put %B%/Cadus-Setup-%VER%-x64.exe --file %R%\Cadus-Setup-%VER%-x64.exe --content-type application/vnd.microsoft.portable-executable --content-disposition "attachment; filename=Cadus-Setup-%VER%-x64.exe" --remote || goto :fail

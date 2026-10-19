@@ -2,12 +2,18 @@
 //
 // The app shows the live Cadus site, so it is always up to date; sign-in,
 // chats and settings work exactly as in the browser and stay on this computer.
-// Pages outside aethex.in open in the default browser (Google sign-in stays in
-// the window, so it can return to Cadus signed in).
+// Pages outside aethex.in open in the default browser.
+//
+// Google sign-in: Google refuses to sign in inside app windows, so "Continue
+// with Google" opens in the system browser. The app sends the SHA-256 of a
+// one-time secret; when Google is done, the browser opens cadus://signed-in
+// with a one-time code, and the app trades code + secret for its own sign-in
+// (worker/auth.ts, /api/auth/desktop). A code alone is useless without the secret.
 // When there is no connection, a local page explains and retries.
 const { app, BrowserWindow, Menu, shell, session, dialog, nativeTheme, net } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs");
+const crypto = require("node:crypto");
 
 const START_URL = "https://cadus.aethex.in/";
 const DOWNLOADS_URL = "https://aethex.in/downloads";
@@ -16,11 +22,49 @@ const PARTITION = "persist:cadus";
 
 /** Addresses the window may show; everything else opens in the browser. */
 const IN_APP = /^https:\/\/(?:(?:cadus|auth|login)\.)?aethex\.in(?:[/?#]|$)/;
-/** Google's sign-in pages, shown in the window so the sign-in comes back to Cadus. */
-const GOOGLE_SIGN_IN = /^https:\/\/accounts\.google\.com\//;
+/** The Worker's Google sign-in start, on any aethex.in address. */
+const GOOGLE_START = /^https:\/\/(?:(?:cadus|auth|login|www)\.)?aethex\.in\/api\/auth\/google(?:[?#]|$)/;
+const PROTOCOL = "cadus";
 
 app.setAppUserModelId("in.aethex.cadus");
 if (!app.requestSingleInstanceLock()) { app.quit(); }
+// cadus:// links open this app (Windows and Linux register it here; macOS from Info.plist).
+if (process.defaultApp && process.argv.length >= 2) app.setAsDefaultProtocolClient(PROTOCOL, process.execPath, [path.resolve(process.argv[1])]);
+else app.setAsDefaultProtocolClient(PROTOCOL);
+
+/** The Google sign-in waiting to come back from the browser: its secret and where it started. */
+let pendingGoogle = null; // { verifier, origin, at }
+
+function startGoogleInBrowser(rawUrl) {
+  const u = new URL(rawUrl);
+  const verifier = crypto.randomBytes(32).toString("base64url");
+  const challenge = crypto.createHash("sha256").update(verifier).digest("base64url");
+  pendingGoogle = { verifier, origin: u.origin, at: Date.now() };
+  u.searchParams.set("desktop", challenge);
+  shell.openExternal(u.toString());
+  if (win && !win.isDestroyed()) win.loadFile(path.join(__dirname, "google-wait.html"), { query: { back: win.webContents.getURL() || START_URL } });
+}
+
+/** cadus://signed-in?code=… from the browser: finish the sign-in in the app window. */
+function handleAppLink(link) {
+  let u;
+  try { u = new URL(link); } catch { return; }
+  if (u.protocol !== `${PROTOCOL}:`) return;
+  const code = u.searchParams.get("code") || "";
+  const p = pendingGoogle;
+  if (u.hostname !== "signed-in" || !/^[A-Za-z0-9_-]{43}$/.test(code) || !p || Date.now() - p.at > 15 * 60_000) return;
+  pendingGoogle = null;
+  const finish = new URL("/api/auth/desktop", p.origin);
+  finish.searchParams.set("code", code);
+  finish.searchParams.set("verifier", p.verifier);
+  if (!win || win.isDestroyed()) createWindow();
+  win.loadURL(finish.toString());
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
+}
+const linkIn = (argv) => argv.find((a) => typeof a === "string" && a.startsWith(`${PROTOCOL}://`));
+app.on("open-url", (e, link) => { e.preventDefault(); app.whenReady().then(() => handleAppLink(link)); });
 
 let win = null;
 const statePath = () => path.join(app.getPath("userData"), "window-state.json");
@@ -80,18 +124,20 @@ function createWindow() {
 
   // New windows (target=_blank, window.open): aethex.in stays in the app, the rest goes to the browser.
   wc.setWindowOpenHandler(({ url }) => {
+    if (GOOGLE_START.test(url)) { startGoogleInBrowser(url); return { action: "deny" }; }
     if (IN_APP.test(url)) { wc.loadURL(url); return { action: "deny" }; }
     openExternally(url);
     return { action: "deny" };
   });
-  // Navigation in the window: only aethex.in and Google sign-in.
+  // Navigation in the window: only aethex.in. Google sign-in goes to the system browser.
   wc.on("will-navigate", (e, url) => {
-    if (IN_APP.test(url) || GOOGLE_SIGN_IN.test(url) || url.startsWith("file://")) return;
+    if (GOOGLE_START.test(url)) { e.preventDefault(); startGoogleInBrowser(url); return; }
+    if (IN_APP.test(url) || url.startsWith("file://")) return;
     e.preventDefault();
     openExternally(url);
   });
   wc.on("will-redirect", (e, url) => {
-    if (IN_APP.test(url) || GOOGLE_SIGN_IN.test(url) || /^https:\/\/(?:[a-z0-9.-]+\.google\.com|accounts\.youtube\.com)\//.test(url)) return;
+    if (IN_APP.test(url)) return;
     e.preventDefault();
     openExternally(url);
   });
@@ -192,7 +238,11 @@ async function checkForUpdate(manual = false) {
   }
 }
 
-app.on("second-instance", () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
+app.on("second-instance", (_e, argv) => {
+  const link = linkIn(argv);
+  if (link) { handleAppLink(link); return; }
+  if (win) { if (win.isMinimized()) win.restore(); win.focus(); }
+});
 app.on("web-contents-created", (_e, contents) => {
   // No <webview> tags and no other windows, whatever a page asks for.
   contents.on("will-attach-webview", (e) => e.preventDefault());
@@ -201,6 +251,8 @@ app.whenReady().then(() => {
   secureSession();
   buildMenu();
   createWindow();
+  const first = linkIn(process.argv);
+  if (first) handleAppLink(first);
   setTimeout(() => checkForUpdate(false), 15_000);
   app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
