@@ -105,7 +105,7 @@ export function Logo() {
   return (
     <Link href="/" className="ax-logo" aria-label="Aethex home">
       <img className="ax-logo-mark" src={`${import.meta.env.BASE_URL}aethex-mark.png`} alt="" width={36} height={36} />
-      <span className="ax-logo-word">AETHEX</span>
+      <span className="ax-logo-word"><span className="sh">AETHEX</span></span>
     </Link>
   );
 }

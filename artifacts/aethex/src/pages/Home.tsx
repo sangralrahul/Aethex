@@ -235,7 +235,7 @@ export default function Home() {
         </div>
         <div className="ax-wrap">
           <ul className="ax-h-serv">
-            <li><BadgeCheck size={22} /><span><b>Genuine products</b><small>Sourced from brands and authorised sellers</small></span></li>
+            <li><BadgeCheck size={22} /><span><b>Genuine products</b><small>From brands and authorised sellers</small></span></li>
             <li><Truck size={22} /><span><b>Delivery across India</b><small>Track every order to your door</small></span></li>
             <li><RotateCcw size={22} /><span><b>Easy returns</b><small>Simple returns on eligible items</small></span></li>
             <li><CreditCard size={22} /><span><b>Secure checkout</b><small>UPI, cards and net banking</small></span></li>
