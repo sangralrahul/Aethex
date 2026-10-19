@@ -20,5 +20,13 @@
   "d1_databases": [{ "binding": "DB", "database_name": "aethex", "database_id": "PASTE-THE-D1-DATABASE-ID-HERE", "migrations_dir": "migrations" }],
   // Store cart reminders and clean-up, every hour.
   "triggers": { "crons": ["17 * * * *"] },
+  // The site and its subdomains. Custom domains get their DNS records and
+  // certificates from Cloudflare automatically on deploy.
+  "routes": [
+    { "pattern": "aethex.in/*", "zone_name": "aethex.in" },
+    { "pattern": "cadus.aethex.in", "custom_domain": true },
+    { "pattern": "auth.aethex.in", "custom_domain": true },
+    { "pattern": "login.aethex.in", "custom_domain": true }
+  ],
   "observability": { "enabled": true }
 }
