@@ -16,7 +16,7 @@ function face(family: string, file: string, style: "normal" | "italic", weight: 
   return `@font-face{font-family:"${family}";font-style:${style};font-weight:${weight};font-display:swap;src:url(${url}) format("woff2-variations"),url(${url}) format("woff2");unicode-range:${range}}`;
 }
 
-const FONT_FACES = [
+export const FONT_FACES = [
   face("Cadus UI", "plus-jakarta-sans-latin-wght-normal", "normal", "200 800", LATIN),
   face("Cadus UI", "plus-jakarta-sans-latin-ext-wght-normal", "normal", "200 800", LATIN_EXT),
   face("Cadus UI", "plus-jakarta-sans-latin-wght-italic", "italic", "200 800", LATIN),
