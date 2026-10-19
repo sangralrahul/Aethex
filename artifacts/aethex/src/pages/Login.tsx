@@ -1,27 +1,21 @@
+/**
+ * Sign in (login.aethex.in): Google, email and password, or a code sent by email.
+ * The frame and styles are in components/auth/AuthShell.tsx.
+ */
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
-import { Eye, EyeOff, RefreshCw, ShieldCheck, Sparkles, GraduationCap, ShoppingBag, BrainCircuit, CheckCircle2 } from "lucide-react";
+import { Check, Eye, EyeOff, Mail, RefreshCw } from "lucide-react";
 import { useUserAuth } from "@/hooks/use-user-auth";
-import { isLoginHost, mainUrl, loginUrl } from "@/lib/host";
+import { isLoginHost, loginUrl } from "@/lib/host";
 import { authErrorMessage, googleSignInHref, sendEmailCode, signedInDestination, verifyEmailCode } from "@/lib/account";
-
-
-const LOGO = `${import.meta.env.BASE_URL}aethex-logo.jpg`;
+import { AuthShell, GoogleIcon, Spinner } from "@/components/auth/AuthShell";
 
 type EmailMode = "password" | "otp-email" | "otp-verify";
-
-const features = [
-  { icon: BrainCircuit, label: "Cadus AI", desc: "AI clinical assistant, 20 queries/day free" },
-  { icon: ShoppingBag, label: "Medical Store", desc: "1,000+ genuine products, fast delivery" },
-  { icon: GraduationCap, label: "Study Hub", desc: "NEET PG, NEXT, FMGE & USMLE prep" },
-  { icon: ShieldCheck, label: "GST Invoices", desc: "Tax invoices included with every order" },
-];
 
 export default function Login() {
   const [, setLocation] = useLocation();
   const { login, isLoggedIn } = useUserAuth();
 
-  // Email states
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -30,9 +24,9 @@ export default function Login() {
   const [otpCode, setOtpCode] = useState("");
   const [otpTimer, setOtpTimer] = useState(0);
 
-  // Common states
   const [error, setError] = useState(authErrorMessage);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
   // From login.aethex.in back to aethex.in; elsewhere, this site's home.
@@ -49,17 +43,16 @@ export default function Login() {
 
   // Google sign-in runs through the Worker and comes straight back signed in.
   const handleGoogle = () => {
-    setLoading(true);
+    setGoogleLoading(true);
     window.location.href = googleSignInHref(signedInDestination() ?? `${window.location.origin}/`);
   };
 
   useEffect(() => {
     if (otpTimer <= 0) return;
-    const id = setInterval(() => setOtpTimer(t => (t <= 1 ? (clearInterval(id), 0) : t - 1)), 1000);
+    const id = setInterval(() => setOtpTimer((t) => (t <= 1 ? (clearInterval(id), 0) : t - 1)), 1000);
     return () => clearInterval(id);
   }, [otpTimer]);
 
-  // ── Email handlers ────────────────────────────────────────────────────────
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault(); setError(""); setLoading(true);
     try {
@@ -68,7 +61,6 @@ export default function Login() {
       goHome();
     } finally { setLoading(false); }
   };
-
 
   const handleSendEmailOtp = async (e?: React.FormEvent) => {
     e?.preventDefault(); setError(""); setLoading(true);
@@ -89,218 +81,102 @@ export default function Login() {
     } finally { setLoading(false); }
   };
 
+  const toCode = () => { setEmailMode("otp-email"); setOtpEmail(email); setError(""); };
+  const signupLink = isLoginHost()
+    ? <Link href="/signup">Create an account</Link>
+    : <a href={loginUrl("/signup")}>Create an account</a>;
+
+  if (success) {
+    return (
+      <AuthShell>
+        <div className="au-done" role="status">
+          <span className="ok"><Check size={28} /></span>
+          <b>You're signed in</b>
+          <span>Taking you back to Aethex…</span>
+        </div>
+      </AuthShell>
+    );
+  }
+
   return (
-    <div style={{ minHeight: "100vh", display: "flex", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", background: "#F2F2F7" }}>
-
-      {/* ── Left panel ── */}
-      <div className="auth-left-panel" style={{
-        width: "45%", minHeight: "100vh", position: "relative", overflow: "hidden",
-        display: "flex", flexDirection: "column", padding: "36px 44px",
-        background: "linear-gradient(145deg, #EBF4FF 0%, #F0F8FF 40%, #E8F5F3 100%)",
-        borderRight: "1px solid rgba(60,60,67,0.1)",
-      }}>
-        <div style={{ position: "absolute", top: "5%", right: "-10%", width: 320, height: 320, borderRadius: "50%", background: "rgba(0,122,255,0.08)", filter: "blur(90px)", pointerEvents: "none" }} />
-        <div style={{ position: "absolute", bottom: "10%", left: "-5%", width: 250, height: 250, borderRadius: "50%", background: "rgba(0,194,168,0.07)", filter: "blur(80px)", pointerEvents: "none" }} />
-
-        <a href={mainUrl("/")} style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", position: "relative", zIndex: 1 }}>
-          <img src={LOGO} alt="aethex" style={{ width: 40, height: 40, borderRadius: 10, objectFit: "contain", background: "#FFFFFF" }} />
-          <span style={{ color: "#1C1C1E", fontWeight: 700, fontSize: 20, letterSpacing: "-0.03em" }}>aethex</span>
-        </a>
-
-
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", position: "relative", zIndex: 1 }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 99, background: "rgba(0,194,168,0.1)", border: "1px solid rgba(0,194,168,0.25)", marginBottom: 20, width: "fit-content" }}>
-            <Sparkles style={{ width: 12, height: 12, color: "#00A893" }} />
-            <span style={{ fontSize: 11, fontWeight: 600, color: "#00A893", letterSpacing: "0.02em" }}>India's #1 Medical Platform</span>
+    <AuthShell>
+      {emailMode === "otp-verify" ? (
+        <>
+          <h2 className="au-title">Check your email</h2>
+          <p className="au-sub">Enter the 6-digit code we sent to <b>{otpEmail}</b>.</p>
+          <div className="au-body">
+            <form className="au-form" onSubmit={handleVerifyEmailOtp}>
+              <div className="au-field">
+                <label htmlFor="au-code">Sign-in code</label>
+                <input id="au-code" className="au-input code" type="text" inputMode="numeric" pattern="\d{6}" maxLength={6} autoComplete="one-time-code" autoFocus
+                  value={otpCode} onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))} required placeholder="000000" />
+              </div>
+              {error && <div className="au-err" role="alert">{error}</div>}
+              <button type="submit" className="au-btn primary" disabled={loading || otpCode.length !== 6}>{loading ? <><Spinner />Verifying…</> : "Verify and sign in"}</button>
+              <div className="au-row">
+                <button type="button" className="au-link muted" onClick={() => { setEmailMode("otp-email"); setOtpCode(""); setError(""); }}>Use a different email</button>
+                <button type="button" className="au-link" disabled={otpTimer > 0 || loading} onClick={() => { if (otpTimer <= 0) void handleSendEmailOtp(); }}>
+                  <RefreshCw size={13} style={{ verticalAlign: "-2px", marginRight: 4 }} />{otpTimer > 0 ? `Resend in ${otpTimer}s` : "Resend code"}
+                </button>
+              </div>
+            </form>
           </div>
-          <h1 style={{ fontSize: 36, fontWeight: 800, lineHeight: 1.15, color: "#1C1C1E", margin: "0 0 16px", letterSpacing: "-0.02em" }}>
-            Study, Diagnose,<br />and Source —{" "}
-            <span style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>All in One.</span>
-          </h1>
-          <p style={{ fontSize: 13, color: "#636366", lineHeight: 1.7, maxWidth: 340, margin: "0 0 36px" }}>
-            AI-powered clinical tools, exam prep, and medical supplies — built for Indian medical students and doctors.
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {features.map(({ icon: Icon, label, desc }) => (
-              <div key={label} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 16px", borderRadius: 14, background: "rgba(255,255,255,0.7)", border: "1px solid rgba(60,60,67,0.1)" }}>
-                <div style={{ width: 34, height: 34, borderRadius: 9, background: "rgba(0,122,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <Icon style={{ width: 16, height: 16, color: "#007AFF" }} />
+        </>
+      ) : emailMode === "otp-email" ? (
+        <>
+          <h2 className="au-title">Sign in with a code</h2>
+          <p className="au-sub">We'll email you a 6-digit code. No password needed.</p>
+          <div className="au-body">
+            <form className="au-form" onSubmit={handleSendEmailOtp}>
+              <div className="au-field">
+                <label htmlFor="au-otp-email">Email</label>
+                <input id="au-otp-email" className="au-input" type="email" value={otpEmail} onChange={(e) => setOtpEmail(e.target.value)} required autoFocus
+                  placeholder="you@example.com" autoComplete="email" />
+              </div>
+              {error && <div className="au-err" role="alert">{error}</div>}
+              <button type="submit" className="au-btn primary" disabled={loading}>{loading ? <><Spinner />Sending…</> : "Email me a code"}</button>
+              <button type="button" className="au-link muted" style={{ alignSelf: "center" }} onClick={() => { setEmailMode("password"); setError(""); }}>Sign in with a password instead</button>
+            </form>
+          </div>
+        </>
+      ) : (
+        <>
+          <h2 className="au-title">Sign in to Aethex</h2>
+          <p className="au-sub">Welcome back. One account for the store, the Study Hub and Cadus AI.</p>
+          <div className="au-body">
+            <button type="button" className="au-btn google" onClick={handleGoogle} disabled={googleLoading || loading}>
+              {googleLoading ? <Spinner /> : <GoogleIcon />} Continue with Google
+            </button>
+            <div className="au-or">or sign in with email</div>
+            <form className="au-form" onSubmit={handlePasswordLogin}>
+              <div className="au-field">
+                <label htmlFor="au-email">Email</label>
+                <input id="au-email" className="au-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
+                  placeholder="you@example.com" autoComplete="username" />
+              </div>
+              <div className="au-field">
+                <div className="au-label-row">
+                  <label htmlFor="au-password">Password</label>
+                  <button type="button" className="au-link" onClick={toCode}>Forgot password?</button>
                 </div>
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#1C1C1E" }}>{label}</div>
-                  <div style={{ fontSize: 11, color: "#636366", marginTop: 1 }}>{desc}</div>
+                <div className="au-pw">
+                  <input id="au-password" className="au-input" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} required
+                    placeholder="Your password" autoComplete="current-password" />
+                  <button type="button" className="au-eye" onClick={() => setShowPassword((s) => !s)} aria-label={showPassword ? "Hide password" : "Show password"}>
+                    {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                  </button>
                 </div>
               </div>
-            ))}
+              {error && <div className="au-err" role="alert">{error}</div>}
+              <button type="submit" className="au-btn primary" disabled={loading}>{loading ? <><Spinner />Signing in…</> : "Sign in"}</button>
+              <button type="button" className="au-link muted" style={{ alignSelf: "center", display: "inline-flex", alignItems: "center", gap: 6 }} onClick={toCode}>
+                <Mail size={15} /> Email me a sign-in code instead
+              </button>
+            </form>
+            <p className="au-switch">New to Aethex? {signupLink}</p>
           </div>
-        </div>
-        <p style={{ fontSize: 10, color: "#AEAEB2", textAlign: "center", position: "relative", zIndex: 1 }}>Free to start · No credit card required</p>
-      </div>
-
-      {/* ── Right panel ── */}
-      <div className="auth-right-panel" style={{
-        width: "55%", minHeight: "100vh", background: "#F2F2F7",
-        display: "flex", alignItems: "center", justifyContent: "center", padding: "32px 24px",
-      }}>
-        <div style={{ width: "100%", maxWidth: 380 }}>
-          <div className="auth-mobile-logo" style={{ display: "none", alignItems: "center", gap: 10, marginBottom: 28, justifyContent: "center" }}>
-            <img src={LOGO} alt="aethex" style={{ width: 36, height: 36, borderRadius: 8, objectFit: "contain" }} />
-            <span style={{ fontWeight: 700, fontSize: 18, color: "#1C1C1E" }}>aethex</span>
-          </div>
-
-          <div style={{ background: "#FFFFFF", borderRadius: 20, padding: "32px", boxShadow: "0 4px 24px rgba(0,0,0,0.07)", border: "1px solid rgba(60,60,67,0.1)" }}>
-
-            {success ? (
-              <div style={{ textAlign: "center", padding: "32px 0" }}>
-                <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(52,199,89,0.12)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
-                  <CheckCircle2 style={{ width: 30, height: 30, color: "#34C759" }} />
-                </div>
-                <p style={{ color: "#1C1C1E", fontWeight: 700, fontSize: 18 }}>Verified!</p>
-                <p style={{ color: "#AEAEB2", fontSize: 13, marginTop: 6 }}>Signing you in…</p>
-              </div>
-            ) : (
-              <>
-                <h2 style={headingStyle}>Welcome back</h2>
-                <p style={subStyle}>Sign in to your aethex account</p>
-
-                {/* ── Email tab ── */}
-                {(
-                  <>
-                    {emailMode === "otp-verify" ? (
-                      <>
-                        <p style={{ fontSize: 13, color: "#636366", marginBottom: 20 }}>
-                          Enter the 6-digit code sent to <strong style={{ color: "#1C1C1E" }}>{otpEmail}</strong>
-                        </p>
-                        <form onSubmit={handleVerifyEmailOtp} style={formStyle}>
-                          <div>
-                            <label style={labelStyle}>OTP CODE</label>
-                            <input type="text" inputMode="numeric" pattern="\d{6}" maxLength={6}
-                              value={otpCode} onChange={e => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                              required placeholder="• • • • • •"
-                              style={{ ...inputStyle, textAlign: "center", fontSize: 24, letterSpacing: "0.6em", fontFamily: "monospace" }}
-                              onFocus={e => { e.target.style.borderColor = "#007AFF"; e.target.style.boxShadow = "0 0 0 3px rgba(0,122,255,0.14)"; }}
-                              onBlur={e => { e.target.style.borderColor = "rgba(60,60,67,0.2)"; e.target.style.boxShadow = "none"; }} />
-                          </div>
-                          {error && <div style={errorStyle}>{error}</div>}
-                          <button type="submit" disabled={loading || otpCode.length !== 6} style={{ ...primaryBtnStyle, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            {loading ? <><BtnSpinner />Verifying…</> : "Verify & Sign In"}
-                          </button>
-                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-                            <button type="button" onClick={() => { setEmailMode("otp-email"); setOtpCode(""); setError(""); }}
-                              style={{ background: "none", border: "none", color: "#636366", cursor: "pointer" }}>← Change email</button>
-                            <button type="button" disabled={otpTimer > 0 || loading}
-                              onClick={() => { if (otpTimer <= 0) void handleSendEmailOtp(); }}
-                              style={{ background: "none", border: "none", color: otpTimer > 0 ? "#AEAEB2" : "#007AFF", cursor: otpTimer > 0 ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-                              <RefreshCw style={{ width: 11, height: 11 }} />
-                              {otpTimer > 0 ? `Resend in ${otpTimer}s` : "Resend OTP"}
-                            </button>
-                          </div>
-                        </form>
-                      </>
-                    ) : emailMode === "otp-email" ? (
-                      <>
-                        <p style={{ fontSize: 13, color: "#636366", marginBottom: 20 }}>We'll send a 6-digit code to your email</p>
-                        <form onSubmit={handleSendEmailOtp} style={formStyle}>
-                          <div>
-                            <label style={labelStyle}>EMAIL</label>
-                            <input type="email" value={otpEmail} onChange={e => setOtpEmail(e.target.value)} required
-                              placeholder="doctor@hospital.in" style={inputStyle}
-                              onFocus={e => { e.target.style.borderColor = "#007AFF"; e.target.style.boxShadow = "0 0 0 3px rgba(0,122,255,0.14)"; }}
-                              onBlur={e => { e.target.style.borderColor = "rgba(60,60,67,0.2)"; e.target.style.boxShadow = "none"; }} />
-                          </div>
-                          {error && <div style={errorStyle}>{error}</div>}
-                          <button type="submit" disabled={loading} style={{ ...primaryBtnStyle, display: "flex", alignItems: "center", justifyContent: "center" }}>{loading ? <><BtnSpinner />Sending…</> : "Send OTP"}</button>
-                          <button type="button" onClick={() => { setEmailMode("password"); setError(""); }}
-                            style={{ background: "none", border: "none", color: "#636366", cursor: "pointer", fontSize: 13, textAlign: "center" as const }}>
-                            ← Back to password login
-                          </button>
-                        </form>
-                      </>
-                    ) : (
-                      <form onSubmit={handlePasswordLogin} style={formStyle}>
-                        <div>
-                          <label style={labelStyle}>EMAIL</label>
-                          <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
-                            placeholder="doctor@hospital.in" autoComplete="username" style={inputStyle}
-                            onFocus={e => { e.target.style.borderColor = "#007AFF"; e.target.style.boxShadow = "0 0 0 3px rgba(0,122,255,0.14)"; }}
-                            onBlur={e => { e.target.style.borderColor = "rgba(60,60,67,0.2)"; e.target.style.boxShadow = "none"; }} />
-                        </div>
-                        <div>
-                          <label style={labelStyle}>PASSWORD</label>
-                          <div style={{ position: "relative" }}>
-                            <input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} required
-                              placeholder="••••••••" autoComplete="current-password" style={{ ...inputStyle, paddingRight: 44 }}
-                              onFocus={e => { e.target.style.borderColor = "#007AFF"; e.target.style.boxShadow = "0 0 0 3px rgba(0,122,255,0.14)"; }}
-                              onBlur={e => { e.target.style.borderColor = "rgba(60,60,67,0.2)"; e.target.style.boxShadow = "none"; }} />
-                            <button type="button" onClick={() => setShowPassword(s => !s)}
-                              style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#AEAEB2", cursor: "pointer", display: "flex", padding: 0 }}>
-                              {showPassword ? <EyeOff style={{ width: 15, height: 15 }} /> : <Eye style={{ width: 15, height: 15 }} />}
-                            </button>
-                          </div>
-                          <div style={{ textAlign: "right", marginTop: 7 }}>
-                            <button type="button" onClick={() => { setEmailMode("otp-email"); setOtpEmail(email); setError(""); }} style={{ background: "none", border: "none", color: "#007AFF", fontSize: 12, cursor: "pointer", padding: 0 }}>Forgot password? Sign in with an email code</button>
-                          </div>
-                        </div>
-                        {error && <div style={errorStyle}>{error}</div>}
-                        <button type="submit" disabled={loading} style={{ ...primaryBtnStyle, display: "flex", alignItems: "center", justifyContent: "center" }}>{loading ? <><BtnSpinner />Signing in…</> : "Sign In to aethex"}</button>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                          <div style={{ flex: 1, height: 1, background: "rgba(60,60,67,0.12)" }} />
-                          <span style={{ fontSize: 11, color: "#AEAEB2" }}>or</span>
-                          <div style={{ flex: 1, height: 1, background: "rgba(60,60,67,0.12)" }} />
-                        </div>
-                        <button type="button" onClick={() => { setEmailMode("otp-email"); setOtpEmail(email); setError(""); }} style={ghostBtnStyle}>
-                          <ShieldCheck style={{ width: 15, height: 15, color: "#007AFF" }} />
-                          <span>Email OTP (Passwordless)</span>
-                        </button>
-                        <button type="button" onClick={handleGoogle} disabled={loading} style={ghostBtnStyle}>
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                          </svg>
-                          <span>Continue with Google</span>
-                        </button>
-                      </form>
-                    )}
-                  </>
-                )}
-
-                <p style={{ fontSize: 12, color: "#AEAEB2", textAlign: "center", margin: "20px 0 0" }}>
-                  No account?{" "}
-                  {isLoginHost() ? (
-                    <Link href="/signup" style={{ color: "#007AFF", textDecoration: "none", fontWeight: 600 }}>Create one free</Link>
-                  ) : (
-                    <a href={loginUrl("/signup")} style={{ color: "#007AFF", textDecoration: "none", fontWeight: 600 }}>Create one free</a>
-                  )}
-                </p>
-
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <style>{`
-        @media (max-width: 700px) {
-          .auth-left-panel { display: none !important; }
-          .auth-right-panel { width: 100% !important; min-height: 100vh; }
-          .auth-mobile-logo { display: flex !important; }
-        }
-      `}</style>
-    </div>
+        </>
+      )}
+    </AuthShell>
   );
 }
-
-function BtnSpinner() {
-  return <span style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.35)", borderTopColor: "#fff", display: "inline-block", animation: "spin 0.65s linear infinite", verticalAlign: "middle", marginRight: 7 }} />;
-}
-
-const headingStyle: React.CSSProperties = { fontSize: 22, fontWeight: 700, color: "#1C1C1E", margin: "0 0 5px", letterSpacing: "-0.02em" };
-const subStyle: React.CSSProperties = { fontSize: 13, color: "#636366", margin: "0 0 20px" };
-const formStyle: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 16 };
-const labelStyle: React.CSSProperties = { display: "block", fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#AEAEB2", marginBottom: 7 };
-const inputStyle: React.CSSProperties = { width: "100%", background: "#F2F2F7", border: "1.5px solid rgba(60,60,67,0.2)", borderRadius: 12, padding: "13px 15px", color: "#1C1C1E", fontSize: 14, outline: "none", transition: "border-color 0.18s ease, box-shadow 0.18s ease", boxSizing: "border-box" };
-const primaryBtnStyle: React.CSSProperties = { width: "100%", background: "linear-gradient(135deg,#007AFF,#00C2A8)", color: "#FFFFFF", border: "none", borderRadius: 12, padding: "14px 0", fontSize: 14, fontWeight: 700, cursor: "pointer", transition: "opacity 0.18s ease", letterSpacing: "-0.01em" };
-const ghostBtnStyle: React.CSSProperties = { width: "100%", background: "#FFFFFF", border: "1.5px solid rgba(60,60,67,0.15)", borderRadius: 12, padding: "13px 0", fontSize: 13, color: "#1C1C1E", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "border-color 0.18s ease", boxShadow: "0 1px 4px rgba(0,0,0,0.05)" };
-const errorStyle: React.CSSProperties = { background: "rgba(255,59,48,0.06)", border: "1px solid rgba(255,59,48,0.2)", borderRadius: 10, padding: "11px 14px", fontSize: 12, color: "#FF3B30" };
