@@ -71,6 +71,12 @@ export function loginUrl(path = "/", query?: Record<string, string>): string {
   return url.toString();
 }
 
+/** The Cadus desktop download page: downloads.aethex.in (or /downloads off the aethex.in domain). */
+export function downloadsUrl(): string {
+  if (onOtherHost()) return sameSite("/downloads");
+  return "https://downloads.aethex.in/";
+}
+
 export function cadusUrl(path = "/", query?: Record<string, string>): string {
   const suffix = path.startsWith("/") ? path : `/${path}`;
   if (onOtherHost()) return sameSite(suffix === "/" ? "/ai-assistant" : suffix, query);

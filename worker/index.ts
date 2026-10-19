@@ -55,6 +55,11 @@ export default {
       return env.ASSETS.fetch(new Request(new URL("/", url), request));
     }
 
+    // The download page lives at downloads.aethex.in. (/downloads/latest.json stays here for the desktop app.)
+    if ((url.pathname === "/downloads" || url.pathname === "/downloads/") && /^(?:www\.|cadus\.)?aethex\.in$/.test(url.hostname)) {
+      return new Response(null, { status: 301, headers: { location: "https://downloads.aethex.in/", "cache-control": "public, max-age=3600" } });
+    }
+
     if (url.pathname === "/api/health") {
       // Shows whether the keys are set (never their values), to check the setup.
       return json({ ok: true, functions: functionNames(), anthropic: !!env.ANTHROPIC_API_KEY, accounts: !!env.DB, google: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET), email: !!env.BREVO_API_KEY, downloads: !!env.DOWNLOADS });

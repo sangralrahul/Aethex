@@ -316,7 +316,7 @@ export default function Downloads() {
 
       <header className={`nav ${scrolled ? "scrolled" : ""}`}>
         <div className="wrap nav-in">
-          <a className="brand" href={openCadus}><span className="tile"><CadusMark size={17} variant="mono" color="currentColor" /></span><span className="word">CADUS</span></a>
+          <a className="brand" href={openCadus}><span className="tile"><CadusMark size={17} variant="mono" color="currentColor" /></span><span className="word"><span className="sh">Cadus</span></span></a>
           <nav>
             <a href="#product">Product</a>
             <a href="#all">Download</a>
@@ -592,7 +592,11 @@ const CSS = `
 .ax .tile{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:linear-gradient(160deg,#fff,#eef3f6);border:1px solid var(--line);color:#0f2a3a;box-shadow:0 1px 2px rgba(16,24,40,.06)}
 .ax .tile.sm{width:22px;height:22px;border-radius:6px}
 .ax .tile.lg{width:64px;height:64px;border-radius:18px}
-.ax .word{font-weight:800;font-size:20px;letter-spacing:-.02em;line-height:1}
+@font-face{font-family:"Aethex Script";font-style:normal;font-weight:400;font-display:block;src:url(/fonts/pinyon/pinyon-script-latin-400-normal.woff2) format("woff2")}
+.ax .word{display:block;font-family:"Aethex Script","Pinyon Script","Great Vibes",cursive;font-weight:400;font-size:36px;line-height:1.4;letter-spacing:.01em;animation:dlWordIn .7s cubic-bezier(.22,1,.36,1) .1s backwards}
+.ax .word .sh{display:block;padding:0 6px 0 2px;background:linear-gradient(105deg,#1a1a2e 0%,#2d2d4e 20%,#4a4a6a 38%,#8585a8 45%,#b0b0cc 50%,#8585a8 55%,#4a4a6a 62%,#2d2d4e 80%,#1a1a2e 100%);background-size:300% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:dlShine 4s linear .7s infinite}
+@keyframes dlWordIn{0%{opacity:0;transform:translateY(4px)}100%{opacity:1;transform:none}}
+@keyframes dlShine{0%{background-position:-400% center}100%{background-position:400% center}}
 .ax .nav nav{display:flex;gap:34px}
 .ax .nav nav a,.ax .nav-link{font-size:15.5px;color:#344054;transition:color .2s}
 .ax .nav nav a:hover,.ax .nav-link:hover{color:var(--ink)}

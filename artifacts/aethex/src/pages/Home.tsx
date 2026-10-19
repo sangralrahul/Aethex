@@ -17,7 +17,7 @@ import { useSession } from "@/hooks/use-session";
 import { useToast } from "@/hooks/use-toast";
 import { useAddToCart, useListProducts, type Product } from "@workspace/api-client-react";
 import { formatINR } from "@/lib/utils";
-import { cadusUrl } from "@/lib/host";
+import { cadusUrl, downloadsUrl } from "@/lib/host";
 import { getTodaysCase } from "@/data/clinicalCases";
 
 type Icon = ComponentType<LucideProps>;
@@ -271,7 +271,7 @@ export default function Home() {
               <p>Differentials, doses, drug interactions, lab reading and SOAP notes. Every answer is checked for dose and red-flag safety.</p>
               <div className="ctas">
                 <a href={cadusUrl("/")} className="ax-btn teal">Try Cadus AI free</a>
-                <Link href="/downloads" className="ax-btn ghost-l">Desktop app</Link>
+                <a href={downloadsUrl()} className="ax-btn ghost-l">Desktop app</a>
               </div>
             </div>
             <div className="card">

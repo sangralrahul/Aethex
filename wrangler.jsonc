@@ -11,7 +11,7 @@
     "directory": "./dist",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*", "/cadus/*"]
+    "run_worker_first": ["/api/*", "/cadus/*", "/downloads", "/downloads/"]
   },
   // Accounts, sessions, Cadus profiles and store carts live in Cloudflare D1.
   // One-time setup (see migrations/0001_accounts.sql):

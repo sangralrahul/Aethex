@@ -17,7 +17,7 @@ import { useUserAuth } from "@/hooks/use-user-auth";
 import { useWishlist } from "@/hooks/use-wishlist";
 import { useAbandonedCartTracker } from "@/hooks/use-abandoned-cart-tracker";
 import CadusMark from "@/components/cadus/CadusMark";
-import { cadusUrl, loginUrl } from "@/lib/host";
+import { cadusUrl, downloadsUrl, loginUrl } from "@/lib/host";
 
 type Icon = ComponentType<LucideProps>;
 type Item = { href: string; label: string; hint?: string; icon: Icon; external?: boolean };
@@ -70,7 +70,7 @@ const SECTIONS: Section[] = [
       { href: "/jobs", label: "Jobs", hint: "Medical roles in India", icon: Briefcase },
       { href: "/community", label: "Community", hint: "Discuss with peers", icon: MessageSquare },
       { href: "/institutions", label: "Colleges & hospitals", hint: "Reviews and directory", icon: Building2 },
-      { href: "/downloads", label: "Cadus for desktop", hint: "Windows and Linux", icon: Download },
+      { href: "__downloads", label: "Cadus for desktop", hint: "Windows and Linux", icon: Download, external: true },
       { href: "https://hms.aethex.in", label: "AETHEX for hospitals", hint: "Hospital management app", icon: Hospital, external: true },
       { href: "/contact", label: "Contact us", hint: "Help and support", icon: Mail },
     ],
@@ -92,7 +92,7 @@ function ItemLink({ item, onClick }: { item: Item; onClick?: () => void }) {
   const I = item.icon;
   const inner = <><span className="ic"><I size={17} /></span><span><b>{item.label}</b>{item.hint && <small>{item.hint}</small>}</span></>;
   return item.external
-    ? <a href={item.href} onClick={onClick} rel="noopener">{inner}</a>
+    ? <a href={item.href === "__downloads" ? downloadsUrl() : item.href} onClick={onClick} rel="noopener">{inner}</a>
     : <Link href={item.href} onClick={onClick}>{inner}</Link>;
 }
 
@@ -250,7 +250,7 @@ export function Navbar({ inner = false }: { inner?: boolean }) {
               <details key={s.id}>
                 <summary>{s.label} <ChevronDown size={18} className="chev" /></summary>
                 {s.items.map((it) => { const I = it.icon; return it.external
-                  ? <a key={it.href} href={it.href}><I size={18} /> {it.label}</a>
+                  ? <a key={it.href} href={it.href === "__downloads" ? downloadsUrl() : it.href}><I size={18} /> {it.label}</a>
                   : <Link key={it.href} href={it.href} onClick={() => setMobile(false)}><I size={18} /> {it.label}</Link>; })}
               </details>
             ))}

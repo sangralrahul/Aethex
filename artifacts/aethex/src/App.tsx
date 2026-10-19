@@ -3,8 +3,18 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Component, Suspense, lazy, useState, useEffect, type ComponentType, type ReactNode } from "react";
-import { isLoginHost, isCadusHost, isAuthHost, isMainHost, isDownloadsHost, loginUrl, cadusUrl } from "@/lib/host";
+import { isLoginHost, isCadusHost, isAuthHost, isMainHost, isDownloadsHost, isAethexDomain, downloadsUrl, loginUrl, cadusUrl } from "@/lib/host";
 
+
+/** The download page lives at downloads.aethex.in; aethex.in/downloads (and the
+ *  Cadus link to it) goes there. Off the aethex.in domain it renders in place. */
+function DownloadsRoute() {
+  if (typeof window !== "undefined" && isAethexDomain() && !isDownloadsHost()) {
+    window.location.replace(downloadsUrl());
+    return null;
+  }
+  return <Downloads />;
+}
 
 /**
  * Pages load on demand, so the first visit downloads only the page it opens.
@@ -263,7 +273,7 @@ function Router() {
         <Route path="/disclaimer" component={LegalDisclaimer} />
         <Route path="/about" component={LegalAbout} />
         <Route path="/plans" component={CadusPlans} />
-        <Route path="/downloads" component={Downloads} />
+        <Route path="/downloads" component={DownloadsRoute} />
         <Route path="/ai-assistant" component={CadusAI} />
         <Route path="/ai-assistant-classic">{() => <Redirect to="/" />}</Route>
         <Route path="/cadus-standalone" component={CadusAI} />
@@ -283,7 +293,7 @@ function Router() {
       <Route path="/ai-assistant/disclaimer" component={LegalDisclaimer} />
       <Route path="/ai-assistant/about" component={LegalAbout} />
       <Route path="/ai-assistant/plans" component={CadusPlans} />
-      <Route path="/downloads" component={Downloads} />
+      <Route path="/downloads" component={DownloadsRoute} />
       <Route path="/ai-assistant-classic">{() => <Redirect to="/ai-assistant" />}</Route>
       <Route path="/cadus-standalone" component={CadusAI} />
 
