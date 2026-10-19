@@ -69,7 +69,7 @@ function ScrollToTop() {
 }
 import NotFound from "@/pages/not-found";
 
-import { Navbar, BrandSwitcherBar } from "@/components/layout/Navbar";
+import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 
 const Home = lazyPage(() => import("@/pages/Home"));
@@ -313,12 +313,9 @@ function Router() {
 
           return (
 
-            <div className="flex flex-col min-h-screen" style={{ background: "#FAFAF8" }}>
-              <div className="fixed top-0 left-0 right-0 z-[60]">
-                <BrandSwitcherBar />
-                <Navbar />
-              </div>
-              <main className="flex-1 pt-[141px] relative z-[1]">
+            <div className="ax-site">
+              <Navbar />
+              <main>
                 <Suspense fallback={<PageLoading />}>
                   <Home />
                 </Suspense>
@@ -329,11 +326,12 @@ function Router() {
         }}
       </Route>
 
-      {/* All inner pages — NO Navbar, NO fixed header */}
+      {/* All inner pages: the site header (sticky) and footer */}
       <Route>
         {() => (
-          <div className="flex flex-col min-h-screen" style={{ background: "#F2F2F7" }}>
-            <main className="flex-1 relative z-[1]" style={{ background: "#F2F2F7" }}>
+          <div className="ax-site ax-inner">
+            <Navbar inner />
+            <main className="relative z-[1]">
               <Suspense fallback={<PageLoading />}>
               <Switch>
 

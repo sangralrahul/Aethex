@@ -1,141 +1,91 @@
+/** The aethex.in footer. Styles: src/site.css (ax-foot). */
 import { Link, useLocation } from "wouter";
-import { Heart, ShieldCheck, Truck, Twitter, Linkedin, Send, CheckCircle2 } from "lucide-react";
-import { useState } from "react";
+import { ArrowRight, Download, Hospital } from "lucide-react";
 import { cadusUrl } from "@/lib/host";
+import { Logo } from "./Navbar";
 
-const apiBase = () => import.meta.env.BASE_URL.replace(/\/$/, "");
-
-
-function FooterNewsletter() {
-  const [email, setEmail] = useState("");
-  const [done, setDone] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
-    setLoading(true);
-    try {
-      await fetch(`${apiBase()}/api/newsletter/subscribe`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, source: "footer" }),
-      });
-      setDone(true);
-    } catch {} finally { setLoading(false); }
-  };
-
-  if (done) return (
-    <div className="flex items-center gap-2 text-emerald-400 font-semibold"><CheckCircle2 className="w-5 h-5" /> You're subscribed! Weekly updates incoming.</div>
-  );
-
-  return (
-    <form className="flex w-full md:w-auto gap-2" onSubmit={handleSubmit}>
-      <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Enter your email" required
-        className="rounded-xl px-4 py-3 flex-1 md:w-64 focus:outline-none"
-        style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.9)" }} />
-      <button type="submit" disabled={loading}
-        className="px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all disabled:opacity-60"
-        style={{ background: "#007AFF", color: "#FFFFFF" }}>
-        {loading ? "..." : <><Send className="w-4 h-4" /> Subscribe</>}
-      </button>
-    </form>
-  );
-}
+const COLS: { title: string; links: { href: string; label: string; external?: boolean }[] }[] = [
+  {
+    title: "Shop",
+    links: [
+      { href: "/shop", label: "All products" },
+      { href: "/category/stethoscopes", label: "Stethoscopes" },
+      { href: "/category/scrubs", label: "Scrubs & uniforms" },
+      { href: "/books", label: "Medical books" },
+      { href: "/category/equipment", label: "Medical equipment" },
+      { href: "/orders/track", label: "Track an order" },
+    ],
+  },
+  {
+    title: "Study",
+    links: [
+      { href: "/study-hub", label: "Study Hub" },
+      { href: "/neet-pg", label: "NEET-PG" },
+      { href: "/study-hub/medical-knowledge-hub", label: "Medical Knowledge Hub" },
+      { href: "/mock-test", label: "Mock tests" },
+      { href: "/flashcards", label: "Flashcards" },
+      { href: "/cme-hub", label: "CME Hub" },
+    ],
+  },
+  {
+    title: "Clinical",
+    links: [
+      { href: "/__cadus", label: "Cadus AI" },
+      { href: "/drug-reference", label: "Drug reference" },
+      { href: "/drug-interaction-checker", label: "Drug interactions" },
+      { href: "/calculator", label: "Medical calculators" },
+      { href: "/tools", label: "All clinical tools" },
+      { href: "/case-of-the-day", label: "Case of the day" },
+    ],
+  },
+  {
+    title: "Company",
+    links: [
+      { href: "/contact", label: "Contact us" },
+      { href: "/blog", label: "Blog" },
+      { href: "/news", label: "Medical news" },
+      { href: "/jobs", label: "Jobs" },
+      { href: "/community", label: "Community" },
+      { href: "/institutions", label: "Colleges & hospitals" },
+    ],
+  },
+];
 
 export function Footer() {
   const [location] = useLocation();
   if (location === "/ai-assistant") return null;
   return (
-    <footer style={{ background: "#06060C", borderTop: "1px solid rgba(255,255,255,0.05)" }} className="pt-20 pb-10">
-      <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12">
-
-        {/* Top row — wordmark + tagline */}
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-8 mb-16 pb-16" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-          <div>
-            <Link href="/" className="flex items-center gap-3 mb-4">
-              <img src={`${import.meta.env.BASE_URL}aethex-logo.jpg`} alt="AETHEX" className="w-8 h-8 rounded object-contain" style={{ filter: "brightness(1.1)" }} />
-              <span style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 600, fontSize: 22, letterSpacing: "0.1em", color: "#EEEEF8" }}>AETHEX</span>
-            </Link>
-            <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 13, color: "rgba(255,255,255,0.25)", maxWidth: 320, lineHeight: 1.7 }}>
-              Medicine Made Effortless. India's platform for medical professionals — supplies, AI tools, and study resources.
-            </p>
+    <footer className="ax-foot no-print">
+      <div className="ax-wrap">
+        <div className="ax-foot-top">
+          <div className="ax-foot-brand">
+            <Logo />
+            <p>One platform for India's doctors and medical students: Cadus AI, study tools and genuine medical supplies, with one account.</p>
+            <div className="ax-foot-apps">
+              <Link href="/downloads"><Download size={16} /> Cadus for Windows and Linux</Link>
+              <a href="https://hms.aethex.in" rel="noopener"><Hospital size={16} /> AETHEX for hospitals</a>
+              <a href={cadusUrl("/")}>Open Cadus AI <ArrowRight size={15} /></a>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
-            <a href="#" className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:opacity-70" style={{ border: "1px solid rgba(255,255,255,0.1)" }}>
-              <Twitter className="w-4 h-4" style={{ color: "rgba(255,255,255,0.4)" }} />
-            </a>
-            <a href="#" className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:opacity-70" style={{ border: "1px solid rgba(255,255,255,0.1)" }}>
-              <Linkedin className="w-4 h-4" style={{ color: "rgba(255,255,255,0.4)" }} />
-            </a>
-          </div>
+          {COLS.map((c) => (
+            <div key={c.title}>
+              <h4>{c.title}</h4>
+              <ul>
+                {c.links.map((l) => (
+                  <li key={l.href}>{l.href === "/__cadus" ? <a href={cadusUrl("/")}>{l.label}</a> : <Link href={l.href}>{l.label}</Link>}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
-
-        {/* Nav links grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-16">
-          <div>
-            <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 10, letterSpacing: "0.2em", color: "rgba(255,255,255,0.3)", fontWeight: 600, textTransform: "uppercase", marginBottom: 16 }}>Shop</p>
-            <ul className="space-y-3" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 13, color: "rgba(255,255,255,0.35)" }}>
-              {[
-                { href: "/shop?category=stethoscopes", label: "Stethoscopes" },
-                { href: "/shop?category=scrubs-clothing", label: "Scrubs & Aprons" },
-                { href: "/shop?category=books", label: "Books & Notes" },
-                { href: "/shop?category=surgical-instruments", label: "Surgical Instruments" },
-                { href: "/shop", label: "View All Products" },
-              ].map(({ href, label }) => (
-                <li key={href}><Link href={href} className="hover:text-white transition-colors">{label}</Link></li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 10, letterSpacing: "0.2em", color: "rgba(255,255,255,0.3)", fontWeight: 600, textTransform: "uppercase", marginBottom: 16 }}>Study Hub</p>
-            <ul className="space-y-3" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 13, color: "rgba(255,255,255,0.35)" }}>
-              <li><Link href="/study-hub" className="hover:text-white transition-colors">NEET PG Prep</Link></li>
-              <li><Link href="/study-hub" className="hover:text-white transition-colors">USMLE Resources</Link></li>
-              <li><Link href="/study-hub" className="hover:text-white transition-colors">FMGE Study</Link></li>
-              <li><a href={cadusUrl("/")} className="hover:text-white transition-colors" style={{ textDecoration: "none" }}>Cadus AI</a></li>
-              <li><Link href="/tools" className="hover:text-white transition-colors">Clinical Tools</Link></li>
-              <li><Link href="/blog" className="hover:text-white transition-colors">Medical Blog</Link></li>
-            </ul>
-          </div>
-
-          <div>
-            <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 10, letterSpacing: "0.2em", color: "rgba(255,255,255,0.3)", fontWeight: 600, textTransform: "uppercase", marginBottom: 16 }}>Company</p>
-            <ul className="space-y-3" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 13, color: "rgba(255,255,255,0.35)" }}>
-              <li><a href="https://clavix.in" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">About Us</a></li>
-              <li><Link href="/blog" className="hover:text-white transition-colors">Blog</Link></li>
-              <li><Link href="/news" className="hover:text-white transition-colors">Medical News</Link></li>
-              <li><a href="/?legal=privacy-policy" className="hover:text-white transition-colors">Privacy Policy</a></li>
-              <li><a href="/?legal=terms-of-service" className="hover:text-white transition-colors">Terms of Service</a></li>
-            </ul>
-          </div>
-
-          <div>
-            <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 10, letterSpacing: "0.2em", color: "rgba(255,255,255,0.3)", fontWeight: 600, textTransform: "uppercase", marginBottom: 16 }}>Support</p>
-            <ul className="space-y-3" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 13, color: "rgba(255,255,255,0.35)" }}>
-              <li><Link href="/orders/track" className="hover:text-white transition-colors">Track Order</Link></li>
-              <li><a href="mailto:email@aethex.in" className="hover:text-white transition-colors">email@aethex.in</a></li>
-              <li><a href="/?legal=medical-disclaimer" className="hover:text-white transition-colors">Medical Disclaimer</a></li>
-              <li><Link href="/contact" className="hover:text-white transition-colors">Contact Us</Link></li>
-            </ul>
-          </div>
-        </div>
-
-        {/* Bottom bar */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pt-8" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-          <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 11, color: "rgba(255,255,255,0.2)", letterSpacing: "0.05em" }}>
-            © 2026 Clavix Technologies Pvt Ltd. All rights reserved.
-          </p>
-          <div className="flex flex-wrap gap-5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 11, color: "rgba(255,255,255,0.2)" }}>
-            <a href="/?legal=privacy-policy" className="hover:text-white transition-colors">Privacy</a>
-            <a href="/?legal=terms-of-service" className="hover:text-white transition-colors">Terms</a>
-            <a href="/?legal=medical-disclaimer" className="hover:text-white transition-colors">Medical Disclaimer</a>
-          </div>
-        </div>
-
-        <div className="mt-6 flex items-center justify-center gap-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 10, color: "rgba(255,255,255,0.12)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-          <span>A product of</span>
-          <a href="https://clavix.in" target="_blank" rel="noopener noreferrer" className="hover:opacity-60 transition-opacity">Clavix Technologies Pvt Ltd</a>
+        <div className="ax-foot-bot">
+          <span>© {new Date().getFullYear()} Aethex. Made in India for medical professionals.</span>
+          <nav>
+            <Link href="/privacy-policy">Privacy</Link>
+            <Link href="/terms-of-service">Terms</Link>
+            <Link href="/medical-disclaimer">Medical disclaimer</Link>
+            <a href="mailto:support@aethex.in">support@aethex.in</a>
+          </nav>
         </div>
       </div>
     </footer>
