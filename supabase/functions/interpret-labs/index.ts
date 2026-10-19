@@ -1,5 +1,5 @@
-// AI-powered lab panel interpretation via Groq.
-import { callGroq, cors, jsonResponse, parseJsonLoose } from "../_shared/groq.ts";
+// AI-powered lab panel interpretation via Claude.
+import { callAI, cors, jsonResponse, parseJsonLoose } from "../_shared/ai.ts";
 
 const SYSTEM = `You are a clinical laboratory medicine specialist assisting medical students and clinicians in India.
 Given a lab panel (CBC, LFT, RFT, lipid, thyroid, etc.) with entered values and reference ranges,
@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
       `- ${v.name}: ${v.value} ${v.unit} (ref ${v.normalMin}–${v.normalMax} ${v.unit}, status: ${v.status})`
     ).join("\n");
 
-    const result = await callGroq({
+    const result = await callAI({
       jsonMode: true,
       messages: [
         { role: "system", content: `${SYSTEM}\n\n${SCHEMA}` },

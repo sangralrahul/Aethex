@@ -3,11 +3,8 @@
 Cadus normally answers with Claude. If the Anthropic API key has no credits left
 (or the key is missing or rejected), Cadus switches to **Library mode** and
 answers from an offline medical library that ships with the website in
-`artifacts/aethex/public/library/v1/`:
-
-- the backup model (Llama 3.3 on Groq, if `GROQ_API_KEY` is set) writes the
-  answer using only the library passages it is given, with numbered citations;
-- with no backup model, Cadus quotes the most relevant library sections directly.
+`artifacts/aethex/public/library/v1/`, quoting the most relevant library
+sections directly, with numbered citations. Cadus uses no other AI provider.
 
 Library-mode answers are clearly labelled and are not safety-reviewed.
 

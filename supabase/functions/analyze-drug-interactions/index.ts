@@ -1,5 +1,5 @@
-// AI-powered drug interaction analysis via Groq.
-import { callGroq, cors, jsonResponse, parseJsonLoose } from "../_shared/groq.ts";
+// AI-powered drug interaction analysis via Claude.
+import { callAI, cors, jsonResponse, parseJsonLoose } from "../_shared/ai.ts";
 
 const SYSTEM = `You are a clinical pharmacology assistant used by medical students and clinicians in India.
 Given a list of 2–5 drugs, analyze pairwise interactions and produce a structured JSON report.
@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
     }
     const cleaned = drugs.map((d: unknown) => String(d).trim()).filter(Boolean).slice(0, 5);
 
-    const result = await callGroq({
+    const result = await callAI({
       jsonMode: true,
       messages: [
         { role: "system", content: `${SYSTEM}\n\n${SCHEMA_INSTRUCTION}` },

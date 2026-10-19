@@ -1,7 +1,7 @@
 /**
  * Cadus: the clinical AI workspace inside Aethex.
- * Backend: `groq-ai` on the site's Cloudflare Worker at /api/fn/groq-ai
- * (Claude Haiku 5.5, Groq fallback). See worker/index.ts.
+ * Backend: `cadus` on the site's Cloudflare Worker at /api/fn/cadus
+ * (Anthropic Claude only). See worker/index.ts.
  */
 import {
   useCallback, useEffect, useMemo, useRef, useState,
@@ -114,6 +114,7 @@ type ModeId =
   | "general" | "ddx" | "drugs" | "dosage" | "labs" | "image" | "procedure"
   | "soap" | "discharge" | "referral" | "handover" | "patient" | "research" | "mcq" | "slides" | "viva" | "osce"
   | "admission" | "progress" | "opnote" | "death" | "certificate" | "rx" | "evidence";
+/** "groq" only appears in chats saved before Cadus became Claude-only. */
 type Provider = "claude" | "groq" | "library";
 type View = "chat" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets";
 /** Views reached from the Tools hub, so the hub stays highlighted in the sidebar. */
@@ -719,7 +720,7 @@ function downloadJSON(name: string, data: unknown) {
 }
 
 async function invokeCadus(body: Record<string, unknown>): Promise<any> {
-  const { data, error } = await invokeAi("groq-ai", { body });
+  const { data, error } = await invokeAi("cadus", { body });
   if (error) {
     let detail = "";
     try {
@@ -778,26 +779,14 @@ interface LibraryRequest {
 
 /**
  * Library mode: Claude has no credits (or no valid key), so answer from the offline
- * Cadus Medical Library. The backup model writes the answer from the retrieved
- * passages when it is available; otherwise the passages are quoted directly.
+ * Cadus Medical Library: the retrieved passages are quoted directly.
  */
 async function answerFromLibrary(req: LibraryRequest): Promise<Msg> {
   const { userMsg, hist, reason } = req;
   const base = { id: uid(), role: "assistant" as const, mode: userMsg.mode, at: Date.now() };
   const why = LIBRARY_REASON[reason] ?? "the AI is unavailable";
   const manifest = await medicalLibrary.manifest();
-  if (!manifest) {
-    // No library deployed yet: the backup model on its own is the last resort.
-    let fb: any = null;
-    try {
-      fb = await invokeCadus({ ...req.draftBody, allowFallback: true });
-    } catch { /* no backup model either: explained below */ }
-    if (!fb?.message) throw new Error("AI credits are used up and the offline medical library isn't installed yet.");
-    return {
-      ...base, content: String(fb.message), provider: fb.provider, model: fb.model,
-      reviewNote: `The main AI is unavailable (${why}) and the offline medical library isn't installed, so the backup model answered without the safety review.`,
-    };
-  }
+  if (!manifest) throw new Error("AI credits are used up and the offline medical library isn't installed yet.");
   const prev = [...hist].reverse().find((m) => m.role === "user")?.content;
   const followUp = !!prev && queryTerms(userMsg.content).length < 5;
   let result: LibraryResult = { terms: [], articles: [], passages: [], missing: [] };
@@ -812,34 +801,13 @@ async function answerFromLibrary(req: LibraryRequest): Promise<Msg> {
     };
   }
   const names = [...new Set(result.articles.map((a) => SOURCE_LONG[a.source] ?? "the library"))];
-  let content = "";
-  let mode: "llm" | "extract" = "extract";
-  let provider: Provider = "library";
-  let model: string | undefined;
-  try {
-    const r = await invokeCadus({
-      action: "library-answer",
-      question: userMsg.content,
-      mode: userMsg.mode,
-      style: req.style,
-      language: req.language,
-      history: hist.slice(-4),
-      passages: result.passages.map((p) => ({ n: p.n, title: p.title, heading: p.heading, text: p.text.slice(0, 1600) })),
-      ...(req.instructions ? { instructions: req.instructions } : {}),
-    });
-    if (r?.message) {
-      content = String(r.message);
-      mode = "llm";
-      provider = r.provider === "groq" ? "groq" : "library";
-      model = r.model;
-    }
-  } catch { /* no backup model: quote the library instead */ }
-  if (!content) content = composeFromLibrary(userMsg.content, result);
+  // Quoted straight from the library: with the AI unavailable there is no model to write it.
+  const content = composeFromLibrary(userMsg.content, result);
+  const mode = "extract" as const;
   return {
     ...base,
     content: `${content}\n\n${libraryFootnote(mode, names)}`,
-    provider,
-    model,
+    provider: "library",
     sources: result.articles.filter((a) => a.url).map((a) => ({ n: a.n, url: a.url, title: `${a.title} · ${SOURCE_SHORT[a.source] ?? "Library"}` })),
     library: { mode, reason: why, articles: result.articles.length },
   };

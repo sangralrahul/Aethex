@@ -1,5 +1,5 @@
-// AI-powered radiology image analysis via Groq (multimodal vision).
-import { callGroq, cors, jsonResponse, GROQ_VISION_MODEL, parseJsonLoose } from "../_shared/groq.ts";
+// AI-powered radiology image analysis via Claude (vision).
+import { callAI, cors, jsonResponse, parseJsonLoose } from "../_shared/ai.ts";
 
 const SYSTEM = `You are a board-certified radiologist assisting medical students and clinicians in India.
 Given a radiology image (X-ray / CT / MRI) plus modality and region context, produce a structured
@@ -45,8 +45,7 @@ Deno.serve(async (req) => {
       "Please analyse the attached image and return the structured JSON report.",
     ].join("\n");
 
-    const result = await callGroq({
-      model: GROQ_VISION_MODEL,
+    const result = await callAI({
       jsonMode: true,
       messages: [
         { role: "system", content: `${SYSTEM}\n\n${SCHEMA}` },

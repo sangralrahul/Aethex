@@ -1,5 +1,7 @@
 {
   "name": "aethex",
+  // Keep secrets and variables set in the dashboard when deploying.
+  "keep_vars": true,
   // Serves the site from ./dist and runs the AI endpoints in worker/index.ts.
   "main": "worker/index.ts",
   "compatibility_date": "2026-10-01",

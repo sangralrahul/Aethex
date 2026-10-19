@@ -3,20 +3,19 @@
 //
 // Serves the website (static files in ./dist), the AI endpoints at
 // POST /api/fn/<name>:
-//   groq-ai (Cadus), analyze-drug-interactions, interpret-labs,
+//   cadus (Cadus), analyze-drug-interactions, interpret-labs,
 //   predict-symptoms, analyze-radiology
 // (the function code lives in supabase/functions for historical reasons and
 // runs here unchanged), and accounts, profiles and carts (worker/auth.ts) on D1.
 //
 // Secrets and variables (Workers & Pages > aethex > Settings > Variables and Secrets):
-//   ANTHROPIC_API_KEY  Claude (main AI)
-//   GROQ_API_KEY       optional backup model, also writes Library-mode answers
+//   ANTHROPIC_API_KEY  Claude, the only AI Cadus uses
 //   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET   Google sign-in
 //   BREVO_API_KEY, BREVO_FROM_EMAIL          sign-in codes and cart emails
 import { functionHandler, functionNames, useEnv } from "./deno-shim";
 import { handleAuth, handleCart, handleProfile, runScheduled, type AuthEnv } from "./auth";
-import "./names/groq-ai";
-import "../supabase/functions/groq-ai/index.ts";
+import "./names/cadus";
+import "../supabase/functions/cadus/index.ts";
 import "./names/analyze-drug-interactions";
 import "../supabase/functions/analyze-drug-interactions/index.ts";
 import "./names/interpret-labs";
@@ -29,7 +28,6 @@ import "../supabase/functions/analyze-radiology/index.ts";
 interface Env extends AuthEnv {
   ASSETS: { fetch: (request: Request) => Promise<Response> };
   ANTHROPIC_API_KEY?: string;
-  GROQ_API_KEY?: string;
   [key: string]: unknown;
 }
 
@@ -49,7 +47,7 @@ export default {
 
     if (url.pathname === "/api/health") {
       // Shows whether the keys are set (never their values), to check the setup.
-      return json({ ok: true, functions: functionNames(), anthropic: !!env.ANTHROPIC_API_KEY, groq: !!env.GROQ_API_KEY, accounts: !!env.DB, google: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET), email: !!env.BREVO_API_KEY });
+      return json({ ok: true, functions: functionNames(), anthropic: !!env.ANTHROPIC_API_KEY, accounts: !!env.DB, google: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET), email: !!env.BREVO_API_KEY });
     }
 
     const account = url.pathname.startsWith("/api/auth/") || url.pathname === "/api/auth" ? handleAuth : url.pathname === "/api/profile" ? handleProfile : url.pathname === "/api/cart" ? handleCart : null;
@@ -69,7 +67,9 @@ export default {
 
     const match = /^\/api\/fn\/([a-z0-9-]+)\/?$/.exec(url.pathname);
     if (match) {
-      const handler = functionHandler(match[1]);
+      // "groq-ai" is the old name of the Cadus function, still sent by pages opened before the rename.
+      const name = match[1] === "groq-ai" ? "cadus" : match[1];
+      const handler = functionHandler(name);
       if (!handler) return json({ error: `Unknown function: ${match[1]}` }, 404);
       if (request.method !== "POST" && request.method !== "OPTIONS") return json({ error: "Use POST" }, 405);
       // Only this site may call the AI from a browser (it spends your AI credits).

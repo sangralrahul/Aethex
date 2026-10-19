@@ -69,7 +69,7 @@ function useMedContent(section: string, params: Record<string, string>, eager = 
     setLoading(true);
     setError(false);
     try {
-      const { data, error } = await invokeAi("groq-ai", {
+      const { data, error } = await invokeAi("cadus", {
         body: { action: "med-knowledge", section, ...params },
       });
       if (error || !data?.content) throw new Error(error?.message || "AI error");

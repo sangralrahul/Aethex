@@ -75,7 +75,7 @@ export default function CadusQuickConsult() {
 
     try {
       const history = updated.slice(-10).map(m => ({ role: m.role, content: m.content }));
-      const { data, error } = await invokeAi("groq-ai", {
+      const { data, error } = await invokeAi("cadus", {
         body: { action: "chat", message: text, history: history.slice(0, -1), style: "concise" },
       });
       if (error) throw error;

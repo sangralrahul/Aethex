@@ -233,8 +233,8 @@ The Study Hub brings medical education resources into the same platform.
              ┌─────────────────┼─────────────────┐
              │                 │                 │
              ▼                 ▼                 ▼
-        Supabase             Groq          External APIs
-        Database           AI Models       Notifications
+   Cloudflare D1        Anthropic        External APIs
+        Database        Claude AI       Notifications
 ```
 
 ---
@@ -256,14 +256,11 @@ The Study Hub brings medical education resources into the same platform.
 
 ### Database
 
-- Supabase
-- PostgreSQL
+- Cloudflare D1 (SQLite)
 
 ### AI
 
-- Groq API
-- Llama models
-- Vision-capable AI models
+- Anthropic Claude (text and vision)
 
 ### Integrations
 
@@ -289,7 +286,7 @@ The application uses environment variables for sensitive integrations.
 ### Example environment variables
 
 ```env
-GROQ_API_KEY=
+ANTHROPIC_API_KEY=
 # Optional: an NCBI API key raises PubMed's rate limit for Cadus Research
 NCBI_API_KEY=
 SUPABASE_URL=

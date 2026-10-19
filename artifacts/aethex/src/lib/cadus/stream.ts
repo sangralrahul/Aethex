@@ -52,7 +52,7 @@ export function createSseParser(onEvent: (event: string, data: any) => void): (c
 export async function streamCadus(
   body: Record<string, unknown>,
   handlers: { onDelta: (text: string) => void; onReset?: () => void; signal?: AbortSignal },
-  url = "/api/fn/groq-ai",
+  url = "/api/fn/cadus",
 ): Promise<StreamDone> {
   let res: Response;
   try {

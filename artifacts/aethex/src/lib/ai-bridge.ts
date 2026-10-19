@@ -1,6 +1,6 @@
 /**
  * Production has no Express API server, so legacy calls to `/api/ai/chat` are
- * routed to the `groq-ai` function on the Cloudflare Worker (Claude Haiku 5.5).
+ * routed to the `cadus` function on the Cloudflare Worker (Claude Haiku 5.5).
  * Response shape stays `{ message }`.
  */
 import { invokeAi } from "@/lib/ai-functions";
@@ -28,7 +28,7 @@ export function installAiBridge() {
       body = typeof init?.body === "string" ? JSON.parse(init.body) : {};
     } catch { /* ignore */ }
     const history = Array.isArray(body.conversationHistory) ? body.conversationHistory : Array.isArray(body.history) ? body.history : [];
-    const { data, error } = await invokeAi("groq-ai", {
+    const { data, error } = await invokeAi("cadus", {
       body: { action: "chat", message: String(body.message ?? ""), history },
     });
     const payload = error ? { error: error.message, message: data?.error } : data;

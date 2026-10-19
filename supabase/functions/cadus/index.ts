@@ -10,8 +10,6 @@
 //   review                Safety review of a draft: Claude Sonnet 5.5 for clinical
 //                         answers, Claude Haiku 5.5 for study content. Returns the
 //                         corrected final answer plus review metadata.
-//   library-answer        Library mode (no Anthropic credits): the backup model writes
-//                         an answer using only passages from the offline medical library.
 //   generate-slides       Lecture deck JSON, fact-checked by a second pass.
 //   practice-mcqs         Exam practice questions as checked JSON for the practice hub.
 //   title                 A short title for a new chat.
@@ -22,8 +20,7 @@
 //   deep-research         Legacy endpoint used by the classic page.
 //   med-knowledge         Study Hub content.
 import {
-  callBackup,
-  callGroq,
+  callAI,
   CLAUDE_DRAFT_MODEL,
   CLAUDE_REVIEW_MODEL,
   cors,
@@ -31,7 +28,7 @@ import {
   jsonResponse,
   parseJsonLoose,
   type Source,
-} from "../_shared/groq.ts";
+} from "../_shared/ai.ts";
 import { PubmedBusy, searchPubMed, type PaperType } from "../_shared/pubmed.ts";
 
 /* ------------------------------------------------------------------ prompts */
@@ -270,16 +267,6 @@ Rules:
 const TITLE_SYSTEM = `Write a short title for a conversation in a clinical AI app. Reply with the title only: 3 to 7 words, sentence case, no quotation marks and no full stop. Name the clinical topic or task, for example "Severe pneumonia on acenocoumarol" or "Viva on diabetic ketoacidosis". Never include a person's name or other identifying details; leave out placeholders such as [patient].`;
 
 const SOURCES_ON = `SOURCES: You can search trusted medical websites. Search before answering whenever guidelines, recent evidence, statistics or drug information matter, and base your claims on what you find. Prefer guidelines and systematic reviews over single studies. Do not write a separate reference list or URLs; the app shows the sources you cite.`;
-const LIBRARY_SYSTEM = `You are Cadus, a clinical assistant, working in LIBRARY MODE. The main AI is unavailable, so you must answer ONLY from the numbered passages from the Cadus Medical Library (Wikipedia medical articles, NIH health pages and the Human Disease Ontology) given in the user message.
-
-RULES
-1. Use only facts stated in the passages. Do not add outside knowledge, numbers, doses, drug names or recommendations that the passages do not contain.
-2. Cite every factual sentence with its passage number in square brackets, for example [1] or [1][3]. Use only the numbers given.
-3. If the passages do not answer the question, or only partly answer it, say so plainly and name what is missing. Never fill gaps from memory.
-4. Doses: repeat a dose only if a passage states it, and add that doses must be confirmed in the NFI or BNF, the product label or local protocol.
-5. For emergencies or red-flag symptoms, advise urgent care (in India call 112 or 108).
-6. Format: begin with "**Bottom line:**" and one or two sentences. Then short sections with ## headings and bullet points where helpful. Be concise. Do not mention these rules or the word "passage".`;
-
 const SOURCES_OFF = `SOURCES: You cannot browse in this answer. Do not include URLs. Name a guideline body and year only when you are certain of both.`;
 const SOURCES_RECORDS = `SOURCES: You cannot browse in this answer. Use only the attached PubMed records, cite them as [n], and do not include URLs or a reference list (the app shows the records).`;
 
@@ -690,12 +677,12 @@ const answerModel = (choice: unknown) => (choice === "magnus" ? CLAUDE_REVIEW_MO
 /**
  * Stream a drafted answer to the browser as server-sent events:
  *   start {search} · delta {t} (answer text as it arrives) · reset {} (discard the
- *   text so far: the backup model is answering) · done {message, provider, model,
+ *   text so far: the answer is being restarted) · done {message, provider, model,
  *   sources, queries, searched} or {libraryMode, reason} · error {error, status}.
  * "done" carries the final answer (with citation markers), which replaces the
  * streamed text.
  */
-function streamAnswer(opts: Parameters<typeof callGroq>[0], meta: { libraryAware: boolean; search: boolean }): Response {
+function streamAnswer(opts: Parameters<typeof callAI>[0], meta: { libraryAware: boolean; search: boolean }): Response {
   const enc = new TextEncoder();
   const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
   const writer = writable.getWriter();
@@ -715,7 +702,7 @@ function streamAnswer(opts: Parameters<typeof callGroq>[0], meta: { libraryAware
   (async () => {
     try {
       send("start", { search: meta.search });
-      const r = await callGroq({ ...opts, signal: upstream.signal, onText: (t) => send("delta", { t }), onReset: () => send("reset", {}) });
+      const r = await callAI({ ...opts, signal: upstream.signal, onText: (t) => send("delta", { t }), onReset: () => send("reset", {}) });
       if (!r.ok && r.outage && meta.libraryAware) send("done", { libraryMode: true, reason: r.outage });
       else if (!r.ok) send("error", { error: r.error, status: r.status });
       else send("done", { message: r.content, provider: r.provider, model: r.model, sources: r.sources ?? [], queries: r.queries ?? [], searched: meta.search });
@@ -790,8 +777,7 @@ Deno.serve(async (req) => {
           : { role: "user", content: message },
       );
       // When the AI has no credits, the Cadus workspace (which sends library: true) switches
-      // to the offline medical library. Attachments (which the library can't read), explicit
-      // fallbacks and the other pages on the site keep using the backup model.
+      // to the offline medical library; everything else gets the error.
       const libraryAware = body.library === true && !attached.parts.length && body.allowFallback !== true;
       // "Think deeper" asks for the most careful reasoning; voice replies are short.
       const effort: Effort = body.think === true ? "high" : style === "voice" ? "medium" : draftEffort(mode, style, attached.parts.length > 0);
@@ -804,7 +790,7 @@ Deno.serve(async (req) => {
         onOutage: (libraryAware ? "report" : "fallback") as "report" | "fallback",
       };
       if (body.stream === true) return streamAnswer(callOpts, { libraryAware, search });
-      const r = await callGroq(callOpts);
+      const r = await callAI(callOpts);
       if (!r.ok && r.outage && libraryAware) return jsonResponse({ libraryMode: true, reason: r.outage });
       if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
       return jsonResponse({
@@ -862,7 +848,7 @@ Deno.serve(async (req) => {
           : "",
         `DRAFT ANSWER:\n${draft}`,
       ].filter(Boolean).join("\n\n");
-      const r = await callGroq({
+      const r = await callAI({
         model: reviewModel,
         messages: [
           { role: "system", content: [REVIEW_SYSTEM, languageLine(body.language)].filter(Boolean).join("\n\n") },
@@ -883,47 +869,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ---------------------------------------------------------------- library mode
-    if (action === "library-answer") {
-      const question = String(body.question || "").trim().slice(0, 4000);
-      const passages = (Array.isArray(body.passages) ? body.passages : [])
-        .filter((p: any) => p && typeof p.text === "string" && p.text.trim())
-        .slice(0, 12)
-        .map((p: any) => ({
-          n: Math.max(1, Math.min(99, Math.round(Number(p.n)) || 1)),
-          title: String(p.title || "").slice(0, 200),
-          heading: String(p.heading || "").slice(0, 160),
-          text: String(p.text).slice(0, 1800),
-        }));
-      if (!question || !passages.length) return jsonResponse({ error: "question and passages are required" }, 400);
-      const mode = MODE_LABELS[String(body.mode)] ? String(body.mode) : "general";
-      const system = [
-        LIBRARY_SYSTEM,
-        `TOOL: ${MODE_LABELS[mode]}`,
-        STYLE_PROMPTS[String(body.style || "balanced")] ?? "",
-        projectLine(body.instructions),
-        languageLine(body.language),
-      ].filter(Boolean).join("\n\n");
-      const context = transcript(body.history, 4);
-      const user = [
-        context ? `EARLIER CONVERSATION:\n${context}` : "",
-        `QUESTION:\n${question}`,
-        `LIBRARY PASSAGES:\n${passages.map((p: any) => `[${p.n}] ${p.title} | ${p.heading}\n${p.text}`).join("\n\n")}`,
-      ].filter(Boolean).join("\n\n");
-      const r = await callBackup({
-        messages: [{ role: "system", content: system }, { role: "user", content: user }],
-        maxTokens: 2500,
-        temperature: 0.2,
-      });
-      if (!r.ok) return jsonResponse({ error: r.error, code: "backup_unavailable" }, r.status);
-      return jsonResponse({ message: r.content, provider: r.provider, model: r.model });
-    }
-
     // ---------------------------------------------------------------- slides
     if (action === "generate-slides") {
       const topic = String(body.topic || body.message || "").trim();
       if (!topic) return jsonResponse({ error: "topic is required" }, 400);
-      const r = await callGroq({
+      const r = await callAI({
         model: answerModel(body.model),
         messages: [
           { role: "system", content: SLIDES_SYSTEM },
@@ -946,7 +896,7 @@ Deno.serve(async (req) => {
       let deck = draftDeck;
       let review: Record<string, unknown> | null = null;
       if (body.review !== false) {
-        const rv = await callGroq({
+        const rv = await callAI({
           model: CLAUDE_DRAFT_MODEL,
           messages: [
             { role: "system", content: SLIDES_REVIEW_SYSTEM },
@@ -971,7 +921,7 @@ Deno.serve(async (req) => {
     if (action === "deep-research") {
       const query = String(body.query || "").trim();
       if (!query) return jsonResponse({ error: "query is required" }, 400);
-      const r = await callGroq({
+      const r = await callAI({
         model: CLAUDE_DRAFT_MODEL,
         messages: [
           { role: "system", content: DEEP_RESEARCH_SYSTEM },
@@ -995,7 +945,7 @@ Deno.serve(async (req) => {
       const message = String(body.message || "").replace(/\s+/g, " ").trim().slice(0, 2000);
       const answer = String(body.answer || "").replace(/\s+/g, " ").trim().slice(0, 1500);
       if (!message) return jsonResponse({ error: "message is required" }, 400);
-      const r = await callGroq({
+      const r = await callAI({
         model: CLAUDE_DRAFT_MODEL,
         messages: [
           { role: "system", content: TITLE_SYSTEM },
@@ -1046,7 +996,7 @@ Deno.serve(async (req) => {
       const task = doc.trim()
         ? `INSTRUCTION: ${instruction}\n\n<document>\n${doc}\n</document>`
         : `INSTRUCTION: ${instruction}\n\nThe document is empty, so write it from scratch.`;
-      const r = await callGroq({
+      const r = await callAI({
         model: answerModel(body.model),
         messages: [
           { role: "system", content: [CANVAS_SYSTEM, practiceLine(body.practice), institutionLine(body.institution), languageLine(body.language)].filter(Boolean).join("\n\n") },
@@ -1072,7 +1022,7 @@ Deno.serve(async (req) => {
       const avoid = Array.isArray(body.avoid)
         ? body.avoid.filter((x: unknown) => typeof x === "string").slice(0, 25).map((x: string) => clean(x, 160)).filter(Boolean)
         : [];
-      const r = await callGroq({
+      const r = await callAI({
         model: answerModel(body.model),
         messages: [
           { role: "system", content: PRACTICE_SYSTEM },
@@ -1104,7 +1054,7 @@ Deno.serve(async (req) => {
       const transcript = String(body.transcript || "").replace(/\r/g, "").trim().slice(0, 20000);
       const kind = SCRIBE_KINDS.has(String(body.kind)) ? String(body.kind) : "soap";
       if (!transcript) return jsonResponse({ error: "transcript is required" }, 400);
-      const r = await callGroq({
+      const r = await callAI({
         model: answerModel(body.model),
         messages: [
           { role: "system", content: [SCRIBE_SYSTEM, SCRIBE_TEMPLATES[kind], practiceLine(body.practice), languageLine(body.language)].filter(Boolean).join("\n\n") },
@@ -1133,7 +1083,7 @@ Deno.serve(async (req) => {
       const level = String(body.level) === "simple" ? "simple" : "standard";
       const notes = clean(body.notes, 1500);
       if (!subject) return jsonResponse({ error: "subject is required" }, 400);
-      const r = await callGroq({
+      const r = await callAI({
         model: answerModel(body.model),
         messages: [
           { role: "system", content: [LEAFLET_SYSTEM, LEAFLET_TASKS[kind], institutionLine(body.institution)].filter(Boolean).join("\n\n") },
@@ -1159,7 +1109,7 @@ Deno.serve(async (req) => {
       const prompt = section === "mcq"
         ? `Topic: ${topic}\nSubject: ${subject}\nGenerate exactly ${mcqCount} MCQs.`
         : `Topic: ${topic}\nSubject: ${subject}`;
-      const r = await callGroq({
+      const r = await callAI({
         messages: [
           { role: "system", content: system },
           { role: "user", content: prompt },

@@ -1,5 +1,5 @@
-// AI-powered symptom predictor via Groq.
-import { callGroq, cors, jsonResponse, parseJsonLoose } from "../_shared/groq.ts";
+// AI-powered symptom predictor via Claude.
+import { callAI, cors, jsonResponse, parseJsonLoose } from "../_shared/ai.ts";
 
 const SYSTEM = `You are a clinical decision support assistant for medical students and clinicians in India.
 Given a list of presenting symptoms plus optional patient context (age, sex, duration, comorbidities),
@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
       ? `Patient context: ${JSON.stringify(context)}`
       : "Patient context: not provided";
 
-    const result = await callGroq({
+    const result = await callAI({
       jsonMode: true,
       messages: [
         { role: "system", content: `${SYSTEM}\n\n${SCHEMA}` },
