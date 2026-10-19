@@ -25,7 +25,8 @@
   // The site and its subdomains. Custom domains get their DNS records and
   // certificates from Cloudflare automatically on deploy.
   "routes": [
-    { "pattern": "aethex.in/*", "zone_name": "aethex.in" },
+    { "pattern": "aethex.in", "custom_domain": true },
+    { "pattern": "www.aethex.in", "custom_domain": true },
     { "pattern": "cadus.aethex.in", "custom_domain": true },
     { "pattern": "auth.aethex.in", "custom_domain": true },
     { "pattern": "login.aethex.in", "custom_domain": true }
