@@ -12,6 +12,11 @@
 .ax-ph-glow.b{bottom:-320px;right:-160px;background:radial-gradient(closest-side,rgba(99,117,224,.55),transparent);animation:axPhDrift 26s ease-in-out -9s infinite alternate-reverse}
 @keyframes axPhDrift{0%{transform:translate(0,0)}100%{transform:translate(80px,50px)}}
 .ax-ph-in{padding-top:22px;padding-bottom:40px}
+/* pages whose body is a narrower centred column (Tailwind max-w-* with 16px sides) line the header up with it */
+.ax-ph-in[data-w="3xl"]{max-width:calc(736px + 2 * clamp(32px,2.6vw,48px))}
+.ax-ph-in[data-w="4xl"]{max-width:calc(864px + 2 * clamp(32px,2.6vw,48px))}
+.ax-ph-in[data-w="5xl"]{max-width:calc(992px + 2 * clamp(32px,2.6vw,48px))}
+.ax-ph-in[data-w="6xl"]{max-width:calc(1120px + 2 * clamp(32px,2.6vw,48px))}
 .ax-ph-crumbs{display:flex;align-items:center;gap:6px;font-size:13px;color:#9aa5b5}
 .ax-ph-crumbs a{color:#cdd5e0;text-decoration:none}
 .ax-ph-crumbs a:hover{color:#fff}
@@ -1121,3 +1126,17 @@ img.ax-pimg.crop{padding:0!important;clip-path:var(--ax-clip);transform:translat
 .ax-contact-side .reach a{color:var(--ax-teal-t);font-weight:600;text-decoration:none}
 .ax-contact .ax-co-card form h2{margin-bottom:20px}
 @media (max-width:860px){ .ax-contact{grid-template-columns:1fr} .ax-contact .ax-co-card{order:-1} }
+
+/* ---------------------------------------------------------------- wide screens */
+@media (min-width:1400px){
+  /* the photo stays a comfortable size; the details take the extra width */
+  .ax-pdp{grid-template-columns:minmax(0,620px) minmax(0,1fr);gap:64px}
+  .ax-pdp-buy{max-width:720px}
+  .ax-pdp-related .ax-grid.grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+}
+@media (min-width:1700px){ .ax-pdp{grid-template-columns:minmax(0,680px) minmax(0,1fr);gap:72px} }
+@media (max-width:1399px){ .ax-pdp-related .ax-grid.grid>:nth-child(n+9){display:none} }
+@media (min-width:1600px){
+  .ax-shop{grid-template-columns:280px minmax(0,1fr);gap:36px}
+  .ax-grid.grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+}

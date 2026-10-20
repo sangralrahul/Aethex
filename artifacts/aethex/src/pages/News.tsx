@@ -62,7 +62,7 @@ export default function MedicalNews() {
         icon={<Globe className="w-7 h-7" style={{ color: "rgba(255,255,255,0.82)" }} />}
       />
 
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="ax-wrap py-8">
         {/* Breaking News Banner */}
         {breakingNews && (
           <div className="bg-rose-600 text-white rounded-2xl p-4 mb-6 flex items-center gap-3">
@@ -92,7 +92,7 @@ export default function MedicalNews() {
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {[1,2,3,4,5,6].map(i => <div key={i} className="h-40 bg-white rounded-2xl animate-pulse" />)}
           </div>
         ) : articles.length === 0 ? (
@@ -101,7 +101,7 @@ export default function MedicalNews() {
             <p className="text-slate-500 font-semibold">No news found for this filter</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
             {articles.map((article, i) => (
               <a key={i} href={article.url || "#"} target="_blank" rel="noopener noreferrer"
                 className={cn("bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group", i === 0 && "md:col-span-2")}>

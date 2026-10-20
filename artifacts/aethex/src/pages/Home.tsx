@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState, type ComponentType } from "react"
 import { Link, useLocation } from "wouter";
 import {
   ArrowRight, BadgeCheck, Banknote, BookOpen, Brain, Calculator, ChevronLeft, ChevronRight, ClipboardList,
-  FlaskConical, Layers, Pill, RotateCcw, Search, ShieldCheck, Sparkles, Star, Timer, Truck,
+  FlaskConical, Layers, LayoutGrid, Pill, RotateCcw, Search, ShieldCheck, Sparkles, Star, Timer, Truck,
   type LucideProps,
 } from "lucide-react";
 import CadusMark from "@/components/cadus/CadusMark";
@@ -146,13 +146,20 @@ function CategoryTiles() {
   }) : []), [store]);
   return (
     <div className="ax-h-cats">
-      {!store ? Array.from({ length: 12 }, (_, k) => <span key={k} className="ax-h-cat sk"><span className="pic" /><b>&nbsp;</b></span>) : tiles.map((c) => (
-        <Link key={c.slug} href={`/category/${c.slug}`} className="ax-h-cat">
-          <span className="pic"><ProductImage src={c.pic} width={360} /></span>
-          <b>{c.name}</b>
-          <small>{c.count} products</small>
+      {!store ? Array.from({ length: 14 }, (_, k) => <span key={k} className="ax-h-cat sk"><span className="pic" /><b>&nbsp;</b></span>) : <>
+        {tiles.map((c) => (
+          <Link key={c.slug} href={`/category/${c.slug}`} className="ax-h-cat">
+            <span className="pic"><ProductImage src={c.pic} width={360} /></span>
+            <b>{c.name}</b>
+            <small>{c.count} products</small>
+          </Link>
+        ))}
+        <Link href="/shop" className="ax-h-cat all">
+          <span className="pic"><LayoutGrid size={30} strokeWidth={1.6} /></span>
+          <b>All products</b>
+          <small>{store.products.length} products</small>
         </Link>
-      ))}
+      </>}
     </div>
   );
 }

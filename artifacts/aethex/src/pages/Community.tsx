@@ -381,7 +381,7 @@ export default function Community() {
 
   return (
     <div className="min-h-screen" style={{ background: "#F5F3EE" }}>
-      <PageHero
+      <PageHero width="6xl"
         tag="Community"
         title="Doctor Community"
         subtitle="Peer discussions, clinical cases, career advice and drug updates — by doctors, for doctors"

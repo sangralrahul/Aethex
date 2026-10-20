@@ -583,7 +583,7 @@ export default function ClinicalCases() {
 
   return (
     <div className="min-h-screen" style={{ background: "#F5F3EE" }}>
-      <PageHero
+      <PageHero width="4xl"
         tag="Case Library"
         title="Clinical Cases"
         subtitle="Real-world anonymised cases with diagnosis reveal, management steps and teaching points"

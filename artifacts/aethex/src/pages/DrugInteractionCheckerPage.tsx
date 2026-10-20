@@ -245,7 +245,7 @@ export default function DrugInteractionCheckerPage() {
 
   return (
     <div className="min-h-screen" style={{ background: "#F5F3EE" }}>
-      <PageHero
+      <PageHero width="3xl"
         tag="Clinical Reference Only"
         title="Drug Interaction Checker"
         subtitle="Check interactions for up to 5 drugs simultaneously — powered by a curated pharmacology database"

@@ -118,7 +118,7 @@ export default function ProductDetail() {
     if (!product || !store) return [];
     const same = store.products.filter((p) => p.id !== product.id && p.category === product.category);
     const rank = (p: (typeof same)[number]) => (p.subcategory === product.subcategory ? 2 : 0) + (p.brand === product.brand ? 1 : 0) + (p.inStock ? 0.5 : 0);
-    return same.sort((a, b) => rank(b) - rank(a)).slice(0, 8);
+    return same.sort((a, b) => rank(b) - rank(a)).slice(0, 10); // 2 rows of 5 on wide screens, 2 rows of 4 otherwise (shop.css)
   }, [product, store]);
 
   if (isLoading || (!product && !error)) {

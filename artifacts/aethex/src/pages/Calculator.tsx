@@ -726,7 +726,7 @@ export default function CalculatorPage() {
 
   return (
     <div className="min-h-screen" style={{ background: "#F5F3EE" }}>
-      <PageHero
+      <PageHero width="5xl"
         tag="Clinical Calculators"
         title="Medical Calculator Suite"
         subtitle={`${calculators.length} validated calculators — CURB-65, SOFA, GRACE, Wells, GCS, CHA₂DS₂-VASc & more`}
@@ -734,8 +734,8 @@ export default function CalculatorPage() {
       />
       <div className="max-w-5xl mx-auto px-4 py-8">
 
-        {/* Search + Filter */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        {/* Search + Filter: the search box above the category chips, so it keeps its width */}
+        <div className="flex flex-col gap-3 mb-6">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "#AEAEB2" }} />
             <input

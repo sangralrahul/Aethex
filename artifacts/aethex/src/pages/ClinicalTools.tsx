@@ -309,7 +309,7 @@ export default function ClinicalTools() {
       />
 
       {/* ── Body ─────────────────────────────────────────────────────── */}
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="ax-wrap py-8">
 
         {/* Category Tabs */}
         <div className="flex gap-2 flex-wrap mb-8">
@@ -355,7 +355,7 @@ export default function ClinicalTools() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filtered.map(tool => (
               <ToolCard key={tool.id} tool={tool} />
             ))}

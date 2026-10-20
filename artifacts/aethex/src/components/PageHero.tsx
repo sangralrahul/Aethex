@@ -8,6 +8,8 @@ interface PageHeroProps {
   subtitle?: string;
   icon?: ReactNode;
   right?: ReactNode;
+  /** The page body is a narrower centred column (Tailwind max-w-*): line the header up with it. */
+  width?: "3xl" | "4xl" | "5xl" | "6xl";
 }
 
 /**
@@ -16,12 +18,12 @@ interface PageHeroProps {
  * face, and an optional slot on the right (search, actions) made for a dark
  * background. Styles: src/shop.css (.ax-ph).
  */
-export function PageHero({ tag, title, subtitle, icon, right }: PageHeroProps) {
+export function PageHero({ tag, title, subtitle, icon, right, width }: PageHeroProps) {
   return (
     <header className="ax-ph">
       <span className="ax-ph-glow a" aria-hidden="true" />
       <span className="ax-ph-glow b" aria-hidden="true" />
-      <div className="ax-wrap ax-ph-in">
+      <div className="ax-wrap ax-ph-in" data-w={width}>
         <nav className="ax-ph-crumbs" aria-label="Breadcrumb">
           <Link href="/">Home</Link>
           <ChevronRight size={13} aria-hidden="true" />

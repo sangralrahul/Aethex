@@ -22,8 +22,8 @@ function DeckList() {
         title="Smart Flashcards"
         subtitle="Spaced repetition powered by the SM-2 algorithm"
       />
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="ax-wrap py-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {decks.map((d) => {
             const s = deckStats(d.id);
             const pct = s.total ? Math.round((s.learned / s.total) * 100) : 0;
@@ -86,7 +86,7 @@ function DeckStudy({ deckId }: { deckId: string }) {
 
   return (
     <div style={{ background: "#F5F3EE", minHeight: "100vh" }}>
-      <PageHero icon={<span className="text-2xl">{deck.emoji}</span>} title={deck.name} subtitle={deck.subject} />
+      <PageHero width="3xl" icon={<span className="text-2xl">{deck.emoji}</span>} title={deck.name} subtitle={deck.subject} />
       <div className="max-w-3xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-4">
           <Link href="/flashcards">

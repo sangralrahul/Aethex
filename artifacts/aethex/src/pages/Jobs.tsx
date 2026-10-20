@@ -156,7 +156,7 @@ export default function Jobs() {
 
   return (
     <div className="min-h-screen" style={{ background: "#F5F3EE" }}>
-      <PageHero
+      <PageHero width="4xl"
         tag="Careers"
         title="Medical Jobs Board"
         subtitle="Curated hospital & clinic opportunities across India — full-time, part-time, locum & internships"

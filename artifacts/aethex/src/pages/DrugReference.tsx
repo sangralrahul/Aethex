@@ -496,7 +496,7 @@ export default function DrugReference() {
 
 
       {/* ── Body ──────────────────────────────────────────────────── */}
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="ax-wrap py-8">
 
         {/* Schedule legend */}
         <div className="flex flex-wrap gap-2 mb-5">
@@ -548,7 +548,7 @@ export default function DrugReference() {
                     <span className="text-[13px] font-semibold" style={{ color: "#059669" }}>Free Access — {freeResults.length} drug{freeResults.length !== 1 ? "s" : ""}</span>
                   </div>
                 )}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {freeResults.map(drug => (
                     <DrugCard key={drug.id} drug={drug} onViewDetails={d => setSelectedDrug(d)} />
                   ))}
@@ -594,7 +594,7 @@ export default function DrugReference() {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {lockedResults.slice(0, 12).map(drug => (
                     <LockedDrugCard key={drug.id} drug={drug} onUnlock={() => setShowSubscription(true)} />
                   ))}

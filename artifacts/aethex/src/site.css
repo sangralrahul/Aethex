@@ -24,7 +24,8 @@
 .ax-site :is(h1,h2,h3,.ax-h2,.ax-h-slide h2):not(svg):not(svg *){font-family:var(--ax-display)!important;font-feature-settings:"ss01"}
 .ax-site{background:var(--ax-bg);color:var(--ax-ink);-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;flex-direction:column}
 .ax-site main{flex:1}
-.ax-wrap{width:100%;max-width:1220px;margin:0 auto;padding:0 32px}
+/* the page width: nearly full width on laptops and desktops, capped on very large screens */
+.ax-wrap{width:100%;max-width:1880px;margin:0 auto;padding:0 clamp(32px,2.6vw,48px)}
 
 /* ---------------------------------------------------------------- buttons */
 .ax-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:42px;padding:0 18px;border-radius:10px;border:1px solid var(--ax-line2);background:#fff;color:var(--ax-ink);font-weight:600;font-size:14.5px;line-height:1;white-space:nowrap;cursor:pointer;text-decoration:none;transition:background .2s,border-color .2s,box-shadow .2s,transform .2s}
@@ -253,13 +254,15 @@
 .ax-h-more{margin-top:16px;text-align:right}
 
 /* categories */
-.ax-h-cats{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
+.ax-h-cats{display:grid;grid-template-columns:repeat(7,1fr);gap:14px}
 .ax-h-cat{display:flex;flex-direction:column;align-items:center;gap:10px;padding:14px 10px 16px;border-radius:16px;border:1px solid var(--ax-line);background:#fff;text-align:center;text-decoration:none;transition:border-color .2s,box-shadow .2s,transform .2s}
 .ax-h-cat:hover{border-color:var(--ax-teal);box-shadow:0 12px 28px -20px rgba(43,122,111,.6);transform:translateY(-2px)}
 .ax-h-cat .pic{display:block;width:100%;aspect-ratio:4/3;border-radius:12px;background:var(--ax-band);overflow:hidden}
 .ax-h-cat img{width:100%;height:100%;object-fit:cover;mix-blend-mode:multiply;transition:transform .4s}
 .ax-h-cat:hover img{transform:scale(1.05)}
 .ax-home .ax-h-cat b{font-size:14px;font-weight:600}
+.ax-h-cat.all .pic{display:grid;place-items:center;background:var(--ax-teal-bg);color:var(--ax-teal)}
+.ax-h-cat.all:hover .pic{background:#dcefe9}
 
 /* products */
 .ax-h-rail{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 4*16px)/5);gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding-bottom:4px}
@@ -398,4 +401,26 @@
 .ax-h-title h2{letter-spacing:-.02em;font-weight:750}
 .ax-h-ban h3,.ax-card h3,.ax-app h3{letter-spacing:-.015em}
 /* the category bar fades out at the edge instead of cutting a word */
-@media (max-width:1500px){.ax-h-catbar .ax-wrap{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 64px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 64px),transparent)}}
+@media (max-width:1560px){.ax-h-catbar .ax-wrap{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 64px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 64px),transparent)}}
+
+/* the older listing pages (Medical books, NEET-PG, CME, blog, institutions, Knowledge Hub)
+   run as wide as the rest of the site; tools and articles keep their narrower columns */
+.ax-site main .max-w-7xl.mx-auto{max-width:1880px;padding-left:clamp(32px,2.6vw,48px);padding-right:clamp(32px,2.6vw,48px)}
+@media (max-width:600px){ .ax-site main .max-w-7xl.mx-auto{padding-left:18px;padding-right:18px} }
+
+/* ---------------------------------------------------------------- wide screens: use the width */
+@media (min-width:1400px){
+  .ax-h-hero-grid{grid-template-columns:minmax(0,1fr) 380px;gap:24px}
+  .ax-h-car{min-height:380px}
+  .ax-h-slide{padding:44px 64px 76px;gap:32px}
+  .ax-h-car-nav{left:64px;bottom:26px}
+  .ax-h-slide img{max-width:320px}
+  .ax-h-slide h2{font-size:clamp(38px,3vw,50px)}
+  .ax-h-slide p{max-width:480px;font-size:17px}
+  .ax-h-rail{grid-auto-columns:calc((100% - 5*16px)/6)}
+  .ax-h-promo{padding:24px 26px}
+}
+@media (min-width:1700px){
+  .ax-h-slide img{max-width:360px}
+  .ax-h-rail{grid-auto-columns:calc((100% - 6*16px)/7)}
+}
