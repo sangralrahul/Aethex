@@ -496,7 +496,7 @@ export default function DrugReference() {
 
 
       {/* ── Body ──────────────────────────────────────────────────── */}
-      <div className="ax-wrap py-8">
+      <div className="ax-wrap ax-py">
 
         {/* Schedule legend */}
         <div className="flex flex-wrap gap-2 mb-5">

@@ -24,8 +24,8 @@ function BookCard({ book, color, onRequest }: { book: CurrBook; color: string; o
     >
       {/* Full-card clickable overlay — sits behind buttons; every book gets its own detail page */}
       <Link href={`/books/${bookSlug(book.name)}`} className="absolute inset-0 z-0" aria-label={`View ${book.name} details`} />
-      {/* Cover: a designed spine in the subject's colour */}
-      <div className="relative shrink-0 overflow-hidden flex items-center justify-center" style={{ height: 180, background: `linear-gradient(160deg,${color}22,${color}08)` }}>
+      {/* Cover: a designed spine in the subject's colour (clicks go through to the link behind it) */}
+      <div className="relative shrink-0 overflow-hidden flex items-center justify-center pointer-events-none" style={{ height: 180, background: `linear-gradient(160deg,${color}22,${color}08)` }}>
         <div className="flex flex-col items-center justify-center gap-2 px-4 py-6 text-center h-full w-full"
           style={{ background: `linear-gradient(160deg,${color}DD,${color}88)` }}>
           <BookOpen className="w-8 h-8 text-white opacity-70" />
@@ -33,7 +33,7 @@ function BookCard({ book, color, onRequest }: { book: CurrBook; color: string; o
         </div>
         {book.featured && (
           <div className="absolute top-2 left-2 flex gap-1.5">
-            <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md" style={{ background: "#FF9500", color: "#fff" }}>Standard text</span>
+            <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md" style={{ background: "#B45309", color: "#fff" }}>Standard text</span>
           </div>
         )}
         {book.forExam?.length ? (

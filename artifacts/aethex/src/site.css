@@ -26,6 +26,8 @@
 .ax-site main{flex:1}
 /* the page width: nearly full width on laptops and desktops, capped on very large screens */
 .ax-wrap{width:100%;max-width:1880px;margin:0 auto;padding:0 clamp(32px,2.6vw,48px)}
+/* .ax-wrap sets its own padding, so a Tailwind py-* next to it has no effect: use this for the body of the older pages */
+.ax-wrap.ax-py{padding-top:32px;padding-bottom:32px}
 
 /* ---------------------------------------------------------------- buttons */
 .ax-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:42px;padding:0 18px;border-radius:10px;border:1px solid var(--ax-line2);background:#fff;color:var(--ax-ink);font-weight:600;font-size:14.5px;line-height:1;white-space:nowrap;cursor:pointer;text-decoration:none;transition:background .2s,border-color .2s,box-shadow .2s,transform .2s}
@@ -63,7 +65,7 @@
 .ax-nav .chev{transition:transform .2s;opacity:.55}
 .ax-nav>div.open .chev{transform:rotate(180deg)}
 .ax-nav .cadus{color:var(--ax-teal-t);font-weight:600}
-.ax-drop{position:absolute;top:calc(100% + 4px);left:50%;translate:-50% 0;z-index:70;padding:10px;border-radius:16px;background:#fff;border:1px solid var(--ax-line);box-shadow:0 24px 60px -20px rgba(16,24,40,.25);animation:axPop .18s ease}
+.ax-drop{position:absolute;top:calc(100% + 4px);left:50%;translate:calc(-50% + var(--ax-drop-x,0px)) 0;z-index:70;padding:10px;border-radius:16px;background:#fff;border:1px solid var(--ax-line);box-shadow:0 24px 60px -20px rgba(16,24,40,.25);animation:axPop .18s ease}
 @keyframes axPop{from{opacity:0;transform:translateY(-6px)}}
 .ax-drop-grid{display:grid;gap:2px}
 .ax-drop a{display:flex;align-items:flex-start;gap:12px;padding:10px 12px;border-radius:10px;color:var(--ax-ink);text-decoration:none;transition:background .15s}
@@ -344,7 +346,7 @@
 .ax-h-brands{margin-top:56px;padding:36px 0 56px;border-top:1px solid var(--ax-line);text-align:center}
 .ax-h-brands small{font-size:12.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ax-t3)}
 .ax-h-brands div{display:flex;flex-wrap:wrap;justify-content:center;gap:12px 40px;margin-top:16px}
-.ax-h-brands span{font-size:18px;font-weight:700;letter-spacing:-.01em;color:#a3acb9}
+.ax-h-brands span{font-size:18px;font-weight:700;letter-spacing:-.01em;color:#6b7585}
 
 @media (max-width:1180px){
   .ax-h-cats{grid-template-columns:repeat(4,1fr)}
@@ -423,4 +425,24 @@
 @media (min-width:1700px){
   .ax-h-slide img{max-width:360px}
   .ax-h-rail{grid-auto-columns:calc((100% - 6*16px)/7)}
+}
+
+/* The older pages colour some text with bright accents and a light grey that are too faint on
+   white (contrast near 2:1). Read them a shade darker; the dark page header keeps its own colours.
+   (Inline colours are written as rgb() in the style attribute, which is what these match.) */
+.ax-inner main :is([style^="color: rgb(174, 174, 178)"],[style*="; color: rgb(174, 174, 178)"]):not(.ax-ph *){color:#737378!important}
+.ax-inner main :is([style^="color: rgb(0, 194, 168)"],[style*="; color: rgb(0, 194, 168)"]):not(.ax-ph *){color:#007a69!important}
+.ax-inner main :is([style^="color: rgb(255, 149, 0)"],[style*="; color: rgb(255, 149, 0)"]):not(.ax-ph *){color:#b45309!important}
+.ax-inner main :is([style^="color: rgb(52, 199, 89)"],[style*="; color: rgb(52, 199, 89)"]):not(.ax-ph *){color:#15803d!important}
+.ax-inner main :is([style^="color: rgb(245, 158, 11)"],[style*="; color: rgb(245, 158, 11)"]):not(.ax-ph *){color:#b45309!important}
+.ax-inner main :is([style^="color: rgb(6, 182, 212)"],[style*="; color: rgb(6, 182, 212)"]):not(.ax-ph *){color:#0e7490!important}
+
+/* The old dark theme's form defaults (index.css, base layer) give inputs near-white text, borders and
+   placeholders, and make selected text near-white: invisible on the site's light pages. Inside the
+   site these defaults read dark instead. Kept in the base layer, so a page's own utility classes and
+   inline styles still win; Cadus AI (outside .ax-site) is untouched. */
+@layer base {
+  .ax-site input, .ax-site textarea, .ax-site select { color: var(--ax-ink); border-color: var(--ax-line2); }
+  .ax-site input::placeholder, .ax-site textarea::placeholder { color: #8a94a6; opacity: 1; }
+  .ax-site ::selection { background: rgba(43,122,111,.22); color: var(--ax-ink); }
 }

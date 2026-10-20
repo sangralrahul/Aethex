@@ -336,7 +336,7 @@ export default function DrugInteractionCheckerPage() {
                 className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all"
                 style={{
                   background: drugs.length >= 2 ? "linear-gradient(135deg, #F59E0B 0%, #EF4444 100%)" : "rgba(60,60,67,0.1)",
-                  color: drugs.length >= 2 ? "#FFFFFF" : "#C7C7CC",
+                  color: drugs.length >= 2 ? "#FFFFFF" : "#8E8E93",
                   cursor: drugs.length >= 2 ? "pointer" : "not-allowed",
                   boxShadow: drugs.length >= 2 ? "0 4px 16px rgba(245,158,11,0.3)" : "none",
                 }}>

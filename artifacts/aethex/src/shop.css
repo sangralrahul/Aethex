@@ -688,7 +688,7 @@ img.ax-pimg.crop{padding:0!important;clip-path:var(--ax-clip);transform:translat
 .ax-prod .opt.sub{color:var(--ax-t3);font-weight:400}
 .ax-prod .pr em{font-style:normal;font-size:12.5px;font-weight:500;color:var(--ax-t3)}
 .ax-prod .pr.por{font-size:14px;font-weight:600;color:#7a4b06}
-.ax-prod .add.wide{width:auto;padding:0 12px;gap:6px;font-size:13px;font-weight:600;text-decoration:none}
+.ax-prod .add.wide{display:inline-flex;align-items:center;justify-content:center;width:auto;padding:0 12px;gap:6px;font-size:13px;font-weight:600;text-decoration:none}
 .ax-prod .add.wide span{white-space:nowrap}
 
 /* shop pages */
@@ -1007,7 +1007,7 @@ img.ax-pimg.crop{padding:0!important;clip-path:var(--ax-clip);transform:translat
 .ax-h-brandgrid a:hover{border-color:var(--ax-teal);box-shadow:0 16px 32px -24px rgba(16,24,40,.3)}
 .ax-h-brandgrid b{font-size:18px;letter-spacing:-.01em;color:var(--ax-ink)}
 .ax-h-brandgrid small{font-size:13px;color:var(--ax-t3)}
-.ax-h-brands a{font-size:18px;font-weight:700;letter-spacing:-.01em;color:#a3acb9;text-decoration:none}
+.ax-h-brands a{font-size:18px;font-weight:700;letter-spacing:-.01em;color:#6b7585;text-decoration:none}
 .ax-h-brands a:hover{color:var(--ax-teal-t)}
 @media (max-width:860px){ .ax-h-brandgrid{grid-template-columns:1fr 1fr} .ax-h-brands a{font-size:15px} }
 
@@ -1140,3 +1140,25 @@ img.ax-pimg.crop{padding:0!important;clip-path:var(--ax-clip);transform:translat
   .ax-shop{grid-template-columns:280px minmax(0,1fr);gap:36px}
   .ax-grid.grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
 }
+
+/* phones: "Price on request" stays on one line and the button moves under it when the card is narrow */
+@media (max-width:600px){ .ax-prod .row{flex-wrap:wrap;row-gap:8px} .ax-prod .pr.por{white-space:nowrap} .ax-prod .row>.add.wide{margin-left:auto} }
+
+/* page not found (pages/not-found.tsx) */
+.ax-404{max-width:880px;padding-top:64px;padding-bottom:88px;text-align:center}
+.ax-404 .code{margin:0;font-family:var(--ax-display);font-size:clamp(64px,10vw,96px);font-weight:800;line-height:1;letter-spacing:-.04em;color:var(--ax-teal)}
+.ax-404 h1{margin:14px 0 0;font-size:clamp(26px,3.2vw,36px);letter-spacing:-.03em;font-weight:800;color:var(--ax-ink)}
+.ax-404 .sub{margin:12px auto 0;max-width:520px;font-size:16px;line-height:1.6;color:var(--ax-t2)}
+.ax-404-search{display:flex;align-items:center;gap:10px;max-width:560px;height:54px;margin:28px auto 0;padding:0 6px 0 16px;border-radius:14px;border:1px solid var(--ax-line2);background:#fff;color:var(--ax-t3);box-shadow:0 1px 3px rgba(16,24,40,.05)}
+.ax-404-search:focus-within{border-color:var(--ax-teal);box-shadow:0 0 0 4px rgba(43,122,111,.12)}
+.ax-404-search input{flex:1;min-width:0;height:100%;border:0;outline:0;background:none;font-size:16px;color:var(--ax-ink)}
+.ax-404-search .ax-btn{height:42px}
+.ax-404 .acts{display:flex;justify-content:center;flex-wrap:wrap;gap:10px;margin-top:18px}
+.ax-404-places{list-style:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:44px 0 0;padding:0;text-align:left}
+.ax-404-places a{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:12px;align-items:center;height:100%;padding:14px 16px;border-radius:14px;border:1px solid var(--ax-line);background:#fff;color:var(--ax-ink);text-decoration:none;transition:border-color .2s,box-shadow .2s}
+.ax-404-places a:hover{border-color:var(--ax-teal);box-shadow:0 12px 28px -20px rgba(43,122,111,.6)}
+.ax-404-places .ic{grid-row:1 / 3;display:grid;place-items:center;width:38px;height:38px;border-radius:10px;background:var(--ax-teal-bg);color:var(--ax-teal)}
+.ax-404-places b{font-size:14.5px;font-weight:600}
+.ax-404-places small{font-size:12.5px;color:var(--ax-t3)}
+@media (max-width:760px){ .ax-404-places{grid-template-columns:1fr 1fr} }
+@media (max-width:480px){ .ax-404{padding-top:40px} .ax-404-places{grid-template-columns:1fr} .ax-404-search .ax-btn{padding:0 12px} }

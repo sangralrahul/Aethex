@@ -106,7 +106,7 @@
   --popover-foreground: 240 20% 92%;
   --popover-border: 240 20% 14%;
 
-  --primary: 173 100% 38%;        /* #00C2A8 teal */
+  --primary: 173 100% 25%;        /* #00806C teal: white text on it, and it as text on white, read clearly */
   --primary-foreground: 0 0% 100%;
 
   --secondary: 240 20% 14%;       /* dark surface */
@@ -140,7 +140,7 @@
     --popover: 240 25% 9%;
     --popover-foreground: 240 20% 92%;
     --popover-border: 240 20% 14%;
-    --primary: 173 100% 38%;
+    --primary: 173 100% 25%;
     --primary-foreground: 0 0% 100%;
     --secondary: 240 20% 14%;
     --secondary-foreground: 240 20% 85%;

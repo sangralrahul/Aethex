@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Link } from "wouter";
 import { AlertTriangle, ChevronRight, Stethoscope, Brain, Phone } from "lucide-react";
-import { cadusUrl } from "@/lib/host";
+import { cadusUrl, mainUrl } from "@/lib/host";
 
 
 function useSEO(title: string, description: string) {
@@ -153,8 +153,8 @@ export default function MedicalDisclaimer() {
         </div>
 
         <div className="flex flex-wrap gap-4 text-sm pt-2" style={{ color: "#636366" }}>
-          <a href="/?legal=privacy-policy" className="hover:underline" style={{ color: "#007AFF" }}>Privacy Policy</a>
-          <a href="/?legal=terms-of-service" className="hover:underline" style={{ color: "#007AFF" }}>Terms of Service</a>
+          <a href={mainUrl("/privacy-policy")} className="hover:underline" style={{ color: "#007AFF" }}>Privacy Policy</a>
+          <a href={mainUrl("/terms-of-service")} className="hover:underline" style={{ color: "#007AFF" }}>Terms of Service</a>
           <Link href="/contact" className="hover:underline" style={{ color: "#007AFF" }}>Contact Us</Link>
         </div>
       </div>

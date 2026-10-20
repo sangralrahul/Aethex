@@ -446,6 +446,9 @@ function Router() {
                 <Route path="/privacy-policy" component={PrivacyPolicy} />
                 <Route path="/terms-of-service" component={TermsOfService} />
                 <Route path="/medical-disclaimer" component={MedicalDisclaimer} />
+                <Route path="/privacy">{() => <Redirect to="/privacy-policy" />}</Route>
+                <Route path="/terms">{() => <Redirect to="/terms-of-service" />}</Route>
+                <Route path="/disclaimer">{() => <Redirect to="/medical-disclaimer" />}</Route>
 
                 {/* Blog & News */}
                 <Route path="/blog/:slug" component={BlogPost} />

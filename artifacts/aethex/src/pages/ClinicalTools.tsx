@@ -309,7 +309,7 @@ export default function ClinicalTools() {
       />
 
       {/* ── Body ─────────────────────────────────────────────────────── */}
-      <div className="ax-wrap py-8">
+      <div className="ax-wrap ax-py">
 
         {/* Category Tabs */}
         <div className="flex gap-2 flex-wrap mb-8">

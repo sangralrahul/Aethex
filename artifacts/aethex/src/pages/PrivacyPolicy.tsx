@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Link } from "wouter";
 import { Shield, ChevronRight } from "lucide-react";
+import { mainUrl } from "@/lib/host";
 
 function useSEO(title: string, description: string) {
   useEffect(() => {
@@ -154,8 +155,8 @@ export default function PrivacyPolicy() {
 
         {/* Footer links */}
         <div className="flex flex-wrap gap-4 text-sm pt-4" style={{ color: "#636366" }}>
-          <a href="/?legal=terms-of-service" className="hover:underline" style={{ color: "#007AFF" }}>Terms of Service</a>
-          <a href="/?legal=medical-disclaimer" className="hover:underline" style={{ color: "#007AFF" }}>Medical Disclaimer</a>
+          <a href={mainUrl("/terms-of-service")} className="hover:underline" style={{ color: "#007AFF" }}>Terms of Service</a>
+          <a href={mainUrl("/medical-disclaimer")} className="hover:underline" style={{ color: "#007AFF" }}>Medical Disclaimer</a>
           <Link href="/contact" className="hover:underline" style={{ color: "#007AFF" }}>Contact Us</Link>
         </div>
       </div>

@@ -62,7 +62,7 @@ export default function MedicalNews() {
         icon={<Globe className="w-7 h-7" style={{ color: "rgba(255,255,255,0.82)" }} />}
       />
 
-      <div className="ax-wrap py-8">
+      <div className="ax-wrap ax-py">
         {/* Breaking News Banner */}
         {breakingNews && (
           <div className="bg-rose-600 text-white rounded-2xl p-4 mb-6 flex items-center gap-3">

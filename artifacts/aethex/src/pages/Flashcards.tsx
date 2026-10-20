@@ -22,7 +22,7 @@ function DeckList() {
         title="Smart Flashcards"
         subtitle="Spaced repetition powered by the SM-2 algorithm"
       />
-      <div className="ax-wrap py-8">
+      <div className="ax-wrap ax-py">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {decks.map((d) => {
             const s = deckStats(d.id);

@@ -3,7 +3,7 @@
  * More) with tidy drop-downs, search, wishlist, cart and account. On phones
  * the sections open in a full-screen menu. Styles: src/site.css (ax-*).
  */
-import { useEffect, useRef, useState, type ComponentType } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ComponentType } from "react";
 import { Link, useLocation } from "wouter";
 import {
   Activity, BadgeCheck, BookOpen, Bone, Brain, Briefcase, Building2, Calculator, ChevronDown, ClipboardList, Download, Droplet, FileText,
@@ -126,6 +126,7 @@ export function Navbar({ inner = false }: { inner?: boolean }) {
   const navRef = useRef<HTMLElement>(null);
   const acctRef = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<number | undefined>(undefined);
+  const dropRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -149,8 +150,33 @@ export function Navbar({ inner = false }: { inner?: boolean }) {
     return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("mousedown", onDown); };
   }, []);
   useEffect(() => { document.body.style.overflow = mobile || searching ? "hidden" : ""; return () => { document.body.style.overflow = ""; }; }, [mobile, searching]);
+  // A drop-down sits centred under its section, moved sideways if that would put it past the edge of the window.
+  useLayoutEffect(() => {
+    const place = () => {
+      const el = dropRef.current;
+      if (!el) return;
+      el.style.removeProperty("--ax-drop-x");
+      const r = el.getBoundingClientRect();
+      const vw = document.documentElement.clientWidth;
+      const gap = 12;
+      const dx = r.left < gap ? gap - r.left : r.right > vw - gap ? vw - gap - r.right : 0;
+      if (dx) el.style.setProperty("--ax-drop-x", `${Math.round(dx)}px`);
+    };
+    place();
+    if (!open) return;
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, [open]);
 
-  const hoverOpen = (id: string) => { window.clearTimeout(closeTimer.current); setOpen(id); };
+  const openedAt = useRef(0);
+  const hoverOpen = (id: string) => { window.clearTimeout(closeTimer.current); if (open !== id) openedAt.current = Date.now(); setOpen(id); };
+  // A click just after the pointer opened the menu (moving onto it, or a tap, which also counts as moving onto it)
+  // keeps it open instead of closing it again.
+  const toggle = (id: string) => {
+    if (open === id && Date.now() - openedAt.current < 600) return;
+    if (open !== id) openedAt.current = Date.now();
+    setOpen(open === id ? null : id);
+  };
   const hoverClose = () => { closeTimer.current = window.setTimeout(() => setOpen(null), 160); };
   const search = (q: string) => { const s = q.trim(); if (!s) return; setSearching(false); setQuery(""); setLocation(`/shop?search=${encodeURIComponent(s)}`); };
   const first = (user?.name || "").replace(/^dr\.?\s+/i, "").split(" ")[0] || "Account";
@@ -163,9 +189,9 @@ export function Navbar({ inner = false }: { inner?: boolean }) {
           <nav className="ax-nav" ref={navRef} aria-label="Main">
             {SECTIONS.slice(0, 3).map((s) => (
               <div key={s.id} className={`${open === s.id ? "open" : ""} ${s.match.test(location) ? "on" : ""}`} style={{ position: "relative" }} onMouseEnter={() => hoverOpen(s.id)} onMouseLeave={hoverClose}>
-                <button type="button" aria-expanded={open === s.id} onClick={() => setOpen(open === s.id ? null : s.id)}>{s.label} <ChevronDown size={14} className="chev" /></button>
+                <button type="button" aria-expanded={open === s.id} onClick={() => toggle(s.id)}>{s.label} <ChevronDown size={14} className="chev" /></button>
                 {open === s.id && (
-                  <div className="ax-drop" style={{ width: s.cols === 2 ? 540 : 300 }}>
+                  <div className="ax-drop" ref={dropRef} style={{ width: s.cols === 2 ? 540 : 300 }}>
                     <div className="ax-drop-grid" style={{ gridTemplateColumns: `repeat(${s.cols ?? 1},1fr)` }}>
                       {s.items.map((it) => <ItemLink key={it.href} item={it} />)}
                     </div>
@@ -177,9 +203,9 @@ export function Navbar({ inner = false }: { inner?: boolean }) {
             <a href={cadusUrl("/")} className="cadus"><CadusMark size={16} variant="mono" color="currentColor" /> Cadus AI</a>
             {(() => { const s = SECTIONS[3]; return (
               <div className={`${open === s.id ? "open" : ""} ${s.match.test(location) ? "on" : ""}`} style={{ position: "relative" }} onMouseEnter={() => hoverOpen(s.id)} onMouseLeave={hoverClose}>
-                <button type="button" aria-expanded={open === s.id} onClick={() => setOpen(open === s.id ? null : s.id)}>{s.label} <ChevronDown size={14} className="chev" /></button>
+                <button type="button" aria-expanded={open === s.id} onClick={() => toggle(s.id)}>{s.label} <ChevronDown size={14} className="chev" /></button>
                 {open === s.id && (
-                  <div className="ax-drop" style={{ width: 540 }}>
+                  <div className="ax-drop" ref={dropRef} style={{ width: 540 }}>
                     <div className="ax-drop-grid" style={{ gridTemplateColumns: "repeat(2,1fr)" }}>{s.items.map((it) => <ItemLink key={it.href} item={it} />)}</div>
                   </div>
                 )}

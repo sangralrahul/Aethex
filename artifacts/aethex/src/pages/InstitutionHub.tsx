@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { PageHero } from "@/components/PageHero";
+import { mainUrl } from "@/lib/host";
 import { motion } from "framer-motion";
 import {
   Building2, GraduationCap, HeartPulse, ShieldCheck, Truck, BadgePercent,
@@ -334,7 +335,7 @@ export default function InstitutionHub({ mode }: InstitutionHubProps = {}) {
                         )}
                       </div>
                       {(inst as any).state && (
-                        <div className="text-[9px] mt-0.5" style={{ color: "#C7C7CC" }}>{(inst as any).state}</div>
+                        <div className="text-[11px] mt-0.5" style={{ color: "#737378" }}>{(inst as any).state}</div>
                       )}
                     </div>
                   </motion.div>
@@ -544,7 +545,7 @@ export default function InstitutionHub({ mode }: InstitutionHubProps = {}) {
 
               <p className="text-center text-xs" style={{ color: "#AEAEB2" }}>
                 By submitting, you agree to our{" "}
-                <a href="/?legal=privacy-policy" className="underline">Privacy Policy</a>.
+                <a href={mainUrl("/privacy-policy")} className="underline">Privacy Policy</a>.
                 We'll respond within 24 business hours.
               </p>
             </form>
@@ -553,14 +554,14 @@ export default function InstitutionHub({ mode }: InstitutionHubProps = {}) {
       </section>
 
       {/* ── Built for Institutions (dark) ── */}
-      <section className="py-20" style={{ background: "#F5F3EE" }}>
+      <section className="py-20" style={{ background: "radial-gradient(900px 420px at 85% 0%, rgba(43,122,111,0.28), transparent 70%), #0B1220" }}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
-            <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#AEAEB2" }}>Why Aethex</p>
+            <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#7FE0CF" }}>Why Aethex</p>
             <h2 className="text-3xl sm:text-4xl font-black mb-4" style={{ color: "#FFFFFF", letterSpacing: "-0.5px" }}>
               Built for Institutions
             </h2>
-            <p className="text-base" style={{ color: "rgba(255,255,255,0.5)" }}>
+            <p className="text-base" style={{ color: "rgba(255,255,255,0.72)" }}>
               Purpose-built features for medical colleges and hospitals across India
             </p>
           </div>
@@ -568,13 +569,13 @@ export default function InstitutionHub({ mode }: InstitutionHubProps = {}) {
             {benefits.map((b, i) => (
               <motion.div key={b.title} initial="hidden" whileInView="visible" viewport={{ once: true }} custom={i} variants={fadeUp}
                 className="p-6 rounded-2xl"
-                style={{ background: "#FFFFFF", border: "1px solid #E5E1D8" }}>
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
                 <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-5"
                   style={{ background: `${b.color}18`, border: `1px solid ${b.color}30` }}>
                   <b.icon className="w-5 h-5" style={{ color: b.color }} />
                 </div>
                 <h3 className="font-bold text-base mb-2" style={{ color: "#FFFFFF" }}>{b.title}</h3>
-                <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>{b.desc}</p>
+                <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.7)" }}>{b.desc}</p>
               </motion.div>
             ))}
           </div>

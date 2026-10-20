@@ -828,7 +828,7 @@ export default function NeetPg() {
           <div className="flex flex-col sm:flex-row gap-3">
             <button onClick={() => setMode("practice")}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90"
-              style={{ background: "#00C2A8", color: "#FFFFFF" }}>
+              style={{ background: "#007A69", color: "#FFFFFF" }}>
               <Play className="w-4 h-4" /> Practice Mode
             </button>
             <button onClick={() => setMode("quicktest")}
@@ -880,7 +880,7 @@ export default function NeetPg() {
               cta: "Start Practicing", mode: "practice" as Mode,
             },
             {
-              icon: Zap, title: "Quick Test Mode", color: "#00C2A8",
+              icon: Zap, title: "Quick Test Mode", color: "#007A69",
               gradient: "from-teal-500 to-teal-800",
               desc: "Configure a timed mock test by subject, difficulty, and question count. Get a full performance analysis at the end.",
               features: ["Choose 10 / 20 / 30 Qs", "Filter by subject & difficulty", "Full timer for the test", "Subject-wise score analysis"],

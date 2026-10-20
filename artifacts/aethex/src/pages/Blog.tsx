@@ -124,7 +124,7 @@ export default function Blog() {
             </div>
             <button type="submit"
               className="px-4 py-3 font-semibold text-sm rounded-xl transition-all hover:opacity-90 shrink-0"
-              style={{ background: "#00C2A8", color: "#FFFFFF" }}>
+              style={{ background: "#007A69", color: "#FFFFFF" }}>
               Search
             </button>
           </form>

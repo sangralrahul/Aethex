@@ -278,7 +278,7 @@ export default function CaseOfTheDay() {
               className="flex-1 py-3 rounded-xl font-bold text-sm transition-all"
               style={{
                 background: selectedOption && !revealed ? "#007AFF" : "rgba(60,60,67,0.1)",
-                color: selectedOption && !revealed ? "#FFFFFF" : "#C7C7CC",
+                color: selectedOption && !revealed ? "#FFFFFF" : "#8E8E93",
                 cursor: selectedOption && !revealed ? "pointer" : "not-allowed",
               }}>
               {revealed ? "Answer Revealed" : "Reveal Answer"}
