@@ -12,7 +12,7 @@
  * Styles: src/shop.css (.ax-pimg).
  */
 import { useEffect, useState, type CSSProperties } from "react";
-import { Package } from "lucide-react";
+import { BookOpen, Package } from "lucide-react";
 
 const FOOTNOTE = 3; // percent clipped from the bottom: the badge's "*Refer warranty policy" line
 
@@ -46,13 +46,15 @@ export function imageInfo(url: string, width = 600) {
   return { src: sized(u, width), srcSet: resizable ? `${sized(u, width)} 1x, ${sized(u, Math.min(2000, width * 2))} 2x` : undefined, crop };
 }
 
-export function ProductImage({ src, alt = "", width = 600, eager = false, className = "", style }: {
+export function ProductImage({ src, alt = "", width = 600, eager = false, className = "", style, book = false }: {
   src?: string; alt?: string; width?: number; eager?: boolean; className?: string; style?: CSSProperties;
+  /** A medical book: without a cover photo it shows a book instead of a parcel. */
+  book?: boolean;
 }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => { setFailed(false); }, [src]);
   if (!src || failed) {
-    return <span className={`ax-pimg none ${className}`} aria-hidden="true"><Package size={28} /></span>;
+    return <span className={`ax-pimg none${book ? " book" : ""} ${className}`} aria-hidden="true">{book ? <BookOpen size={26} /> : <Package size={28} />}</span>;
   }
   const info = imageInfo(src, width);
   const cropVars = info.crop ? ({ "--ax-clip": info.crop.clip, "--ax-shift": `${info.crop.shift}%` } as CSSProperties) : undefined;

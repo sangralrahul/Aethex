@@ -9,6 +9,7 @@ import { useMemo, useSyncExternalStore } from "react";
 import type { BulkLine } from "./types";
 import { BULK_MAX_LINES, BULK_MAX_QTY, cleanBulkLines, lineKey, priceBulk } from "./rules";
 import { useStore } from "./api";
+import { isBookId } from "./bookdata";
 import { asProduct } from "./cart";
 
 const KEY = "aethex:bulk:v1";
@@ -83,7 +84,7 @@ export function useBulkLines(): BulkLine[] {
 /** The list at the store's prices (a guide), with the products it names. */
 export function usePricedBulk() {
   const ls = useBulkLines();
-  const { data: store, isLoading } = useStore(true);
+  const { data: store, isLoading } = useStore(true, { books: ls.some((l) => isBookId(l.productId)) });
   const priced = useMemo(() => priceBulk(ls, (id) => { const s = store?.byId.get(id); return s ? asProduct(s) : null; }), [ls, store]);
   return { lines: ls, priced, store, isLoading: isLoading && ls.length > 0 };
 }

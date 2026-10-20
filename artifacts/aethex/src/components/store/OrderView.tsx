@@ -11,6 +11,7 @@ import { STATUS_LABEL } from "@/lib/store/rules";
 import { formatINR } from "@/lib/utils";
 import { BUSINESS } from "@/config/business";
 import { ProductImage } from "./ProductImage";
+import { isBookId, itemHref } from "@/lib/store/bookdata";
 
 const STEPS = [
   { key: "placed", label: "Placed", icon: Package },
@@ -86,8 +87,8 @@ export function OrderView({ order, token, phone, onChange, compact = false }: {
           <ul className="ax-ov-items">
             {order.lines.map((l) => (
               <li key={`${l.productId}:${l.variantId ?? ""}`}>
-                <Link href={`/products/${l.slug}`} className="img"><ProductImage src={l.image} width={120} /></Link>
-                <span><Link href={`/products/${l.slug}`}>{l.name}</Link><em>{l.variantLabel ? `${l.variantLabel} · ` : ""}Qty {l.qty} × {formatINR(l.price)}</em></span>
+                <Link href={itemHref(l.productId, l.slug)} className="img"><ProductImage src={l.image} width={120} book={isBookId(l.productId)} /></Link>
+                <span><Link href={itemHref(l.productId, l.slug)}>{l.name}</Link><em>{l.variantLabel ? `${l.variantLabel} · ` : ""}Qty {l.qty} × {formatINR(l.price)}</em></span>
                 <b>{formatINR(l.lineTotal)}</b>
               </li>
             ))}

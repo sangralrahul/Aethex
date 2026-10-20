@@ -16,6 +16,11 @@ import { useSeo } from "@/hooks/use-seo";
 import { medicalSubjects } from "@/data/medicalSubjects";
 import { medicalDepartments } from "@/data/medicalDepartments";
 import { getTodaysCase } from "@/data/clinicalCases";
+import { BookCover, shortAuthors } from "@/components/store/BookCard";
+import { useBooks } from "@/lib/store/api";
+import { sortBooks } from "@/lib/store/books";
+import type { Book } from "@/lib/store/types";
+import { formatINR } from "@/lib/utils";
 
 type Icon = ComponentType<LucideProps>;
 const HUB = "/study-hub/medical-knowledge-hub";
@@ -355,68 +360,42 @@ const youtubeChannels = [
   },
 ];
 
-const medicalBooks = [
-  {
-    title: "Harrison's Principles of Internal Medicine",
-    authors: "Fauci, Kasper, Longo",
-    category: "Medicine",
-    price: 4800,
-    link: "/books/harrison-s-principles-of-internal-medicine-21st-ed-2-vol-set",
-    cover: "https://covers.openlibrary.org/b/isbn/9781259644030-M.jpg",
-    color: "#1D4ED8",
-    edition: "21st Ed",
-  },
-  {
-    title: "Gray's Anatomy for Students",
-    authors: "Drake, Vogl, Mitchell",
-    category: "Anatomy",
-    price: 2200,
-    link: "/books",
-    cover: "https://covers.openlibrary.org/b/isbn/9780323393041-M.jpg",
-    color: "#B45309",
-    edition: "4th Ed",
-  },
-  {
-    title: "Robbins & Cotran Pathological Basis of Disease",
-    authors: "Kumar, Abbas, Aster",
-    category: "Pathology",
-    price: 3600,
-    link: "/books/robbins-cotran-pathologic-basis-of-disease-10th-ed",
-    cover: "https://covers.openlibrary.org/b/isbn/9780323531205-M.jpg",
-    color: "#9D1B1B",
-    edition: "10th Ed",
-  },
-  {
-    title: "Goodman & Gilman's Pharmacology",
-    authors: "Brunton, Hilal-Dandan",
-    category: "Pharmacology",
-    price: 3200,
-    link: "/books",
-    cover: "https://covers.openlibrary.org/b/isbn/9781259584732-M.jpg",
-    color: "#065F46",
-    edition: "13th Ed",
-  },
-  {
-    title: "Bailey & Love's Short Practice of Surgery",
-    authors: "Williams, O'Connell, McCaskie",
-    category: "Surgery",
-    price: 2900,
-    link: "/books/bailey-love-s-short-practice-of-surgery-27th-ed",
-    cover: "https://covers.openlibrary.org/b/isbn/9781138052697-M.jpg",
-    color: "#4C1D95",
-    edition: "27th Ed",
-  },
-  {
-    title: "Williams Obstetrics",
-    authors: "Cunningham et al.",
-    category: "OBG",
-    price: 2600,
-    link: "/books/williams-obstetrics-26th-ed",
-    cover: "https://covers.openlibrary.org/b/isbn/9781260462326-M.jpg",
-    color: "#9D174D",
-    edition: "26th Ed",
-  },
+/** The best-known textbook for six core MBBS subjects, from the books catalogue (/books); the best ranked one if it isn't there. */
+const BOOK_PICKS: [string, RegExp][] = [
+  ["Anatomy", /Chaurasia's Human Anatomy, Vol\. 1/], ["Physiology", /^Guyton and Hall/], ["Biochemistry", /^Textbook of Biochemistry/],
+  ["Pathology", /^Robbins & Cotran/], ["Pharmacology", /^Essentials of Medical Pharmacology/], ["Microbiology", /Ananthanarayan/],
 ];
+
+function StandardBooks() {
+  const { data: bs } = useBooks();
+  const picks = useMemo(() => {
+    if (!bs) return [];
+    return BOOK_PICKS.map(([subject, known]) => {
+      const all = bs.books.filter((b) => b.standard && b.placements.some((p) => p.group.startsWith("mbbs-") && p.subject === subject));
+      const b = all.find((x) => known.test(x.title)) ?? sortBooks(all, "recommended")[0];
+      return b ? { b, subject } : null;
+    }).filter((x): x is { b: Book; subject: string } => !!x);
+  }, [bs]);
+  if (!bs) return <div className="ax-sth-books">{BOOK_PICKS.map(([s]) => <div key={s} className="book sk" />)}</div>;
+  return (
+    <div className="ax-sth-books">
+      {picks.map(({ b, subject }) => {
+        const priced = b.price !== null && !b.priceOnRequest;
+        return (
+          <Link key={b.id} href={`/books/${b.slug}`} className="book">
+            <span className="cover"><BookCover book={b} publisher={bs.publisherName(b.publisher)} size="mini" /></span>
+            <span className="tx">
+              <b>{b.title}</b>
+              <small>{[shortAuthors(b.authors), b.edition].filter(Boolean).join(" · ")}</small>
+              <span className="meta"><em>{subject}</em><strong>{priced ? formatINR(Number(b.price)) : "Ask price"}</strong></span>
+            </span>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
 
 
 /** Two-letter mark for a channel: the letters its avatar used, else its initials. */
@@ -582,21 +561,7 @@ export default function StudyHub() {
             <div><p className="ax-eyebrow">Standard books</p><h2>Essential medical books</h2></div>
             <Link href="/books" className="ax-link">All medical books <ArrowRight size={16} /></Link>
           </div>
-          <div className="ax-sth-books">
-            {medicalBooks.map((book) => (
-              <Link key={book.title} href={book.link} className="book">
-                <span className="cover" style={{ background: `${book.color}12`, borderColor: `${book.color}33` }}>
-                  <img src={book.cover} alt="" loading="lazy" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-                  <BookOpen size={20} style={{ color: book.color }} />
-                </span>
-                <span className="tx">
-                  <b>{book.title}</b>
-                  <small>{book.authors} · {book.edition}</small>
-                  <span className="meta"><em style={{ color: book.color, background: `${book.color}12` }}>{book.category}</em><strong>Request</strong></span>
-                </span>
-              </Link>
-            ))}
-          </div>
+          <StandardBooks />
         </div>
       </section>
 

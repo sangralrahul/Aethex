@@ -13,6 +13,7 @@ import { formatINR } from "@/lib/utils";
 import { useWishlist } from "@/hooks/use-wishlist";
 import { useToast } from "@/hooks/use-toast";
 import { ProductImage } from "@/components/store/ProductImage";
+import { isBookId, itemHref } from "@/lib/store/bookdata";
 
 interface ProductCardProps {
   product: ProductSummary;
@@ -32,7 +33,7 @@ export function ProductCard({ product: p, brandName, viewMode = "grid", eager = 
   const { toast } = useToast();
   const saved = has(p.id);
   const off = p.priceOnRequest ? 0 : discountPct(p.price, p.mrp);
-  const href = `/products/${p.slug}`;
+  const href = itemHref(p.id, p.slug);
   const variants = p.variants ?? [];
   const needsChoice = variants.length > 1;
 
@@ -62,7 +63,7 @@ export function ProductCard({ product: p, brandName, viewMode = "grid", eager = 
   return (
     <article className={`ax-prod${viewMode === "list" ? " row" : ""}`} data-product={p.id}>
       <Link href={href} className="img" aria-label={p.name}>
-        <ProductImage src={p.image} alt={p.name} width={viewMode === "list" ? 380 : 480} eager={eager} />
+        <ProductImage src={p.image} alt={p.name} width={viewMode === "list" ? 380 : 480} eager={eager} book={isBookId(p.id)} />
         {off >= 5 && <span className="off">{off}% off</span>}
       </Link>
       <button type="button" className={`fav${saved ? " on" : ""}`} onClick={fav} aria-pressed={saved} aria-label={saved ? "Remove from wishlist" : "Save to wishlist"}>

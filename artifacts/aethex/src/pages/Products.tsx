@@ -6,12 +6,14 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useRoute, useSearch } from "wouter";
-import { BadgeCheck, ExternalLink, LayoutGrid, List, Search as SearchIcon, SlidersHorizontal, X } from "lucide-react";
+import { ArrowRight, BadgeCheck, ExternalLink, LayoutGrid, List, Search as SearchIcon, SlidersHorizontal, X } from "lucide-react";
 import { ProductCard } from "@/components/ProductCard";
+import { BookCard } from "@/components/store/BookCard";
 import { ShopHead, type Crumb } from "@/components/shop/ShopHead";
 import { TopLayer } from "@/components/shop/TopLayer";
 import { useSeo } from "@/hooks/use-seo";
-import { useStore, type StoreData } from "@/lib/store/api";
+import { useBooks, useStore, type StoreData } from "@/lib/store/api";
+import { indexBooks, searchBooks } from "@/lib/store/books";
 import type { ProductSummary } from "@/lib/store/types";
 import { discountPct, mixBrands } from "@/lib/store/rules";
 import { score, searchWords } from "@/lib/store/search";
@@ -141,6 +143,25 @@ function Filters(f: FilterProps) {
         </div>
       )}
     </div>
+  );
+}
+
+/** Medical books for a search in the shop (the books have their own page, /books). */
+function BookMatches({ q, alone }: { q: string; alone: boolean }) {
+  const { data: bs } = useBooks();
+  const index = useMemo(() => (bs ? indexBooks(bs.books, bs.publisherName) : null), [bs]);
+  const hits = useMemo(() => (bs && index ? searchBooks(bs.books, index, q) : []), [bs, index, q]);
+  if (!bs || !hits.length) return null;
+  return (
+    <section className={`ax-shop-books${alone ? " alone" : ""}`} aria-label="Medical books">
+      <div className="ax-h-title">
+        <h2>Books matching “{q}”</h2>
+        <Link href={`/books?q=${encodeURIComponent(q)}`} className="ax-link">{hits.length > 1 ? `All ${hits.length} books` : "Open in books"} <ArrowRight size={16} /></Link>
+      </div>
+      <div className="ax-h-rail">
+        {hits.slice(0, 12).map((b) => <BookCard key={b.id} book={b} publisher={bs.publisherName(b.publisher)} />)}
+      </div>
+    </section>
   );
 }
 
@@ -348,6 +369,8 @@ export default function Products() {
           {isLoading || !store ? (
             <div className={`ax-grid ${view}`}>{Array.from({ length: 8 }, (_, k) => <div key={k} className="ax-prod sk" />)}</div>
           ) : results.length === 0 ? (
+            <>
+            {searchFilter && <BookMatches q={searchFilter} alone />}
             <div className="ax-empty">
               <span className="ic"><SearchIcon size={26} /></span>
               <h2>No products match</h2>
@@ -357,6 +380,7 @@ export default function Products() {
                 <Link href="/shop" className="ax-btn">See all products</Link>
               </div>
             </div>
+            </>
           ) : (
             <>
               <div className={`ax-grid ${view}`}>
@@ -370,6 +394,7 @@ export default function Products() {
                   <button type="button" className="ax-btn" onClick={() => setShown((n) => n + PAGE)}>Show more products</button>
                 </div>
               )}
+              {searchFilter && <BookMatches q={searchFilter} alone={false} />}
             </>
           )}
         </div>

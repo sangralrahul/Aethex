@@ -1,530 +1,435 @@
-import { useState, useEffect, useRef, useMemo } from "react";
-import { Link } from "wouter";
-import { PageHero } from "@/components/PageHero";
+/**
+ * Medical books (/books): every course from MBBS to AYUSH, in the store's
+ * design. Without a course or a search it shows the courses and a few rails;
+ * with one it works like the shop: filters (year or degree, subject,
+ * publisher, priced), sort, and a grid. The state lives in the address
+ * (?course=&group=&subject=&pub=&priced=1&sort=&q=) so any view can be shared.
+ * Books come from useBooks() (src/data/store/books.json with the store's
+ * prices). Styles: src/shop.css (.ax-shop, .ax-bk) and the product card.
+ */
+import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
+import { Link, useLocation, useSearch } from "wouter";
 import {
-  BookOpen, Search, ShoppingCart, Star, ChevronRight,
-  GraduationCap, Library, Tag, TrendingUp, BookMarked,
-  Sparkles, Trophy, ChevronDown, X, Filter,
+  Activity, ArrowRight, BookOpen, Brain, ChevronLeft, ChevronRight, FlaskConical, GraduationCap, HeartPulse, Leaf, Library, MessageSquareText,
+  Pill, Search as SearchIcon, SlidersHorizontal, Smile, Stethoscope, Target, X, type LucideProps,
 } from "lucide-react";
-import { bookSlug } from "@/pages/BookDetail";
+import { ShopHead, type Crumb } from "@/components/shop/ShopHead";
+import { TopLayer } from "@/components/shop/TopLayer";
+import { BookCard } from "@/components/store/BookCard";
 import { EnquiryDialog } from "@/components/store/EnquiryForm";
 import { useSeo } from "@/hooks/use-seo";
-import { CURRICULUM, type Degree, type CurriculumYear, type SubjectGroup, type CurrBook } from "@/data/curriculumBooks";
+import { useBooks, type BookStore } from "@/lib/store/api";
+import type { Book } from "@/lib/store/types";
+import { BOOK_SORTS, countBy, courseCounts, courseIdsOf, indexBooks, recommendRank, searchBooks, sortBooks, type BookSort } from "@/lib/store/books";
+import { BOOK_COURSES, courseOf, groupInfo, type CourseIcon } from "@/config/bookCourses";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+const PAGE = 30;
 
-// ── Book Card ─────────────────────────────────────────────────────────────
-export const bookTitle = (name: string) => name.replace(/\s+\d+(?:st|nd|rd|th)\s+Ed(?:ition)?.*$/i, "");
+export const COURSE_ICONS: Record<CourseIcon, ComponentType<LucideProps>> = {
+  stethoscope: Stethoscope, graduation: GraduationCap, brain: Brain, target: Target, heart: HeartPulse, smile: Smile,
+  pill: Pill, activity: Activity, leaf: Leaf, flask: FlaskConical,
+};
 
-function BookCard({ book, color, onRequest }: { book: CurrBook; color: string; onRequest: (b: CurrBook) => void }) {
-  return (
-    <div
-      className="group flex flex-col rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl relative"
-      style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.9)", boxShadow: "0 2px 14px rgba(0,0,0,0.07)" }}
-    >
-      {/* Full-card clickable overlay — sits behind buttons; every book gets its own detail page */}
-      <Link href={`/books/${bookSlug(book.name)}`} className="absolute inset-0 z-0" aria-label={`View ${book.name} details`} />
-      {/* Cover: a designed spine in the subject's colour (clicks go through to the link behind it) */}
-      <div className="relative shrink-0 overflow-hidden flex items-center justify-center pointer-events-none" style={{ height: 180, background: `linear-gradient(160deg,${color}22,${color}08)` }}>
-        <div className="flex flex-col items-center justify-center gap-2 px-4 py-6 text-center h-full w-full"
-          style={{ background: `linear-gradient(160deg,${color}DD,${color}88)` }}>
-          <BookOpen className="w-8 h-8 text-white opacity-70" />
-          <p className="text-[10px] font-bold text-white opacity-80 line-clamp-3 leading-tight">{bookTitle(book.name)}</p>
-        </div>
-        {book.featured && (
-          <div className="absolute top-2 left-2 flex gap-1.5">
-            <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md" style={{ background: "#B45309", color: "#fff" }}>Standard text</span>
-          </div>
-        )}
-        {book.forExam?.length ? (
-          <div className="absolute bottom-2 right-2 flex gap-1">
-            {book.forExam.slice(0, 2).map(e => (
-              <span key={e} className="text-[8px] font-bold px-1.5 py-0.5 rounded-md" style={{ background: "rgba(0,0,0,0.55)", color: "#fff", backdropFilter: "blur(4px)" }}>{e}</span>
-            ))}
-          </div>
-        ) : null}
-        <div className="absolute top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded-md"
-          style={{ background: "rgba(0,0,0,0.45)", color: "rgba(255,255,255,0.9)", backdropFilter: "blur(4px)" }}>
-          {book.edition}
-        </div>
-      </div>
-
-      {/* Body */}
-      <div className="flex flex-col flex-1 p-3.5 gap-2">
-        <h3 className="text-[12px] font-bold leading-snug line-clamp-3 group-hover:text-[#007AFF] transition-colors" style={{ color: "#1C1C1E", minHeight: "3.2rem" }}>
-          {bookTitle(book.name)}
-        </h3>
-        <p className="text-[10px] truncate" style={{ color: "#8E8E93" }}>{book.author}</p>
-        <span className="self-start text-[9px] font-semibold px-2 py-0.5 rounded-full" style={{ background: `${color}14`, color }}>{book.publisher}</span>
-        <button
-          type="button"
-          onClick={e => { e.preventDefault(); e.stopPropagation(); onRequest(book); }}
-          className="relative z-10 w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-bold transition-all hover:opacity-90 active:scale-95 mt-auto"
-          style={{ background: `linear-gradient(135deg,${color},${color}CC)`, color: "#fff" }}
-        >
-          <BookMarked className="w-3 h-3" /> Request this book
-        </button>
-      </div>
-    </div>
-  );
+interface View {
+  course: string;
+  group: string;
+  subject: string;
+  pubs: string[];
+  priced: boolean;
+  sort: BookSort;
+  q: string;
 }
 
-// ── Subject Section ───────────────────────────────────────────────────────
-function SubjectSection({
-  subj,
-  degreeColor,
-  onRequest,
-}: {
-  subj: SubjectGroup;
-  degreeColor: string;
-  onRequest: (b: CurrBook) => void;
+function readView(sp: URLSearchParams): View {
+  const sort = sp.get("sort") as BookSort | null;
+  return {
+    course: sp.get("course") ?? "",
+    group: sp.get("group") ?? "",
+    subject: sp.get("subject") ?? "",
+    pubs: (sp.get("pub") ?? "").split(",").filter(Boolean),
+    priced: sp.get("priced") === "1",
+    sort: sort && BOOK_SORTS.some((s) => s.id === sort) ? sort : "recommended",
+    q: (sp.get("q") ?? "").trim(),
+  };
+}
+
+function viewUrl(v: View): string {
+  const p = new URLSearchParams();
+  if (v.q) p.set("q", v.q);
+  if (v.course) p.set("course", v.course);
+  if (v.group) p.set("group", v.group);
+  if (v.subject) p.set("subject", v.subject);
+  if (v.pubs.length) p.set("pub", v.pubs.join(","));
+  if (v.priced) p.set("priced", "1");
+  if (v.sort !== "recommended") p.set("sort", v.sort);
+  const s = p.toString();
+  return `/books${s ? `?${s}` : ""}`;
+}
+
+/* ------------------------------------------------------------------ filters */
+
+function Filters({ v, set, bs, inCourse, inGroup, inSubject, onClear, active }: {
+  v: View; set: (p: Partial<View>) => void; bs: BookStore; inCourse: Book[]; inGroup: Book[]; inSubject: Book[]; onClear: () => void; active: boolean;
 }) {
-  const color = subj.color || degreeColor;
-  const [showAll, setShowAll] = useState(false);
-  const visible = showAll ? subj.books : subj.books.slice(0, 10);
+  const course = courseOf(v.course);
+  const groups = useMemo(() => {
+    if (!course) return [];
+    const n = countBy(inCourse, (b) => b.placements.map((p) => p.group));
+    return course.groups.filter((g) => n.get(g.id)).map((g) => ({ ...g, n: n.get(g.id)! }));
+  }, [course, inCourse]);
+  const subjects = useMemo(() => {
+    const n = countBy(inGroup, (b) => b.placements.filter((p) => (v.group ? p.group === v.group : !course || groupInfo(p.group)?.course.id === course.id)).map((p) => p.subject));
+    return Array.from(n.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }, [inGroup, v.group, course]);
+  const pubs = useMemo(() => {
+    const n = countBy(inSubject, (b) => [b.publisher]);
+    return Array.from(n.entries()).sort((a, b) => b[1] - a[1]).map(([slug, count]) => ({ slug, name: bs.publisherName(slug), count }));
+  }, [inSubject, bs]);
+  const [allPubs, setAllPubs] = useState(false);
+  const courses = useMemo(() => courseCounts(inCourse), [inCourse]);
 
   return (
-    <div className="mb-10">
-      <div className="flex items-center gap-3 mb-5">
-        <div className="w-1 h-8 rounded-full" style={{ background: color }} />
-        <h3 className="text-lg font-display font-bold" style={{ color: "#1C1C1E" }}>
-          {subj.name}
-        </h3>
-        <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: `${color}14`, color }}>
-          {subj.books.length} books
-        </span>
+    <div className="ax-filters-in">
+      <div className="ax-f-head">
+        <b>Filters</b>
+        {active && <button type="button" className="ax-f-clear" onClick={onClear}>Clear all</button>}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-        {visible.map(book => (
-          <BookCard key={book.name} book={book} color={color} onRequest={onRequest} />
-        ))}
+      <div className="ax-f-sec">
+        <label className="ax-switch">
+          <input type="checkbox" checked={v.priced} onChange={(e) => set({ priced: e.target.checked })} />
+          <span className="track"><i /></span>
+          <span>Ready to buy (priced)</span>
+        </label>
       </div>
 
-      {subj.books.length > 10 && (
-        <button
-          onClick={() => setShowAll(v => !v)}
-          className="mt-4 flex items-center gap-1.5 text-sm font-semibold transition-colors hover:opacity-80"
-          style={{ color }}
-        >
-          {showAll ? "Show less" : `Show all ${subj.books.length} books`}
-          <ChevronDown className="w-4 h-4" style={{ transform: showAll ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
-        </button>
+      {!course && (
+        <div className="ax-f-sec">
+          <h3>Course</h3>
+          <div className="ax-f-cats">
+            {BOOK_COURSES.filter((c) => courses.get(c.id)).map((c) => (
+              <button type="button" key={c.id} onClick={() => set({ course: c.id, group: "", subject: "" })}><span>{c.label}</span><em>{courses.get(c.id)}</em></button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {groups.length > 1 && (
+        <div className="ax-f-sec">
+          <h3>{course?.id === "mbbs" ? "Year" : "Course"}</h3>
+          <div className="ax-f-cats">
+            <button type="button" className={!v.group ? "on" : ""} onClick={() => set({ group: "", subject: "" })}><span>All of {course?.label}</span></button>
+            {groups.map((g) => (
+              <button type="button" key={g.id} className={v.group === g.id ? "on" : ""} onClick={() => set({ group: v.group === g.id ? "" : g.id, subject: "" })}><span>{g.label}</span><em>{g.n}</em></button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {subjects.length > 1 && (
+        <div className="ax-f-sec">
+          <h3>{v.course === "pg" || v.course === "ss" ? "Specialty" : "Subject"}</h3>
+          <div className="ax-f-cats">
+            <button type="button" className={!v.subject ? "on" : ""} onClick={() => set({ subject: "" })}><span>All subjects</span></button>
+            {subjects.map(([name, n]) => (
+              <button type="button" key={name} className={v.subject === name ? "on" : ""} onClick={() => set({ subject: v.subject === name ? "" : name })}><span>{name}</span><em>{n}</em></button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {pubs.length > 1 && (
+        <div className="ax-f-sec">
+          <h3>Publisher</h3>
+          <div className="ax-f-brands">
+            {(allPubs ? pubs : pubs.slice(0, 8)).map((p) => (
+              <label key={p.slug} className="ax-check">
+                <input type="checkbox" checked={v.pubs.includes(p.slug)} onChange={() => set({ pubs: v.pubs.includes(p.slug) ? v.pubs.filter((x) => x !== p.slug) : [...v.pubs, p.slug] })} />
+                <span className="box" /> {p.name} <em className="n">{p.count}</em>
+              </label>
+            ))}
+          </div>
+          {pubs.length > 8 && <button type="button" className="ax-link ax-f-more" onClick={() => setAllPubs(!allPubs)}>{allPubs ? "Show fewer" : `Show all ${pubs.length} publishers`}</button>}
+        </div>
       )}
     </div>
   );
 }
 
-// ── Year Panel ────────────────────────────────────────────────────────────
-function YearPanel({
-  year,
-  degreeColor,
-  onRequest,
-}: {
-  year: CurriculumYear;
-  degreeColor: string;
-  onRequest: (b: CurrBook) => void;
-}) {
-  const totalBooks = year.subjects.reduce((s, sub) => s + sub.books.length, 0);
-  return (
-    <div>
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${degreeColor}14` }}>
-          <BookOpen className="w-4.5 h-4.5" style={{ color: degreeColor }} />
-        </div>
-        <div>
-          <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: degreeColor }}>{year.label}</span>
-          <p className="text-xs" style={{ color: "#AEAEB2" }}>{totalBooks} books · {year.subjects.length} subjects</p>
-        </div>
-      </div>
+/* ------------------------------------------------------------------ the first view: courses and rails */
 
-      {year.subjects.map(subj => (
-        <SubjectSection key={subj.id} subj={subj} degreeColor={degreeColor} onRequest={onRequest} />
-      ))}
-    </div>
+function Rail({ title, books, bs, more }: { title: string; books: Book[]; bs: BookStore; more?: { href: string; label: string } }) {
+  const track = useRef<HTMLDivElement>(null);
+  const scroll = (d: number) => track.current?.scrollBy({ left: d * track.current.clientWidth * 0.8, behavior: "smooth" });
+  if (!books.length) return null;
+  return (
+    <section className="ax-h-sec ax-bk-rail">
+      <div className="ax-wrap">
+        <div className="ax-h-title">
+          <h2>{title}</h2>
+          <div className="ax-h-arrows">
+            <button type="button" onClick={() => scroll(-1)} aria-label="Scroll left"><ChevronLeft size={18} /></button>
+            <button type="button" onClick={() => scroll(1)} aria-label="Scroll right"><ChevronRight size={18} /></button>
+          </div>
+        </div>
+        <div className="ax-h-rail" ref={track}>
+          {books.map((b) => <BookCard key={b.id} book={b} publisher={bs.publisherName(b.publisher)} />)}
+        </div>
+        {more && <div className="ax-h-more"><Link href={more.href} className="ax-link">{more.label} <ArrowRight size={16} /></Link></div>}
+      </div>
+    </section>
   );
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────
-export default function MedicalBooks() {
-  const [search, setSearch] = useState("");
-  const [activeDegreeId, setActiveDegreeId] = useState(CURRICULUM[0].id);
-  const [activeYearId, setActiveYearId] = useState(CURRICULUM[0].years[0].id);
-  const [activeSubjectId, setActiveSubjectId] = useState<string>("");
-  const [request, setRequest] = useState<CurrBook | null>(null);
-  const loading = false;
-  const yearScrollRef = useRef<HTMLDivElement>(null);
-  useSeo({ title: "Medical books by degree and year | Aethex", description: "MBBS, MD, MS, DM, MCh and DNB textbooks by year and subject. Request any book and we'll confirm the edition, price and availability.", path: "/books" });
+/** Up to n books, the courses taking turns, best first in each. */
+function mixCourses(books: Book[], n: number): Book[] {
+  const queues = BOOK_COURSES.map((c) => books.filter((b) => b.placements[0] && groupInfo(b.placements[0].group)?.course.id === c.id).sort((a, b) => recommendRank(b) - recommendRank(a)));
+  const out: Book[] = [];
+  for (let i = 0; out.length < n && queues.some((q) => i < q.length); i++) for (const q of queues) if (i < q.length && out.length < n) out.push(q[i]);
+  return out;
+}
 
-  const activeDegree = CURRICULUM.find(d => d.id === activeDegreeId) ?? CURRICULUM[0];
-  const activeYear = activeDegree.years.find(y => y.id === activeYearId) ?? activeDegree.years[0];
-  // For PG degrees: the "subject" is the selected year (Year 1/2/3) within the specialty
-  const activeSubject = activeDegree.isPG
-    ? (activeYear.subjects.find(s => s.id === activeSubjectId) ?? activeYear.subjects[0])
-    : null;
-
-  // When degree changes, reset to first specialty/year
-  useEffect(() => {
-    const firstYear = activeDegree.years[0];
-    setActiveYearId(firstYear.id);
-    if (activeDegree.isPG) {
-      setActiveSubjectId(firstYear.subjects[0]?.id ?? "");
-    }
-  }, [activeDegreeId]);
-
-  // When specialty changes (PG mode), reset to first year within specialty
-  useEffect(() => {
-    if (activeDegree.isPG) {
-      setActiveSubjectId(activeYear.subjects[0]?.id ?? "");
-    }
-  }, [activeYearId, activeDegree.id]);
-
-  // Search across all books
-  const allBooks = useMemo(() => {
-    const out: { book: CurrBook; degree: Degree; year: CurriculumYear; subj: SubjectGroup }[] = [];
-    CURRICULUM.forEach(deg =>
-      deg.years.forEach(yr =>
-        yr.subjects.forEach(subj =>
-          subj.books.forEach(book => out.push({ book, degree: deg, year: yr, subj }))
-        )
-      )
-    );
-    return out;
-  }, []);
-
-  const searchResults = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (q.length < 2) return null;
-    return allBooks.filter(
-      ({ book }) =>
-        book.name.toLowerCase().includes(q) ||
-        book.author.toLowerCase().includes(q) ||
-        book.publisher.toLowerCase().includes(q) ||
-        book.matchTags.some(t => t.toLowerCase().includes(q))
-    );
-  }, [search, allBooks]);
-
-  const totalBooks = allBooks.length;
-  const totalDegrees = CURRICULUM.length;
-
+function Landing({ bs, onAsk }: { bs: BookStore; onAsk: () => void }) {
+  const counts = useMemo(() => courseCounts(bs.books), [bs]);
+  const standard = useMemo(() => mixCourses(bs.books.filter((b) => b.standard && b.price !== null && b.cover), 16), [bs]);
+  const classics = useMemo(() => mixCourses(bs.books.filter((b) => b.standard && b.price === null), 16), [bs]);
+  const fresh = useMemo(() => bs.books.filter((b) => (b.year ?? 0) >= 2025 && b.cover && b.price !== null).sort((a, b) => (b.year ?? 0) - (a.year ?? 0) || recommendRank(b) - recommendRank(a)).slice(0, 16), [bs]);
+  const exams = useMemo(() => sortBooks(bs.books.filter((b) => b.placements.some((p) => p.group === "exam-pg")), "recommended").slice(0, 16), [bs]);
   return (
-    <div className="min-h-screen" style={{
-      background: "linear-gradient(160deg, #EEF4FF 0%, #F0F7F4 35%, #F5F0FF 65%, #FFF4EE 100%)",
-      backgroundAttachment: "fixed",
-    }}>
-
-      {/* ── Hero ── */}
-      <PageHero
-        tag="Medical Library"
-        title="Medical Books by Degree & Year"
-        subtitle={`${totalBooks}+ books · MBBS to DM/MCh · by year and subject · request any book`}
-        icon={<BookOpen className="w-7 h-7" style={{ color: "rgba(255,255,255,0.85)" }} />}
-        right={
-          <div className="relative w-full sm:w-80">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: "rgba(255,255,255,0.35)" }} />
-            <input
-              type="text"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search books, authors, subjects…"
-              className="w-full pl-11 pr-10 py-3.5 rounded-2xl text-sm outline-none font-medium"
-              style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.14)", color: "#FFFFFF" }}
-            />
-            {search && (
-              <button onClick={() => setSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2"
-                style={{ color: "rgba(255,255,255,0.5)" }}>
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        }
-      />
-
-      {/* ── Degree Tabs ── */}
-      <div className="sticky top-16 z-30" style={{ background: "rgba(255,255,255,0.96)", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(60,60,67,0.1)" }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex gap-0 overflow-x-auto no-scrollbar">
-            {CURRICULUM.map(deg => {
-              const isActive = deg.id === activeDegreeId;
+    <>
+      <section className="ax-h-sec ax-bk-courses">
+        <div className="ax-wrap">
+          <div className="ax-h-title"><h2>Shop by course</h2></div>
+          <div className="ax-bk-cgrid">
+            {BOOK_COURSES.map((c) => {
+              const Icon = COURSE_ICONS[c.icon];
               return (
-                <button
-                  key={deg.id}
-                  onClick={() => setActiveDegreeId(deg.id)}
-                  className="relative flex flex-col items-center px-5 py-3.5 text-sm font-bold transition-all whitespace-nowrap shrink-0"
-                  style={{ color: isActive ? deg.color : "#636366", borderBottom: isActive ? `3px solid ${deg.color}` : "3px solid transparent" }}
-                >
-                  {deg.label}
-                  <span className="text-[10px] font-normal mt-0.5" style={{ color: isActive ? deg.color : "#AEAEB2" }}>
-                    {deg.shortLabel === "MBBS" && "Year 1-Final"}
-                    {deg.shortLabel === "MD" && "Postgraduate"}
-                    {deg.shortLabel === "MS" && "Surgery PG"}
-                    {deg.shortLabel === "MCh" && "Super-Specialty"}
-                    {deg.shortLabel === "DM" && "Super-Specialty"}
-                    {deg.shortLabel === "DNB" && "/ Fellowship"}
-                  </span>
-                </button>
+                <Link key={c.id} href={`/books?course=${c.id}`} className="ax-bk-course">
+                  <span className="ic"><Icon size={22} /></span>
+                  <span className="tx"><b>{c.label}</b><small>{c.blurb}</small></span>
+                  <em>{counts.get(c.id) ?? 0} books</em>
+                </Link>
               );
             })}
           </div>
         </div>
-      </div>
-
-      {/* ── Body ── */}
-      <div className="relative">
-        {/* Decorative background blobs */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden>
-          <div className="absolute top-20 left-0 w-[500px] h-[500px] rounded-full blur-3xl opacity-25"
-            style={{ background: "radial-gradient(circle,#007AFF33,transparent 70%)", transform: "translateX(-30%)" }} />
-          <div className="absolute top-80 right-0 w-[400px] h-[400px] rounded-full blur-3xl opacity-20"
-            style={{ background: "radial-gradient(circle,#5856D633,transparent 70%)", transform: "translateX(30%)" }} />
-          <div className="absolute top-[600px] left-1/3 w-[350px] h-[350px] rounded-full blur-3xl opacity-15"
-            style={{ background: "radial-gradient(circle,#00C2A833,transparent 70%)" }} />
-          <div className="absolute top-[1100px] right-1/4 w-[400px] h-[400px] rounded-full blur-3xl opacity-20"
-            style={{ background: "radial-gradient(circle,#FF950033,transparent 70%)" }} />
-          {/* Dot grid */}
-          <svg className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <pattern id="bookDotGrid" x="0" y="0" width="28" height="28" patternUnits="userSpaceOnUse">
-                <circle cx="1.5" cy="1.5" r="1.5" fill="rgba(0,122,255,0.07)" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#bookDotGrid)" />
-          </svg>
+      </section>
+      <Rail title="Textbooks you can order now" books={standard} bs={bs} more={{ href: "/books?priced=1", label: "All books with a price" }} />
+      <Rail title="New editions" books={fresh} bs={bs} more={{ href: "/books?sort=newest", label: "All books, newest first" }} />
+      <Rail title="The standard references" books={classics} bs={bs} />
+      <Rail title="NEET-PG, INI-CET and FMGE" books={exams} bs={bs} more={{ href: "/books?course=exams", label: "All entrance exam books" }} />
+      <section className="ax-wrap ax-bk-help">
+        <div>
+          <span className="ic"><MessageSquareText size={20} /></span>
+          <span><b>Can't find your book?</b><small>Tell us the title, author and edition: we'll find it and tell you the price.</small></span>
+          <button type="button" className="ax-btn teal" onClick={onAsk}>Ask for a book</button>
         </div>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
+        <Link href="/medical-colleges">
+          <span className="ic"><Library size={20} /></span>
+          <span><b>Buying for a library or a batch?</b><small>Send one list with quantities for a quotation.</small></span>
+          <ArrowRight size={18} />
+        </Link>
+      </section>
+    </>
+  );
+}
 
-        {/* Search Results Mode */}
-        {searchResults !== null ? (
-          <div>
-            <div className="flex items-center gap-3 mb-8">
-              <Search className="w-5 h-5" style={{ color: "#007AFF" }} />
-              <h2 className="text-xl font-display font-bold" style={{ color: "#1C1C1E" }}>
-                Search Results
-              </h2>
-              <span className="text-sm" style={{ color: "#636366" }}>
-                {searchResults.length} books found
-              </span>
-              <button onClick={() => setSearch("")} className="ml-auto flex items-center gap-1.5 text-sm font-semibold" style={{ color: "#FF3B30" }}>
-                <X className="w-4 h-4" /> Clear
-              </button>
-            </div>
+/* ------------------------------------------------------------------ page */
 
-            {searchResults.length === 0 ? (
-              <div className="text-center py-20 rounded-2xl" style={{ background: "#FFFFFF", border: "1px solid rgba(60,60,67,0.1)" }}>
-                <BookOpen className="w-12 h-12 mx-auto mb-4" style={{ color: "#AEAEB2" }} />
-                <p className="font-semibold mb-2" style={{ color: "#636366" }}>No books found for "{search}"</p>
-                <button onClick={() => setSearch("")} className="text-sm font-bold" style={{ color: "#007AFF" }}>Clear search</button>
-              </div>
-            ) : (
-              // Group by degree
-              CURRICULUM.map(deg => {
-                const dBooks = searchResults.filter(r => r.degree.id === deg.id);
-                if (!dBooks.length) return null;
-                return (
-                  <div key={deg.id} className="mb-10">
-                    <div className="flex items-center gap-2 mb-4">
-                      <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: `${deg.color}14`, color: deg.color }}>
-                        {deg.label}
-                      </span>
-                      <span className="text-xs" style={{ color: "#AEAEB2" }}>{dBooks.length} result{dBooks.length !== 1 ? "s" : ""}</span>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                      {dBooks.map(({ book, subj }) => (
-                        <BookCard key={book.name} book={book} color={subj.color || deg.color} onRequest={setRequest} />
-                      ))}
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        ) : (
-          <div className="flex gap-8">
+export default function MedicalBooks() {
+  const [, setLocation] = useLocation();
+  const searchString = useSearch();
+  const v = useMemo(() => readView(new URLSearchParams(searchString)), [searchString]);
+  const { data: bs, isLoading, error, refetch } = useBooks();
+  const [text, setText] = useState(v.q);
+  const [shown, setShown] = useState(PAGE);
+  const [sheet, setSheet] = useState<null | "filter" | "sort">(null);
+  const [asking, setAsking] = useState(false);
+  useEffect(() => { setText(v.q); }, [v.q]);
+  useEffect(() => { setShown(PAGE); }, [searchString]);
+  useEffect(() => { document.body.style.overflow = sheet ? "hidden" : ""; return () => { document.body.style.overflow = ""; }; }, [sheet]);
 
-            {/* ── Sidebar: Year/Course navigation ── */}
-            <aside className="hidden lg:block w-56 shrink-0 sticky self-start" style={{ top: "130px", maxHeight: "calc(100vh - 150px)", overflowY: "auto", background: "rgba(255,255,255,0.6)", backdropFilter: "blur(16px)", borderRadius: "20px", border: "1px solid rgba(255,255,255,0.8)", padding: "16px 12px", boxShadow: "0 4px 24px rgba(0,0,0,0.06)" }}>
-              <p className="text-[10px] font-bold uppercase tracking-wider mb-3" style={{ color: "#AEAEB2" }}>
-                {activeDegree.isPG ? "Specialty" : "Academic Year"}
-              </p>
-              {activeDegree.years.map(yr => {
-                const isActiveSpecialty = yr.id === activeYearId;
-                const count = yr.subjects.reduce((s, sub) => s + sub.books.length, 0);
-                return (
-                  <div key={yr.id}>
-                    <button
-                      onClick={() => setActiveYearId(yr.id)}
-                      className="w-full flex items-start gap-2.5 px-3 py-2.5 rounded-xl text-left text-xs font-semibold transition-all mb-0.5"
-                      style={isActiveSpecialty
-                        ? { background: `${activeDegree.color}14`, color: activeDegree.color }
-                        : { color: "#636366" }}
-                    >
-                      <div
-                        className="w-1.5 h-1.5 rounded-full shrink-0 mt-1"
-                        style={{ background: isActiveSpecialty ? activeDegree.color : "#C7C7CC" }}
-                      />
-                      <span className="flex-1 leading-snug">{yr.label}</span>
-                      <span className="text-[9px] font-bold rounded-full px-1.5 py-0.5 shrink-0"
-                        style={{ background: isActiveSpecialty ? `${activeDegree.color}20` : "rgba(60,60,67,0.08)", color: isActiveSpecialty ? activeDegree.color : "#AEAEB2" }}>
-                        {count}
-                      </span>
-                    </button>
+  const set = (p: Partial<View>) => setLocation(viewUrl({ ...v, ...p }));
+  const course = courseOf(v.course);
+  const group = v.group ? groupInfo(v.group)?.group : undefined;
+  const browsing = !!(v.course || v.q || v.priced || v.pubs.length || v.sort !== "recommended" || v.subject);
 
-                    {/* Year sub-items — only shown when this specialty is active and degree is PG */}
-                    {activeDegree.isPG && isActiveSpecialty && (
-                      <div className="ml-4 mb-1 mt-0.5 flex flex-col gap-0.5">
-                        {yr.subjects.map(sub => {
-                          const isActiveYear = sub.id === (activeSubject?.id ?? yr.subjects[0].id);
-                          return (
-                            <button
-                              key={sub.id}
-                              onClick={() => setActiveSubjectId(sub.id)}
-                              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left text-[11px] font-semibold transition-all"
-                              style={isActiveYear
-                                ? { color: activeDegree.color, background: `${activeDegree.color}12` }
-                                : { color: "#8E8E93" }}
-                            >
-                              <div className="w-1 h-1 rounded-full shrink-0"
-                                style={{ background: isActiveYear ? activeDegree.color : "#D1D1D6" }} />
-                              <span className="flex-1">{sub.name}</span>
-                              <span className="text-[9px]" style={{ color: isActiveYear ? activeDegree.color : "#AEAEB2" }}>
-                                {sub.books.length}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </aside>
+  const index = useMemo(() => (bs ? indexBooks(bs.books, bs.publisherName) : null), [bs]);
+  const base = useMemo(() => (bs && index ? (v.q ? searchBooks(bs.books, index, v.q) : bs.books) : []), [bs, index, v.q]);
+  const inCourse = useMemo(() => (v.course ? base.filter((b) => courseIdsOf(b).has(v.course)) : base), [base, v.course]);
+  const inGroup = useMemo(() => (v.group ? inCourse.filter((b) => b.placements.some((p) => p.group === v.group)) : inCourse), [inCourse, v.group]);
+  const inSubject = useMemo(() => (v.subject
+    ? inGroup.filter((b) => b.placements.some((p) => p.subject === v.subject && (v.group ? p.group === v.group : !v.course || groupInfo(p.group)?.course.id === v.course)))
+    : inGroup), [inGroup, v.subject, v.group, v.course]);
+  const results = useMemo(() => {
+    let list = inSubject;
+    if (v.pubs.length) list = list.filter((b) => v.pubs.includes(b.publisher));
+    if (v.priced) list = list.filter((b) => b.price !== null && !b.priceOnRequest);
+    return v.q && v.sort === "recommended" ? list : sortBooks(list, v.sort);
+  }, [inSubject, v.pubs, v.priced, v.q, v.sort]);
 
-            {/* ── Main: Year panel ── */}
-            <main className="flex-1 min-w-0">
+  const title = v.q ? `Books for “${v.q}”` : v.subject ? `${v.subject} books` : group ? `${group.label} books` : course ? `${course.label} books` : "Medical books";
+  useSeo({
+    title: `${v.q ? title : course ? `${course.label} books: buy online` : "Medical books for every course"} | Aethex`,
+    description: course
+      ? `${course.label} textbooks, guides and exam books (${course.blurb}) with the publishers' latest editions. Order online with cash on delivery across India.`
+      : "Textbooks, reviews and exam books for MBBS, MD/MS, nursing, dental, pharmacy, physiotherapy, AYUSH and allied health, with the publishers' latest editions and prices.",
+    path: "/books",
+  });
 
-              {/* Mobile pills — specialties for PG, years for UG */}
-              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 mb-3 lg:hidden" ref={yearScrollRef}>
-                {activeDegree.years.map(yr => {
-                  const isActive = yr.id === activeYearId;
-                  return (
-                    <button
-                      key={yr.id}
-                      onClick={() => setActiveYearId(yr.id)}
-                      className="shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-all"
-                      style={isActive
-                        ? { background: activeDegree.color, color: "#fff" }
-                        : { background: "#FFFFFF", color: "#636366", border: "1px solid rgba(60,60,67,0.15)" }}
-                    >
-                      {yr.label}
-                    </button>
-                  );
-                })}
-              </div>
-              {/* Mobile year sub-pills — only shown in PG mode */}
-              {activeDegree.isPG && (
-                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-4 mb-6 lg:hidden">
-                  {activeYear.subjects.map(sub => {
-                    const isActive = sub.id === (activeSubject?.id ?? activeYear.subjects[0].id);
-                    return (
-                      <button
-                        key={sub.id}
-                        onClick={() => setActiveSubjectId(sub.id)}
-                        className="shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all"
-                        style={isActive
-                          ? { background: `${activeDegree.color}22`, color: activeDegree.color, border: `1px solid ${activeDegree.color}40` }
-                          : { background: "#F5F3EE", color: "#8E8E93", border: "1px solid rgba(60,60,67,0.12)" }}
-                      >
-                        {sub.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+  const crumbs: Crumb[] = [{ label: "Home", href: "/" }, { label: "Medical books", href: "/books" }];
+  if (course) crumbs.push({ label: course.label, href: `/books?course=${course.id}` });
+  if (group && course && course.groups.length > 1) crumbs.push({ label: group.short });
+  if (v.q) crumbs.push({ label: "Search" });
 
-              {/* Content header */}
-              <div className="flex items-center gap-3 mb-7 p-5 rounded-2xl"
-                style={{ background: `linear-gradient(135deg,rgba(255,255,255,0.7),rgba(255,255,255,0.4))`, backdropFilter: "blur(16px)", border: `1px solid ${activeDegree.color}30`, boxShadow: `0 4px 24px ${activeDegree.color}14` }}>
-                <GraduationCap className="w-7 h-7 shrink-0" style={{ color: activeDegree.color }} />
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: `${activeDegree.color}20`, color: activeDegree.color }}>
-                      {activeDegree.label}
-                    </span>
-                    <ChevronRight className="w-3 h-3" style={{ color: "#AEAEB2" }} />
-                    <span className="text-xs font-semibold" style={{ color: "#636366" }}>{activeYear.label}</span>
-                    {activeDegree.isPG && activeSubject && (
-                      <>
-                        <ChevronRight className="w-3 h-3" style={{ color: "#AEAEB2" }} />
-                        <span className="text-xs font-semibold" style={{ color: "#636366" }}>{activeSubject.name}</span>
-                      </>
-                    )}
-                  </div>
-                  <p className="text-lg font-display font-bold mt-0.5" style={{ color: "#1C1C1E" }}>
-                    {activeDegree.isPG && activeSubject
-                      ? `${activeYear.label} · ${activeSubject.name} — ${activeSubject.books.length} Books`
-                      : `${activeYear.label} — ${activeYear.subjects.length} Subject${activeYear.subjects.length !== 1 ? "s" : ""} · ${activeYear.subjects.reduce((s, sub) => s + sub.books.length, 0)} Books`
-                    }
-                  </p>
-                </div>
-              </div>
+  const filterCount = (v.group ? 1 : 0) + (v.subject ? 1 : 0) + v.pubs.length + (v.priced ? 1 : 0);
+  const active = !!(v.q || filterCount);
+  const clearAll = () => set({ group: "", subject: "", pubs: [], priced: false, q: "" });
+  const submit = (e: React.FormEvent) => { e.preventDefault(); set({ q: text.trim() }); };
+  const total = bs?.books.length ?? 0;
+  const priced = useMemo(() => (bs ? bs.books.filter((b) => b.price !== null).length : 0), [bs]);
+  const countText = !bs ? "Loading books…" : `${results.length.toLocaleString("en-IN")} book${results.length === 1 ? "" : "s"}`;
 
-              {loading ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                  {Array.from({ length: 12 }).map((_, i) => (
-                    <div key={i} className="rounded-2xl overflow-hidden" style={{ background: "#fff", border: "1px solid rgba(60,60,67,0.08)" }}>
-                      <div className="h-40 animate-pulse" style={{ background: "rgba(60,60,67,0.07)" }} />
-                      <div className="p-3 flex flex-col gap-2">
-                        <div className="h-3 w-full rounded animate-pulse" style={{ background: "rgba(60,60,67,0.07)" }} />
-                        <div className="h-3 w-2/3 rounded animate-pulse" style={{ background: "rgba(60,60,67,0.07)" }} />
-                        <div className="h-5 w-1/2 rounded animate-pulse mt-2" style={{ background: "rgba(60,60,67,0.07)" }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : activeDegree.isPG && activeSubject ? (
-                /* PG mode: show only the selected year's books */
-                <SubjectSection
-                  subj={activeSubject}
-                  degreeColor={activeDegree.color}
-                  onRequest={setRequest}
-                />
-              ) : (
-                <YearPanel
-                  year={activeYear}
-                  degreeColor={activeDegree.color}
-                  onRequest={setRequest}
-                />
-              )}
+  if (error && !bs) {
+    return (
+      <div className="ax-shop-page">
+        <ShopHead crumbs={crumbs} title="Medical books" />
+        <div className="ax-wrap"><div className="ax-empty" style={{ margin: "40px 0" }}>
+          <span className="ic"><BookOpen size={26} /></span>
+          <h2>The books didn't load</h2>
+          <p>{error.message}</p>
+          <div className="acts"><button type="button" className="ax-btn teal" onClick={() => refetch()}>Try again</button></div>
+        </div></div>
+      </div>
+    );
+  }
 
-              {/* Bottom CTA */}
-              <div className="mt-16 rounded-3xl p-8 lg:p-10 text-center relative overflow-hidden"
-                style={{ background: "linear-gradient(135deg,#0F172A,#1E293B)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <div className="absolute top-0 right-0 w-72 h-72 rounded-full blur-3xl pointer-events-none opacity-10"
-                  style={{ background: "#007AFF", transform: "translate(30%,-30%)" }} />
-                <BookOpen className="w-10 h-10 mx-auto mb-4 opacity-20 text-white" />
-                <h3 className="text-xl font-display font-bold text-white mb-2">Can't find your book?</h3>
-                <p className="mb-5 text-sm" style={{ color: "rgba(255,255,255,0.45)" }}>
-                  We source medical textbooks on request: tell us the title and edition, and we'll confirm the price and availability.
-                </p>
-                <button type="button" onClick={() => setRequest({ name: "", author: "", publisher: "", edition: "", price: 0, mrp: 0, matchTags: [] } as unknown as CurrBook)}
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm transition-all hover:opacity-90"
-                  style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)", color: "#FFFFFF" }}>
-                  <Trophy className="w-4 h-4" />
-                  Request a book
-                </button>
-              </div>
-            </main>
+  const filterProps = bs ? { v, set, bs, inCourse, inGroup, inSubject, onClear: clearAll, active } : null;
+  const sub = !browsing
+    ? <>{bs ? `${total.toLocaleString("en-IN")} books` : "Loading books…"} · textbooks, reviews and exam books for every course, from the publishers' latest editions{bs ? `. ${priced.toLocaleString("en-IN")} with a price, ready to order.` : "."}</>
+    : course && !v.q && !group ? <>{course.blurb} <span className="ax-sh-meta">{countText}</span></> : countText;
+
+  return (
+    <div className="ax-shop-page ax-books">
+      <ShopHead
+        crumbs={crumbs}
+        title={title}
+        sub={sub}
+        right={
+          <form className="ax-sh-search" role="search" onSubmit={submit}>
+            <SearchIcon size={17} aria-hidden="true" />
+            <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Title, author, subject or ISBN" aria-label="Search medical books" />
+            {text && <button type="button" className="clr" onClick={() => { setText(""); if (v.q) set({ q: "" }); }} aria-label="Clear search"><X size={15} /></button>}
+          </form>
+        }
+      >
+        <div className="ax-chips" role="list" aria-label="Courses">
+          <button type="button" role="listitem" className={!v.course ? "on" : ""} onClick={() => set({ course: "", group: "", subject: "" })}>All courses</button>
+          {BOOK_COURSES.map((c) => (
+            <button type="button" role="listitem" key={c.id} className={v.course === c.id ? "on" : ""} onClick={() => set({ course: c.id, group: "", subject: "" })}>{c.label}</button>
+          ))}
+        </div>
+        {course && course.groups.length > 1 && (
+          <div className="ax-chips ax-chips-sub" role="list" aria-label={`${course.label} years and degrees`}>
+            <button type="button" role="listitem" className={!v.group ? "on" : ""} onClick={() => set({ group: "", subject: "" })}>All</button>
+            {course.groups.map((g) => (
+              <button type="button" role="listitem" key={g.id} className={v.group === g.id ? "on" : ""} onClick={() => set({ group: g.id, subject: "" })}>{g.short}</button>
+            ))}
           </div>
         )}
-      </div>
-      </div>{/* /relative wrapper */}
+      </ShopHead>
+
+      {!browsing ? (
+        bs ? <Landing bs={bs} onAsk={() => setAsking(true)} /> : (
+          <div className="ax-wrap ax-bk-loading"><div className="ax-grid grid">{Array.from({ length: 10 }, (_, k) => <div key={k} className="ax-prod sk" />)}</div></div>
+        )
+      ) : (
+        <div className="ax-wrap ax-shop">
+          <aside className="ax-filters" aria-label="Filters">{filterProps && <Filters {...filterProps} />}</aside>
+          <div className="ax-results">
+            <div className="ax-toolbar">
+              <p className="ax-count">{countText}</p>
+              <div className="ax-active">
+                {v.priced && <button type="button" onClick={() => set({ priced: false })}>Ready to buy <X size={12} /></button>}
+                {group && <button type="button" onClick={() => set({ group: "", subject: "" })}>{group.label} <X size={12} /></button>}
+                {v.subject && <button type="button" onClick={() => set({ subject: "" })}>{v.subject} <X size={12} /></button>}
+                {v.pubs.map((p) => <button type="button" key={p} onClick={() => set({ pubs: v.pubs.filter((x) => x !== p) })}>{bs?.publisherName(p) ?? p} <X size={12} /></button>)}
+              </div>
+              <label className="ax-sort">
+                <span>Sort</span>
+                <select value={v.sort} onChange={(e) => set({ sort: e.target.value as BookSort })} aria-label="Sort books">
+                  {BOOK_SORTS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                </select>
+              </label>
+            </div>
+
+            {isLoading || !bs ? (
+              <div className="ax-grid grid">{Array.from({ length: 8 }, (_, k) => <div key={k} className="ax-prod sk" />)}</div>
+            ) : results.length === 0 ? (
+              <div className="ax-empty">
+                <span className="ic"><BookOpen size={26} /></span>
+                <h2>No books match</h2>
+                <p>{v.q ? "Try the author's surname, a shorter title, or the ISBN. Or ask us for it: we'll find it." : "Try fewer filters, or another course."}</p>
+                <div className="acts">
+                  {active && <button type="button" className="ax-btn teal" onClick={clearAll}>Clear filters</button>}
+                  <button type="button" className="ax-btn" onClick={() => setAsking(true)}>Ask for a book</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="ax-grid grid ax-bk-grid">
+                  {results.slice(0, shown).map((b, i) => <BookCard key={b.id} book={b} publisher={bs.publisherName(b.publisher)} eager={i < 5} />)}
+                </div>
+                {results.length > shown && (
+                  <div className="ax-more">
+                    <p>Showing {shown} of {results.length.toLocaleString("en-IN")}</p>
+                    <button type="button" className="ax-btn" onClick={() => setShown((n) => n + PAGE)}>Show more books</button>
+                  </div>
+                )}
+                <p className="ax-bk-note">Prices are the publishers' own. Can't find a book? <button type="button" className="ax-link" onClick={() => setAsking(true)}>Ask for it</button></p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {browsing && (
+        <div className="ax-mbar">
+          <button type="button" onClick={() => setSheet("filter")}><SlidersHorizontal size={16} /> Filter{filterCount ? <em>{filterCount}</em> : null}</button>
+          <button type="button" onClick={() => setSheet("sort")}>Sort: {BOOK_SORTS.find((s) => s.id === v.sort)?.label}</button>
+        </div>
+      )}
+      {sheet && (
+        <TopLayer>
+          <div className="ax-sheet" role="dialog" aria-modal="true" aria-label={sheet === "filter" ? "Filters" : "Sort"} onClick={() => setSheet(null)}>
+            <div className="ax-sheet-in" onClick={(e) => e.stopPropagation()}>
+              <div className="ax-sheet-head">
+                <b>{sheet === "filter" ? "Filters" : "Sort by"}</b>
+                <button type="button" onClick={() => setSheet(null)} aria-label="Close"><X size={18} /></button>
+              </div>
+              <div className="ax-sheet-body">
+                {sheet === "filter" ? (filterProps && <Filters {...filterProps} />) : (
+                  <div className="ax-sort-list">
+                    {BOOK_SORTS.map((s) => (
+                      <button type="button" key={s.id} className={v.sort === s.id ? "on" : ""} onClick={() => { set({ sort: s.id }); setSheet(null); }}>{s.label}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {sheet === "filter" && (
+                <div className="ax-sheet-foot"><button type="button" className="ax-btn teal" onClick={() => setSheet(null)}>Show {results.length.toLocaleString("en-IN")} book{results.length === 1 ? "" : "s"}</button></div>
+              )}
+            </div>
+          </div>
+        </TopLayer>
+      )}
+
       <EnquiryDialog
-        open={!!request}
-        onClose={() => setRequest(null)}
-        title="Request a book"
+        open={asking}
+        onClose={() => setAsking(false)}
+        title="Ask for a book"
         kind="book"
-        item={request?.name ? `${bookTitle(request.name)} (${request.edition}) by ${request.author}, ${request.publisher}` : undefined}
-        itemLabel={request?.name ? `${bookTitle(request.name)} · ${request.edition} · ${request.author}` : "Tell us the title, author and edition below."}
+        itemLabel="Tell us the title, author and edition below, and how many copies."
       />
     </div>
   );

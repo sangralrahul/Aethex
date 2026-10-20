@@ -12,13 +12,14 @@ import { useWishlist } from "@/hooks/use-wishlist";
 import { useToast } from "@/hooks/use-toast";
 import { useSeo } from "@/hooks/use-seo";
 import { useStore } from "@/lib/store/api";
+import { isBookId } from "@/lib/store/bookdata";
 import type { ProductSummary } from "@/lib/store/types";
 
 export default function Wishlist() {
   useSeo({ title: "Your wishlist | Aethex Store", description: "Products you saved on Aethex.", path: "/wishlist" });
   const { ids, clear, remove } = useWishlist();
   const { toast } = useToast();
-  const { data: store, isLoading } = useStore(ids.length > 0);
+  const { data: store, isLoading } = useStore(ids.length > 0, { books: ids.some(isBookId) });
 
   const items = store ? [...ids].reverse().map((id) => store.byId.get(id)).filter((p): p is ProductSummary => !!p) : [];
   // Saved items the store no longer sells (or the old sample products) are tidied away.

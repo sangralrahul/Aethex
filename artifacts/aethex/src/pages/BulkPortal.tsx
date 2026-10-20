@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
 import { ProductImage } from "@/components/store/ProductImage";
+import { isBookId, itemHref } from "@/lib/store/bookdata";
 import { Dialog } from "@/components/store/Dialog";
 import { BulkQuoteDone, BulkQuoteForm } from "@/components/store/BulkQuoteForm";
 import { useSeo } from "@/hooks/use-seo";
@@ -54,6 +55,12 @@ export default function BulkPortal({ segment }: { segment: Segment }) {
 
   const openQuote = () => { setDone(null); setQuote(true); };
   const Icon = segment === "hospital" ? Hospital : GraduationCap;
+  // "/medical-colleges#list" (from a book's page) opens on the list.
+  useEffect(() => {
+    if (window.location.hash !== "#list") return;
+    const t = window.setTimeout(() => document.getElementById("list")?.scrollIntoView({ block: "start" }), 250);
+    return () => window.clearTimeout(t);
+  }, []);
 
   return (
     <div className="ax-bulk">
@@ -100,7 +107,7 @@ export default function BulkPortal({ segment }: { segment: Segment }) {
                 <section className="ax-bulk-sec">
                   <Link href="/books" className="ax-bulk-books">
                     <span className="ic"><BookOpen size={22} /></span>
-                    <span><b>Textbooks for the library and departments</b><small>Every year and subject of MBBS, MD, MS and beyond. Ask for any title in the quantity you need.</small></span>
+                    <span><b>Textbooks for the library and departments</b><small>Every course from MBBS to AYUSH, with the publishers' prices. Open a book and choose “Add to your college list”, or ask for any title.</small></span>
                     <ArrowRight size={18} />
                   </Link>
                 </section>
@@ -374,9 +381,9 @@ function ListPanel({ onQuote }: { onQuote: () => void }) {
       <ul>
         {priced.items.map((i) => (
           <li key={lineKey(i.productId, i.variantId)}>
-            <Link href={`/products/${i.slug}`} className="th"><ProductImage src={i.image} width={96} /></Link>
+            <Link href={itemHref(i.productId, i.slug)} className="th"><ProductImage src={i.image} width={96} book={isBookId(i.productId)} /></Link>
             <div className="nm">
-              <Link href={`/products/${i.slug}`}>{store?.brandName(i.brand)} {i.name}</Link>
+              <Link href={itemHref(i.productId, i.slug)}>{isBookId(i.productId) ? i.name : `${store?.brandName(i.brand) ?? ""} ${i.name}`}</Link>
               {i.variantLabel && <small>{i.variantLabel}</small>}
               <small>{i.unitPrice === null ? "Price on request" : `${formatINR(i.unitPrice)} each`}</small>
             </div>

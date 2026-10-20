@@ -2,8 +2,9 @@
  * The store admin (/admin), for the accounts in ADMIN_EMAILS: orders (confirm,
  * ship with tracking, deliver, cancel; download as CSV), price and book
  * requests, bulk quotation requests from hospitals and medical colleges, and
- * products (set prices for price-on-request brands, MRP, stock, country of
- * origin, hide). Talks to /api/store/admin/* (worker/store.ts).
+ * products and medical books (set prices for price-on-request brands and books,
+ * MRP, stock, country of origin, hide). Talks to /api/store/admin/*
+ * (worker/store.ts).
  * Styles: src/shop.css (.ax-adm).
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -12,7 +13,8 @@ import {
   AlertTriangle, Building2, Check, ClipboardList, Copy, Download, ExternalLink, Inbox, Loader2, LogIn, Mail, Package, RefreshCw, Search, ShieldCheck, Store, Truck,
 } from "lucide-react";
 import { useSeo } from "@/hooks/use-seo";
-import { storeFetch, StoreError, useStore, type StoreData } from "@/lib/store/api";
+import { storeFetch, StoreError, useBooks, useStore } from "@/lib/store/api";
+import { bookSummary, isBookId, itemHref } from "@/lib/store/bookdata";
 import type { BulkRequest, BulkStatus, Order, OrderStatus, Override, ProductSummary } from "@/lib/store/types";
 import { BULK_STATUS_LABEL, BULK_STATUSES, everyText, formatDay, ORDER_STATUSES, scheduleText, STATUS_LABEL } from "@/lib/store/rules";
 import { ProductImage } from "@/components/store/ProductImage";
@@ -211,7 +213,7 @@ function OrderEditor({ order, onSaved }: { order: AdminOrder; onSaved: (o: Admin
         <div>
           <h3>Items</h3>
           <ul className="items">
-            {order.lines.map((l) => <li key={`${l.productId}:${l.variantId ?? ""}`}><Link href={`/products/${l.slug}`}>{l.name}</Link>{l.variantLabel ? ` (${l.variantLabel})` : ""} × {l.qty} <b>{formatINR(l.lineTotal)}</b></li>)}
+            {order.lines.map((l) => <li key={`${l.productId}:${l.variantId ?? ""}`}><Link href={itemHref(l.productId, l.slug)}>{l.name}</Link>{l.variantLabel ? ` (${l.variantLabel})` : ""} × {l.qty} <b>{formatINR(l.lineTotal)}</b></li>)}
           </ul>
           <p>Delivery {order.delivery ? formatINR(order.delivery) : "free"} · <b>Collect {formatINR(order.total)} cash</b></p>
         </div>
@@ -268,7 +270,7 @@ function Requests() {
               <p>{e.name} · <a href={`tel:+91${e.phone}`}>+91 {e.phone}</a>{e.email ? <> · <a href={`mailto:${e.email}`}>{e.email}</a></> : null}{e.city ? ` · ${e.city}` : ""}</p>
               {e.message && <p className="msg">{e.message}</p>}
               <div className="acts">
-                {e.product && <Link href={`/products/${e.product.slug}`} className="ax-link">Product page <ExternalLink size={12} /></Link>}
+                {e.product && <Link href={itemHref(e.product.id, e.product.slug)} className="ax-link">{isBookId(e.product.id) ? "Book page" : "Product page"} <ExternalLink size={12} /></Link>}
                 {e.status !== "contacted" && <button type="button" className="ax-btn" onClick={() => mark(e, "contacted")}>Mark contacted</button>}
                 {e.status !== "closed" && <button type="button" className="ax-btn" onClick={() => mark(e, "closed")}>Close</button>}
               </div>
@@ -317,14 +319,14 @@ function Bulk() {
 }
 
 function BulkEditor({ req, onSaved }: { req: AdminBulk; onSaved: (r: AdminBulk) => void }) {
-  const { data: store } = useStore();
+  const { data: store } = useStore(true, { books: req.items.some((i) => isBookId(i.productId)) });
   const [note, setNote] = useState(req.adminNote);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const brand = (slug: string) => store?.brandName(slug) ?? slug;
   const asText = () => [
     `${req.institution} (${req.instType}), ${req.city}, ${req.state} ${req.pincode}`,
-    ...req.items.map((i) => `${i.qty} x ${brand(i.brand)} ${i.name}${i.variantLabel ? ` (${i.variantLabel})` : ""}${i.unitPrice === null ? " [price on request]" : ` [store price ${i.unitPrice}]`}`),
+    ...req.items.map((i) => `${i.qty} x ${isBookId(i.productId) ? `${i.name}, ${brand(i.brand)}` : `${brand(i.brand)} ${i.name}`}${i.variantLabel ? ` (${i.variantLabel})` : ""}${i.unitPrice === null ? " [price on request]" : ` [store price ${i.unitPrice}]`}`),
     req.schedule ? `Repeat delivery: ${scheduleText(req.schedule)}${req.needBy ? `, the first by ${formatDay(req.needBy)}` : ""}` : req.needBy ? `Needed by ${formatDay(req.needBy)}` : "",
     req.notes ? `Notes: ${req.notes}` : "",
   ].filter(Boolean).join("\n");
@@ -362,7 +364,7 @@ function BulkEditor({ req, onSaved }: { req: AdminBulk; onSaved: (r: AdminBulk) 
             <ul className="items">
               {req.items.map((i) => (
                 <li key={`${i.productId}:${i.variantId ?? ""}`}>
-                  {i.qty.toLocaleString("en-IN")} × <Link href={`/products/${i.slug}`}>{brand(i.brand)} {i.name}</Link>{i.variantLabel ? ` (${i.variantLabel})` : ""}
+                  {i.qty.toLocaleString("en-IN")} × <Link href={itemHref(i.productId, i.slug)}>{isBookId(i.productId) ? `${i.name}, ${brand(i.brand)}` : `${brand(i.brand)} ${i.name}`}</Link>{i.variantLabel ? ` (${i.variantLabel})` : ""}
                   {" "}<span className="muted">{i.unitPrice === null ? "price on request" : `${formatINR(i.unitPrice)} each`}{i.inStock ? "" : " · out of stock"}</span>
                 </li>
               ))}
@@ -392,7 +394,9 @@ function BulkEditor({ req, onSaved }: { req: AdminBulk; onSaved: (r: AdminBulk) 
 /* ------------------------------------------------------------------ products */
 
 function Products() {
+  const [kind, setKind] = useState<"products" | "books">("products");
   const { data: store, refetch } = useStore();
+  const { data: bs, refetch: refetchBooks } = useBooks(kind === "books");
   const [ov, setOv] = useState<Record<string, Override & { updatedAt?: number }>>({});
   const [q, setQ] = useState("");
   const [brand, setBrand] = useState("");
@@ -400,50 +404,66 @@ function Products() {
   const [open, setOpen] = useState<number | null>(null);
   const [err, setErr] = useState("");
   useEffect(() => { admin<{ overrides: Record<string, Override> }>("overrides").then((r) => setOv(r.overrides)).catch((e) => setErr(e.message)); }, []);
+  useEffect(() => { setBrand(""); setOpen(null); }, [kind]);
 
+  const books = kind === "books";
+  const bookList = useMemo(() => (bs ? bs.books.map(bookSummary) : []), [bs]);
+  const source = books ? bookList : store?.products;
+  const makers = books ? bs?.publishers : store?.brands;
+  const makerName = (slug: string) => (books ? bs?.publisherName(slug) : store?.brandName(slug)) ?? slug;
   const list = useMemo(() => {
-    if (!store) return [];
+    if (!source) return [];
     const w = q.trim().toLowerCase();
     // Hidden products aren't in the public list: add them back from the overrides.
-    return store.products.filter((p) => (!brand || p.brand === brand) && (!w || `${p.name} ${p.model ?? ""} ${p.id}`.toLowerCase().includes(w))
+    return source.filter((p) => (!brand || p.brand === brand) && (!w || `${p.name} ${p.model ?? ""} ${p.id}`.toLowerCase().includes(w))
       && (only !== "por" || p.priceOnRequest) && (only !== "changed" || ov[p.id]) && (only !== "oos" || !p.inStock));
-  }, [store, q, brand, only, ov]);
-  const hiddenIds = Object.entries(ov).filter(([, o]) => o.hidden).map(([id]) => Number(id));
+  }, [source, q, brand, only, ov]);
+  const hiddenIds = Object.entries(ov).filter(([id, o]) => o.hidden && isBookId(Number(id)) === books).map(([id]) => Number(id));
+  const word = books ? "book" : "product";
 
-  if (!store) return <p className="ax-adm-loading"><Loader2 size={18} className="spin" /> Loading…</p>;
+  const switcher = (
+    <div className="seg" role="tablist" aria-label="Products or books">
+      <button type="button" role="tab" aria-selected={!books} className={!books ? "on" : ""} onClick={() => setKind("products")}>Products</button>
+      <button type="button" role="tab" aria-selected={books} className={books ? "on" : ""} onClick={() => setKind("books")}>Medical books</button>
+    </div>
+  );
+  if (!source || !makers) return <div><div className="ax-adm-bar">{switcher}</div><p className="ax-adm-loading"><Loader2 size={18} className="spin" /> Loading…</p></div>;
   return (
     <div>
       <div className="ax-adm-bar">
-        <form onSubmit={(e) => e.preventDefault()} className="find"><Search size={15} /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name, model or number" /></form>
-        <select value={brand} onChange={(e) => setBrand(e.target.value)} aria-label="Brand"><option value="">All brands</option>{store.brands.map((b) => <option key={b.slug} value={b.slug}>{b.name}</option>)}</select>
+        {switcher}
+        <form onSubmit={(e) => e.preventDefault()} className="find"><Search size={15} /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder={books ? "Title, ISBN or number" : "Name, model or number"} /></form>
+        <select value={brand} onChange={(e) => setBrand(e.target.value)} aria-label={books ? "Publisher" : "Brand"}><option value="">{books ? "All publishers" : "All brands"}</option>{makers.map((b) => <option key={b.slug} value={b.slug}>{b.name}</option>)}</select>
         <div className="seg">{([["", "All"], ["por", "Price on request"], ["oos", "Out of stock"], ["changed", "Changed"]] as const).map(([k, l]) => <button key={k} type="button" className={only === k ? "on" : ""} onClick={() => setOnly(k)}>{l}</button>)}</div>
       </div>
       {err && <p className="ax-form-err">{err}</p>}
-      {hiddenIds.length > 0 && <p className="fine">{hiddenIds.length} hidden product{hiddenIds.length === 1 ? "" : "s"} (numbers {hiddenIds.join(", ")}). Open one by searching its number to show it again.</p>}
-      <p className="fine">{list.length} products. Prices include taxes. Changes show on the site within a minute.</p>
+      {hiddenIds.length > 0 && <p className="fine">{hiddenIds.length} hidden {word}{hiddenIds.length === 1 ? "" : "s"} (numbers {hiddenIds.join(", ")}). Open one by searching its number to show it again.</p>}
+      <p className="fine">{list.length.toLocaleString("en-IN")} {word}s{list.length > 200 ? " (the first 200 are shown: search to find others)" : ""}. Prices include taxes. Changes show on the site within a minute.</p>
       <ul className="ax-adm-prods">
         {list.slice(0, 200).map((p) => (
           <li key={p.id} className={open === p.id ? "open" : ""}>
             <button type="button" className="row" onClick={() => setOpen(open === p.id ? null : p.id)}>
-              <span className="pic"><ProductImage src={p.image} width={96} /></span>
-              <span className="nm"><b>{p.name}</b><small>#{p.id} · {store.brandName(p.brand)}{p.variants ? ` · ${p.variants.length} ${(p.optionName ?? "option").toLowerCase()}s` : ""}</small></span>
+              <span className="pic"><ProductImage src={p.image} width={96} book={books} /></span>
+              <span className="nm"><b>{p.name}</b><small>#{p.id} · {makerName(p.brand)}{p.variants ? ` · ${p.variants.length} ${(p.optionName ?? "option").toLowerCase()}s` : ""}</small></span>
               <span className="pr">{p.priceOnRequest ? <em>Price on request</em> : <>{p.from ? "from " : ""}{formatINR(Number(p.price))}</>}</span>
               <span className={`st${p.inStock ? "" : " out"}`}>{p.inStock ? "In stock" : "Out of stock"}</span>
               {ov[p.id] && <span className="chg">Changed</span>}
             </button>
-            {open === p.id && <ProductEditor p={p} store={store} current={ov[p.id]} onSaved={(o) => { setOv((m) => { const n = { ...m }; if (o) n[p.id] = o; else delete n[p.id]; return n; }); refetch(); }} />}
+            {open === p.id && <ProductEditor p={p} maker={makerName(p.brand)} current={ov[p.id]} onSaved={(o) => { setOv((m) => { const n = { ...m }; if (o) n[p.id] = o; else delete n[p.id]; return n; }); if (books) refetchBooks(); else refetch(); }} />}
           </li>
         ))}
       </ul>
       {/* hidden products can be found by number */}
       {/^\d+$/.test(q.trim()) && hiddenIds.includes(Number(q.trim())) && (
-        <div className="ax-adm-hidden"><p>Product #{q.trim()} is hidden.</p><button type="button" className="ax-btn" onClick={async () => { await admin(`overrides/${q.trim()}`, { method: "PUT", json: {} }); setOv((m) => { const n = { ...m }; delete n[q.trim()]; return n; }); refetch(); }}>Show it again</button></div>
+        <div className="ax-adm-hidden"><p>{books ? "Book" : "Product"} #{q.trim()} is hidden.</p><button type="button" className="ax-btn" onClick={async () => { await admin(`overrides/${q.trim()}`, { method: "PUT", json: {} }); setOv((m) => { const n = { ...m }; delete n[q.trim()]; return n; }); if (books) refetchBooks(); else refetch(); }}>Show it again</button></div>
       )}
     </div>
   );
 }
 
-function ProductEditor({ p, store, current, onSaved }: { p: ProductSummary; store: StoreData; current?: Override; onSaved: (o: Override | null) => void }) {
+/** The store's own price, MRP, stock and country of origin for a product or a book (a book has no country of origin). */
+function ProductEditor({ p, maker, current, onSaved }: { p: ProductSummary; maker: string; current?: Override; onSaved: (o: Override | null) => void }) {
+  const book = isBookId(p.id);
   const variantsPriced = !!p.variants?.some((v) => v.price !== undefined) && !current?.variants;
   const [price, setPrice] = useState(current?.price != null ? String(current.price) : "");
   const [mrp, setMrp] = useState(current?.mrp != null ? String(current.mrp) : "");
@@ -486,11 +506,13 @@ function ProductEditor({ p, store, current, onSaved }: { p: ProductSummary; stor
 
   return (
     <div className="ax-adm-prod">
-      <p className="fine">{p.priceOnRequest ? `${store.brandName(p.brand)} doesn't publish Indian prices: set a selling price and MRP to sell it directly. Leave the price empty to keep it on request.` : "Leave a field empty to keep the brand's price."}{variantsPriced ? " Sizes or colours have their own prices below." : ""} <Link href={`/products/${p.slug}`}>Open product page</Link></p>
+      <p className="fine">{p.priceOnRequest
+        ? book ? "No price is listed for this book yet: set a selling price and MRP to sell it directly. Leave the price empty to keep it on request." : `${maker} doesn't publish Indian prices: set a selling price and MRP to sell it directly. Leave the price empty to keep it on request.`
+        : `Leave a field empty to keep the ${book ? "publisher's" : "brand's"} price.`}{variantsPriced ? " Sizes or colours have their own prices below." : ""} <Link href={itemHref(p.id, p.slug)}>{book ? "Open book page" : "Open product page"}</Link></p>
       <div className="ax-form">
         <label className="f"><span>Selling price (₹)</span><input value={price} onChange={(e) => setPrice(e.target.value)} inputMode="decimal" placeholder={p.priceOnRequest ? "On request" : String(p.price ?? "")} /></label>
         <label className="f"><span>MRP (₹)</span><input value={mrp} onChange={(e) => setMrp(e.target.value)} inputMode="decimal" placeholder={p.mrp ? String(p.mrp) : ""} /></label>
-        <label className="f"><span>Country of origin</span><input value={coo} onChange={(e) => setCoo(e.target.value)} placeholder="As on the pack" maxLength={60} /></label>
+        {!book && <label className="f"><span>Country of origin</span><input value={coo} onChange={(e) => setCoo(e.target.value)} placeholder="As on the pack" maxLength={60} /></label>}
         <label className="ax-switch f"><input type="checkbox" checked={inStock} onChange={(e) => setInStock(e.target.checked)} /><span className="track"><i /></span><span>In stock</span></label>
       </div>
       {p.variants && p.variants.length > 0 && (
@@ -510,7 +532,7 @@ function ProductEditor({ p, store, current, onSaved }: { p: ProductSummary; stor
       )}
       <div className="acts">
         <button type="button" className="ax-btn teal" disabled={busy} onClick={() => save(build(), "Saved. The site shows it within a minute.")}>Save</button>
-        {current && <button type="button" className="ax-btn" disabled={busy} onClick={() => save({}, "Back to the brand's details.")}>Undo all changes</button>}
+        {current && <button type="button" className="ax-btn" disabled={busy} onClick={() => save({}, book ? "Back to the publisher's details." : "Back to the brand's details.")}>Undo all changes</button>}
         <button type="button" className="ax-btn danger" disabled={busy} onClick={() => { if (window.confirm(`Hide ${p.name} from the store?`)) save(build(true), "Hidden from the store."); }}>Hide from store</button>
         {busy && <Loader2 size={16} className="spin" />}
       </div>

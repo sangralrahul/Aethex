@@ -11,7 +11,9 @@
 //                 (default: the first ADMIN_EMAILS address, else the support address)
 // Order and request emails go out through Brevo, like the sign-in codes.
 import catalogJson from "../artifacts/aethex/src/data/store/catalog.json";
-import type { Address, BulkItem, BulkRequest, BulkStatus, CartLine, Catalog, EnquiryKind, Order, OrderStatus, Override, PricedLine, Product, Quote, Segment } from "../artifacts/aethex/src/lib/store/types";
+import booksJson from "../artifacts/aethex/src/data/store/books.json";
+import type { Address, BookCatalog, BulkItem, BulkRequest, BulkStatus, CartLine, Catalog, EnquiryKind, Order, OrderStatus, Override, PricedLine, Product, Quote, Segment } from "../artifacts/aethex/src/lib/store/types";
+import { bookAsProduct, isBookId, itemHref } from "../artifacts/aethex/src/lib/store/bookdata";
 import {
   applyOverride, BULK_STATUSES, cancellable, cleanSchedule, COD_LIMIT, everyText, formatDay, INDIAN_STATES, INSTITUTION_TYPES, normPhone, ORDER_STATUSES, priceBulk, quoteLines, round2, STATUS_LABEL,
   scheduleText, summarize, validEmail, validGstin, validPincode,
@@ -28,6 +30,12 @@ type DBEnv = StoreEnv & { DB: D1Like };
 const catalog = catalogJson as unknown as Catalog;
 const byId = new Map<number, Product>(catalog.products.map((p) => [p.id, p]));
 const bySlug = new Map<string, Product>(catalog.products.map((p) => [p.slug, p]));
+// Medical books are sold like products (cart, orders, the store's prices) under their own numbers.
+const bookCatalog = booksJson as unknown as BookCatalog;
+for (const b of bookCatalog.books) byId.set(b.id, bookAsProduct(b));
+const publisherNames = new Map(bookCatalog.publishers.map((p) => [p.slug, p.name]));
+/** A brand's name, or a book publisher's. */
+const brandName = (slug: string) => catalog.brands.find((x) => x.slug === slug)?.name ?? publisherNames.get(slug) ?? slug;
 
 const json = (payload: unknown, status = 200, headers: Record<string, string> = {}) =>
   new Response(JSON.stringify(payload), { status, headers: { "content-type": "application/json", "cache-control": "no-store", ...headers } });
@@ -109,7 +117,7 @@ async function overrides(env: StoreEnv): Promise<{ stamp: string; map: Map<numbe
   overrideCache = { at: Date.now(), stamp: map.size ? `${map.size}.${latest}` : "", map };
   return overrideCache;
 }
-const forgetOverrides = () => { overrideCache = null; summaryCache = null; };
+const forgetOverrides = () => { overrideCache = null; summaryCache = null; booksCache = null; };
 
 async function finder(env: StoreEnv) {
   const { map } = await overrides(env);
@@ -133,6 +141,22 @@ async function catalogSummary(env: StoreEnv): Promise<string> {
     products,
   });
   summaryCache = { stamp, body };
+  return body;
+}
+
+/** The medical books, with the store's prices and stock (and without the hidden ones). */
+let booksCache: { stamp: string; body: string } | null = null;
+async function booksBody(env: StoreEnv): Promise<string> {
+  const { stamp, map } = await overrides(env);
+  if (booksCache && booksCache.stamp === stamp) return booksCache.body;
+  const books = [];
+  for (const b of bookCatalog.books) {
+    const q = applyOverride(bookAsProduct(b), map.get(b.id));
+    if (!q) continue;
+    books.push({ ...b, price: q.price, mrp: q.price === null ? null : q.mrp, priceOnRequest: q.priceOnRequest, inStock: q.inStock });
+  }
+  const body = JSON.stringify({ version: stamp ? `${bookCatalog.version}.${stamp}` : bookCatalog.version, publishers: bookCatalog.publishers, books });
+  booksCache = { stamp, body };
   return body;
 }
 
@@ -466,7 +490,7 @@ async function createEnquiry(request: Request, env: DBEnv): Promise<Response> {
   const message = longStr(b.message, 1000);
   const p = Number.isFinite(Number(b.productId)) ? byId.get(Number(b.productId)) : undefined;
   const variant = p?.variants?.find((v) => v.id === b.variantId);
-  const item = p ? `${catalog.brands.find((x) => x.slug === p.brand)?.name ?? p.brand} ${p.name}${variant ? ` (${variant.label})` : ""}` : str(b.item, 200);
+  const item = p ? (isBookId(p.id) ? `${p.name}, ${brandName(p.brand)}` : `${brandName(p.brand)} ${p.name}${variant ? ` (${variant.label})` : ""}`) : str(b.item, 200);
   if (name.length < 2) return json({ error: "Please enter your name." }, 400);
   if (!phone) return json({ error: "Please enter a 10-digit Indian mobile number." }, 400);
   if (email && !validEmail(email)) return json({ error: "That email address doesn't look right." }, 400);
@@ -480,7 +504,7 @@ async function createEnquiry(request: Request, env: DBEnv): Promise<Response> {
   await env.DB.prepare("INSERT INTO store_enquiries (id, created_at, kind, product_id, variant_id, item, name, phone, email, city, qty, message, status, user_id, ip) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?)")
     .bind(id, Date.now(), kind, p?.id ?? null, variant?.id ?? null, item || null, name, phone, email || null, city || null, qty, message || null, user?.id ?? null, ip).run();
   const what = { price: "Price request", book: "Book request", bulk: "Bulk order request", general: "Question" }[kind];
-  const productUrl = p ? `${SITE_URL}/products/${p.slug}` : "";
+  const productUrl = p ? `${SITE_URL}${itemHref(p.id, p.slug)}` : "";
   await Promise.allSettled([
     sendEmail(env, storeInbox(env), `${what}: ${item || name} (${id})`, shell(`<h2 style="margin:0 0 10px;font-size:19px;">${what}</h2>
 <p style="margin:0 0 6px;font-size:14px;line-height:1.6;"><b>${escapeHtml(item || "General question")}</b>${productUrl ? ` · <a href="${productUrl}">product page</a>` : ""}<br>Quantity: ${qty}</p>
@@ -529,8 +553,7 @@ const SEGMENT_NAME: Record<Segment, string> = { hospital: "Hospitals", college: 
 
 function bulkItemsHtml(b: BulkRequest) {
   if (!b.items.length) return `<p style="margin:10px 0 0;font-size:13px;color:#4A5568;">No products picked from the site: the request is in the notes.</p>`;
-  const brand = (slug: string) => catalog.brands.find((x) => x.slug === slug)?.name ?? slug;
-  const rows = b.items.map((i) => `<tr><td style="padding:6px 8px;border-top:1px solid #E2E8F0;font-size:13px;"><a href="${SITE_URL}/products/${i.slug}" style="color:#1A202C;text-decoration:none;">${escapeHtml(`${brand(i.brand)} ${i.name}`)}</a>${i.variantLabel ? `<br><span style="color:#718096;">${escapeHtml(i.variantLabel)}</span>` : ""}${i.inStock ? "" : `<br><span style="color:#B45309;">Out of stock on the site</span>`}</td>
+  const rows = b.items.map((i) => `<tr><td style="padding:6px 8px;border-top:1px solid #E2E8F0;font-size:13px;"><a href="${SITE_URL}${itemHref(i.productId, i.slug)}" style="color:#1A202C;text-decoration:none;">${escapeHtml(isBookId(i.productId) ? `${i.name}, ${brandName(i.brand)}` : `${brandName(i.brand)} ${i.name}`)}</a>${i.variantLabel ? `<br><span style="color:#718096;">${escapeHtml(i.variantLabel)}</span>` : ""}${i.inStock ? "" : `<br><span style="color:#B45309;">Out of stock on the site</span>`}</td>
 <td style="padding:6px 8px;border-top:1px solid #E2E8F0;font-size:13px;text-align:right;white-space:nowrap;">${i.qty.toLocaleString("en-IN")}</td>
 <td style="padding:6px 8px;border-top:1px solid #E2E8F0;font-size:13px;text-align:right;white-space:nowrap;">${i.unitPrice === null ? "On request" : money(i.unitPrice)}</td></tr>`).join("");
   return `<table style="width:100%;border-collapse:collapse;margin:10px 0 0;"><tr><th style="text-align:left;padding:6px 8px;font-size:12px;color:#718096;">Product</th><th style="text-align:right;padding:6px 8px;font-size:12px;color:#718096;">Quantity</th><th style="text-align:right;padding:6px 8px;font-size:12px;color:#718096;">Store price (each)</th></tr>${rows}</table>
@@ -666,6 +689,14 @@ export async function handleStore(request: Request, env: StoreEnv): Promise<Resp
     } catch (e) {
       console.error("store catalog", e);
       return new Response(await catalogSummary({ ...env, DB: undefined }), { headers: { "content-type": "application/json", "cache-control": "no-store" } });
+    }
+  }
+  if (path === "books" && method === "GET") {
+    try {
+      return new Response(await booksBody(env), { headers: { "content-type": "application/json", ...CACHED } });
+    } catch (e) {
+      console.error("store books", e);
+      return new Response(await booksBody({ ...env, DB: undefined }), { headers: { "content-type": "application/json", "cache-control": "no-store" } });
     }
   }
   const pp = /^products\/([a-z0-9-]{1,120})$/.exec(path);

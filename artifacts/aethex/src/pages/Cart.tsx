@@ -9,6 +9,7 @@ import { AlertTriangle, ArrowRight, Banknote, Heart, Minus, Plus, ShoppingBag, T
 import { ShopHead } from "@/components/shop/ShopHead";
 import { OrderSummary } from "@/components/shop/OrderSummary";
 import { ProductImage } from "@/components/store/ProductImage";
+import { isBookId, itemHref } from "@/lib/store/bookdata";
 import { useToast } from "@/hooks/use-toast";
 import { useWishlist } from "@/hooks/use-wishlist";
 import { useSeo } from "@/hooks/use-seo";
@@ -85,10 +86,10 @@ export default function Cart() {
             <ul className="ax-lines">
               {t.lines.map((l) => {
                 const off = discountPct(l.price, l.mrp);
-                const href = `/products/${l.slug}`;
+                const href = itemHref(l.productId, l.slug);
                 return (
                   <li key={`${l.productId}:${l.variantId ?? ""}`} className="ax-line" data-line={l.productId}>
-                    <Link href={href} className="img"><ProductImage src={l.image} width={240} /></Link>
+                    <Link href={href} className="img"><ProductImage src={l.image} width={240} book={isBookId(l.productId)} /></Link>
                     <div className="info">
                       <small>{store?.brandName(l.brand) ?? l.brand}</small>
                       <Link href={href} className="nm">{l.name}</Link>
@@ -116,14 +117,14 @@ export default function Cart() {
                 <ul>
                   {issueLines.map((i) => (
                     <li key={`${i.productId}:${i.variantId ?? ""}`}>
-                      {i.p ? <Link href={`/products/${i.p.slug}`} className="img"><ProductImage src={i.p.image} width={160} /></Link> : <span className="img" />}
+                      {i.p ? <Link href={itemHref(i.p.id, i.p.slug)} className="img"><ProductImage src={i.p.image} width={160} book={isBookId(i.p.id)} /></Link> : <span className="img" />}
                       <span className="tx">
                         <b>{i.p?.name ?? "A product that's no longer sold"}</b>
                         <small>{ISSUE_TEXT[i.reason]}</small>
                       </span>
                       <span className="acts">
-                        {i.p && i.reason === "choose-option" && <Link href={`/products/${i.p.slug}`} className="lnk">Choose</Link>}
-                        {i.p && i.reason === "price-on-request" && <Link href={`/products/${i.p.slug}#ask`} className="lnk">Ask price</Link>}
+                        {i.p && i.reason === "choose-option" && <Link href={itemHref(i.p.id, i.p.slug)} className="lnk">Choose</Link>}
+                        {i.p && i.reason === "price-on-request" && <Link href={`${itemHref(i.p.id, i.p.slug)}#ask`} className="lnk">Ask price</Link>}
                         <button type="button" className="lnk danger" onClick={() => cart.remove(i.productId, i.variantId)}><Trash2 size={14} /> Remove</button>
                       </span>
                     </li>

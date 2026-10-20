@@ -11,6 +11,7 @@ import { AlertTriangle, Banknote, Check, Loader2, Lock, MapPin, PackageCheck, Pe
 import { ShopHead } from "@/components/shop/ShopHead";
 import { OrderSummary } from "@/components/shop/OrderSummary";
 import { ProductImage } from "@/components/store/ProductImage";
+import { isBookId } from "@/lib/store/bookdata";
 import { readContact, rememberContact } from "@/components/store/EnquiryForm";
 import { useUserAuth } from "@/hooks/use-user-auth";
 import { useSeo } from "@/hooks/use-seo";
@@ -175,7 +176,7 @@ export default function Checkout() {
               <ul className="ax-co-items">
                 {t.lines.map((l) => (
                   <li key={`${l.productId}:${l.variantId ?? ""}`}>
-                    <ProductImage src={l.image} width={120} />
+                    <ProductImage src={l.image} width={120} book={isBookId(l.productId)} />
                     <span>{l.name}{l.variantLabel ? <em>{l.variantLabel} · Qty {l.qty}</em> : <em>Qty {l.qty}</em>}<small>{store?.brandName(l.brand) ?? l.brand}</small></span>
                     <b>{formatINR(l.lineTotal)}</b>
                   </li>

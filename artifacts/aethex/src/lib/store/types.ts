@@ -96,6 +96,58 @@ export interface Category {
   count: number;
 }
 
+/* ------------------------------------------------------------------ medical books (src/data/store/books.json) */
+
+/** Where a book belongs: a course group (e.g. "mbbs-1", "bsc-nursing") and a subject in it. */
+export interface BookPlacement {
+  group: string;
+  subject: string;
+}
+
+export interface Book {
+  /** From 100001 up: books share the cart, orders and the store's prices with the products. */
+  id: number;
+  slug: string;
+  title: string;
+  subtitle?: string;
+  authors?: string;
+  edition?: string;
+  year?: number;
+  /** Publisher slug (BookCatalog.publishers). */
+  publisher: string;
+  isbn?: string;
+  pages?: number;
+  binding?: string;
+  /** As listed by the publisher's own shop; null while the price is on request. */
+  mrp: number | null;
+  price: number | null;
+  /** Set by the Worker from the price and the store's changes. */
+  priceOnRequest?: boolean;
+  inStock?: boolean;
+  /** The publisher's cover image; books without one get a designed cover. */
+  cover?: string;
+  /** The publisher's page the details and price come from. */
+  source?: string;
+  placements: BookPlacement[];
+  exams?: string[];
+  /** A standard textbook for its subject. */
+  standard?: boolean;
+  summary: string;
+  highlights?: string[];
+}
+
+export interface Publisher {
+  slug: string;
+  name: string;
+  website?: string;
+}
+
+export interface BookCatalog {
+  version: string;
+  publishers: Publisher[];
+  books: Book[];
+}
+
 export interface Catalog {
   version: string;
   currency: "INR";

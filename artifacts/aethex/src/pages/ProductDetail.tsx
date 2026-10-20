@@ -20,6 +20,7 @@ import { useWishlist } from "@/hooks/use-wishlist";
 import { useSeo } from "@/hooks/use-seo";
 import { useProduct, useStore } from "@/lib/store/api";
 import { cart } from "@/lib/store/cart";
+import { isBookId } from "@/lib/store/bookdata";
 import { DELIVERY_FEE, discountPct, FREE_DELIVERY_FROM, MAX_QTY, unitFor } from "@/lib/store/rules";
 import type { Product } from "@/lib/store/types";
 import { BUSINESS, SITE_URL } from "@/config/business";
@@ -80,8 +81,12 @@ export default function ProductDetail() {
   const [sizes, setSizes] = useState(false);
   const thumbs = useRef<HTMLDivElement>(null);
 
-  // Old links by number move to the product's own address.
-  useEffect(() => { if (product && key !== product.slug) setLocation(`/products/${product.slug}`, { replace: true }); }, [product, key, setLocation]);
+  // Old links by number move to the product's own address; a book's number opens the book's page.
+  useEffect(() => {
+    if (!product) return;
+    if (isBookId(product.id)) setLocation(`/books/${product.slug}`, { replace: true });
+    else if (key !== product.slug) setLocation(`/products/${product.slug}`, { replace: true });
+  }, [product, key, setLocation]);
   useEffect(() => {
     if (!product) return;
     const vs = product.variants ?? [];

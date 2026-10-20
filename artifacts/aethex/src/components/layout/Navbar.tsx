@@ -34,7 +34,7 @@ const SECTIONS: Section[] = [
       { href: "/category/nebulizers", label: "Nebulizers", hint: "Compressor and mesh", icon: Wind },
       { href: "/category/orthopaedic-supports", label: "Supports & braces", hint: "Tynor and Dr Trust", icon: Bone },
       { href: "/brands", label: "All brands", hint: "Verified brands we stock", icon: BadgeCheck },
-      { href: "/books", label: "Medical books", hint: "Request any textbook", icon: BookOpen },
+      { href: "/books", label: "Medical books", hint: "Textbooks for every course", icon: BookOpen },
     ],
     foot: { text: "Genuine products, cash on delivery across India", href: "/shop", label: "All products" },
   },
@@ -263,7 +263,7 @@ export function Navbar({ inner = false }: { inner?: boolean }) {
               <div>{SEARCH_SUGGESTIONS.map((s) => <button key={s} type="button" onClick={() => search(s)}>{s}</button>)}</div>
               <p style={{ marginTop: 14 }}>Go to</p>
               <div>
-                <Link href="/shop">All products</Link><Link href="/study-hub">Study Hub</Link><Link href="/drug-reference">Drug reference</Link>
+                <Link href="/shop">All products</Link><Link href="/books">Medical books</Link><Link href="/study-hub">Study Hub</Link><Link href="/drug-reference">Drug reference</Link>
                 <a href={cadusUrl("/")}>Ask Cadus AI</a>
               </div>
             </div>

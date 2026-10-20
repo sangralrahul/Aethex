@@ -1,13 +1,14 @@
 /**
  * The store's data on the site: the catalogue and products (from the Worker,
- * worker/store.ts, with the store's own prices and stock), quotes, orders,
- * requests and the admin. In local development without the Worker, the
- * catalogue is read from src/data/store/catalog.json instead.
+ * worker/store.ts, with the store's own prices and stock), the medical books,
+ * quotes, orders, requests and the admin. In local development without the
+ * Worker, the catalogue and books are read from src/data/store/ instead.
  */
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import type { Address, Brand, BulkLine, CartLine, Catalog, CatalogSummary, Category, DeliverySchedule, EnquiryKind, Order, Product, ProductSummary, Quote, Segment } from "./types";
+import type { Address, Book, BookCatalog, Brand, BulkLine, CartLine, Catalog, CatalogSummary, Category, DeliverySchedule, EnquiryKind, Order, Product, ProductSummary, Publisher, Quote, Segment } from "./types";
 import { summarize } from "./rules";
+import { bookSummary } from "./bookdata";
 
 const API = "/api/store";
 
@@ -80,24 +81,74 @@ export interface StoreData {
   brandName: (slug: string) => string;
 }
 
-/** The whole catalogue, as lists show it. Loaded once and shared by every page. */
-export function useStore(enabled = true) {
+/**
+ * The whole catalogue, as lists show it. Loaded once and shared by every page.
+ * With books, the medical books are added to the lookups (byId, brandName) so a
+ * cart, order or list holding books can show and price them; lists of products
+ * (products, brands) stay products only.
+ */
+export function useStore(enabled = true, opts: { books?: boolean } = {}) {
   const q = useQuery({ queryKey: ["store", "catalog"], queryFn: loadCatalog, staleTime: 5 * 60_000, gcTime: 60 * 60_000, enabled, retry: 1 });
+  const withBooks = enabled && !!opts.books;
+  const b = useBooks(withBooks);
   const data = useMemo<StoreData | undefined>(() => {
     const d = q.data;
     if (!d) return undefined;
+    if (withBooks && !b.data) return undefined; // wait for both, so books never show as unavailable
     const byId = new Map(d.products.map((p) => [p.id, p]));
     const bySlug = new Map(d.products.map((p) => [p.slug, p]));
-    const brands = new Map(d.brands.map((b) => [b.slug, b]));
+    const brands = new Map(d.brands.map((x) => [x.slug, x]));
     const cats = new Map(d.categories.map((c) => [c.slug, c]));
+    const books = withBooks ? b.data : undefined;
+    if (books) for (const x of books.books) byId.set(x.id, bookSummary(x));
     return {
       ...d, byId, bySlug,
       brand: (s) => brands.get(s),
       category: (s) => cats.get(s),
-      brandName: (s) => brands.get(s)?.name ?? s,
+      brandName: (s) => brands.get(s)?.name ?? books?.publisherName(s) ?? s,
+    };
+  }, [q.data, withBooks, b.data]);
+  const failed = (q.error ?? (withBooks ? b.error : null)) as StoreError | null;
+  return { data, isLoading: q.isLoading || (withBooks && b.isLoading), error: failed, refetch: q.refetch };
+}
+
+/* ------------------------------------------------------------------ medical books */
+
+async function loadBooks(): Promise<BookCatalog> {
+  try {
+    return await storeFetch<BookCatalog>("/books");
+  } catch (e) {
+    if (!import.meta.env.DEV) throw e;
+    const m = await import("@/data/store/books.json");
+    const c = m.default as unknown as BookCatalog;
+    return { ...c, books: c.books.map((x) => ({ ...x, priceOnRequest: x.price === null, inStock: true })) };
+  }
+}
+
+export interface BookStore {
+  version: string;
+  books: Book[];
+  publishers: Publisher[];
+  byId: Map<number, Book>;
+  bySlug: Map<string, Book>;
+  publisherName: (slug: string) => string;
+}
+
+/** The medical books (src/data/store/books.json) with the store's prices. Loaded when a page needs them. */
+export function useBooks(enabled = true) {
+  const q = useQuery({ queryKey: ["store", "books"], queryFn: loadBooks, staleTime: 5 * 60_000, gcTime: 60 * 60_000, enabled, retry: 1 });
+  const data = useMemo<BookStore | undefined>(() => {
+    const d = q.data;
+    if (!d) return undefined;
+    const pubs = new Map(d.publishers.map((p) => [p.slug, p.name]));
+    return {
+      ...d,
+      byId: new Map(d.books.map((x) => [x.id, x])),
+      bySlug: new Map(d.books.map((x) => [x.slug, x])),
+      publisherName: (s) => pubs.get(s) ?? s,
     };
   }, [q.data]);
-  return { data, isLoading: q.isLoading, error: q.error as StoreError | null, refetch: q.refetch };
+  return { data, isLoading: enabled && q.isLoading, error: q.error as StoreError | null, refetch: q.refetch };
 }
 
 /** One product in full (description, specifications, every photo). */

@@ -7,6 +7,7 @@ import { useMemo, useSyncExternalStore } from "react";
 import type { CartLine, Product, ProductSummary, Variant } from "./types";
 import { lineKey, MAX_LINES, MAX_QTY, quoteLines } from "./rules";
 import { useStore } from "./api";
+import { isBookId } from "./bookdata";
 
 const KEY = "aethex:cart:v2";
 const EMPTY: CartLine[] = [];
@@ -85,7 +86,7 @@ export function asProduct(s: ProductSummary): Product {
 /** The cart priced from the catalogue, with what can't be bought right now listed separately. */
 export function useCart() {
   const ls = useCartLines();
-  const { data, isLoading, error } = useStore(true);
+  const { data, isLoading, error } = useStore(true, { books: ls.some((l) => isBookId(l.productId)) });
   const quote = useMemo(() => quoteLines(ls, (id) => { const s = data?.byId.get(id); return s ? asProduct(s) : null; }), [ls, data]);
   return { lines: ls, quote, store: data, isLoading: isLoading && ls.length > 0, error };
 }

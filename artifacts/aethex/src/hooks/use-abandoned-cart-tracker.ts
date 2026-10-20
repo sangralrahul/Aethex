@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useCartLines, asProduct } from "@/lib/store/cart";
 import { useStore } from "@/lib/store/api";
 import { quoteLines } from "@/lib/store/rules";
+import { isBookId } from "@/lib/store/bookdata";
 
 /**
  * Saves the signed-in shopper's cart with their account on Cloudflare
@@ -10,7 +11,7 @@ import { quoteLines } from "@/lib/store/rules";
  */
 export function useAbandonedCartTracker(signedIn: boolean) {
   const lines = useCartLines();
-  const { data: store } = useStore(signedIn && lines.length > 0);
+  const { data: store } = useStore(signedIn && lines.length > 0, { books: lines.some((l) => isBookId(l.productId)) });
   const lastKeyRef = useRef<string>("");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
