@@ -14,7 +14,7 @@ import {
 import { useSeo } from "@/hooks/use-seo";
 import { storeFetch, StoreError, useStore, type StoreData } from "@/lib/store/api";
 import type { BulkRequest, BulkStatus, Order, OrderStatus, Override, ProductSummary } from "@/lib/store/types";
-import { BULK_STATUS_LABEL, BULK_STATUSES, formatDay, ORDER_STATUSES, STATUS_LABEL } from "@/lib/store/rules";
+import { BULK_STATUS_LABEL, BULK_STATUSES, everyText, formatDay, ORDER_STATUSES, scheduleText, STATUS_LABEL } from "@/lib/store/rules";
 import { ProductImage } from "@/components/store/ProductImage";
 import { when } from "@/components/store/OrderView";
 import { loginUrl } from "@/lib/host";
@@ -304,7 +304,7 @@ function Bulk() {
                 <b>{r.id}</b>
                 <span>{r.institution} · {r.city}</span>
                 <span className="muted">{when(r.createdAt)}</span>
-                <span className={`ax-ov-status b-${r.status}`}>{BULK_STATUS_LABEL[r.status]}</span>
+                <span className={`ax-ov-status b-${r.status}`}>{BULK_STATUS_LABEL[r.status]}{r.schedule ? ` · ${everyText(r.schedule.every)}` : ""}</span>
                 <b className="tot">{r.units ? `${r.units.toLocaleString("en-IN")} units` : "See notes"}</b>
               </button>
               {open === r.id && <BulkEditor req={r} onSaved={(n) => setList((l) => (l ?? []).map((x) => (x.id === n.id ? n : x)).filter((x) => !status || x.status === status || x.id === n.id))} />}
@@ -325,6 +325,7 @@ function BulkEditor({ req, onSaved }: { req: AdminBulk; onSaved: (r: AdminBulk) 
   const asText = () => [
     `${req.institution} (${req.instType}), ${req.city}, ${req.state} ${req.pincode}`,
     ...req.items.map((i) => `${i.qty} x ${brand(i.brand)} ${i.name}${i.variantLabel ? ` (${i.variantLabel})` : ""}${i.unitPrice === null ? " [price on request]" : ` [store price ${i.unitPrice}]`}`),
+    req.schedule ? `Repeat delivery: ${scheduleText(req.schedule)}${req.needBy ? `, the first by ${formatDay(req.needBy)}` : ""}` : req.needBy ? `Needed by ${formatDay(req.needBy)}` : "",
     req.notes ? `Notes: ${req.notes}` : "",
   ].filter(Boolean).join("\n");
   const copy = async () => { try { await navigator.clipboard.writeText(asText()); setMsg("The list is copied."); } catch { setMsg("Couldn't copy: select the items and copy them instead."); } };
@@ -351,7 +352,8 @@ function BulkEditor({ req, onSaved }: { req: AdminBulk; onSaved: (r: AdminBulk) 
         </div>
         <div>
           <h3>Deliver to</h3>
-          <p>{req.address ? <>{req.address}<br /></> : null}{req.city}, {req.state} {req.pincode}{req.needBy ? <><br />Needed by {formatDay(req.needBy)}</> : null}</p>
+          <p>{req.address ? <>{req.address}<br /></> : null}{req.city}, {req.state} {req.pincode}{req.needBy ? <><br />{req.schedule ? "First delivery by" : "Needed by"} {formatDay(req.needBy)}</> : null}</p>
+          {req.schedule && <p className="note"><b>Repeat delivery:</b> {scheduleText(req.schedule)}</p>}
           {req.notes && <p className="note">Notes: {req.notes}</p>}
         </div>
         <div>

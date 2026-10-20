@@ -3,7 +3,7 @@
  * and by the Worker (the prices an order is actually placed at). Pure code: no
  * browser or Worker APIs, so both can import it.
  */
-import type { BulkItem, BulkLine, BulkStatus, CartLine, LineIssue, Override, PricedLine, Product, ProductSummary, Quote, Segment, Variant } from "./types";
+import type { BulkItem, BulkLine, BulkStatus, CartLine, DeliverySchedule, LineIssue, Override, PricedLine, Product, ProductSummary, Quote, Segment, Variant } from "./types";
 
 /** Orders from this amount (after discounts) ship free; below it delivery costs DELIVERY_FEE. */
 export const FREE_DELIVERY_FROM = 499;
@@ -208,6 +208,31 @@ export const INSTITUTION_TYPES: Record<Segment, string[]> = {
 
 export const BULK_STATUSES = ["new", "quoted", "ordered", "closed"] as const;
 export const BULK_STATUS_LABEL: Record<BulkStatus, string> = { new: "New", quoted: "Quoted", ordered: "Ordered", closed: "Closed" };
+
+/* ------------------------------------------------------------------ deliveries ordered in advance */
+
+export const REPEAT_EVERY = [1, 2, 3] as const;
+/** How long a schedule runs, in months; 0 = until the institution stops it. */
+export const REPEAT_MONTHS = [6, 12, 0] as const;
+
+/** A schedule from a request: null for a single delivery, "bad" when it isn't one we offer. */
+export function cleanSchedule(raw: unknown): DeliverySchedule | null | "bad" {
+  if (raw === undefined || raw === null || raw === "") return null;
+  const r = raw as { every?: unknown; months?: unknown };
+  const every = Number(r?.every);
+  const months = Number(r?.months);
+  if (!(REPEAT_EVERY as readonly number[]).includes(every) || !(REPEAT_MONTHS as readonly number[]).includes(months)) return "bad";
+  return { every, months } as DeliverySchedule;
+}
+
+/** "every month", "every 3 months" */
+export const everyText = (every: number) => (every === 1 ? "every month" : `every ${every} months`);
+
+/** "Every month for 12 months (12 deliveries)", "Every 3 months until stopped" */
+export function scheduleText(s: DeliverySchedule): string {
+  const head = everyText(s.every).replace(/^e/, "E");
+  return s.months ? `${head} for ${s.months} months (${s.months / s.every} deliveries)` : `${head} until stopped`;
+}
 
 /** A date picked in a form ("2026-12-15") as people read it: 15 Dec 2026. */
 export function formatDay(iso: string): string {

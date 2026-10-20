@@ -208,6 +208,16 @@ export interface BulkItem extends BulkLine {
 
 export type BulkStatus = "new" | "quoted" | "ordered" | "closed";
 
+/**
+ * Deliveries of a bulk list ordered in advance: every 1, 2 or 3 months, for 6 or
+ * 12 months, or until the institution stops it (months 0). The first delivery is
+ * the request's needBy date, when given.
+ */
+export interface DeliverySchedule {
+  every: 1 | 2 | 3;
+  months: 0 | 6 | 12;
+}
+
 export interface BulkRequest {
   id: string;
   createdAt: number;
@@ -224,10 +234,13 @@ export interface BulkRequest {
   city: string;
   state: string;
   pincode: string;
+  /** The (first) delivery date, YYYY-MM-DD. */
   needBy?: string;
+  /** Repeat deliveries; absent for a single delivery. */
+  schedule?: DeliverySchedule;
   notes?: string;
   items: BulkItem[];
-  /** Units across all lines. */
+  /** Units across all lines (one delivery). */
   units: number;
   /** The priced lines at store prices: a guide, the quotation sets the final price. */
   estTotal: number;

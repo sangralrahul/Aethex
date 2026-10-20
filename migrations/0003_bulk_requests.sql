@@ -27,6 +27,10 @@ CREATE TABLE IF NOT EXISTS store_bulk_requests (
   unpriced INTEGER NOT NULL,               -- items whose price is on request
   admin_note TEXT,
   user_id TEXT,
-  ip TEXT
+  ip TEXT,
+  repeat_every INTEGER,                    -- deliveries ordered in advance: every 1, 2 or 3 months (NULL: one delivery)
+  repeat_months INTEGER                    -- for 6 or 12 months; 0 until the institution stops it
 );
+-- A table made before these two columns existed gets them from the Worker
+-- (worker/store.ts, STORE_COLUMNS), so nothing needs to be run by hand.
 CREATE INDEX IF NOT EXISTS store_bulk_requests_created ON store_bulk_requests(created_at);

@@ -6,7 +6,7 @@
  */
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import type { Address, Brand, BulkLine, CartLine, Catalog, CatalogSummary, Category, EnquiryKind, Order, Product, ProductSummary, Quote, Segment } from "./types";
+import type { Address, Brand, BulkLine, CartLine, Catalog, CatalogSummary, Category, DeliverySchedule, EnquiryKind, Order, Product, ProductSummary, Quote, Segment } from "./types";
 import { summarize } from "./rules";
 
 const API = "/api/store";
@@ -127,7 +127,8 @@ export const sendEnquiry = (body: { kind: EnquiryKind; productId?: number; varia
 /** A bulk quotation request from a hospital or medical college (worker/store.ts, createBulkRequest). */
 export type BulkRequestBody = {
   segment: Segment; institution: string; instType: string; contactName: string; designation?: string; phone: string; email: string;
-  gstin?: string; address?: string; city: string; state: string; pincode: string; needBy?: string; notes?: string; lines: BulkLine[]; website?: string;
+  gstin?: string; address?: string; city: string; state: string; pincode: string; needBy?: string; schedule?: DeliverySchedule; notes?: string;
+  lines: BulkLine[]; website?: string;
 };
 export const sendBulkRequest = (body: BulkRequestBody) =>
   storeFetch<{ ok: true; id: string; units: number; estTotal: number; unpriced: number; emailed: boolean }>("/bulk-requests", { json: body });

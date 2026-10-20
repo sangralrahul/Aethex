@@ -13,8 +13,8 @@
 import catalogJson from "../artifacts/aethex/src/data/store/catalog.json";
 import type { Address, BulkItem, BulkRequest, BulkStatus, CartLine, Catalog, EnquiryKind, Order, OrderStatus, Override, PricedLine, Product, Quote, Segment } from "../artifacts/aethex/src/lib/store/types";
 import {
-  applyOverride, BULK_STATUSES, cancellable, COD_LIMIT, formatDay, INDIAN_STATES, INSTITUTION_TYPES, normPhone, ORDER_STATUSES, priceBulk, quoteLines, round2, STATUS_LABEL,
-  summarize, validEmail, validGstin, validPincode,
+  applyOverride, BULK_STATUSES, cancellable, cleanSchedule, COD_LIMIT, everyText, formatDay, INDIAN_STATES, INSTITUTION_TYPES, normPhone, ORDER_STATUSES, priceBulk, quoteLines, round2, STATUS_LABEL,
+  scheduleText, summarize, validEmail, validGstin, validPincode,
 } from "../artifacts/aethex/src/lib/store/rules";
 import { BUSINESS, SITE_URL, launchGaps } from "../artifacts/aethex/src/config/business";
 import { allow, clientIp, currentUser, escapeHtml, normEmail, sendEmail, sha256, shell, type AuthEnv, type D1Like } from "./auth";
@@ -67,13 +67,28 @@ export const STORE_TABLES = [
     id TEXT PRIMARY KEY, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'new', segment TEXT NOT NULL,
     institution TEXT NOT NULL, inst_type TEXT NOT NULL, contact_name TEXT NOT NULL, designation TEXT, phone TEXT NOT NULL, email TEXT NOT NULL,
     gstin TEXT, address TEXT, city TEXT NOT NULL, state TEXT NOT NULL, pincode TEXT NOT NULL, need_by TEXT, notes TEXT,
-    items TEXT NOT NULL, units INTEGER NOT NULL, est_total REAL NOT NULL, unpriced INTEGER NOT NULL, admin_note TEXT, user_id TEXT, ip TEXT)`,
+    items TEXT NOT NULL, units INTEGER NOT NULL, est_total REAL NOT NULL, unpriced INTEGER NOT NULL, admin_note TEXT, user_id TEXT, ip TEXT,
+    repeat_every INTEGER, repeat_months INTEGER)`,
   "CREATE INDEX IF NOT EXISTS store_bulk_requests_created ON store_bulk_requests(created_at)",
+];
+/** Columns added after a table was first made: added where missing (an existing column is left alone). */
+export const STORE_COLUMNS: [table: string, column: string, type: string][] = [
+  ["store_bulk_requests", "repeat_every", "INTEGER"],
+  ["store_bulk_requests", "repeat_months", "INTEGER"],
 ];
 let tablesReady: Promise<void> | null = null;
 function ensureTables(db: D1Like): Promise<void> {
   if (!tablesReady) {
-    tablesReady = (async () => { for (const sql of STORE_TABLES) await db.prepare(sql).run(); })().catch((e) => { tablesReady = null; throw e; });
+    tablesReady = (async () => {
+      for (const sql of STORE_TABLES) await db.prepare(sql).run();
+      for (const [table, column, type] of STORE_COLUMNS) {
+        try {
+          await db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`).run();
+        } catch (e) {
+          if (!/duplicate column/i.test(String((e as Error)?.message ?? e))) throw e;
+        }
+      }
+    })().catch((e) => { tablesReady = null; throw e; });
   }
   return tablesReady;
 }
@@ -485,7 +500,7 @@ type BulkRow = {
   id: string; created_at: number; updated_at: number; status: string; segment: string; institution: string; inst_type: string; contact_name: string;
   designation: string | null; phone: string; email: string; gstin: string | null; address: string | null; city: string; state: string; pincode: string;
   need_by: string | null; notes: string | null; items: string; units: number; est_total: number; unpriced: number; admin_note: string | null;
-  user_id: string | null; ip: string | null;
+  user_id: string | null; ip: string | null; repeat_every?: number | null; repeat_months?: number | null;
 };
 
 function toBulk(r: BulkRow): BulkRequest {
@@ -498,8 +513,16 @@ function toBulk(r: BulkRow): BulkRequest {
   if (r.gstin) b.gstin = r.gstin;
   if (r.address) b.address = r.address;
   if (r.need_by) b.needBy = r.need_by;
+  const schedule = cleanSchedule(r.repeat_every ? { every: r.repeat_every, months: r.repeat_months ?? 0 } : null);
+  if (schedule && schedule !== "bad") b.schedule = schedule;
   if (r.notes) b.notes = r.notes;
   return b;
+}
+
+/** When the list is wanted, for the emails: "Needed by 15 Dec 2026", "Every month for 12 months (12 deliveries), the first by 15 Dec 2026". */
+function whenText(b: BulkRequest): string {
+  if (b.schedule) return `${scheduleText(b.schedule)}${b.needBy ? `, the first by ${formatDay(b.needBy)}` : ""}`;
+  return b.needBy ? `Needed by ${formatDay(b.needBy)}` : "";
 }
 
 const SEGMENT_NAME: Record<Segment, string> = { hospital: "Hospitals", college: "Medical colleges" };
@@ -533,6 +556,7 @@ async function createBulkRequest(request: Request, env: DBEnv): Promise<Response
   const state = str(b.state, 60);
   const pincode = String(b.pincode ?? "").trim();
   const needBy = /^\d{4}-\d{2}-\d{2}$/.test(str(b.needBy, 10)) ? str(b.needBy, 10) : "";
+  const schedule = cleanSchedule(b.schedule);
   const notes = longStr(b.notes, 1500);
   const field = (f: string, error: string) => json({ error, field: f }, 400);
   if (institution.length < 3) return field("institution", "Please enter the name of your institution.");
@@ -543,6 +567,7 @@ async function createBulkRequest(request: Request, env: DBEnv): Promise<Response
   if (city.length < 2) return field("city", "Please enter the city.");
   if (!INDIAN_STATES.includes(state)) return field("state", "Please choose the state.");
   if (!validPincode(pincode)) return field("pincode", "Please enter the 6-digit PIN code.");
+  if (schedule === "bad") return field("schedule", "Choose how often to repeat the delivery: every month, 2 months or 3 months, for 6 or 12 months or until you stop it.");
   const priced = priceBulk(b.lines, await finder(env));
   if (priced.issues.length) return json({ error: "Some items in your list need attention: choose an option for them, or remove them.", issues: priced.issues }, 409);
   if (!priced.items.length && notes.length < 15) return field("notes", "Add products to your list, or describe what you need in the notes.");
@@ -560,22 +585,26 @@ async function createBulkRequest(request: Request, env: DBEnv): Promise<Response
   if (gstin) req.gstin = gstin;
   if (address) req.address = address;
   if (needBy) req.needBy = needBy;
+  if (schedule) req.schedule = schedule;
   if (notes) req.notes = notes;
-  await env.DB.prepare(`INSERT INTO store_bulk_requests (id, created_at, updated_at, status, segment, institution, inst_type, contact_name, designation, phone, email, gstin, address, city, state, pincode, need_by, notes, items, units, est_total, unpriced, user_id, ip)
-    VALUES (?, ?, ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+  await env.DB.prepare(`INSERT INTO store_bulk_requests (id, created_at, updated_at, status, segment, institution, inst_type, contact_name, designation, phone, email, gstin, address, city, state, pincode, need_by, notes, items, units, est_total, unpriced, user_id, ip, repeat_every, repeat_months)
+    VALUES (?, ?, ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
     .bind(req.id, now, now, segment, institution, instType, contactName, designation || null, phone, email, gstin || null, address || null, city, state, pincode,
-      needBy || null, notes || null, JSON.stringify(req.items), req.units, req.estTotal, req.unpriced, user?.id ?? null, ip).run();
+      needBy || null, notes || null, JSON.stringify(req.items), req.units, req.estTotal, req.unpriced, user?.id ?? null, ip,
+      req.schedule?.every ?? null, req.schedule?.months ?? null).run();
   const who = `${escapeHtml(contactName)}${designation ? `, ${escapeHtml(designation)}` : ""}<br>${escapeHtml(institution)} (${escapeHtml(instType)})`;
   const where = `${address ? `${escapeHtml(address)}<br>` : ""}${escapeHtml(city)}, ${escapeHtml(state)} ${escapeHtml(pincode)}`;
+  const when = whenText(req);
   const results = await Promise.allSettled([
     sendEmail(env, email, `We've got your bulk request (${req.id})`, shell(`<h2 style="margin:0 0 8px;font-size:20px;">Thanks, ${escapeHtml(contactName.split(" ")[0])}. We've got your request</h2>
 <p style="color:#4A5568;margin:0 0 6px;line-height:1.55;">We'll send the quotation for ${escapeHtml(institution)} to this email address, usually within one business day, and may call you on ${escapeHtml(phone)} to check the details. Your reference is <b>${req.id}</b>.</p>
 ${bulkItemsHtml(req)}
+${when ? `<p style="margin:10px 0 0;font-size:14px;line-height:1.6;"><b>Delivery:</b> ${escapeHtml(when)}.${req.schedule ? " We'll quote the whole schedule." : ""}</p>` : ""}
 ${notes ? `<p style="margin:10px 0 0;font-size:14px;line-height:1.6;white-space:pre-wrap;"><b>Your notes:</b> ${escapeHtml(notes)}</p>` : ""}
 <p style="margin:12px 0 0;font-size:13px;color:#718096;line-height:1.5;">Store prices are a guide: the quotation gives your price for these quantities, with delivery to ${escapeHtml(city)}.</p>${signoff()}`)),
-    sendEmail(env, storeInbox(env), `Bulk request ${req.id}: ${institution}, ${city} (${req.units ? `${req.units.toLocaleString("en-IN")} units` : "see notes"})`, shell(`<h2 style="margin:0 0 8px;font-size:19px;">New bulk request · ${SEGMENT_NAME[segment]}</h2>
+    sendEmail(env, storeInbox(env), `Bulk request ${req.id}: ${institution}, ${city} (${req.units ? `${req.units.toLocaleString("en-IN")} units` : "see notes"}${req.schedule ? `, ${everyText(req.schedule.every)}` : ""})`, shell(`<h2 style="margin:0 0 8px;font-size:19px;">New bulk request · ${SEGMENT_NAME[segment]}</h2>
 <p style="margin:0 0 6px;font-size:14px;line-height:1.6;">${who}<br><a href="tel:+91${phone}">+91 ${escapeHtml(phone)}</a> · <a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a>${gstin ? `<br>GSTIN ${escapeHtml(gstin)}` : ""}</p>
-<p style="margin:0 0 6px;font-size:14px;line-height:1.6;">${where}${needBy ? `<br>Needed by ${escapeHtml(formatDay(needBy))}` : ""}</p>
+<p style="margin:0 0 6px;font-size:14px;line-height:1.6;">${where}${when ? `<br>${req.schedule ? `<b>Repeat delivery: ${escapeHtml(when)}</b>` : escapeHtml(when)}` : ""}</p>
 ${bulkItemsHtml(req)}
 ${notes ? `<p style="margin:10px 0 0;font-size:14px;line-height:1.6;white-space:pre-wrap;"><b>Notes:</b> ${escapeHtml(notes)}</p>` : ""}
 ${button(`${SITE_URL}/admin`, "Open the store admin")}`)),

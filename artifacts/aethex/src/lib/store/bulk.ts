@@ -48,6 +48,26 @@ export const bulk = {
     const k = lineKey(productId, variantId);
     write(lines.map((l) => (lineKey(l.productId, l.variantId) === k ? { ...l, qty: clampQty(qty) } : l)));
   },
+  /**
+   * Adds quantities to the list in one go (a ready-made list): a product already
+   * there gets the quantity added to it. Lines that don't fit once the list is
+   * full are left out; returns how many lines were added or topped up.
+   */
+  addMany(add: BulkLine[]): { added: number; full: boolean } {
+    const next = [...lines];
+    let added = 0;
+    let full = false;
+    for (const a of add) {
+      const k = lineKey(a.productId, a.variantId);
+      const i = next.findIndex((l) => lineKey(l.productId, l.variantId) === k);
+      if (i >= 0) { next[i] = { ...next[i], qty: clampQty(next[i].qty + a.qty) }; added++; continue; }
+      if (next.length >= BULK_MAX_LINES) { full = true; continue; }
+      next.push({ productId: a.productId, variantId: a.variantId, qty: clampQty(a.qty) });
+      added++;
+    }
+    if (added) write(next);
+    return { added, full };
+  },
   remove(productId: number, variantId: string | null) {
     const k = lineKey(productId, variantId);
     write(lines.filter((l) => lineKey(l.productId, l.variantId) !== k));

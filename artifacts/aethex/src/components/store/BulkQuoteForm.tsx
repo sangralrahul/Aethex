@@ -1,14 +1,15 @@
 /**
  * The quotation request on the hospital and medical college pages: the
- * institution, who to contact, where to deliver and the list, sent to the store
+ * institution, who to contact, where and when to deliver (once, or repeated
+ * every 1, 2 or 3 months: ordering in advance) and the list, sent to the store
  * (POST /api/store/bulk-requests). Remembers the details in this browser for the
  * next request. Styles: src/shop.css (.ax-form, .ax-bq).
  */
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Loader2, Lock } from "lucide-react";
 import { sendBulkRequest, StoreError, useStore } from "@/lib/store/api";
-import type { BulkLine, Segment } from "@/lib/store/types";
-import { INDIAN_STATES, INSTITUTION_TYPES, normPhone, validEmail, validGstin, validPincode, type PricedBulk } from "@/lib/store/rules";
+import type { BulkLine, DeliverySchedule, Segment } from "@/lib/store/types";
+import { INDIAN_STATES, INSTITUTION_TYPES, normPhone, REPEAT_EVERY, validEmail, validGstin, validPincode, type PricedBulk } from "@/lib/store/rules";
 import { useUserAuth } from "@/hooks/use-user-auth";
 import { BUSINESS } from "@/config/business";
 import { formatINR } from "@/lib/utils";
@@ -39,6 +40,9 @@ export function BulkQuoteForm({ segment, lines, priced, onDone }: {
       gstin: i.gstin ?? "", address: i.address ?? "", city: c.city ?? "", state: i.state ?? "", pincode: i.pincode ?? "", needBy: "", notes: "", website: "",
     };
   });
+  /** 0: one delivery; otherwise every 1, 2 or 3 months. */
+  const [every, setEvery] = useState<0 | DeliverySchedule["every"]>(0);
+  const [months, setMonths] = useState<DeliverySchedule["months"]>(12);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [bad, setBad] = useState("");
@@ -74,7 +78,8 @@ export function BulkQuoteForm({ segment, lines, priced, onDone }: {
       const r = await sendBulkRequest({
         segment, institution: f.institution.trim(), instType: f.instType, contactName: f.contactName.trim(), designation: f.designation.trim() || undefined,
         phone: f.phone, email: f.email.trim(), gstin: f.gstin.trim().toUpperCase() || undefined, address: f.address.trim() || undefined,
-        city: f.city.trim(), state: f.state, pincode: f.pincode.trim(), needBy: f.needBy || undefined, notes: f.notes.trim() || undefined,
+        city: f.city.trim(), state: f.state, pincode: f.pincode.trim(), needBy: f.needBy || undefined,
+        schedule: every ? { every, months } : undefined, notes: f.notes.trim() || undefined,
         lines: send, website: f.website || undefined,
       });
       rememberContact({ name: f.contactName.trim(), phone: f.phone, email: f.email.trim(), city: f.city.trim() });
@@ -87,7 +92,7 @@ export function BulkQuoteForm({ segment, lines, priced, onDone }: {
       const x = e2 as StoreError;
       const issues: { productId: number }[] = Array.isArray(x.data?.issues) ? x.data.issues : [];
       const names = issues.map((i) => store?.byId.get(i.productId)?.name).filter(Boolean);
-      const known = ["institution", "contactName", "phone", "email", "gstin", "city", "state", "pincode", "notes"];
+      const known = ["institution", "contactName", "phone", "email", "gstin", "city", "state", "pincode", "schedule", "notes"];
       fail(known.includes(x.data?.field) ? x.data.field : "", names.length ? `These products can't be quoted right now: ${names.join(", ")}. Remove them from your list and send it again.` : x.message);
     } finally {
       setBusy(false);
@@ -120,10 +125,39 @@ export function BulkQuoteForm({ segment, lines, priced, onDone }: {
         <label className={cls("phone")}><span>Mobile number</span><input value={f.phone} onChange={set("phone")} type="tel" inputMode="tel" autoComplete="tel" maxLength={16} placeholder="10-digit mobile" required />{errFor("phone")}</label>
         <label className={cls("email")}><span>Email</span><input value={f.email} onChange={set("email")} type="email" autoComplete="email" maxLength={254} placeholder="The quotation is sent here" required />{errFor("email")}</label>
         <label className={`${cls("address")} wide`}><span>Delivery address <em>(optional)</em></span><input value={f.address} onChange={set("address")} autoComplete="street-address" maxLength={300} placeholder="Building, street, area" /></label>
-        <label className={cls("city")}><span>City</span><input value={f.city} onChange={set("city")} autoComplete="address-level2" maxLength={60} required />{errFor("city")}</label>
-        <label className={cls("state")}><span>State</span><select value={f.state} onChange={set("state")} required><option value="">Choose…</option>{INDIAN_STATES.map((s) => <option key={s}>{s}</option>)}</select>{errFor("state")}</label>
-        <label className={cls("pincode")}><span>PIN code</span><input value={f.pincode} onChange={set("pincode")} inputMode="numeric" autoComplete="postal-code" maxLength={6} required />{errFor("pincode")}</label>
-        <label className={cls("needBy")}><span>Needed by <em>(optional)</em></span><input value={f.needBy} onChange={set("needBy")} type="date" min={today} /></label>
+        <div className="wide ax-bq-place">
+          <label className={cls("city")}><span>City</span><input value={f.city} onChange={set("city")} autoComplete="address-level2" maxLength={60} required />{errFor("city")}</label>
+          <label className={cls("state")}><span>State</span><select value={f.state} onChange={set("state")} required><option value="">Choose…</option>{INDIAN_STATES.map((s) => <option key={s}>{s}</option>)}</select>{errFor("state")}</label>
+          <label className={cls("pincode")}><span>PIN code</span><input value={f.pincode} onChange={set("pincode")} inputMode="numeric" autoComplete="postal-code" maxLength={6} required />{errFor("pincode")}</label>
+        </div>
+        <div className="wide ax-bq-when" role="group" aria-labelledby="ax-bq-when">
+          <span className="lab" id="ax-bq-when">When do you need it?</span>
+          <div className="seg" role="radiogroup" aria-label="How often">
+            {([0, ...REPEAT_EVERY] as const).map((n) => (
+              <button key={n} type="button" role="radio" aria-checked={every === n} className={every === n ? "on" : ""} onClick={() => setEvery(n)}>
+                {n === 0 ? "Once" : n === 1 ? "Every month" : `Every ${n} months`}
+              </button>
+            ))}
+          </div>
+          <div className="row">
+            <label className={cls("needBy")}><span>{every ? "First delivery by" : "Needed by"} <em>(optional)</em></span><input value={f.needBy} onChange={set("needBy")} type="date" min={today} /></label>
+            {every > 0 && (
+              <label className={cls("schedule")}><span>For</span>
+                <select value={months} onChange={(e) => { setMonths(Number(e.target.value) as DeliverySchedule["months"]); if (bad === "schedule") { setBad(""); setErr(""); } }}>
+                  <option value={6}>6 months</option>
+                  <option value={12}>12 months</option>
+                  <option value={0}>Until we stop it</option>
+                </select>{errFor("schedule")}
+              </label>
+            )}
+          </div>
+          {every > 0 && (
+            <p className="hint">
+              {priced.units > 0 && <>{priced.units.toLocaleString("en-IN")} units each delivery{months ? `, ${months / every} deliveries` : ""}. </>}
+              We'll quote the whole schedule. To change or stop it later, just tell us.
+            </p>
+          )}
+        </div>
         <label className={`${cls("notes")} wide`}><span>{send.length ? <>Notes <em>(optional)</em></> : "What you need"}</span><textarea value={f.notes} onChange={set("notes")} rows={send.length ? 3 : 5} maxLength={1500} placeholder={send.length ? "Sizes or colours, products not listed, delivery instructions, purchase order details…" : "For example: 60 stethoscopes for first-year students, 10 aneroid BP apparatus for the skills lab"} />{errFor("notes")}</label>
         <label className="ax-hp" aria-hidden="true">Website<input value={f.website} onChange={set("website")} tabIndex={-1} autoComplete="off" /></label>
       </div>

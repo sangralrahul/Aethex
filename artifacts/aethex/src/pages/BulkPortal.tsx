@@ -1,16 +1,18 @@
 /**
  * Aethex for Hospitals (/hospitals) and Aethex for Medical Colleges
  * (/medical-colleges): the store's products chosen for each, with institutional
- * quantities. People build one list (lib/store/bulk.ts) and send it for a
- * quotation (POST /api/store/bulk-requests), or order a small list straight away
- * through the cart with cash on delivery. What each page says and shows:
- * src/config/institutions.ts. Styles: src/shop.css (.ax-bulk).
+ * quantities. People build one list (lib/store/bulk.ts), starting from a
+ * ready-made list if they like (src/config/kits.ts), and send it for a quotation
+ * (POST /api/store/bulk-requests) for one delivery or repeated ones, or order a
+ * small list straight away through the cart with cash on delivery. What each page
+ * says and shows: src/config/institutions.ts. Styles: src/shop.css (.ax-bulk).
  */
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ComponentType } from "react";
 import { Link, useLocation } from "wouter";
 import {
-  ArrowRight, Banknote, BookOpen, Building2, Check, ChevronDown, ClipboardList, GraduationCap, Hospital, ListChecks, Minus, Package, Plus, Search,
-  ShieldCheck, ShoppingCart, Trash2, Truck, X,
+  Activity, ArrowRight, Banknote, BedDouble, BookOpen, Bone, Building2, CalendarClock, Check, ChevronDown, ClipboardCheck, ClipboardList, GraduationCap,
+  HeartPulse, Hospital, ListChecks, ListPlus, Microscope, Minus, Package, Plus, Search, ShieldCheck, ShoppingCart, Siren, Stethoscope, Syringe, Trash2, X,
+  type LucideProps,
 } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
 import { ProductImage } from "@/components/store/ProductImage";
@@ -25,6 +27,8 @@ import { BULK_MAX_QTY, directOrder, lineKey, mixBrands } from "@/lib/store/rules
 import { searchProducts } from "@/lib/store/search";
 import type { BulkItem, ProductSummary, Segment } from "@/lib/store/types";
 import { SEGMENT_PAGES, type BulkSection } from "@/config/institutions";
+import { KITS, type Kit, type KitIcon } from "@/config/kits";
+import { kitLines } from "@/lib/store/kits";
 import { formatINR } from "@/lib/utils";
 
 const SHOW = 8;
@@ -69,8 +73,8 @@ export default function BulkPortal({ segment }: { segment: Segment }) {
       <ul className="ax-wrap ax-bulk-points" aria-label="Why order with Aethex">
         <li><ShieldCheck size={20} /><div><b>Genuine products</b><small>From the brands' own ranges, with the manufacturer's warranty</small></div></li>
         <li><ListChecks size={20} /><div><b>Any quantity</b><small>One list for every department, quoted together</small></div></li>
+        <li><CalendarClock size={20} /><div><b>Order ahead</b><small>Pick a delivery date, or repeat every month or quarter</small></div></li>
         <li><Banknote size={20} /><div><b>Bank transfer or PO</b><small>On quotations; small orders can be cash on delivery</small></div></li>
-        <li><Truck size={20} /><div><b>Delivery across India</b><small>To your {segment === "hospital" ? "hospital or clinic" : "college or department"}</small></div></li>
       </ul>
 
       <div className="ax-wrap ax-bulk-main">
@@ -90,6 +94,7 @@ export default function BulkPortal({ segment }: { segment: Segment }) {
             </section>
           ) : (
             <>
+              <Kits segment={segment} store={store} />
               {cfg.sections.map((sec) => <Section key={sec.id} sec={sec} store={store} defaultQty={cfg.defaultQty} />)}
               {segment === "college" && (
                 <section className="ax-bulk-sec">
@@ -114,7 +119,7 @@ export default function BulkPortal({ segment }: { segment: Segment }) {
         <h2>How it works</h2>
         <ol>
           <li><span>1</span><b>Add products</b><small>Pick products and quantities from the sections above, or search the whole store.</small></li>
-          <li><span>2</span><b>Send your list</b><small>Add your {segment === "hospital" ? "hospital's" : "college's"} details and where to deliver. It takes a minute.</small></li>
+          <li><span>2</span><b>Send your list</b><small>Add your {segment === "hospital" ? "hospital's" : "college's"} details, where to deliver and when: once, or every month or quarter.</small></li>
           <li><span>3</span><b>Get a quotation</b><small>We email your prices for these quantities, with delivery, usually within one business day.</small></li>
           <li><span>4</span><b>Confirm and pay</b><small>Accept the quotation and pay by bank transfer or purchase order. We deliver across India.</small></li>
         </ol>
@@ -139,6 +144,126 @@ export default function BulkPortal({ segment }: { segment: Segment }) {
 
       <QuoteDialog open={quote} segment={segment} done={done} onDone={(r) => { setDone(r); bulk.clear(); }} onClose={() => setQuote(false)} />
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ ready-made lists */
+
+const KIT_ICONS: Record<KitIcon, ComponentType<LucideProps>> = {
+  ward: BedDouble, opd: Stethoscope, student: GraduationCap, station: ClipboardCheck, emergency: Siren, consumables: Syringe,
+  bed: BedDouble, icu: HeartPulse, anatomy: Bone, lab: Microscope, cpr: Activity,
+};
+
+function Kits({ segment, store }: { segment: Segment; store: StoreData }) {
+  const kits = KITS.filter((k) => k.segment === segment);
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [open, setOpen] = useState<Kit | null>(null);
+  const close = useCallback(() => setOpen(null), []);
+  if (!kits.length) return null;
+  const countOf = (k: Kit) => counts[k.id] ?? k.per.count;
+  const setCount = (k: Kit, n: number) => setCounts((c) => ({ ...c, [k.id]: Math.max(1, Math.min(k.per.max, n)) }));
+  return (
+    <section className="ax-bulk-sec ax-kits" id="kits">
+      <div className="ax-bulk-sec-h">
+        <h2>Ready-made lists</h2>
+        <p>Start from a list for a whole {segment === "hospital" ? "ward or room" : "batch or lab"}, then change the quantities in your list before you ask for a quote.</p>
+      </div>
+      <div className="ax-kit-grid">
+        {kits.map((k) => <KitCard key={k.id} kit={k} store={store} count={countOf(k)} setCount={(n) => setCount(k, n)} onOpen={() => setOpen(k)} />)}
+      </div>
+      {open && <KitDialog kit={open} store={store} count={countOf(open)} setCount={(n) => setCount(open, n)} onClose={close} />}
+    </section>
+  );
+}
+
+function useAddKit() {
+  const { toast } = useToast();
+  return (kit: Kit, store: StoreData, count: number) => {
+    const { lines } = kitLines(kit, store, count);
+    const r = bulk.addMany(lines.map(({ productId, variantId, qty }) => ({ productId, variantId, qty })));
+    const per = count === 1 ? kit.per.one : kit.per.many;
+    toast({
+      title: r.added ? `Added: ${kit.title}` : "Your list is full",
+      description: r.added
+        ? `${r.added} products for ${count.toLocaleString("en-IN")} ${per}. Change the quantities in your list.${r.full ? " Some didn't fit: the list is full." : ""}`
+        : "Send this list for a quotation, then start another.",
+      duration: 4500,
+    });
+    return r.added > 0;
+  };
+}
+
+function KitCount({ kit, count, setCount }: { kit: Kit; count: number; setCount: (n: number) => void }) {
+  const [v, setV] = useState(String(count));
+  useEffect(() => setV(String(count)), [count]);
+  const step = count >= 20 ? 10 : 1;
+  return (
+    <div className="ax-kit-count">
+      <span>For</span>
+      <div className="qty">
+        <button type="button" onClick={() => setCount(count - step)} disabled={count <= 1} aria-label={`Fewer ${kit.per.many}`}><Minus size={14} /></button>
+        <input
+          value={v}
+          onChange={(e) => { const s = e.target.value.replace(/\D/g, "").slice(0, 4); setV(s); if (Number(s) > 0) setCount(Number(s)); }}
+          onBlur={() => setV(String(count))}
+          inputMode="numeric"
+          aria-label={`Number of ${kit.per.many}`}
+        />
+        <button type="button" onClick={() => setCount(count + step)} disabled={count >= kit.per.max} aria-label={`More ${kit.per.many}`}><Plus size={14} /></button>
+      </div>
+      <span>{count === 1 ? kit.per.one : kit.per.many}</span>
+    </div>
+  );
+}
+
+function KitCard({ kit, store, count, setCount, onOpen }: { kit: Kit; store: StoreData; count: number; setCount: (n: number) => void; onOpen: () => void }) {
+  const addKit = useAddKit();
+  const Icon = KIT_ICONS[kit.icon];
+  const { lines } = useMemo(() => kitLines(kit, store, count), [kit, store, count]);
+  const units = lines.reduce((s, l) => s + l.qty, 0);
+  if (!lines.length) return null;
+  return (
+    <article className="ax-kit">
+      <div className="top">
+        <span className="ic"><Icon size={22} /></span>
+        <div><b>{kit.title}</b><small>{kit.text}</small></div>
+      </div>
+      <KitCount kit={kit} count={count} setCount={setCount} />
+      <p className="meta">{lines.length} products · {units.toLocaleString("en-IN")} units</p>
+      <div className="acts">
+        <button type="button" className="ax-btn teal" onClick={() => addKit(kit, store, count)}><ListPlus size={16} /> Add to my list</button>
+        <button type="button" className="ax-btn" onClick={onOpen}>What's in it</button>
+      </div>
+    </article>
+  );
+}
+
+function KitDialog({ kit, store, count, setCount, onClose }: { kit: Kit; store: StoreData; count: number; setCount: (n: number) => void; onClose: () => void }) {
+  const addKit = useAddKit();
+  const { lines } = useMemo(() => kitLines(kit, store, count), [kit, store, count]);
+  const units = lines.reduce((s, l) => s + l.qty, 0);
+  return (
+    <Dialog open onClose={onClose} title={kit.title} wide>
+      <div className="ax-kit-dlg">
+        <p className="lead">{kit.text}</p>
+        <KitCount kit={kit} count={count} setCount={setCount} />
+        <ul>
+          {lines.map((l) => (
+            <li key={`${l.productId}:${l.variantId ?? ""}`}>
+              <Link href={`/products/${l.product.slug}`} className="th" onClick={onClose}><ProductImage src={l.product.image} width={96} /></Link>
+              <div className="nm">
+                <Link href={`/products/${l.product.slug}`} onClick={onClose}>{store.brandName(l.product.brand)} {l.product.name}</Link>
+                {l.optionLabel && <small>{l.product.optionName ?? "Option"}: {l.optionLabel}</small>}
+                <small>{l.product.priceOnRequest || l.product.price === null ? "Price on request" : `${formatINR(l.product.price)} each, store price`}</small>
+              </div>
+              <b className="q">{l.qty.toLocaleString("en-IN")}</b>
+            </li>
+          ))}
+        </ul>
+        <p className="note">{lines.length} products, {units.toLocaleString("en-IN")} units. A starting point, not a standard: check it against your own protocols and change the quantities in your list.</p>
+        <button type="button" className="ax-btn teal lg" onClick={() => { if (addKit(kit, store, count)) onClose(); }}><ListPlus size={17} /> Add all to my list</button>
+      </div>
+    </Dialog>
   );
 }
 

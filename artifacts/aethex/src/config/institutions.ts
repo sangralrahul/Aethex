@@ -38,6 +38,7 @@ const cod = `₹${COD_LIMIT.toLocaleString("en-IN")}`;
 const COMMON_FAQ = [
   { q: "Is there a minimum quantity?", a: `No. Add what you need. A small list (up to 10 of each item, all priced, up to ${cod}) can also be ordered straight away with cash on delivery.` },
   { q: "How is the price decided?", a: "The store price is shown as a guide. The quotation gives your price for the quantities you asked for, with delivery to your address." },
+  { q: "Can we order in advance, or every month?", a: "Yes. When you send your list, choose the date you need it by, or repeat it every month, 2 months or 3 months, for 6 or 12 months or until you stop it. We quote the whole schedule, and you can change or stop it by telling us." },
   { q: "How do we pay?", a: `After you accept the quotation, by bank transfer or against your purchase order. Orders placed straight from the list are cash on delivery, up to ${cod}.` },
   { q: "Can we ask for products that aren't listed?", a: "Yes. Write them in the notes with the quantity and we'll tell you what we can supply." },
   ...(BUSINESS.gstin ? [{ q: "Do you give GST invoices?", a: `Yes, with our GSTIN (${BUSINESS.gstin}). Add your institution's GSTIN to the request.` }] : []),
