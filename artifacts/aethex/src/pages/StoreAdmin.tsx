@@ -1,32 +1,34 @@
 /**
  * The store admin (/admin), for the accounts in ADMIN_EMAILS: orders (confirm,
  * ship with tracking, deliver, cancel; download as CSV), price and book
- * requests, and products (set prices for price-on-request brands, MRP, stock,
- * country of origin, hide). Talks to /api/store/admin/* (worker/store.ts).
+ * requests, bulk quotation requests from hospitals and medical colleges, and
+ * products (set prices for price-on-request brands, MRP, stock, country of
+ * origin, hide). Talks to /api/store/admin/* (worker/store.ts).
  * Styles: src/shop.css (.ax-adm).
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
-  AlertTriangle, Check, ClipboardList, Download, ExternalLink, Inbox, Loader2, LogIn, Package, RefreshCw, Search, ShieldCheck, Store, Truck,
+  AlertTriangle, Building2, Check, ClipboardList, Copy, Download, ExternalLink, Inbox, Loader2, LogIn, Mail, Package, RefreshCw, Search, ShieldCheck, Store, Truck,
 } from "lucide-react";
 import { useSeo } from "@/hooks/use-seo";
 import { storeFetch, StoreError, useStore, type StoreData } from "@/lib/store/api";
-import type { Order, OrderStatus, Override, ProductSummary } from "@/lib/store/types";
-import { ORDER_STATUSES, STATUS_LABEL } from "@/lib/store/rules";
+import type { BulkRequest, BulkStatus, Order, OrderStatus, Override, ProductSummary } from "@/lib/store/types";
+import { BULK_STATUS_LABEL, BULK_STATUSES, formatDay, ORDER_STATUSES, STATUS_LABEL } from "@/lib/store/rules";
 import { ProductImage } from "@/components/store/ProductImage";
 import { when } from "@/components/store/OrderView";
 import { loginUrl } from "@/lib/host";
 import { formatINR } from "@/lib/utils";
 
 type AdminOrder = Order & { adminNote: string; updatedAt: number; userId: string | null };
+type AdminBulk = BulkRequest & { adminNote: string; updatedAt: number };
 type Enquiry = { id: string; created_at: number; kind: string; item: string | null; name: string; phone: string; email: string | null; city: string | null; qty: number; message: string | null; status: string; note: string | null; product: { id: number; slug: string; name: string; brand: string } | null };
 type Summary = {
-  orders: Record<string, { count: number; total: number }>; last24h: { count: number; total: number }; openEnquiries: number;
+  orders: Record<string, { count: number; total: number }>; last24h: { count: number; total: number }; openEnquiries: number; openBulk: number;
   catalog: { products: number; priceOnRequest: number; noOrigin: number; hidden: number; outOfStock: number };
   setup: { email: boolean; storeEmail: string; admins: number; gaps: string[] };
 };
-type Tab = "overview" | "orders" | "requests" | "products";
+type Tab = "overview" | "orders" | "requests" | "bulk" | "products";
 
 const admin = <T,>(path: string, init?: { method?: string; json?: unknown }) => storeFetch<T>(`/admin/${path}`, init);
 
@@ -67,7 +69,7 @@ export default function StoreAdmin() {
         <div className="ax-wrap">
           <b><Store size={18} /> Store admin</b>
           <nav role="tablist">
-            {([["overview", "Overview", ClipboardList], ["orders", "Orders", Package], ["requests", "Requests", Inbox], ["products", "Products", Store]] as const).map(([k, label, I]) => (
+            {([["overview", "Overview", ClipboardList], ["orders", "Orders", Package], ["requests", "Requests", Inbox], ["bulk", "Bulk", Building2], ["products", "Products", Store]] as const).map(([k, label, I]) => (
               <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}><I size={15} /> {label}</button>
             ))}
           </nav>
@@ -78,6 +80,7 @@ export default function StoreAdmin() {
         {tab === "overview" && <Overview go={setTab} />}
         {tab === "orders" && <Orders />}
         {tab === "requests" && <Requests />}
+        {tab === "bulk" && <Bulk />}
         {tab === "products" && <Products />}
       </div>
     </div>
@@ -107,6 +110,7 @@ function Overview({ go }: { go: (t: Tab) => void }) {
         <button type="button" onClick={() => go("orders")}><small>To ship</small><b>{o("confirmed")}</b><span>confirmed</span></button>
         <button type="button" onClick={() => go("orders")}><small>On the way</small><b>{o("shipped")}</b><span>shipped</span></button>
         <button type="button" onClick={() => go("requests")}><small>Requests</small><b>{s.openEnquiries}</b><span>waiting for a reply</span></button>
+        <button type="button" onClick={() => go("bulk")}><small>Bulk requests</small><b>{s.openBulk ?? 0}</b><span>to quote</span></button>
         <div><small>Last 24 hours</small><b>{s.last24h.count}</b><span>{formatINR(s.last24h.total)}</span></div>
         <div><small>Delivered</small><b>{o("delivered")}</b><span>{formatINR(s.orders.delivered?.total ?? 0)}</span></div>
       </div>
@@ -272,6 +276,113 @@ function Requests() {
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ bulk requests (hospitals and medical colleges) */
+
+function Bulk() {
+  const [list, setList] = useState<AdminBulk[] | null>(null);
+  const [status, setStatus] = useState<string>("new");
+  const [err, setErr] = useState("");
+  const [open, setOpen] = useState<string | null>(null);
+  const load = useCallback(() => { setErr(""); admin<{ requests: AdminBulk[] }>(`bulk${status ? `?status=${status}` : ""}`).then((r) => setList(r.requests)).catch((e) => setErr(e.message)); }, [status]);
+  useEffect(() => { setList(null); load(); }, [load]);
+  return (
+    <div>
+      <div className="ax-adm-bar">
+        <div className="seg">{[...BULK_STATUSES.map((k) => [k, BULK_STATUS_LABEL[k]]), ["", "All"]].map(([k, l]) => <button key={k} type="button" className={status === k ? "on" : ""} onClick={() => setStatus(k)}>{l}</button>)}</div>
+        <button type="button" className="ax-btn" onClick={load}><RefreshCw size={15} /></button>
+      </div>
+      {err && <p className="ax-form-err">{err}</p>}
+      {!list ? <p className="ax-adm-loading"><Loader2 size={18} className="spin" /> Loading…</p> : list.length === 0 ? <p className="ax-adm-empty">No bulk requests here. They come from aethex.in/hospitals and aethex.in/medical-colleges.</p> : (
+        <ul className="ax-adm-list">
+          {list.map((r) => (
+            <li key={r.id} className={open === r.id ? "open" : ""}>
+              <button type="button" className="row" onClick={() => setOpen(open === r.id ? null : r.id)}>
+                <b>{r.id}</b>
+                <span>{r.institution} · {r.city}</span>
+                <span className="muted">{when(r.createdAt)}</span>
+                <span className={`ax-ov-status b-${r.status}`}>{BULK_STATUS_LABEL[r.status]}</span>
+                <b className="tot">{r.units ? `${r.units.toLocaleString("en-IN")} units` : "See notes"}</b>
+              </button>
+              {open === r.id && <BulkEditor req={r} onSaved={(n) => setList((l) => (l ?? []).map((x) => (x.id === n.id ? n : x)).filter((x) => !status || x.status === status || x.id === n.id))} />}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function BulkEditor({ req, onSaved }: { req: AdminBulk; onSaved: (r: AdminBulk) => void }) {
+  const { data: store } = useStore();
+  const [note, setNote] = useState(req.adminNote);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const brand = (slug: string) => store?.brandName(slug) ?? slug;
+  const asText = () => [
+    `${req.institution} (${req.instType}), ${req.city}, ${req.state} ${req.pincode}`,
+    ...req.items.map((i) => `${i.qty} x ${brand(i.brand)} ${i.name}${i.variantLabel ? ` (${i.variantLabel})` : ""}${i.unitPrice === null ? " [price on request]" : ` [store price ${i.unitPrice}]`}`),
+    req.notes ? `Notes: ${req.notes}` : "",
+  ].filter(Boolean).join("\n");
+  const copy = async () => { try { await navigator.clipboard.writeText(asText()); setMsg("The list is copied."); } catch { setMsg("Couldn't copy: select the items and copy them instead."); } };
+  const save = async (status?: BulkStatus) => {
+    setBusy(true); setMsg("");
+    try {
+      const r = await admin<{ request: AdminBulk }>(`bulk/${req.id}`, { method: "PATCH", json: { ...(status ? { status } : {}), adminNote: note } });
+      onSaved(r.request);
+      setMsg(status ? `Marked ${BULK_STATUS_LABEL[status].toLowerCase()}.` : "Saved.");
+    } catch (e) {
+      setMsg((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const subject = encodeURIComponent(`Quotation ${req.id} for ${req.institution}`);
+  return (
+    <div className="ax-adm-order">
+      <div className="cols">
+        <div>
+          <h3>{req.segment === "hospital" ? "Hospital" : "Medical college"}</h3>
+          <p><b>{req.institution}</b> · {req.instType}{req.gstin ? <><br />GSTIN {req.gstin}</> : null}</p>
+          <p>{req.contactName}{req.designation ? `, ${req.designation}` : ""}<br /><a href={`tel:+91${req.phone}`}>+91 {req.phone}</a> · <a href={`mailto:${req.email}`}>{req.email}</a></p>
+        </div>
+        <div>
+          <h3>Deliver to</h3>
+          <p>{req.address ? <>{req.address}<br /></> : null}{req.city}, {req.state} {req.pincode}{req.needBy ? <><br />Needed by {formatDay(req.needBy)}</> : null}</p>
+          {req.notes && <p className="note">Notes: {req.notes}</p>}
+        </div>
+        <div>
+          <h3>Items {req.units ? `· ${req.units.toLocaleString("en-IN")} units` : ""}</h3>
+          {req.items.length ? (
+            <ul className="items">
+              {req.items.map((i) => (
+                <li key={`${i.productId}:${i.variantId ?? ""}`}>
+                  {i.qty.toLocaleString("en-IN")} × <Link href={`/products/${i.slug}`}>{brand(i.brand)} {i.name}</Link>{i.variantLabel ? ` (${i.variantLabel})` : ""}
+                  {" "}<span className="muted">{i.unitPrice === null ? "price on request" : `${formatINR(i.unitPrice)} each`}{i.inStock ? "" : " · out of stock"}</span>
+                </li>
+              ))}
+            </ul>
+          ) : <p className="muted">No products picked: the request is in the notes.</p>}
+          {req.estTotal > 0 && <p>At store prices: <b>{formatINR(req.estTotal)}</b>{req.unpriced ? ` + ${req.unpriced} on request` : ""}</p>}
+        </div>
+      </div>
+      <div className="ax-form">
+        <label className="f wide"><span>Team note <em>(only you see this: quoted amount, follow-ups)</em></span><textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} maxLength={2000} /></label>
+      </div>
+      <div className="acts">
+        <a className="ax-btn teal" href={`mailto:${req.email}?subject=${subject}`}><Mail size={15} /> Email the quotation</a>
+        <button type="button" className="ax-btn" onClick={copy}><Copy size={15} /> Copy the list</button>
+        {(["quoted", "ordered", "closed"] as BulkStatus[]).filter((s) => s !== req.status).map((s) => (
+          <button key={s} type="button" className="ax-btn" disabled={busy} onClick={() => save(s)}><Check size={15} /> Mark {BULK_STATUS_LABEL[s].toLowerCase()}</button>
+        ))}
+        {req.status !== "new" && <button type="button" className="ax-btn" disabled={busy} onClick={() => save("new")}>Back to new</button>}
+        <button type="button" className="ax-btn" disabled={busy} onClick={() => save()}>Save note</button>
+        {busy && <Loader2 size={16} className="spin" />}
+      </div>
+      {msg && <p className="ax-adm-msg">{msg}</p>}
     </div>
   );
 }

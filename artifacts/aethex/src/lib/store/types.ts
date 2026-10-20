@@ -182,3 +182,55 @@ export interface Order {
 }
 
 export type EnquiryKind = "price" | "book" | "bulk" | "general";
+
+/* ------------------------------------------------------------------ bulk buying (hospitals and medical colleges) */
+
+/** Who a bulk request is for: the hospital page or the medical college page. */
+export type Segment = "hospital" | "college";
+
+export interface BulkLine {
+  productId: number;
+  variantId: string | null;
+  qty: number;
+}
+
+/** A line of a bulk request, with the product as it was when the request was sent. */
+export interface BulkItem extends BulkLine {
+  slug: string;
+  name: string;
+  brand: string;
+  variantLabel?: string;
+  image?: string;
+  /** The store's price for one unit at the time (a guide), or null when the price is on request. */
+  unitPrice: number | null;
+  inStock: boolean;
+}
+
+export type BulkStatus = "new" | "quoted" | "ordered" | "closed";
+
+export interface BulkRequest {
+  id: string;
+  createdAt: number;
+  status: BulkStatus;
+  segment: Segment;
+  institution: string;
+  instType: string;
+  contactName: string;
+  designation?: string;
+  phone: string;
+  email: string;
+  gstin?: string;
+  address?: string;
+  city: string;
+  state: string;
+  pincode: string;
+  needBy?: string;
+  notes?: string;
+  items: BulkItem[];
+  /** Units across all lines. */
+  units: number;
+  /** The priced lines at store prices: a guide, the quotation sets the final price. */
+  estTotal: number;
+  /** Lines whose price is on request. */
+  unpriced: number;
+}

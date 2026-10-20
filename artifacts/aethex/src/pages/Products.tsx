@@ -14,6 +14,7 @@ import { useSeo } from "@/hooks/use-seo";
 import { useStore, type StoreData } from "@/lib/store/api";
 import type { ProductSummary } from "@/lib/store/types";
 import { discountPct, mixBrands } from "@/lib/store/rules";
+import { score, searchWords } from "@/lib/store/search";
 
 const PRICE_RANGES = [
   { id: "u500", label: "Under ₹500", test: (p: number) => p < 500 },
@@ -31,34 +32,6 @@ const SORTS = [
 ];
 
 const PAGE = 48;
-
-/** Words people search with, mapped to the words products use. */
-const SYNONYMS: Record<string, string[]> = {
-  bp: ["bp", "blood pressure", "sphygmomanometer"], "blood-pressure": ["bp", "blood pressure"],
-  nebuliser: ["nebulizer"], nebulizer: ["nebulizer"], spo2: ["oximeter"], oxygen: ["oximeter"],
-  sugar: ["gluco", "glucose"], glucose: ["gluco", "glucose"], diabetes: ["gluco", "lancet", "strip"],
-  weight: ["scale", "weigh"], weighing: ["scale", "weigh"], paediatric: ["paediatric", "pediatric", "child", "kids", "infant"],
-  pediatric: ["paediatric", "pediatric", "child", "kids"], orthopedic: ["orthopaedic", "orthopedic", "ortho"],
-  colour: ["colour", "color"], fever: ["thermometer"], temperature: ["thermometer"], brace: ["brace", "support", "splint"],
-  massager: ["massager", "tens", "massage"], tens: ["tens"], pillow: ["pillow", "cushion"], cushion: ["cushion", "pillow"],
-};
-
-function searchText(p: ProductSummary, store: StoreData) {
-  return `${p.name} ${store.brandName(p.brand)} ${store.category(p.category)?.name ?? ""} ${p.subcategory} ${p.model ?? ""}`.toLowerCase();
-}
-
-function score(p: ProductSummary, words: string[], store: StoreData): number {
-  const name = p.name.toLowerCase();
-  const hay = searchText(p, store);
-  let s = 0;
-  for (const w of words) {
-    const alts = SYNONYMS[w] ?? [w];
-    if (alts.some((a) => name.includes(a))) s += 3;
-    else if (alts.some((a) => hay.includes(a))) s += 1;
-    else return 0;
-  }
-  return s + (p.featured ? 0.5 : 0) + (p.inStock ? 0.25 : 0);
-}
 
 interface FilterProps {
   store: StoreData;
@@ -239,7 +212,7 @@ export default function Products() {
     if (category) list = list.filter((p) => p.category === category);
     if (brandPage) list = list.filter((p) => p.brand === brandPage);
     if (searchFilter) {
-      const words = searchFilter.toLowerCase().split(/[\s,]+/).filter((w) => w.length > 1 || /\d/.test(w));
+      const words = searchWords(searchFilter);
       list = list.map((p) => ({ p, s: score(p, words, store) })).filter((x) => x.s > 0).sort((a, b) => b.s - a.s).map((x) => x.p);
     }
     return list;

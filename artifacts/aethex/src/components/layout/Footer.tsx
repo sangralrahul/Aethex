@@ -13,8 +13,9 @@ const COLS: { title: string; links: { href: string; label: string; external?: bo
       { href: "/category/bp-monitors", label: "BP monitors" },
       { href: "/category/stethoscopes", label: "Stethoscopes" },
       { href: "/category/diabetes-care", label: "Diabetes care" },
-      { href: "/category/orthopaedic-supports", label: "Supports & braces" },
       { href: "/brands", label: "All brands" },
+      { href: "/hospitals", label: "For hospitals (bulk)" },
+      { href: "/medical-colleges", label: "For medical colleges (bulk)" },
     ],
   },
   {
@@ -64,7 +65,7 @@ export function Footer() {
             <p>One platform for India's doctors and medical students: Cadus AI, study tools and genuine medical supplies, with one account.</p>
             <div className="ax-foot-apps">
               <a href={downloadsUrl()}><Download size={16} /> Cadus for Windows and Linux</a>
-              <a href="https://hms.aethex.in" rel="noopener"><Hospital size={16} /> AETHEX for hospitals</a>
+              <a href="https://hms.aethex.in" rel="noopener"><Hospital size={16} /> Hospital management app</a>
               <a href={cadusUrl("/")}>Open Cadus AI <ArrowRight size={15} /></a>
             </div>
           </div>

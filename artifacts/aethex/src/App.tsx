@@ -146,6 +146,7 @@ const TermsOfService = lazyPage(() => import("@/pages/TermsOfService"));
 const MedicalDisclaimer = lazyPage(() => import("@/pages/MedicalDisclaimer"));
 
 const InstitutionHub = lazyPage(() => import("@/pages/InstitutionHub"));
+const BulkPortal = lazyPage(() => import("@/pages/BulkPortal"));
 const CmeHub = lazyPage(() => import("@/pages/CmeHub"));
 const CaseOfTheDay = lazyPage(() => import("@/pages/CaseOfTheDay"));
 const DrugInteractionCheckerPage = lazyPage(() => import("@/pages/DrugInteractionCheckerPage"));
@@ -423,8 +424,10 @@ function Router() {
 
                 {/* Institution Hub */}
                 <Route path="/institutions" component={InstitutionHub} />
-                <Route path="/colleges" component={() => <InstitutionHub mode="colleges" />} />
-                <Route path="/hospitals" component={() => <InstitutionHub mode="hospitals" />} />
+                {/* Aethex for Hospitals / Medical Colleges: bulk buying and quotations */}
+                <Route path="/hospitals">{() => <BulkPortal segment="hospital" />}</Route>
+                <Route path="/medical-colleges">{() => <BulkPortal segment="college" />}</Route>
+                <Route path="/colleges">{() => <Redirect to="/medical-colleges" />}</Route>
 
                 {/* Reviews */}
                 <Route path="/my-reviews" component={MyReviews} />

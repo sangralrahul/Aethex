@@ -3,7 +3,7 @@
  * and by the Worker (the prices an order is actually placed at). Pure code: no
  * browser or Worker APIs, so both can import it.
  */
-import type { CartLine, LineIssue, Override, PricedLine, Product, ProductSummary, Quote, Variant } from "./types";
+import type { BulkItem, BulkLine, BulkStatus, CartLine, LineIssue, Override, PricedLine, Product, ProductSummary, Quote, Segment, Variant } from "./types";
 
 /** Orders from this amount (after discounts) ship free; below it delivery costs DELIVERY_FEE. */
 export const FREE_DELIVERY_FROM = 499;
@@ -194,4 +194,87 @@ export function mixBrands<T extends { brand: string }>(list: T[], tier: (p: T) =
     for (let i = 0; queues.some((q) => i < q.length); i++) for (const q of queues) if (i < q.length) out.push(q[i]);
   }
   return out;
+}
+
+/* ------------------------------------------------------------------ bulk buying (hospitals and medical colleges) */
+
+export const BULK_MAX_LINES = 60;
+export const BULK_MAX_QTY = 10000;
+
+export const INSTITUTION_TYPES: Record<Segment, string[]> = {
+  hospital: ["Hospital", "Nursing home", "Clinic or polyclinic", "Diagnostic centre", "Other"],
+  college: ["Medical college", "Nursing college", "Dental college", "Department or skills lab", "Student group", "Other"],
+};
+
+export const BULK_STATUSES = ["new", "quoted", "ordered", "closed"] as const;
+export const BULK_STATUS_LABEL: Record<BulkStatus, string> = { new: "New", quoted: "Quoted", ordered: "Ordered", closed: "Closed" };
+
+/** A date picked in a form ("2026-12-15") as people read it: 15 Dec 2026. */
+export function formatDay(iso: string): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+}
+
+/** A GSTIN: state code, PAN, entity number, Z, check character (15 characters). */
+export const validGstin = (v: unknown) => /^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(String(v ?? "").trim().toUpperCase());
+
+/** A bulk list tidied: whole quantities within the limits, the same product and option merged. */
+export function cleanBulkLines(raw: unknown): BulkLine[] {
+  const seen = new Map<string, BulkLine>();
+  for (const l of Array.isArray(raw) ? raw.slice(0, BULK_MAX_LINES * 2) : []) {
+    const productId = Math.trunc(Number(l?.productId));
+    if (!Number.isFinite(productId) || productId <= 0) continue;
+    const variantId = typeof l?.variantId === "string" && l.variantId ? l.variantId.slice(0, 80) : null;
+    const qty = Math.max(1, Math.min(BULK_MAX_QTY, Math.trunc(Number(l?.qty)) || 1));
+    const k = lineKey(productId, variantId);
+    const prev = seen.get(k);
+    seen.set(k, { productId, variantId, qty: Math.min(BULK_MAX_QTY, (prev?.qty ?? 0) + qty) });
+  }
+  return Array.from(seen.values()).slice(0, BULK_MAX_LINES);
+}
+
+export interface PricedBulk { items: BulkItem[]; issues: LineIssue[]; units: number; estTotal: number; unpriced: number }
+
+/**
+ * A bulk list at the store's prices, as a guide: the quotation sets the final price.
+ * Items whose price is on request, or out of stock, can still be asked for.
+ */
+export function priceBulk(raw: unknown, find: (id: number) => Product | null | undefined): PricedBulk {
+  const items: BulkItem[] = [];
+  const issues: LineIssue[] = [];
+  for (const l of cleanBulkLines(raw)) {
+    const p = find(l.productId);
+    if (!p) { issues.push({ ...l, reason: "missing" }); continue; }
+    const vs = p.variants ?? [];
+    let v: Variant | undefined;
+    if (vs.length) {
+      v = l.variantId ? vs.find((x) => x.id === l.variantId) : vs.length === 1 ? vs[0] : undefined;
+      if (!v) { issues.push({ productId: l.productId, variantId: l.variantId, reason: l.variantId ? "unavailable" : "choose-option" }); continue; }
+    } else if (l.variantId) { issues.push({ productId: l.productId, variantId: l.variantId, reason: "unavailable" }); continue; }
+    const price = p.priceOnRequest ? null : v?.price ?? p.price ?? null;
+    const item: BulkItem = {
+      productId: p.id, variantId: v ? v.id : null, qty: l.qty, slug: p.slug, name: p.name, brand: p.brand,
+      unitPrice: price === null || price === undefined ? null : price, inStock: p.inStock && (v ? v.inStock : true),
+    };
+    if (v && vs.length > 1) item.variantLabel = v.label;
+    const image = v?.image || p.images[0];
+    if (image) item.image = image;
+    items.push(item);
+  }
+  const units = items.reduce((s, i) => s + i.qty, 0);
+  const estTotal = round2(items.reduce((s, i) => s + (i.unitPrice ?? 0) * i.qty, 0));
+  return { items, issues, units, estTotal, unpriced: items.filter((i) => i.unitPrice === null).length };
+}
+
+/** Whether a bulk list can be ordered straight away (cart, cash on delivery) instead of by quotation, and if not, why. */
+export function directOrder(b: PricedBulk): { ok: true } | { ok: false; reason: string } {
+  if (!b.items.length) return { ok: false, reason: "Your list is empty." };
+  if (b.issues.length) return { ok: false, reason: "Some items need an option chosen, or aren't available." };
+  if (b.unpriced) return { ok: false, reason: "Some items are priced on request." };
+  if (b.items.some((i) => !i.inStock)) return { ok: false, reason: "Some items are out of stock right now." };
+  if (b.items.some((i) => i.qty > MAX_QTY)) return { ok: false, reason: `Up to ${MAX_QTY} of each item can be ordered directly.` };
+  if (b.items.length > MAX_LINES) return { ok: false, reason: `Up to ${MAX_LINES} different items can be ordered directly.` };
+  const delivery = b.estTotal >= FREE_DELIVERY_FROM ? 0 : DELIVERY_FEE;
+  if (b.estTotal + delivery > COD_LIMIT) return { ok: false, reason: `Cash on delivery is for orders up to ₹${COD_LIMIT.toLocaleString("en-IN")}.` };
+  return { ok: true };
 }

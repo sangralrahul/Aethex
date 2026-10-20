@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState, type ComponentType } from "react"
 import { Link, useLocation } from "wouter";
 import {
   ArrowRight, BadgeCheck, Banknote, BookOpen, Brain, Calculator, ChevronLeft, ChevronRight, ClipboardList,
-  FlaskConical, Layers, LayoutGrid, Pill, RotateCcw, Search, ShieldCheck, Sparkles, Star, Timer, Truck,
+  FlaskConical, GraduationCap, Hospital, Layers, LayoutGrid, Pill, RotateCcw, Search, ShieldCheck, Sparkles, Star, Timer, Truck,
   type LucideProps,
 } from "lucide-react";
 import CadusMark from "@/components/cadus/CadusMark";
@@ -234,6 +234,25 @@ export default function Home() {
 
       {/* products */}
       <ProductRail />
+
+      {/* hospitals and medical colleges: bulk buying */}
+      <section className="ax-h-sec">
+        <div className="ax-wrap">
+          <div className="ax-h-title"><h2>Buying for a hospital or medical college?</h2></div>
+          <div className="ax-h-inst">
+            <Link href="/hospitals" className="hosp">
+              <span className="ic"><Hospital size={22} /></span>
+              <span className="tx"><small>Aethex for Hospitals</small><b>Supplies for every ward and department</b><em>BP monitors, oximeters, diagnostic sets, nebulizers and more, in the quantities you need.</em></span>
+              <span className="go">Build a list <ArrowRight size={16} /></span>
+            </Link>
+            <Link href="/medical-colleges" className="coll">
+              <span className="ic"><GraduationCap size={22} /></span>
+              <span className="tx"><small>Aethex for Medical Colleges</small><b>Stethoscopes, skills labs and textbooks</b><em>For a whole batch or department: one list, one quotation.</em></span>
+              <span className="go">Build a list <ArrowRight size={16} /></span>
+            </Link>
+          </div>
+        </div>
+      </section>
 
       {/* Cadus + Study banners */}
       <section className="ax-h-sec">

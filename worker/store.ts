@@ -1,8 +1,9 @@
 // The store on Cloudflare (/api/store/*): the catalogue with the store's own
 // prices and stock, cash-on-delivery orders, order tracking and cancelling,
-// price and book requests, and the store admin. Orders, requests and the
-// store's changes to products live in D1 (tables below; the same SQL is in
-// migrations/0002_store.sql, and the tables are also created on first use).
+// price and book requests, bulk quotation requests from hospitals and medical
+// colleges, and the store admin. Orders, requests and the store's changes to
+// products live in D1 (tables below; the same SQL is in migrations/0002_store.sql
+// and 0003_bulk_requests.sql, and the tables are also created on first use).
 //
 // Variables (Workers & Pages > aethex > Settings > Variables and Secrets):
 //   ADMIN_EMAILS  accounts that may open aethex.in/admin, comma-separated
@@ -10,9 +11,10 @@
 //                 (default: the first ADMIN_EMAILS address, else the support address)
 // Order and request emails go out through Brevo, like the sign-in codes.
 import catalogJson from "../artifacts/aethex/src/data/store/catalog.json";
-import type { Address, CartLine, Catalog, EnquiryKind, Order, OrderStatus, Override, PricedLine, Product, Quote } from "../artifacts/aethex/src/lib/store/types";
+import type { Address, BulkItem, BulkRequest, BulkStatus, CartLine, Catalog, EnquiryKind, Order, OrderStatus, Override, PricedLine, Product, Quote, Segment } from "../artifacts/aethex/src/lib/store/types";
 import {
-  applyOverride, cancellable, COD_LIMIT, INDIAN_STATES, normPhone, ORDER_STATUSES, quoteLines, round2, STATUS_LABEL, summarize, validEmail, validPincode,
+  applyOverride, BULK_STATUSES, cancellable, COD_LIMIT, formatDay, INDIAN_STATES, INSTITUTION_TYPES, normPhone, ORDER_STATUSES, priceBulk, quoteLines, round2, STATUS_LABEL,
+  summarize, validEmail, validGstin, validPincode,
 } from "../artifacts/aethex/src/lib/store/rules";
 import { BUSINESS, SITE_URL, launchGaps } from "../artifacts/aethex/src/config/business";
 import { allow, clientIp, currentUser, escapeHtml, normEmail, sendEmail, sha256, shell, type AuthEnv, type D1Like } from "./auth";
@@ -61,6 +63,12 @@ export const STORE_TABLES = [
     status TEXT NOT NULL DEFAULT 'new', note TEXT, user_id TEXT, ip TEXT)`,
   "CREATE INDEX IF NOT EXISTS store_enquiries_created ON store_enquiries(created_at)",
   "CREATE TABLE IF NOT EXISTS store_overrides (product_id INTEGER PRIMARY KEY, data TEXT NOT NULL, updated_at INTEGER NOT NULL, updated_by TEXT)",
+  `CREATE TABLE IF NOT EXISTS store_bulk_requests (
+    id TEXT PRIMARY KEY, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'new', segment TEXT NOT NULL,
+    institution TEXT NOT NULL, inst_type TEXT NOT NULL, contact_name TEXT NOT NULL, designation TEXT, phone TEXT NOT NULL, email TEXT NOT NULL,
+    gstin TEXT, address TEXT, city TEXT NOT NULL, state TEXT NOT NULL, pincode TEXT NOT NULL, need_by TEXT, notes TEXT,
+    items TEXT NOT NULL, units INTEGER NOT NULL, est_total REAL NOT NULL, unpriced INTEGER NOT NULL, admin_note TEXT, user_id TEXT, ip TEXT)`,
+  "CREATE INDEX IF NOT EXISTS store_bulk_requests_created ON store_bulk_requests(created_at)",
 ];
 let tablesReady: Promise<void> | null = null;
 function ensureTables(db: D1Like): Promise<void> {
@@ -283,6 +291,7 @@ async function handleAdmin(request: Request, env: DBEnv, path: string): Promise<
     const byStatus = await env.DB.prepare("SELECT status, COUNT(*) AS n, SUM(total) AS total FROM store_orders GROUP BY status").all<{ status: string; n: number; total: number }>();
     const today = await env.DB.prepare("SELECT COUNT(*) AS n, SUM(total) AS total FROM store_orders WHERE created_at > ?").bind(dayStart).first<{ n: number; total: number }>();
     const openEnq = await env.DB.prepare("SELECT COUNT(*) AS n FROM store_enquiries WHERE status = 'new'").first<{ n: number }>();
+    const openBulk = await env.DB.prepare("SELECT COUNT(*) AS n FROM store_bulk_requests WHERE status = 'new'").first<{ n: number }>();
     const find = await finder(env);
     let priceOnRequest = 0, noOrigin = 0, hidden = 0, outOfStock = 0;
     for (const p of catalog.products) {
@@ -296,6 +305,7 @@ async function handleAdmin(request: Request, env: DBEnv, path: string): Promise<
       orders: Object.fromEntries(byStatus.results.map((r) => [r.status, { count: r.n, total: round2(r.total || 0) }])),
       last24h: { count: today?.n || 0, total: round2(today?.total || 0) },
       openEnquiries: openEnq?.n || 0,
+      openBulk: openBulk?.n || 0,
       catalog: { products: catalog.products.length, priceOnRequest, noOrigin, hidden, outOfStock },
       setup: { email: !!env.BREVO_API_KEY, storeEmail: storeInbox(env), admins: adminEmails(env).length, gaps: launchGaps() },
     });
@@ -381,6 +391,26 @@ async function handleAdmin(request: Request, env: DBEnv, path: string): Promise<
     return json({ ok: true });
   }
 
+  if (path === "bulk" && method === "GET") {
+    const status = str(url.searchParams.get("status"), 20);
+    const ok = (BULK_STATUSES as readonly string[]).includes(status);
+    const { results } = await env.DB.prepare(`SELECT * FROM store_bulk_requests${ok ? " WHERE status = ?" : ""} ORDER BY created_at DESC LIMIT 200`).bind(...(ok ? [status] : [])).all<BulkRow>();
+    return json({ requests: results.map((r) => ({ ...toBulk(r), adminNote: r.admin_note || "", updatedAt: r.updated_at })) });
+  }
+  const bm = /^bulk\/([A-Z0-9-]{6,24})$/.exec(path);
+  if (bm && method === "PATCH") {
+    const r = await env.DB.prepare("SELECT * FROM store_bulk_requests WHERE id = ?").bind(bm[1]).first<BulkRow>();
+    if (!r) return json({ error: "No such request." }, 404);
+    const b = await readJson(request);
+    if (!b) return json({ error: "Send the changes as JSON." }, 400);
+    const status = b.status === undefined ? r.status : str(b.status, 20);
+    if (!(BULK_STATUSES as readonly string[]).includes(status)) return json({ error: "Status must be new, quoted, ordered or closed." }, 400);
+    const adminNote = typeof b.adminNote === "string" ? longStr(b.adminNote, 2000) : r.admin_note;
+    const now = Date.now();
+    await env.DB.prepare("UPDATE store_bulk_requests SET status = ?, admin_note = ?, updated_at = ? WHERE id = ?").bind(status, adminNote || null, now, r.id).run();
+    return json({ request: { ...toBulk({ ...r, status, admin_note: adminNote ?? null, updated_at: now }), adminNote: adminNote || "", updatedAt: now } });
+  }
+
   if (path === "overrides" && method === "GET") {
     const { results } = await env.DB.prepare("SELECT product_id, data, updated_at, updated_by FROM store_overrides").all<{ product_id: number; data: string; updated_at: number; updated_by: string }>();
     return json({ overrides: Object.fromEntries(results.map((r) => [r.product_id, { ...parse<Override>(r.data, {}), updatedAt: r.updated_at, updatedBy: r.updated_by }])) });
@@ -447,6 +477,111 @@ ${button(`${SITE_URL}/admin`, "Open the store admin")}`)),
 <p style="margin:12px 0 0;font-size:14px;"><b>${escapeHtml(item || "Your question")}</b>${kind !== "general" ? ` · quantity ${qty}` : ""}</p>${signoff()}`)) : Promise.resolve(false),
   ]);
   return json({ ok: true, id }, 201);
+}
+
+/* ------------------------------------------------------------------ bulk requests (hospitals and medical colleges) */
+
+type BulkRow = {
+  id: string; created_at: number; updated_at: number; status: string; segment: string; institution: string; inst_type: string; contact_name: string;
+  designation: string | null; phone: string; email: string; gstin: string | null; address: string | null; city: string; state: string; pincode: string;
+  need_by: string | null; notes: string | null; items: string; units: number; est_total: number; unpriced: number; admin_note: string | null;
+  user_id: string | null; ip: string | null;
+};
+
+function toBulk(r: BulkRow): BulkRequest {
+  const b: BulkRequest = {
+    id: r.id, createdAt: r.created_at, status: r.status as BulkStatus, segment: r.segment as Segment, institution: r.institution, instType: r.inst_type,
+    contactName: r.contact_name, phone: r.phone, email: r.email, city: r.city, state: r.state, pincode: r.pincode,
+    items: parse<BulkItem[]>(r.items, []), units: r.units, estTotal: r.est_total, unpriced: r.unpriced,
+  };
+  if (r.designation) b.designation = r.designation;
+  if (r.gstin) b.gstin = r.gstin;
+  if (r.address) b.address = r.address;
+  if (r.need_by) b.needBy = r.need_by;
+  if (r.notes) b.notes = r.notes;
+  return b;
+}
+
+const SEGMENT_NAME: Record<Segment, string> = { hospital: "Hospitals", college: "Medical colleges" };
+
+function bulkItemsHtml(b: BulkRequest) {
+  if (!b.items.length) return `<p style="margin:10px 0 0;font-size:13px;color:#4A5568;">No products picked from the site: the request is in the notes.</p>`;
+  const brand = (slug: string) => catalog.brands.find((x) => x.slug === slug)?.name ?? slug;
+  const rows = b.items.map((i) => `<tr><td style="padding:6px 8px;border-top:1px solid #E2E8F0;font-size:13px;"><a href="${SITE_URL}/products/${i.slug}" style="color:#1A202C;text-decoration:none;">${escapeHtml(`${brand(i.brand)} ${i.name}`)}</a>${i.variantLabel ? `<br><span style="color:#718096;">${escapeHtml(i.variantLabel)}</span>` : ""}${i.inStock ? "" : `<br><span style="color:#B45309;">Out of stock on the site</span>`}</td>
+<td style="padding:6px 8px;border-top:1px solid #E2E8F0;font-size:13px;text-align:right;white-space:nowrap;">${i.qty.toLocaleString("en-IN")}</td>
+<td style="padding:6px 8px;border-top:1px solid #E2E8F0;font-size:13px;text-align:right;white-space:nowrap;">${i.unitPrice === null ? "On request" : money(i.unitPrice)}</td></tr>`).join("");
+  return `<table style="width:100%;border-collapse:collapse;margin:10px 0 0;"><tr><th style="text-align:left;padding:6px 8px;font-size:12px;color:#718096;">Product</th><th style="text-align:right;padding:6px 8px;font-size:12px;color:#718096;">Quantity</th><th style="text-align:right;padding:6px 8px;font-size:12px;color:#718096;">Store price (each)</th></tr>${rows}</table>
+<p style="margin:10px 0 0;font-size:13px;color:#4A5568;">${b.units.toLocaleString("en-IN")} units${b.estTotal ? ` · ${money(b.estTotal)} at store prices` : ""}${b.unpriced ? ` · ${b.unpriced} item${b.unpriced === 1 ? "" : "s"} priced on request` : ""}</p>`;
+}
+
+async function createBulkRequest(request: Request, env: DBEnv): Promise<Response> {
+  const b = await readJson(request, 65_536);
+  if (!b) return json({ error: "Please fill in the form." }, 400);
+  if (str(b.website, 100)) return json({ ok: true, id: "AXB-OK" }, 201); // a field people never see: bots fill it
+  const segment: Segment | null = b.segment === "hospital" || b.segment === "college" ? b.segment : null;
+  if (!segment) return json({ error: "Choose whether this is for a hospital or a medical college." }, 400);
+  const institution = str(b.institution, 120);
+  const typeIn = str(b.instType, 40);
+  const instType = INSTITUTION_TYPES[segment].includes(typeIn) ? typeIn : "Other";
+  const contactName = str(b.contactName, 80);
+  const designation = str(b.designation, 80);
+  const phone = normPhone(b.phone);
+  const email = normEmail(b.email).slice(0, 254);
+  const gstin = str(b.gstin, 20).toUpperCase().replace(/\s/g, "");
+  const address = longStr(b.address, 300);
+  const city = str(b.city, 60);
+  const state = str(b.state, 60);
+  const pincode = String(b.pincode ?? "").trim();
+  const needBy = /^\d{4}-\d{2}-\d{2}$/.test(str(b.needBy, 10)) ? str(b.needBy, 10) : "";
+  const notes = longStr(b.notes, 1500);
+  const field = (f: string, error: string) => json({ error, field: f }, 400);
+  if (institution.length < 3) return field("institution", "Please enter the name of your institution.");
+  if (contactName.length < 2) return field("contactName", "Please enter the name of the person we should contact.");
+  if (!phone) return field("phone", "Please enter a 10-digit Indian mobile number.");
+  if (!validEmail(email)) return field("email", "Please enter an email address: the quotation is sent there.");
+  if (gstin && !validGstin(gstin)) return field("gstin", "That GSTIN doesn't look right (15 characters, like 27ABCDE1234F1Z5). Leave it empty if you don't have one.");
+  if (city.length < 2) return field("city", "Please enter the city.");
+  if (!INDIAN_STATES.includes(state)) return field("state", "Please choose the state.");
+  if (!validPincode(pincode)) return field("pincode", "Please enter the 6-digit PIN code.");
+  const priced = priceBulk(b.lines, await finder(env));
+  if (priced.issues.length) return json({ error: "Some items in your list need attention: choose an option for them, or remove them.", issues: priced.issues }, 409);
+  if (!priced.items.length && notes.length < 15) return field("notes", "Add products to your list, or describe what you need in the notes.");
+  const ip = clientIp(request);
+  if (!(await allow(env, `store:bulk:ip:${ip}`, 6, 3600_000)) || !(await allow(env, `store:bulk:email:${email}`, 6, 86400_000))) {
+    return json({ error: "We've received several requests from you already. We'll be in touch soon." }, 429);
+  }
+  const user = await currentUser(request, env).catch(() => null);
+  const now = Date.now();
+  const req: BulkRequest = {
+    id: `AXB-${orderId().slice(2)}`, createdAt: now, status: "new", segment, institution, instType, contactName, phone, email, city, state, pincode,
+    items: priced.items, units: priced.units, estTotal: priced.estTotal, unpriced: priced.unpriced,
+  };
+  if (designation) req.designation = designation;
+  if (gstin) req.gstin = gstin;
+  if (address) req.address = address;
+  if (needBy) req.needBy = needBy;
+  if (notes) req.notes = notes;
+  await env.DB.prepare(`INSERT INTO store_bulk_requests (id, created_at, updated_at, status, segment, institution, inst_type, contact_name, designation, phone, email, gstin, address, city, state, pincode, need_by, notes, items, units, est_total, unpriced, user_id, ip)
+    VALUES (?, ?, ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .bind(req.id, now, now, segment, institution, instType, contactName, designation || null, phone, email, gstin || null, address || null, city, state, pincode,
+      needBy || null, notes || null, JSON.stringify(req.items), req.units, req.estTotal, req.unpriced, user?.id ?? null, ip).run();
+  const who = `${escapeHtml(contactName)}${designation ? `, ${escapeHtml(designation)}` : ""}<br>${escapeHtml(institution)} (${escapeHtml(instType)})`;
+  const where = `${address ? `${escapeHtml(address)}<br>` : ""}${escapeHtml(city)}, ${escapeHtml(state)} ${escapeHtml(pincode)}`;
+  const results = await Promise.allSettled([
+    sendEmail(env, email, `We've got your bulk request (${req.id})`, shell(`<h2 style="margin:0 0 8px;font-size:20px;">Thanks, ${escapeHtml(contactName.split(" ")[0])}. We've got your request</h2>
+<p style="color:#4A5568;margin:0 0 6px;line-height:1.55;">We'll send the quotation for ${escapeHtml(institution)} to this email address, usually within one business day, and may call you on ${escapeHtml(phone)} to check the details. Your reference is <b>${req.id}</b>.</p>
+${bulkItemsHtml(req)}
+${notes ? `<p style="margin:10px 0 0;font-size:14px;line-height:1.6;white-space:pre-wrap;"><b>Your notes:</b> ${escapeHtml(notes)}</p>` : ""}
+<p style="margin:12px 0 0;font-size:13px;color:#718096;line-height:1.5;">Store prices are a guide: the quotation gives your price for these quantities, with delivery to ${escapeHtml(city)}.</p>${signoff()}`)),
+    sendEmail(env, storeInbox(env), `Bulk request ${req.id}: ${institution}, ${city} (${req.units ? `${req.units.toLocaleString("en-IN")} units` : "see notes"})`, shell(`<h2 style="margin:0 0 8px;font-size:19px;">New bulk request · ${SEGMENT_NAME[segment]}</h2>
+<p style="margin:0 0 6px;font-size:14px;line-height:1.6;">${who}<br><a href="tel:+91${phone}">+91 ${escapeHtml(phone)}</a> · <a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a>${gstin ? `<br>GSTIN ${escapeHtml(gstin)}` : ""}</p>
+<p style="margin:0 0 6px;font-size:14px;line-height:1.6;">${where}${needBy ? `<br>Needed by ${escapeHtml(formatDay(needBy))}` : ""}</p>
+${bulkItemsHtml(req)}
+${notes ? `<p style="margin:10px 0 0;font-size:14px;line-height:1.6;white-space:pre-wrap;"><b>Notes:</b> ${escapeHtml(notes)}</p>` : ""}
+${button(`${SITE_URL}/admin`, "Open the store admin")}`)),
+  ]);
+  const emailed = results[0].status === "fulfilled" && results[0].value === true;
+  return json({ ok: true, id: req.id, units: req.units, estTotal: req.estTotal, unpriced: req.unpriced, emailed }, 201);
 }
 
 /* ------------------------------------------------------------------ the contact form */
@@ -528,6 +663,7 @@ export async function handleStore(request: Request, env: StoreEnv): Promise<Resp
 
   if (path === "enquiries" && method === "POST") return createEnquiry(request, db);
   if (path === "contact" && method === "POST") return createContact(request, db);
+  if (path === "bulk-requests" && method === "POST") return createBulkRequest(request, db);
 
   if (path === "orders" && method === "POST") {
     const b = await readJson(request);

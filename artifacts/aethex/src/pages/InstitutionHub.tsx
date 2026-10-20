@@ -3,12 +3,14 @@ import { PageHero } from "@/components/PageHero";
 import { mainUrl } from "@/lib/host";
 import { motion } from "framer-motion";
 import {
-  Building2, GraduationCap, HeartPulse, ShieldCheck, Truck, BadgePercent,
+  Building2, GraduationCap, HeartPulse, ShieldCheck, Truck, Banknote, Hospital, Sparkles,
   Users, ClipboardList, Phone, Mail, ArrowRight, CheckCircle2,
-  Package, Headphones, CreditCard, FileText, BookOpen, Stethoscope,
+  Package, Headphones, CreditCard, FileText, BookOpen, Stethoscope, Loader2,
   Building, MapPin, Award, ChevronRight, Search, ChevronDown, SlidersHorizontal,
 } from "lucide-react";
 import { useState, useMemo } from "react";
+import { sendEnquiry } from "@/lib/store/api";
+import { normPhone, validEmail } from "@/lib/store/rules";
 import { medicalColleges, majorHospitals, ALL_STATES, type InstitutionTier } from "@/data/medicalColleges";
 
 const fadeUp = {
@@ -16,68 +18,13 @@ const fadeUp = {
   visible: (i: number) => ({ opacity: 1, y: 0, transition: { delay: i * 0.04, duration: 0.5, ease: "easeOut" } }),
 };
 
-const plans = [
-  {
-    name: "College Basic",
-    icon: GraduationCap,
-    price: "Free",
-    priceNote: "For student bodies & clubs",
-    color: "#007AFF",
-    features: [
-      "Verified student pricing",
-      "Batch order coordination",
-      "Study material bulk discounts",
-      "Dedicated student support",
-      "Campus delivery option",
-    ],
-    cta: "Register College",
-    highlight: false,
-  },
-  {
-    name: "Institution Pro",
-    icon: Building2,
-    price: "Custom",
-    priceNote: "For colleges & hospitals",
-    color: "#00C2A8",
-    features: [
-      "Everything in College Basic",
-      "Dedicated account manager",
-      "Net-30 payment terms",
-      "GST invoice & billing",
-      "Priority dispatch & delivery",
-      "Volume discount pricing",
-      "Custom catalog curation",
-    ],
-    cta: "Get a Quote",
-    highlight: true,
-  },
-  {
-    name: "Hospital Enterprise",
-    icon: HeartPulse,
-    price: "Custom",
-    priceNote: "For hospital chains & ICUs",
-    color: "#FF3B30",
-    features: [
-      "Everything in Institution Pro",
-      "Bulk procurement portal",
-      "Auto-replenishment orders",
-      "Biomedical team coordination",
-      "SLA-backed delivery",
-      "Multi-branch management",
-      "API integration support",
-    ],
-    cta: "Contact Sales",
-    highlight: false,
-  },
-];
-
 const benefits = [
-  { icon: BadgePercent, title: "Verified Bulk Discounts", desc: "Up to 35% off on bulk orders for medical colleges and hospital procurement teams.", color: "#007AFF" },
-  { icon: Truck, title: "Priority Delivery", desc: "SLA-backed same-day and next-day delivery for critical medical supplies and instruments.", color: "#00C2A8" },
-  { icon: FileText, title: "GST Billing & Invoicing", desc: "Proper tax invoices, credit notes, and custom billing formats for institutional accounts.", color: "#FF9500" },
-  { icon: Users, title: "Multi-User Accounts", desc: "Department-level access with approval workflows and centralized procurement control.", color: "#5856D6" },
-  { icon: Headphones, title: "Dedicated Account Manager", desc: "A named AETHEX representative for your institution — reachable by phone and email.", color: "#FF3B30" },
-  { icon: Package, title: "Custom Catalog", desc: "Curated product lists tailored to your specialty, formulary, or procurement policy.", color: "#34C759" },
+  { icon: ShieldCheck, title: "Genuine products", desc: "From OMRON, 3M Littmann, HEINE, Rossmax, MDF, Dr Trust, Tynor and Accu-Chek, with the manufacturer's warranty.", color: "#6375E0" },
+  { icon: ClipboardList, title: "One list, one quotation", desc: "Build a list for every ward or department and get one quotation for all of it.", color: "#2B7A6F" },
+  { icon: Banknote, title: "Bank transfer or purchase order", desc: "Pay on quotations the way your institution pays; small orders can be cash on delivery.", color: "#C2610C" },
+  { icon: Truck, title: "Delivery across India", desc: "To your hospital, college or department.", color: "#0E7490" },
+  { icon: Sparkles, title: "Cadus AI for your doctors", desc: "Clinical answers with sources, dose checks and drug interactions.", color: "#2B7A6F" },
+  { icon: GraduationCap, title: "Study Hub for your students", desc: "NEET-PG preparation, subject notes, mock tests and flashcards.", color: "#6375E0" },
 ];
 
 const TIER_COLORS: Record<string, { bg: string; text: string }> = {
@@ -121,9 +68,29 @@ export default function InstitutionHub({ mode }: InstitutionHubProps = {}) {
   const [page, setPage] = useState(1);
   const [stateOpen, setStateOpen] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [sending, setSending] = useState(false);
+  const [formError, setFormError] = useState("");
+  const TYPE_LABEL: Record<string, string> = { medical_college: "Medical college", hospital: "Hospital", nursing_college: "Nursing college", dental_college: "Dental college", pharmacy_college: "Pharmacy college", clinic_chain: "Clinic chain", diagnostic_centre: "Diagnostic centre" };
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setFormError("");
+    if (formData.institutionName.trim().length < 3) return setFormError("Please enter the name of your institution.");
+    if (formData.contactName.trim().length < 2) return setFormError("Please enter the name of the person we should contact.");
+    if (!validEmail(formData.email)) return setFormError("Please enter an email address we can reply to.");
+    if (!normPhone(formData.phone)) return setFormError("Please enter a 10-digit Indian mobile number.");
+    setSending(true);
+    try {
+      await sendEnquiry({
+        kind: "general", item: `Institution: ${formData.institutionName.trim()} (${TYPE_LABEL[formData.type] ?? formData.type})`,
+        name: formData.contactName.trim(), phone: formData.phone, email: formData.email.trim(), city: formData.city.trim() || undefined,
+        message: formData.message.trim() || undefined,
+      });
+      setSubmitted(true);
+    } catch (err) {
+      setFormError((err as Error).message);
+    } finally {
+      setSending(false);
+    }
   };
 
   const filteredColleges = useMemo(() => {
@@ -170,10 +137,16 @@ export default function InstitutionHub({ mode }: InstitutionHubProps = {}) {
         tag={mode === "colleges" ? "Medical College Partnerships" : mode === "hospitals" ? "Hospital Partnerships" : "Institutional Partnerships"}
         title={mode === "colleges" ? "Medical Colleges" : mode === "hospitals" ? "Major Hospitals" : "Colleges & Hospitals"}
         subtitle={mode === "colleges"
-          ? "Bulk pricing, GST invoicing and priority delivery for every NMC-recognized college across India."
+          ? "A directory of NMC-recognised medical colleges across India. Buying supplies for a college? Order in bulk with Aethex for Medical Colleges."
           : mode === "hospitals"
-          ? "Bulk procurement, SLA-backed delivery and a dedicated account manager for every hospital chain across India."
-          : "Dedicated account management, GST invoicing and priority delivery for all NMC-recognized institutions."}
+          ? "A directory of major hospitals across India. Buying supplies for a hospital? Order in bulk with Aethex for Hospitals."
+          : "A directory of NMC-recognised medical colleges and major hospitals across India. Buying supplies? Order in bulk with Aethex for Hospitals or Aethex for Medical Colleges."}
+        right={
+          <div className="flex flex-wrap gap-2">
+            <Link href="/hospitals" className="ax-btn teal"><Hospital size={16} /> For hospitals</Link>
+            <Link href="/medical-colleges" className="ax-btn teal"><GraduationCap size={16} /> For medical colleges</Link>
+          </div>
+        }
         icon={mode === "colleges"
           ? <GraduationCap className="w-7 h-7" style={{ color: "rgba(255,255,255,0.82)" }} />
           : mode === "hospitals"
@@ -357,52 +330,30 @@ export default function InstitutionHub({ mode }: InstitutionHubProps = {}) {
         </div>
       </section>
 
-      {/* ── Plans ── */}
+      {/* ── Bulk buying ── */}
       <section id="plans" className="py-20" style={{ background: "#FFFFFF" }}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-14">
-            <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#AEAEB2" }}>Institutional Plans</p>
+          <div className="text-center mb-12">
+            <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#737378" }}>Supplies</p>
             <h2 className="text-3xl font-black" style={{ color: "#1C1C1E", letterSpacing: "-0.5px" }}>
-              Choose the right tier
+              Order for your institution, in bulk
             </h2>
+            <p className="text-base mt-3" style={{ color: "#636366" }}>Pick products and quantities, send the list, and we'll email a quotation.</p>
           </div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {plans.map((plan, i) => (
-              <motion.div key={plan.name} initial="hidden" whileInView="visible" viewport={{ once: true }} custom={i} variants={fadeUp}
-                className="relative rounded-2xl p-7 flex flex-col"
-                style={plan.highlight
-                  ? { background: "linear-gradient(135deg, #0A1628, #0D2137)", border: `2px solid ${plan.color}` }
-                  : { background: "#FAFAFA", border: "1px solid rgba(60,60,67,0.08)" }}>
-                {plan.highlight && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs font-bold"
-                    style={{ background: plan.color, color: "#FFFFFF" }}>Most Popular</div>
-                )}
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-5"
-                  style={{ background: `${plan.color}20` }}>
-                  <plan.icon className="w-6 h-6" style={{ color: plan.color }} />
+          <div className="grid md:grid-cols-2 gap-6">
+            {[
+              { href: "/hospitals", icon: Hospital, tag: "Aethex for Hospitals", title: "Supplies for every ward and department", text: "BP monitors, oximeters, thermometers, diagnostic sets, nebulizers, diabetes care, supports and rehab aids.", color: "#4B5BC4", bg: "linear-gradient(120deg,#e9edfb,#f6f7fd)" },
+              { href: "/medical-colleges", icon: GraduationCap, tag: "Aethex for Medical Colleges", title: "Stethoscopes, skills labs and textbooks", text: "For a whole batch or department: stethoscopes for students, instruments for skills labs and books for the library.", color: "#2B7A6F", bg: "linear-gradient(120deg,#e7f3f0,#f4faf8)" },
+            ].map((c) => (
+              <Link key={c.href} href={c.href} className="block rounded-2xl p-7 transition-all hover:-translate-y-0.5 hover:shadow-xl" style={{ background: c.bg, border: "1px solid rgba(60,60,67,0.08)" }}>
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-5" style={{ background: "#FFFFFF" }}>
+                  <c.icon className="w-6 h-6" style={{ color: c.color }} />
                 </div>
-                <div className="font-bold text-lg mb-1" style={{ color: plan.highlight ? "#FFFFFF" : "#1C1C1E" }}>{plan.name}</div>
-                <div className="text-3xl font-black mb-1" style={{ color: plan.color }}>{plan.price}</div>
-                <div className="text-xs mb-6" style={{ color: plan.highlight ? "rgba(255,255,255,0.4)" : "#AEAEB2" }}>{plan.priceNote}</div>
-
-                <ul className="space-y-3 flex-1 mb-8">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2.5 text-sm">
-                      <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" style={{ color: plan.color }} />
-                      <span style={{ color: plan.highlight ? "rgba(255,255,255,0.75)" : "#636366" }}>{f}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <a href="#inquiry"
-                  className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm transition-all hover:opacity-90"
-                  style={plan.highlight
-                    ? { background: plan.color, color: "#FFFFFF" }
-                    : { background: `${plan.color}12`, color: plan.color }}>
-                  {plan.cta} <ArrowRight className="w-4 h-4" />
-                </a>
-              </motion.div>
+                <div className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: c.color }}>{c.tag}</div>
+                <div className="font-bold text-xl mb-2" style={{ color: "#1C1C1E" }}>{c.title}</div>
+                <p className="text-sm leading-relaxed mb-5" style={{ color: "#636366" }}>{c.text}</p>
+                <span className="inline-flex items-center gap-2 font-semibold text-sm" style={{ color: "#1C1C1E" }}>Build a list <ArrowRight className="w-4 h-4" /></span>
+              </Link>
             ))}
           </div>
         </div>
@@ -412,16 +363,16 @@ export default function InstitutionHub({ mode }: InstitutionHubProps = {}) {
       <section className="py-20" style={{ background: "#F5F5F7" }}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
-            <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#AEAEB2" }}>Onboarding</p>
+            <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#737378" }}>How it works</p>
             <h2 className="text-3xl font-black" style={{ color: "#1C1C1E", letterSpacing: "-0.5px" }}>
-              Get started in 3 steps
+              From a list to a delivery in 3 steps
             </h2>
           </div>
           <div className="grid sm:grid-cols-3 gap-8">
             {[
-              { step: "01", icon: ClipboardList, title: "Submit Inquiry", desc: "Fill out the form below with your institution details and requirements.", color: "#007AFF" },
-              { step: "02", icon: Headphones, title: "Meet your Manager", desc: "Your dedicated account manager contacts you within 24 hours to set up the account.", color: "#00C2A8" },
-              { step: "03", icon: Package, title: "Start Ordering", desc: "Access your custom catalog, place bulk orders, and enjoy institutional pricing.", color: "#FF9500" },
+              { step: "01", icon: ClipboardList, title: "Build your list", desc: "On Aethex for Hospitals or Aethex for Medical Colleges, pick products and the quantities you need.", color: "#4B5BC4" },
+              { step: "02", icon: Mail, title: "Get a quotation", desc: "Send the list with your institution's details. We email your prices for those quantities, with delivery, usually within one business day.", color: "#2B7A6F" },
+              { step: "03", icon: Package, title: "Confirm and receive", desc: "Accept the quotation, pay by bank transfer or purchase order, and we deliver across India.", color: "#B45309" },
             ].map((s, i) => (
               <motion.div key={s.step} initial="hidden" whileInView="visible" viewport={{ once: true }} custom={i} variants={fadeUp}
                 className="text-center">
@@ -442,11 +393,11 @@ export default function InstitutionHub({ mode }: InstitutionHubProps = {}) {
       <section id="inquiry" className="py-20" style={{ background: "#FFFFFF" }}>
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
-            <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#AEAEB2" }}>Get in touch</p>
+            <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#737378" }}>Get in touch</p>
             <h2 className="text-3xl font-black mb-3" style={{ color: "#1C1C1E", letterSpacing: "-0.5px" }}>
-              Request Institutional Access
+              Talk to us
             </h2>
-            <p className="text-base" style={{ color: "#636366" }}>We'll set up your account and connect you with a dedicated manager within 24 hours.</p>
+            <p className="text-base" style={{ color: "#636366" }}>Questions about supplies for your institution, or about Cadus AI and the Study Hub for your doctors and students? Write to us. To order, <Link href="/hospitals" className="underline">build a list</Link> instead.</p>
           </div>
 
           {submitted ? (
@@ -457,9 +408,9 @@ export default function InstitutionHub({ mode }: InstitutionHubProps = {}) {
                 style={{ background: "rgba(0,194,168,0.15)" }}>
                 <CheckCircle2 className="w-8 h-8" style={{ color: "#00C2A8" }} />
               </div>
-              <h3 className="text-xl font-bold mb-2" style={{ color: "#1C1C1E" }}>Request Submitted!</h3>
+              <h3 className="text-xl font-bold mb-2" style={{ color: "#1C1C1E" }}>Message sent</h3>
               <p className="text-sm" style={{ color: "#636366" }}>
-                Thank you! Our institutional team will reach out to <strong>{formData.email}</strong> within 24 hours.
+                Thank you. We'll reply to <strong>{formData.email}</strong> or call you, usually within one business day.
               </p>
             </motion.div>
           ) : (
@@ -537,16 +488,17 @@ export default function InstitutionHub({ mode }: InstitutionHubProps = {}) {
                   style={{ background: "#F5F5F7", border: "1px solid rgba(60,60,67,0.12)", color: "#1C1C1E" }} />
               </div>
 
-              <button type="submit"
-                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-all hover:opacity-90"
-                style={{ background: "#007AFF", color: "#FFFFFF" }}>
-                Submit Inquiry <ArrowRight className="w-4 h-4" />
+              {formError && <p className="ax-form-err" role="alert">{formError}</p>}
+              <button type="submit" disabled={sending}
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-all hover:opacity-90 disabled:opacity-60"
+                style={{ background: "#2B7A6F", color: "#FFFFFF" }}>
+                {sending ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</> : <>Send message <ArrowRight className="w-4 h-4" /></>}
               </button>
 
               <p className="text-center text-xs" style={{ color: "#AEAEB2" }}>
                 By submitting, you agree to our{" "}
                 <a href={mainUrl("/privacy-policy")} className="underline">Privacy Policy</a>.
-                We'll respond within 24 business hours.
+                We usually reply within one business day.
               </p>
             </form>
           )}
@@ -562,7 +514,7 @@ export default function InstitutionHub({ mode }: InstitutionHubProps = {}) {
               Built for Institutions
             </h2>
             <p className="text-base" style={{ color: "rgba(255,255,255,0.72)" }}>
-              Purpose-built features for medical colleges and hospitals across India
+              For medical colleges and hospitals across India
             </p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -39,6 +39,14 @@ const SECTIONS: Section[] = [
     foot: { text: "Genuine products, cash on delivery across India", href: "/shop", label: "All products" },
   },
   {
+    id: "institutions", label: "For institutions", match: /^\/(hospitals|medical-colleges|institutions)/, cols: 1,
+    items: [
+      { href: "/hospitals", label: "Aethex for Hospitals", hint: "Bulk supplies for wards, OPD and ICU", icon: Hospital },
+      { href: "/medical-colleges", label: "Aethex for Medical Colleges", hint: "Stethoscopes, skills labs and books", icon: GraduationCap },
+      { href: "/institutions", label: "Colleges & hospitals", hint: "Directory across India", icon: Building2 },
+    ],
+  },
+  {
     id: "study", label: "Study", match: /^\/(study-hub|neet-pg|mock-test|flashcards|case-of-the-day|cme-hub|learning-path|live-classes|study-planner|quiz-builder|progress-tracker|leaderboard|webinars|video-cases)/, cols: 2,
     items: [
       { href: "/study-hub", label: "Study Hub", hint: "Everything for exams", icon: GraduationCap },
@@ -63,15 +71,14 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    id: "more", label: "More", match: /^\/(blog|news|jobs|community|institutions|colleges|hospitals|downloads|contact|hospital-directory|enterprise)/, cols: 2,
+    id: "more", label: "More", match: /^\/(blog|news|jobs|community|downloads|contact|hospital-directory|enterprise)/, cols: 2,
     items: [
       { href: "/blog", label: "Blog", hint: "Guides and updates", icon: Newspaper },
       { href: "/news", label: "Medical news", hint: "What's new in medicine", icon: Newspaper },
       { href: "/jobs", label: "Jobs", hint: "Medical roles in India", icon: Briefcase },
       { href: "/community", label: "Community", hint: "Discuss with peers", icon: MessageSquare },
-      { href: "/institutions", label: "Colleges & hospitals", hint: "Reviews and directory", icon: Building2 },
       { href: "__downloads", label: "Cadus for desktop", hint: "Windows and Linux", icon: Download, external: true },
-      { href: "https://hms.aethex.in", label: "AETHEX for hospitals", hint: "Hospital management app", icon: Hospital, external: true },
+      { href: "https://hms.aethex.in", label: "Hospital management app", hint: "AETHEX HMS for hospitals", icon: Hospital, external: true },
       { href: "/contact", label: "Contact us", hint: "Help and support", icon: Mail },
     ],
   },
@@ -187,7 +194,7 @@ export function Navbar({ inner = false }: { inner?: boolean }) {
         <div className="ax-wrap ax-head-in">
           <Logo />
           <nav className="ax-nav" ref={navRef} aria-label="Main">
-            {SECTIONS.slice(0, 3).map((s) => (
+            {SECTIONS.filter((s) => s.id !== "more").map((s) => (
               <div key={s.id} className={`${open === s.id ? "open" : ""} ${s.match.test(location) ? "on" : ""}`} style={{ position: "relative" }} onMouseEnter={() => hoverOpen(s.id)} onMouseLeave={hoverClose}>
                 <button type="button" aria-expanded={open === s.id} onClick={() => toggle(s.id)}>{s.label} <ChevronDown size={14} className="chev" /></button>
                 {open === s.id && (
@@ -201,7 +208,7 @@ export function Navbar({ inner = false }: { inner?: boolean }) {
               </div>
             ))}
             <a href={cadusUrl("/")} className="cadus"><CadusMark size={16} variant="mono" color="currentColor" /> Cadus AI</a>
-            {(() => { const s = SECTIONS[3]; return (
+            {(() => { const s = SECTIONS.find((x) => x.id === "more")!; return (
               <div className={`${open === s.id ? "open" : ""} ${s.match.test(location) ? "on" : ""}`} style={{ position: "relative" }} onMouseEnter={() => hoverOpen(s.id)} onMouseLeave={hoverClose}>
                 <button type="button" aria-expanded={open === s.id} onClick={() => toggle(s.id)}>{s.label} <ChevronDown size={14} className="chev" /></button>
                 {open === s.id && (
