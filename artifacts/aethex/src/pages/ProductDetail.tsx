@@ -12,7 +12,7 @@ import {
   RotateCcw, Share2, ShieldCheck, ShoppingCart, Truck, Zap,
 } from "lucide-react";
 import { ProductCard } from "@/components/ProductCard";
-import { ProductImage, imageInfo } from "@/components/store/ProductImage";
+import { ProductImage, imageInfo, cropOf } from "@/components/store/ProductImage";
 import { Dialog } from "@/components/store/Dialog";
 import { EnquiryDialog } from "@/components/store/EnquiryForm";
 import { useToast } from "@/hooks/use-toast";
@@ -33,12 +33,13 @@ function JsonLd({ data }: { data: unknown }) {
 
 function structured(p: Product, brandName: string, categoryName: string) {
   const url = `${SITE_URL}/products/${p.slug}`;
-  const images = p.images.slice(0, 4).map((u) => imageInfo(u, 1000).src);
+  // Photos that need cropping on the page would show the brand's own offer badge in search results.
+  const images = p.images.filter((u) => !cropOf(u)).slice(0, 4).map((u) => imageInfo(u, 1000).src);
   const priced = (p.variants ?? []).map((v) => v.price ?? p.price).filter((x): x is number => typeof x === "number");
   const availability = p.inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock";
   const seller = { "@type": "Organization", name: BUSINESS.legalName };
   const product: Record<string, unknown> = {
-    "@context": "https://schema.org", "@type": "Product", name: `${brandName} ${p.name}`, image: images, description: p.summary,
+    "@context": "https://schema.org", "@type": "Product", name: `${brandName} ${p.name}`, ...(images.length ? { image: images } : {}), description: p.summary,
     brand: { "@type": "Brand", name: brandName }, category: categoryName, url,
   };
   if (p.sku) product.sku = p.sku;
@@ -95,11 +96,12 @@ export default function ProductDetail() {
   const category = product ? store?.category(product.category) : undefined;
   const categoryName = category?.name ?? "";
 
+  const shareImage = product?.images.find((u) => !cropOf(u));
   useSeo({
     title: product ? `${brandName} ${product.name}${product.priceOnRequest ? "" : product.price ? ` at ${formatINR(product.price)}` : ""} | Aethex Store` : "Product | Aethex Store",
     description: product ? `${brandName} ${product.name}. ${product.summary}`.slice(0, 160) : "Genuine medical devices from verified brands on Aethex.",
     path: product ? `/products/${product.slug}` : location,
-    image: product?.images[0] ? imageInfo(product.images[0], 1200).src : undefined,
+    image: shareImage ? imageInfo(shareImage, 1200).src : undefined,
     type: "product",
   });
 
@@ -210,7 +212,7 @@ export default function ProductDetail() {
             onMouseLeave={() => setZoom(null)}
           >
             <ProductImage src={cur} alt={`${brandName} ${product.name}`} width={1000} eager
-              style={zoom ? { transformOrigin: `${zoom.x}% ${zoom.y}%`, transform: `${curInfo?.crop ? "translateY(-8%) " : ""}scale(2)` } : undefined} />
+              style={zoom ? { transformOrigin: `${zoom.x}% ${zoom.y}%`, transform: `${curInfo?.crop ? `translateY(${curInfo.crop.shift}%) ` : ""}scale(2)` } : undefined} />
             {off >= 5 && <span className="badge off">{off}% off</span>}
             {product.featured && <span className="badge pick">Popular</span>}
             {gallery.length > 1 && (

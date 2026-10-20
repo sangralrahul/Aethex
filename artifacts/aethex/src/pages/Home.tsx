@@ -43,7 +43,7 @@ const QUICK = [
 
 /** Photos from the brands' own sites (see src/data/store/catalog.json). */
 const SLIDES = [
-  { tone: "teal", kicker: "Stethoscopes", title: "Hear every murmur clearly", text: "3M Littmann, MDF, HEINE and Rossmax, for students, residents and consultants.", cta: "Shop stethoscopes", href: "/category/stethoscopes", pic: "https://assets.solventum.com/is/image/mmmspinco/5861-01-HERO-0-1x" },
+  { tone: "teal", kicker: "Stethoscopes", title: "Hear every murmur clearly", text: "3M Littmann, MDF, HEINE and Rossmax, for students, residents and consultants.", cta: "Shop stethoscopes", href: "/category/stethoscopes", pic: "https://s7d9.scene7.com/is/image/mmmspinco/5803_Classic_III_Black_Dancing" },
   { tone: "blue", kicker: "BP monitors", title: "Know your numbers at home", text: "OMRON, Dr Trust and Rossmax monitors, with cash on delivery across India.", cta: "Shop BP monitors", href: "/category/bp-monitors", pic: "https://www.omronbrandshop.com/media/catalog/product/cache/e1a68a1ab63b22e765e66f8e2bd38b08/h/e/hem-7181.png" },
   { tone: "sand", kicker: "Supports & braces", title: "Support for every joint", text: "Tynor and Dr Trust knee, back, neck and wrist supports, in every size.", cta: "Shop supports", href: "/category/orthopaedic-supports", pic: "https://cdn.shopify.com/s/files/1/0732/5515/7916/files/1_af122480-fda9-4a0b-9023-ebdcce9f84d7.webp" },
 ];
