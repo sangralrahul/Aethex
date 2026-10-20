@@ -1,50 +1,34 @@
 import { useEffect, useRef } from "react";
-
-interface CartItem {
-  productId?: number | string;
-  name?: string;
-  price?: number;
-  quantity?: number;
-}
-
-interface CartLike {
-  items?: CartItem[];
-  total?: number;
-}
+import { useCartLines, asProduct } from "@/lib/store/cart";
+import { useStore } from "@/lib/store/api";
+import { quoteLines } from "@/lib/store/rules";
 
 /**
  * Saves the signed-in shopper's cart with their account on Cloudflare
  * (PUT /api/cart, worker/auth.ts), so the hourly job can email a reminder
- * when it is left for over an hour. Debounced; a no-op when signed out.
+ * when it is left for over an hour. Debounced; does nothing when signed out.
  */
-export function useAbandonedCartTracker(cart: CartLike | undefined | null) {
+export function useAbandonedCartTracker(signedIn: boolean) {
+  const lines = useCartLines();
+  const { data: store } = useStore(signedIn && lines.length > 0);
   const lastKeyRef = useRef<string>("");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const items = Array.isArray(cart?.items) ? cart!.items! : [];
-    const total = Number(cart?.total || 0);
-    const count = items.reduce((s, i) => s + (Number(i.quantity) || 0), 0);
-    const key = JSON.stringify({ count, total, ids: items.map((i) => i.productId) });
+    if (!signedIn) return;
+    if (lines.length && !store) return; // wait for prices
+    const q = quoteLines(lines, (id) => { const s = store?.byId.get(id); return s ? asProduct(s) : null; });
+    const items = q.lines.map((l) => ({ productId: l.productId, name: l.variantLabel ? `${l.name} (${l.variantLabel})` : l.name, price: l.price, quantity: l.qty }));
+    const key = JSON.stringify({ items, total: q.total });
     if (key === lastKeyRef.current) return;
+    const first = lastKeyRef.current === "";
     lastKeyRef.current = key;
+    if (first && items.length === 0) return; // nothing to tell the server on page load
 
     if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(async () => {
-      try {
-        if (!localStorage.getItem("aethex_user")) return;
-        const payload = count === 0 ? { items: [], total: 0 } : {
-          items: items.map((i) => ({ productId: i.productId, name: i.name, price: i.price, quantity: i.quantity })),
-          total,
-        };
-        await fetch("/api/cart", { method: "PUT", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
-      } catch {
-        // silent - non-critical
-      }
+    timerRef.current = setTimeout(() => {
+      fetch("/api/cart", { method: "PUT", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify({ items, total: q.total }) }).catch(() => { /* not critical */ });
     }, 2000);
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [cart]);
+  }, [signedIn, lines, store]);
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
 }

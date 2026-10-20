@@ -139,7 +139,7 @@ type TabId = (typeof TABS)[number]["id"];
 const CHIPS: Record<TabId, [Icon, string][]> = {
   cadus: [[ShieldCheck, "Safety reviewed"], [BookOpen, "Sources on every answer"]],
   study: [[ClipboardList, "A new case every day"], [Timer, "Timed mock tests"]],
-  store: [[BadgeCheck, "Genuine brands"], [ReceiptText, "GST invoice"]],
+  store: [[BadgeCheck, "Genuine brands"], [ReceiptText, "Cash on delivery"]],
 };
 const SLIDE_MS = 7500;
 
@@ -209,8 +209,8 @@ function StoreDemo({ calm }: { calm: boolean }) {
   return (
     <div className="au-d-store">
       <div className="item">
-        <img src={`${import.meta.env.BASE_URL}product-images/stethoscope.jpg`} alt="" />
-        <span><small>3M Littmann</small><b>Classic III Stethoscope</b><em>₹9,999 · GST invoice included</em></span>
+        <img src={`${import.meta.env.BASE_URL}product-images/bp-monitor.jpg`} alt="" />
+        <span><small>OMRON</small><b>HEM-7181 BP Monitor</b><em>₹1,799 · cash on delivery</em></span>
       </div>
       <div className="track" style={{ "--p": s / 3 } as CSSProperties}>
         <i className="bar"><i /></i>

@@ -1,82 +1,125 @@
 /**
- * A product (/products/:id, /shop/:id): photo, price, quantity, add to cart and
- * buy now, wishlist and share, what's included in buying here, the description,
- * details, the rating and more from the same category.
+ * A product (/products/:slug; old /products/:id and /shop/:id links still work):
+ * the brand's photos, size or colour, price with MRP or "ask for the price",
+ * add to cart and buy now, delivery, cash on delivery and replacement terms,
+ * the full description, specifications, size guide and related products.
  * Styles: src/shop.css (.ax-pdp).
  */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import {
-  ArrowLeft, BadgeCheck, Check, CreditCard, Heart, Minus, Package, Plus, RotateCcw, Share2, ShoppingCart, Star, Truck, Zap,
+  ArrowLeft, BadgeCheck, Banknote, Building2, Check, ChevronLeft, ChevronRight, Heart, MessageSquareText, Minus, Package, Plus, Ruler,
+  RotateCcw, Share2, ShieldCheck, ShoppingCart, Truck, Zap,
 } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
-import { useAddToCart, useGetProduct, useListProducts, type Product } from "@workspace/api-client-react";
 import { ProductCard } from "@/components/ProductCard";
-import { useSession } from "@/hooks/use-session";
+import { ProductImage, imageInfo } from "@/components/store/ProductImage";
+import { Dialog } from "@/components/store/Dialog";
+import { EnquiryDialog } from "@/components/store/EnquiryForm";
 import { useToast } from "@/hooks/use-toast";
 import { useWishlist } from "@/hooks/use-wishlist";
 import { useSeo } from "@/hooks/use-seo";
+import { useProduct, useStore } from "@/lib/store/api";
+import { cart } from "@/lib/store/cart";
+import { DELIVERY_FEE, discountPct, FREE_DELIVERY_FROM, MAX_QTY, unitFor } from "@/lib/store/rules";
+import type { Product } from "@/lib/store/types";
+import { BUSINESS, SITE_URL } from "@/config/business";
 import { formatINR } from "@/lib/utils";
-import { discountPct, FREE_DELIVERY_FROM, slugLabel } from "@/lib/shop";
 
-const FALLBACK = "/product-images/medical-book.jpg";
+const CHOOSE_FIRST = new Set(["Size", "Number", "Option"]);
 
-function Stars({ value, size = 16 }: { value: number; size?: number }) {
-  return (
-    <span className="ax-stars" aria-label={`${value.toFixed(1)} out of 5`}>
-      {[1, 2, 3, 4, 5].map((s) => (
-        <Star key={s} size={size} fill={s <= Math.round(value) ? "currentColor" : "none"} className={s <= Math.round(value) ? "on" : ""} />
-      ))}
-    </span>
-  );
+function JsonLd({ data }: { data: unknown }) {
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, "\\u003c") }} />;
+}
+
+function structured(p: Product, brandName: string, categoryName: string) {
+  const url = `${SITE_URL}/products/${p.slug}`;
+  const images = p.images.slice(0, 4).map((u) => imageInfo(u, 1000).src);
+  const priced = (p.variants ?? []).map((v) => v.price ?? p.price).filter((x): x is number => typeof x === "number");
+  const availability = p.inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock";
+  const seller = { "@type": "Organization", name: BUSINESS.legalName };
+  const product: Record<string, unknown> = {
+    "@context": "https://schema.org", "@type": "Product", name: `${brandName} ${p.name}`, image: images, description: p.summary,
+    brand: { "@type": "Brand", name: brandName }, category: categoryName, url,
+  };
+  if (p.sku) product.sku = p.sku;
+  if (p.model) product.mpn = p.model;
+  if (p.countryOfOrigin) product.countryOfOrigin = p.countryOfOrigin;
+  if (!p.priceOnRequest && p.price !== null) {
+    product.offers = priced.length > 1 && new Set(priced).size > 1
+      ? { "@type": "AggregateOffer", priceCurrency: "INR", lowPrice: Math.min(...priced), highPrice: Math.max(...priced), offerCount: priced.length, availability, url, seller }
+      : { "@type": "Offer", priceCurrency: "INR", price: priced[0] ?? p.price, availability, url, itemCondition: "https://schema.org/NewCondition", seller };
+  }
+  const crumbs = {
+    "@context": "https://schema.org", "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Shop", item: `${SITE_URL}/shop` },
+      { "@type": "ListItem", position: 2, name: categoryName, item: `${SITE_URL}/category/${p.category}` },
+      { "@type": "ListItem", position: 3, name: p.name, item: url },
+    ],
+  };
+  return [product, crumbs];
 }
 
 export default function ProductDetail() {
   const [, params] = useRoute("/products/:id");
   const [, shopParams] = useRoute("/shop/:id");
-  const productId = parseInt(params?.id || shopParams?.id || "0", 10);
-  const [, setLocation] = useLocation();
-  const sessionId = useSession();
+  const key = params?.id || shopParams?.id || "";
+  const [location, setLocation] = useLocation();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const { has, toggle } = useWishlist();
-  const [quantity, setQuantity] = useState(1);
+  const { data: product, isLoading, error } = useProduct(key);
+  const { data: store } = useStore();
+
+  const [vid, setVid] = useState<string | null>(null);
+  const [qty, setQty] = useState(1);
+  const [img, setImg] = useState(0);
   const [zoom, setZoom] = useState<{ x: number; y: number } | null>(null);
+  const [needChoice, setNeedChoice] = useState(false);
+  const [ask, setAsk] = useState<null | "price" | "bulk">(null);
+  const [sizes, setSizes] = useState(false);
+  const thumbs = useRef<HTMLDivElement>(null);
 
-  const { data: product, isLoading, error } = useGetProduct(productId);
-  const { data: related } = useListProducts({ category: product?.categorySlug, limit: 9 }, { query: { enabled: !!product } });
-  const addToCart = useAddToCart();
+  // Old links by number move to the product's own address.
+  useEffect(() => { if (product && key !== product.slug) setLocation(`/products/${product.slug}`, { replace: true }); }, [product, key, setLocation]);
+  useEffect(() => {
+    if (!product) return;
+    const vs = product.variants ?? [];
+    const firstInStock = vs.find((v) => v.inStock) ?? vs[0];
+    setVid(vs.length === 1 ? vs[0].id : vs.length && !CHOOSE_FIRST.has(product.optionName ?? "Option") ? firstInStock?.id ?? null : null);
+    setQty(1); setImg(0); setNeedChoice(false);
+    window.scrollTo({ top: 0 });
+    if (window.location.hash === "#ask" && product.priceOnRequest) setAsk("price");
+  }, [product?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { setQuantity(1); window.scrollTo({ top: 0 }); }, [productId]);
+  const brandName = product ? store?.brandName(product.brand) ?? "" : "";
+  const category = product ? store?.category(product.category) : undefined;
+  const categoryName = category?.name ?? "";
 
   useSeo({
-    title: product ? `${product.name} | Aethex Medical Store` : "Product | Aethex Medical Store",
-    description: product ? `${product.name} by ${product.brand}. ${product.description}`.slice(0, 160) : "Genuine medical supplies on Aethex.",
-    path: `/products/${productId}`,
-    image: product?.imageUrl ? `https://aethex.in${product.imageUrl}` : undefined,
+    title: product ? `${brandName} ${product.name}${product.priceOnRequest ? "" : product.price ? ` at ${formatINR(product.price)}` : ""} | Aethex Store` : "Product | Aethex Store",
+    description: product ? `${brandName} ${product.name}. ${product.summary}`.slice(0, 160) : "Genuine medical devices from verified brands on Aethex.",
+    path: product ? `/products/${product.slug}` : location,
+    image: product?.images[0] ? imageInfo(product.images[0], 1200).src : undefined,
+    type: "product",
   });
 
-  const add = (id: number, qty: number, then?: () => void) => {
-    if (!sessionId) return;
-    addToCart.mutate(
-      { data: { productId: id, sessionId, quantity: qty } },
-      {
-        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/cart"] }); then ? then() : toast({ title: "Added to cart", description: qty > 1 ? `${qty} added.` : undefined }); },
-        onError: () => toast({ variant: "destructive", title: "Couldn't add to cart", description: "Please try again." }),
-      },
-    );
-  };
+  const variants = product?.variants ?? [];
+  const variant = variants.find((v) => v.id === vid) ?? null;
+  const gallery = useMemo(() => {
+    if (!product) return [];
+    const list = [...(variant?.image ? [variant.image] : []), ...product.images];
+    return Array.from(new Set(list)).slice(0, 8);
+  }, [product, variant?.image]);
+  useEffect(() => { setImg(0); }, [variant?.image]);
 
-  const share = async () => {
-    const url = window.location.href;
-    try {
-      if (navigator.share) { await navigator.share({ title: product?.name, url }); return; }
-      await navigator.clipboard.writeText(url);
-      toast({ title: "Link copied" });
-    } catch { /* cancelled */ }
-  };
+  const related = useMemo(() => {
+    if (!product || !store) return [];
+    const same = store.products.filter((p) => p.id !== product.id && p.category === product.category);
+    const rank = (p: (typeof same)[number]) => (p.subcategory === product.subcategory ? 2 : 0) + (p.brand === product.brand ? 1 : 0) + (p.inStock ? 0.5 : 0);
+    return same.sort((a, b) => rank(b) - rank(a)).slice(0, 8);
+  }, [product, store]);
 
-  if (isLoading) {
+  if (isLoading || (!product && !error)) {
     return (
       <div className="ax-pdp-page">
         <div className="ax-wrap ax-pdp ax-pdp-loading" aria-busy="true">
@@ -99,45 +142,93 @@ export default function ProductDetail() {
     );
   }
 
-  const price = Number(product.price);
-  const mrp = Number(product.originalPrice ?? 0);
-  const off = discountPct(price, mrp);
-  const rating = Number(product.rating) || 0;
+  const unit = unitFor(product, variant?.id ?? (variants.length ? null : null));
+  const priceShown = typeof unit === "object" ? unit.price : null;
+  const mrpShown = typeof unit === "object" ? unit.mrp : null;
+  const fromPrices = variants.map((v) => v.price ?? product.price).filter((x): x is number => typeof x === "number");
+  const lowest = fromPrices.length ? Math.min(...fromPrices) : product.price;
+  const off = priceShown !== null ? discountPct(priceShown, mrpShown) : 0;
   const saved = has(product.id);
-  const more: Product[] = ((related as { products?: Product[] } | undefined)?.products ?? []).filter((p) => p.id !== product.id).slice(0, 4);
-  const category = product.categorySlug;
-  const details: [string, React.ReactNode][] = [
-    ["Brand", <Link key="b" href={`/shop?brand=${encodeURIComponent(product.brand || "")}`}>{product.brand}</Link>],
-    ["Category", category ? <Link key="c" href={`/category/${category}`}>{product.category || slugLabel(category)}</Link> : "—"],
-    ["Item code", `AX-${String(product.id).padStart(5, "0")}`],
-    ["Availability", product.inStock ? "In stock" : "Out of stock"],
+  const optionName = product.optionName ?? "Option";
+  const canBuy = !product.priceOnRequest && product.inStock && (!variant || variant.inStock);
+  const hygiene = product.returns === "replacement";
+
+  const add = (then?: () => void) => {
+    if (variants.length > 1 && !variant) { setNeedChoice(true); document.getElementById("ax-pick")?.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+    const u = unitFor(product, variant?.id ?? null);
+    if (typeof u !== "object") { toast({ variant: "destructive", title: u === "out-of-stock" ? "This is out of stock" : "This can't be added right now" }); return; }
+    cart.add(product.id, variant?.id ?? null, qty);
+    if (then) then();
+    else toast({ title: "Added to cart", description: `${product.name}${variant ? ` (${variant.label})` : ""}${qty > 1 ? ` × ${qty}` : ""}` });
+  };
+
+  const share = async () => {
+    const url = `${SITE_URL}/products/${product.slug}`;
+    try {
+      if (navigator.share) { await navigator.share({ title: `${brandName} ${product.name}`, url }); return; }
+      await navigator.clipboard.writeText(url);
+      toast({ title: "Link copied" });
+    } catch { /* cancelled */ }
+  };
+
+  const specs: [string, React.ReactNode][] = [
+    ["Brand", <Link key="b" href={`/brand/${product.brand}`}>{brandName}</Link>],
   ];
-  if (product.tags?.length) details.push(["Keywords", product.tags.join(", ")]);
+  if (product.model) specs.push(["Model", product.model]);
+  if (variant?.sku || product.sku) specs.push(["Item code", variant?.sku || product.sku]);
+  specs.push(["Category", <Link key="c" href={`/category/${product.category}`}>{categoryName}</Link>]);
+  if (product.subcategory) specs.push(["Type", product.subcategory]);
+  for (const [k, v] of product.specs ?? []) specs.push([k, v]);
+  if (product.inTheBox) specs.push(["In the box", product.inTheBox]);
+  specs.push(["Warranty", product.warranty || "Manufacturer's warranty, as stated on the pack"]);
+  if (product.manufacturer) specs.push(["Manufacturer", product.manufacturer]);
+  specs.push(["Country of origin", product.countryOfOrigin || "As printed on the pack"]);
+  specs.push(["Sold by", BUSINESS.legalName]);
+
+  const cur = gallery[Math.min(img, gallery.length - 1)] ?? product.images[0];
+  const curInfo = cur ? imageInfo(cur, 1000) : null;
+  const ld = structured(product, brandName, categoryName);
 
   return (
     <div className="ax-pdp-page">
+      {ld.map((d, i) => <JsonLd key={i} data={d} />)}
       <div className="ax-wrap">
         <nav className="ax-crumbs ax-pdp-crumbs" aria-label="Breadcrumb">
           <Link href="/">Home</Link><span aria-hidden="true">/</span>
-          <Link href="/shop">Shop</Link>
-          {category && <><span aria-hidden="true">/</span><Link href={`/category/${category}`}>{product.category || slugLabel(category)}</Link></>}
+          <Link href="/shop">Shop</Link><span aria-hidden="true">/</span>
+          <Link href={`/category/${product.category}`}>{categoryName || "Category"}</Link>
           <span aria-hidden="true">/</span><span aria-current="page">{product.name}</span>
         </nav>
       </div>
 
       <div className="ax-wrap ax-pdp">
-        {/* photo */}
+        {/* photos */}
         <div className="ax-pdp-gallery">
           <div
             className={`ax-pdp-img${zoom ? " zoom" : ""}`}
-            onMouseMove={(e) => { const r = e.currentTarget.getBoundingClientRect(); setZoom({ x: ((e.clientX - r.left) / r.width) * 100, y: ((e.clientY - r.top) / r.height) * 100 }); }}
+            onMouseMove={(e) => { if (window.matchMedia("(hover: hover)").matches) { const r = e.currentTarget.getBoundingClientRect(); setZoom({ x: ((e.clientX - r.left) / r.width) * 100, y: ((e.clientY - r.top) / r.height) * 100 }); } }}
             onMouseLeave={() => setZoom(null)}
           >
-            <img src={product.imageUrl || FALLBACK} alt={product.name} style={zoom ? { transformOrigin: `${zoom.x}% ${zoom.y}%` } : undefined}
-              onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK; }} />
-            {off > 0 && <span className="badge off">{off}% off</span>}
-            {product.featured && <span className="badge pick">Bestseller</span>}
+            <ProductImage src={cur} alt={`${brandName} ${product.name}`} width={1000} eager
+              style={zoom ? { transformOrigin: `${zoom.x}% ${zoom.y}%`, transform: `${curInfo?.crop ? "translateY(-8%) " : ""}scale(2)` } : undefined} />
+            {off >= 5 && <span className="badge off">{off}% off</span>}
+            {product.featured && <span className="badge pick">Popular</span>}
+            {gallery.length > 1 && (
+              <>
+                <button type="button" className="ax-pdp-nav prev" onClick={() => setImg((i) => (i - 1 + gallery.length) % gallery.length)} aria-label="Previous photo"><ChevronLeft size={18} /></button>
+                <button type="button" className="ax-pdp-nav next" onClick={() => setImg((i) => (i + 1) % gallery.length)} aria-label="Next photo"><ChevronRight size={18} /></button>
+              </>
+            )}
           </div>
+          {gallery.length > 1 && (
+            <div className="ax-pdp-thumbs" ref={thumbs} role="list" aria-label="Photos">
+              {gallery.map((g, i) => (
+                <button key={g} type="button" role="listitem" className={i === img ? "on" : ""} onClick={() => setImg(i)} aria-label={`Photo ${i + 1}`} aria-current={i === img}>
+                  <ProductImage src={g} width={160} />
+                </button>
+              ))}
+            </div>
+          )}
           <div className="ax-pdp-tools">
             <button type="button" className={saved ? "on" : ""} onClick={() => { const a = toggle(product.id); toast({ title: a ? "Saved to your wishlist" : "Removed from your wishlist" }); }} aria-pressed={saved}>
               <Heart size={16} fill={saved ? "currentColor" : "none"} /> {saved ? "Saved" : "Save to wishlist"}
@@ -149,84 +240,187 @@ export default function ProductDetail() {
         {/* buy box */}
         <div className="ax-pdp-info">
           <div className="ax-pdp-top">
-            <Link href={`/shop?brand=${encodeURIComponent(product.brand || "")}`} className="brand">{product.brand}</Link>
-            <span className={`stock${product.inStock ? "" : " out"}`}>{product.inStock ? <><Check size={14} /> In stock</> : "Out of stock"}</span>
+            <Link href={`/brand/${product.brand}`} className="brand"><BadgeCheck size={15} /> {brandName}</Link>
+            {product.priceOnRequest
+              ? <span className="stock ask">Price on request</span>
+              : <span className={`stock${canBuy || (!variant && product.inStock) ? "" : " out"}`}>{product.inStock && (!variant || variant.inStock) ? <><Check size={14} /> In stock</> : "Out of stock"}</span>}
           </div>
           <h1>{product.name}</h1>
-          <a href="#rating" className="ax-pdp-rating"><Stars value={rating} /> <b>{rating.toFixed(1)}</b> <span>{Number(product.reviewCount || 0).toLocaleString("en-IN")} ratings</span></a>
+          {(product.model || product.subcategory) && <p className="ax-pdp-model">{[product.model ? `Model ${product.model}` : "", product.subcategory].filter(Boolean).join(" · ")}</p>}
 
           <div className="ax-pdp-price">
-            <div className="now">
-              <b>{formatINR(price)}</b>
-              {off > 0 && <><s>{formatINR(mrp)}</s><em>{off}% off</em></>}
-            </div>
-            {off > 0 && <p className="save">You save {formatINR(mrp - price)}</p>}
-            <p className="tax">Price includes GST</p>
+            {product.priceOnRequest ? (
+              <>
+                <div className="now"><b className="por">Price on request</b></div>
+                <p className="tax">{brandName} doesn't publish prices for India, so we quote each order: you get today's price before you pay anything.</p>
+              </>
+            ) : (
+              <>
+                <div className="now">
+                  {priceShown !== null ? <b>{formatINR(priceShown)}</b> : <b>{fromPrices.length > 1 && new Set(fromPrices).size > 1 ? <><small>From </small>{formatINR(Number(lowest))}</> : formatINR(Number(lowest))}</b>}
+                  {priceShown !== null && off > 0 && <><s>MRP {formatINR(Number(mrpShown))}</s><em>{off}% off</em></>}
+                </div>
+                {priceShown !== null && off > 0 && <p className="save">You save {formatINR(Number(mrpShown) - priceShown)}</p>}
+                <p className="tax">{priceShown !== null && !off && mrpShown ? `MRP ${formatINR(mrpShown)} · ` : ""}Inclusive of all taxes</p>
+              </>
+            )}
           </div>
 
-          {product.inStock ? (
+          {variants.length > 1 && (
+            <div className={`ax-pick${needChoice ? " need" : ""}`} id="ax-pick">
+              <div className="ax-pick-head">
+                <span>{optionName}: <b>{variant ? variant.label : <em>{CHOOSE_FIRST.has(optionName) ? `choose a ${optionName.toLowerCase()}` : "choose one"}</em>}</b></span>
+                {product.sizeGuide && <button type="button" className="ax-link" onClick={() => setSizes(true)}><Ruler size={15} /> Size guide</button>}
+              </div>
+              <div className="ax-pick-opts" role="radiogroup" aria-label={optionName}>
+                {variants.map((v) => {
+                  const vp = v.price ?? product.price;
+                  const differs = !product.priceOnRequest && fromPrices.length > 1 && new Set(fromPrices).size > 1 && typeof vp === "number";
+                  return (
+                    <button key={v.id} type="button" role="radio" aria-checked={vid === v.id} className={`${vid === v.id ? "on" : ""}${v.inStock ? "" : " oos"}`}
+                      onClick={() => { setVid(v.id); setNeedChoice(false); }} title={v.inStock ? undefined : "Out of stock"}>
+                      <span>{v.label}</span>{differs && <small>{formatINR(vp as number)}</small>}
+                    </button>
+                  );
+                })}
+              </div>
+              {needChoice && <p className="ax-pick-err" role="alert">Please choose a {optionName.toLowerCase()} first.</p>}
+              {variant && !variant.inStock && <p className="ax-pick-err">This {optionName.toLowerCase()} is out of stock right now.</p>}
+            </div>
+          )}
+          {product.colourNote && <p className="ax-pdp-note">{product.colourNote}</p>}
+
+          {product.priceOnRequest ? (
+            <div className="ax-pdp-buy ask">
+              <button type="button" className="ax-btn teal lg" onClick={() => setAsk("price")}><MessageSquareText size={18} /> Ask for the price</button>
+              <button type="button" className="ax-btn lg" onClick={() => setAsk("bulk")}><Building2 size={18} /> Bulk order</button>
+            </div>
+          ) : product.inStock ? (
             <div className="ax-pdp-buy">
               <div className="ax-qty" role="group" aria-label="Quantity">
-                <button type="button" onClick={() => setQuantity((q) => Math.max(1, q - 1))} disabled={quantity <= 1} aria-label="One less"><Minus size={16} /></button>
-                <output aria-live="polite">{quantity}</output>
-                <button type="button" onClick={() => setQuantity((q) => Math.min(10, q + 1))} disabled={quantity >= 10} aria-label="One more"><Plus size={16} /></button>
+                <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} disabled={qty <= 1} aria-label="One less"><Minus size={16} /></button>
+                <output aria-live="polite">{qty}</output>
+                <button type="button" onClick={() => setQty((q) => Math.min(MAX_QTY, q + 1))} disabled={qty >= MAX_QTY} aria-label="One more"><Plus size={16} /></button>
               </div>
-              <button type="button" className="ax-btn teal lg add" onClick={() => add(product.id, quantity)} disabled={addToCart.isPending}>
-                <ShoppingCart size={18} /> {addToCart.isPending ? "Adding…" : "Add to cart"}
-              </button>
-              <button type="button" className="ax-btn dark lg" onClick={() => add(product.id, quantity, () => setLocation("/checkout"))} disabled={addToCart.isPending}>
-                <Zap size={18} /> Buy now
-              </button>
+              <button type="button" className="ax-btn teal lg add" onClick={() => add()} disabled={!!variant && !variant.inStock}><ShoppingCart size={18} /> Add to cart</button>
+              <button type="button" className="ax-btn dark lg" onClick={() => add(() => setLocation("/checkout"))} disabled={!!variant && !variant.inStock}><Zap size={18} /> Buy now</button>
             </div>
           ) : (
-            <div className="ax-pdp-oos">This product is out of stock right now. <Link href={category ? `/category/${category}` : "/shop"}>See similar products</Link></div>
+            <div className="ax-pdp-oos">This is out of stock right now. <button type="button" className="ax-link" onClick={() => setAsk("price")}>Tell me when it's back</button> or <Link href={`/category/${product.category}`}>see similar products</Link>.</div>
           )}
+          {!product.priceOnRequest && product.inStock && <p className="ax-pdp-bulk">Buying for a clinic or hospital? <button type="button" className="ax-link" onClick={() => setAsk("bulk")}>Ask for a bulk price</button></p>}
 
           <ul className="ax-pdp-perks">
-            <li><BadgeCheck size={20} /><span><b>Genuine product</b><small>From the brand or its authorised sellers</small></span></li>
-            <li><Truck size={20} /><span><b>Delivery across India</b><small>Free delivery on orders from {formatINR(FREE_DELIVERY_FROM)}</small></span></li>
-            <li><RotateCcw size={20} /><span><b>Easy returns</b><small>On eligible items</small></span></li>
-            <li><CreditCard size={20} /><span><b>Secure checkout</b><small>UPI, cards, net banking or cash on delivery</small></span></li>
+            <li><Banknote size={20} /><span><b>Cash on delivery</b><small>Pay in cash when your order arrives</small></span></li>
+            <li><Truck size={20} /><span><b>{`Free delivery from ${formatINR(FREE_DELIVERY_FROM)}`}</b><small>{formatINR(DELIVERY_FEE)} below that · ships {BUSINESS.dispatch}</small></span></li>
+            <li><RotateCcw size={20} /><span><b>{BUSINESS.replacementDays}-day replacement</b><small>If it arrives damaged, defective or wrong</small></span></li>
+            <li><ShieldCheck size={20} /><span><b>Genuine {brandName}</b><small>{product.warranty || "With the manufacturer's warranty"}</small></span></li>
           </ul>
         </div>
       </div>
 
-      {/* about + details + rating */}
+      {/* about, specifications, size guide, delivery */}
+      <nav className="ax-wrap ax-pdp-tabs" aria-label="On this page">
+        <a href="#about">Overview</a><a href="#specs">Specifications</a>{product.sizeGuide && <a href="#sizes">Size guide</a>}<a href="#delivery">Delivery & returns</a>
+      </nav>
       <section className="ax-wrap ax-pdp-more">
         <div className="ax-pdp-about">
-          <h2>About this product</h2>
-          <p>{product.description}</p>
-          <h3>Details</h3>
+          <h2 id="about">About this product</h2>
+          <p className="lead">{product.summary}</p>
+          {product.features.length > 0 && (
+            <ul className="ax-pdp-feats">{product.features.map((f) => <li key={f}><Check size={16} /> <span>{f}</span></li>)}</ul>
+          )}
+          {product.longDescription && <p>{product.longDescription}</p>}
+          {product.sections && product.sections.length > 0 && (
+            <div className="ax-pdp-secs">
+              {product.sections.map((s) => <div key={s.title}><h3>{s.title}</h3><p>{s.text}</p></div>)}
+            </div>
+          )}
+
+          <h2 id="specs">Specifications</h2>
           <dl className="ax-pdp-specs">
-            {details.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
+            {specs.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
           </dl>
+
+          {product.sizeGuide && (
+            <>
+              <h2 id="sizes">Size guide</h2>
+              <SizeTable guide={product.sizeGuide} />
+            </>
+          )}
         </div>
-        <aside className="ax-pdp-score" id="rating">
-          <h2>Customer rating</h2>
-          <div className="big"><b>{rating.toFixed(1)}</b><span>out of 5</span></div>
-          <Stars value={rating} size={20} />
-          <p>Based on {Number(product.reviewCount || 0).toLocaleString("en-IN")} ratings from buyers.</p>
-          <Link href={category ? `/category/${category}` : "/shop"} className="ax-link">More in {product.category || slugLabel(category)} →</Link>
+        <aside className="ax-pdp-side" id="delivery">
+          <h2>Delivery & returns</h2>
+          <dl>
+            <div><dt>Payment</dt><dd>Cash on delivery. Keep the exact amount ready if you can.</dd></div>
+            <div><dt>Delivery</dt><dd>Free on orders from {formatINR(FREE_DELIVERY_FROM)}; {formatINR(DELIVERY_FEE)} below that. Ships {BUSINESS.dispatch}; delivery is {BUSINESS.delivery}.</dd></div>
+            <div><dt>Replacement</dt><dd>Tell us within {BUSINESS.replacementDays} days of delivery if it arrives damaged, defective or wrong, and we'll replace it.{hygiene ? " For hygiene reasons it can't be returned once opened or used unless it's faulty." : ""}</dd></div>
+            <div><dt>Cancel</dt><dd>Free, any time before it ships.</dd></div>
+          </dl>
+          <p className="links"><Link href="/shipping-policy">Shipping policy</Link> · <Link href="/returns-policy">Returns & replacement</Link></p>
+          <p className="fine">Product details are from {brandName}. For medical devices, read the instructions for use, and ask your doctor about readings or symptoms.</p>
         </aside>
       </section>
 
-      {more.length > 0 && (
+      {related.length > 0 && store && (
         <section className="ax-wrap ax-pdp-related">
-          <div className="ax-h-title"><h2>More from {product.category || slugLabel(category)}</h2>{category && <Link href={`/category/${category}`} className="ax-link">See all →</Link>}</div>
+          <div className="ax-h-title"><h2>More {categoryName.toLowerCase()}</h2><Link href={`/category/${product.category}`} className="ax-link">See all →</Link></div>
           <div className="ax-grid grid">
-            {more.map((p) => <ProductCard key={p.id} product={p} onAddToCart={(id) => add(id, 1)} isAdding={addToCart.isPending} />)}
+            {related.map((p) => <ProductCard key={p.id} product={p} brandName={store.brandName(p.brand)} />)}
           </div>
         </section>
       )}
 
       {/* phones: price and buttons stay in reach */}
-      {product.inStock && (
-        <div className="ax-pdp-bar">
-          <div><b>{formatINR(price * quantity)}</b>{quantity > 1 && <small>{quantity} × {formatINR(price)}</small>}</div>
-          <button type="button" className="ax-btn teal" onClick={() => add(product.id, quantity)} disabled={addToCart.isPending}><ShoppingCart size={17} /> Add</button>
-          <button type="button" className="ax-btn dark" onClick={() => add(product.id, quantity, () => setLocation("/checkout"))} disabled={addToCart.isPending}>Buy now</button>
-        </div>
+      <div className="ax-pdp-bar">
+        {product.priceOnRequest ? (
+          <>
+            <div><b>Price on request</b><small>{brandName}</small></div>
+            <button type="button" className="ax-btn teal" onClick={() => setAsk("price")}><MessageSquareText size={17} /> Ask price</button>
+          </>
+        ) : product.inStock ? (
+          <>
+            <div><b>{formatINR((priceShown ?? Number(lowest)) * qty)}</b>{qty > 1 ? <small>{qty} × {formatINR(priceShown ?? Number(lowest))}</small> : <small>Cash on delivery</small>}</div>
+            <button type="button" className="ax-btn teal" onClick={() => add()}><ShoppingCart size={17} /> Add</button>
+            <button type="button" className="ax-btn dark" onClick={() => add(() => setLocation("/checkout"))}>Buy now</button>
+          </>
+        ) : (
+          <>
+            <div><b>Out of stock</b><small>{brandName}</small></div>
+            <button type="button" className="ax-btn" onClick={() => setAsk("price")}>Notify me</button>
+          </>
+        )}
+      </div>
+
+      <EnquiryDialog
+        open={!!ask}
+        onClose={() => setAsk(null)}
+        title={ask === "bulk" ? "Bulk order" : product.priceOnRequest ? "Ask for the price" : "Tell me when it's back"}
+        kind={ask === "bulk" ? "bulk" : "price"}
+        productId={product.id}
+        variantId={variant?.id ?? null}
+        itemLabel={`${brandName} ${product.name}${variant ? ` · ${variant.label}` : ""}`}
+        defaultQty={ask === "bulk" ? 10 : qty}
+      />
+      {product.sizeGuide && (
+        <Dialog open={sizes} onClose={() => setSizes(false)} title="Size guide" wide>
+          <SizeTable guide={product.sizeGuide} />
+        </Dialog>
       )}
+    </div>
+  );
+}
+
+function SizeTable({ guide }: { guide: NonNullable<Product["sizeGuide"]> }) {
+  return (
+    <div className="ax-size">
+      {guide.how && <p>{guide.how}</p>}
+      <div className="ax-size-scroll">
+        <table>
+          <thead><tr>{guide.header.map((h, i) => <th key={i}>{h}</th>)}</tr></thead>
+          <tbody>{guide.rows.map((r, i) => <tr key={i}>{r.map((c, j) => (j === 0 ? <th key={j} scope="row">{c}</th> : <td key={j}>{c}</td>))}</tr>)}</tbody>
+        </table>
+      </div>
     </div>
   );
 }

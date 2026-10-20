@@ -10,6 +10,8 @@ Disallow: /seller/analytics
 Disallow: /seller/settings
 Disallow: /account
 Disallow: /orders
+Disallow: /order/
+Disallow: /wishlist
 Disallow: /cart
 Disallow: /checkout
 Disallow: /api/

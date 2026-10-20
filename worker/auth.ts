@@ -131,22 +131,22 @@ async function createUser(env: AuthEnv & { DB: D1Like }, f: { email: string; nam
 const userByEmail = (env: AuthEnv & { DB: D1Like }, email: string) => env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first<UserRow>();
 
 /** Counts one use of `key` in a fixed window, atomically; false once the limit is passed. */
-async function allow(env: AuthEnv & { DB: D1Like }, key: string, limit: number, windowMs: number): Promise<boolean> {
+export async function allow(env: AuthEnv & { DB: D1Like }, key: string, limit: number, windowMs: number): Promise<boolean> {
   const now = Date.now();
   const r = await env.DB.prepare("INSERT INTO rate_limits (key, count, window_start) VALUES (?, 1, ?) ON CONFLICT(key) DO UPDATE SET count = CASE WHEN ? - window_start < ? THEN count + 1 ELSE 1 END, window_start = CASE WHEN ? - window_start < ? THEN window_start ELSE ? END RETURNING count")
     .bind(key, now, now, windowMs, now, windowMs, now).first<{ count: number }>();
   return (r?.count ?? 0) <= limit;
 }
-const clientIp = (request: Request) => request.headers.get("cf-connecting-ip") || "unknown";
+export const clientIp = (request: Request) => request.headers.get("cf-connecting-ip") || "unknown";
 
 /** Checked when there is no account, so a wrong email takes as long as a wrong password. */
 let dummyHash: Promise<string> | null = null;
 
 /* ------------------------------------------------------------------ email (Brevo) */
 
-const escapeHtml = (s: string) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+export const escapeHtml = (s: string) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 
-async function sendEmail(env: AuthEnv, to: string, subject: string, html: string): Promise<boolean> {
+export async function sendEmail(env: AuthEnv, to: string, subject: string, html: string): Promise<boolean> {
   if (!env.BREVO_API_KEY) return false;
   const r = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
@@ -157,7 +157,7 @@ async function sendEmail(env: AuthEnv, to: string, subject: string, html: string
   return r.ok;
 }
 
-const shell = (body: string) => `<!DOCTYPE html><html><body style="margin:0;font-family:Arial,Helvetica,sans-serif;background:#F4F5F7;padding:24px;color:#14213D;">
+export const shell = (body: string) => `<!DOCTYPE html><html><body style="margin:0;font-family:Arial,Helvetica,sans-serif;background:#F4F5F7;padding:24px;color:#14213D;">
 <div style="max-width:520px;margin:auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #E3E6EB;">
 <div style="padding:20px 28px;border-bottom:1px solid #E3E6EB;font-size:20px;font-weight:700;color:#1F3F7A;">Aethex</div>
 <div style="padding:28px;">${body}</div></div></body></html>`;

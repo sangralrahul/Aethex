@@ -134,7 +134,8 @@ export default defineConfig({
             },
           },
           {
-            urlPattern: /\/api\/.*/i,
+            // Our own API, network first. Orders and the store admin are never kept on the device.
+            urlPattern: ({ url }: { url: URL }) => url.origin === self.location.origin && url.pathname.startsWith("/api/") && !/^\/api\/store\/(?:admin|orders)/.test(url.pathname),
             handler: "NetworkFirst",
             options: { cacheName: "api-cache", expiration: { maxEntries: 100, maxAgeSeconds: 60 * 5 } },
           },

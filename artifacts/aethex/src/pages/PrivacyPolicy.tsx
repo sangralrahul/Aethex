@@ -37,8 +37,9 @@ const SECTIONS = [
     title: "3. Sharing of Information",
     content: [
       "**We do not sell your personal data.**",
-      "We share data with logistics partners (e.g., Shiprocket, Delhivery) solely to fulfil deliveries.",
-      "We share data with payment processors (Razorpay, Stripe) for secure transactions.",
+      "We share your name, phone number and delivery address with our courier partners solely to deliver your order.",
+      "Store orders are paid by cash on delivery, so we do not collect card, UPI or bank details at checkout.",
+      "Order, sign-in and support emails are sent through our email provider (Brevo).",
       "We may disclose data to government or regulatory authorities when required by Indian law.",
       "Anonymised, aggregated analytics may be shared with research partners.",
     ],

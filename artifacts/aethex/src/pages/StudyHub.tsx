@@ -361,7 +361,7 @@ const medicalBooks = [
     authors: "Fauci, Kasper, Longo",
     category: "Medicine",
     price: 4800,
-    link: "/shop?search=harrison",
+    link: "/books/harrison-s-principles-of-internal-medicine-21st-ed-2-vol-set",
     cover: "https://covers.openlibrary.org/b/isbn/9781259644030-M.jpg",
     color: "#1D4ED8",
     edition: "21st Ed",
@@ -371,7 +371,7 @@ const medicalBooks = [
     authors: "Drake, Vogl, Mitchell",
     category: "Anatomy",
     price: 2200,
-    link: "/shop?search=gray+anatomy",
+    link: "/books",
     cover: "https://covers.openlibrary.org/b/isbn/9780323393041-M.jpg",
     color: "#B45309",
     edition: "4th Ed",
@@ -381,7 +381,7 @@ const medicalBooks = [
     authors: "Kumar, Abbas, Aster",
     category: "Pathology",
     price: 3600,
-    link: "/shop?search=robbins",
+    link: "/books/robbins-cotran-pathologic-basis-of-disease-10th-ed",
     cover: "https://covers.openlibrary.org/b/isbn/9780323531205-M.jpg",
     color: "#9D1B1B",
     edition: "10th Ed",
@@ -391,7 +391,7 @@ const medicalBooks = [
     authors: "Brunton, Hilal-Dandan",
     category: "Pharmacology",
     price: 3200,
-    link: "/shop?search=goodman+pharmacology",
+    link: "/books",
     cover: "https://covers.openlibrary.org/b/isbn/9781259584732-M.jpg",
     color: "#065F46",
     edition: "13th Ed",
@@ -401,7 +401,7 @@ const medicalBooks = [
     authors: "Williams, O'Connell, McCaskie",
     category: "Surgery",
     price: 2900,
-    link: "/shop?search=bailey+love",
+    link: "/books/bailey-love-s-short-practice-of-surgery-27th-ed",
     cover: "https://covers.openlibrary.org/b/isbn/9781138052697-M.jpg",
     color: "#4C1D95",
     edition: "27th Ed",
@@ -411,7 +411,7 @@ const medicalBooks = [
     authors: "Cunningham et al.",
     category: "OBG",
     price: 2600,
-    link: "/shop?search=williams+obstetrics",
+    link: "/books/williams-obstetrics-26th-ed",
     cover: "https://covers.openlibrary.org/b/isbn/9781260462326-M.jpg",
     color: "#9D174D",
     edition: "26th Ed",
@@ -580,7 +580,7 @@ export default function StudyHub() {
         <div className="ax-wrap ax-sth-sec">
           <div className="ax-sth-head">
             <div><p className="ax-eyebrow">Standard books</p><h2>Essential medical books</h2></div>
-            <Link href="/category/books" className="ax-link">All books in the store <ArrowRight size={16} /></Link>
+            <Link href="/books" className="ax-link">All medical books <ArrowRight size={16} /></Link>
           </div>
           <div className="ax-sth-books">
             {medicalBooks.map((book) => (
@@ -592,7 +592,7 @@ export default function StudyHub() {
                 <span className="tx">
                   <b>{book.title}</b>
                   <small>{book.authors} · {book.edition}</small>
-                  <span className="meta"><em style={{ color: book.color, background: `${book.color}12` }}>{book.category}</em><strong>₹{book.price.toLocaleString("en-IN")}</strong></span>
+                  <span className="meta"><em style={{ color: book.color, background: `${book.color}12` }}>{book.category}</em><strong>Request</strong></span>
                 </span>
               </Link>
             ))}

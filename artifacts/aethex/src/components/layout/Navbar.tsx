@@ -6,13 +6,12 @@
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import { Link, useLocation } from "wouter";
 import {
-  Activity, BookOpen, Bone, Brain, Briefcase, Building2, Calculator, ChevronDown, ClipboardList, Download, FileText,
+  Activity, BadgeCheck, BookOpen, Bone, Brain, Briefcase, Building2, Calculator, ChevronDown, ClipboardList, Download, Droplet, FileText,
   FlaskConical, GraduationCap, HeartPulse, Heart, Hospital, Layers, LogOut, Mail, Menu, MessageSquare, Microscope,
-  Newspaper, Package, Pill, Search, Shirt, ShoppingBag, ShoppingCart, Sparkles, Star, Stethoscope, Store, Thermometer,
-  Timer, User, X, type LucideProps,
+  Newspaper, Package, Pill, Search, ShoppingBag, ShoppingCart, Sparkles, Star, Stethoscope, Store, Thermometer,
+  Timer, User, Wind, X, type LucideProps,
 } from "lucide-react";
-import { useGetCart } from "@workspace/api-client-react";
-import { useSession } from "@/hooks/use-session";
+import { useCartCount } from "@/lib/store/cart";
 import { useUserAuth } from "@/hooks/use-user-auth";
 import { useWishlist } from "@/hooks/use-wishlist";
 import { useAbandonedCartTracker } from "@/hooks/use-abandoned-cart-tracker";
@@ -25,18 +24,19 @@ type Section = { id: string; label: string; match: RegExp; items: Item[]; cols?:
 
 const SECTIONS: Section[] = [
   {
-    id: "shop", label: "Shop", match: /^\/(shop|products|category|books|wishlist|cart)/, cols: 2,
+    id: "shop", label: "Shop", match: /^\/(shop|products|category|brand|brands|books|wishlist|cart|checkout|order)/, cols: 2,
     items: [
-      { href: "/category/stethoscopes", label: "Stethoscopes", hint: "Littmann, MDF and more", icon: Stethoscope },
-      { href: "/category/scrubs", label: "Scrubs & uniforms", hint: "Tops, sets and pants", icon: Shirt },
-      { href: "/category/aprons", label: "Aprons & coats", hint: "Lab coats and gowns", icon: Layers },
-      { href: "/books", label: "Books & study material", hint: "Textbooks and NEET-PG", icon: BookOpen },
-      { href: "/category/equipment", label: "Medical equipment", hint: "BP, SpO2, glucometers", icon: Thermometer },
-      { href: "/category/surgical", label: "Surgical instruments", hint: "Sets, forceps, blades", icon: Activity },
-      { href: "/category/cardiac-care", label: "Cardiology", hint: "Monitors and ECG", icon: HeartPulse },
-      { href: "/category/orthopaedic", label: "Orthopaedics", hint: "Braces and rehab", icon: Bone },
+      { href: "/category/bp-monitors", label: "BP monitors", hint: "OMRON, Dr Trust, Rossmax", icon: HeartPulse },
+      { href: "/category/stethoscopes", label: "Stethoscopes", hint: "Littmann, MDF, HEINE", icon: Stethoscope },
+      { href: "/category/diagnostic-instruments", label: "Diagnostic instruments", hint: "Otoscopes, ophthalmoscopes", icon: Activity },
+      { href: "/category/diabetes-care", label: "Diabetes care", hint: "Accu-Chek, Dr Trust", icon: Droplet },
+      { href: "/category/pulse-oximeters", label: "Oximeters & thermometers", hint: "SpO2 and temperature", icon: Thermometer },
+      { href: "/category/nebulizers", label: "Nebulizers", hint: "Compressor and mesh", icon: Wind },
+      { href: "/category/orthopaedic-supports", label: "Supports & braces", hint: "Tynor and Dr Trust", icon: Bone },
+      { href: "/brands", label: "All brands", hint: "Verified brands we stock", icon: BadgeCheck },
+      { href: "/books", label: "Medical books", hint: "Request any textbook", icon: BookOpen },
     ],
-    foot: { text: "Genuine products, delivered across India", href: "/shop", label: "All products" },
+    foot: { text: "Genuine products, cash on delivery across India", href: "/shop", label: "All products" },
   },
   {
     id: "study", label: "Study", match: /^\/(study-hub|neet-pg|mock-test|flashcards|case-of-the-day|cme-hub|learning-path|live-classes|study-planner|quiz-builder|progress-tracker|leaderboard|webinars|video-cases)/, cols: 2,
@@ -86,7 +86,7 @@ const ACCOUNT_LINKS: Item[] = [
   { href: "/my-reviews", label: "My reviews", icon: Star },
 ];
 
-const SEARCH_SUGGESTIONS = ["Littmann stethoscope", "Scrubs", "Lab coat", "Harrison", "NEET-PG", "BP monitor", "Pulse oximeter", "Surgical set"];
+const SEARCH_SUGGESTIONS = ["BP monitor", "Littmann stethoscope", "Pulse oximeter", "Glucometer", "Knee support", "Nebulizer", "Otoscope", "Thermometer"];
 
 function ItemLink({ item, onClick }: { item: Item; onClick?: () => void }) {
   const I = item.icon;
@@ -112,12 +112,10 @@ export function Logo() {
 
 export function Navbar({ inner = false }: { inner?: boolean }) {
   const [location, setLocation] = useLocation();
-  const sessionId = useSession();
   const { user, isLoggedIn, logout } = useUserAuth();
   const { count: wishCount } = useWishlist();
-  const { data: cart } = useGetCart({ sessionId }, { query: { enabled: !!sessionId, staleTime: 60_000 } });
-  useAbandonedCartTracker(cart as never);
-  const cartCount = (cart as { itemCount?: number } | undefined)?.itemCount ?? 0;
+  const cartCount = useCartCount();
+  useAbandonedCartTracker(isLoggedIn);
 
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState<string | null>(null);

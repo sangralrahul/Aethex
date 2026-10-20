@@ -89,18 +89,31 @@ It provides an intelligent interface for medical and educational assistance.
 
 ## 🛍️ Medical Commerce
 
-AETHEX provides a dedicated medical marketplace with categories including:
+The store sells genuine products from verified brands, with the brands' own photos and details:
+**Dr Trust, Tynor, OMRON, Accu-Chek, Rossmax, 3M Littmann, MDF Instruments and HEINE**
+(366 products in 13 categories: BP monitors, sphygmomanometers, stethoscopes, diagnostic
+instruments, pulse oximeters, thermometers, nebulizers, diabetes care, weighing scales,
+orthopaedic supports, pain relief, pillows and cushions, rehab and mobility).
 
-- Scrubs
-- Aprons
-- Medical Books
-- Stethoscopes
-- Surgical Instruments
-- Dental Supplies
-- Laboratory Supplies
-- Medical Equipment
+- **Catalogue:** `artifacts/aethex/src/data/store/catalog.json`, served by the Worker
+  (`/api/store/catalog`, `/api/store/products/:slug`) with the store's own prices and stock applied.
+- **Price on request:** brands that don't publish Indian prices (MDF, Littmann, HEINE, Rossmax)
+  take price requests until a price is set in the admin.
+- **Orders:** cash on delivery, priced again on the server; confirmation and status emails;
+  tracking with order number and mobile; cancelling until shipped.
+- **Admin:** `aethex.in/admin` for the accounts in `ADMIN_EMAILS`: orders (confirm, ship with
+  tracking, deliver, cancel, CSV export), price/book requests, and product prices, MRP, stock,
+  country of origin and visibility.
+- **Business details and policies:** `artifacts/aethex/src/config/business.ts`
+  (legal name, address, GSTIN, phone, Grievance Officer, dispatch and delivery promises).
 
-Users can search, filter, sort, review, purchase, and track products.
+### Store setup (once)
+
+```bash
+npx wrangler d1 migrations apply aethex --remote   # creates the store tables (also created on first use)
+npx wrangler secret put ADMIN_EMAILS               # e.g. you@aethex.in (comma-separated for several)
+npx wrangler secret put STORE_EMAIL                # optional: inbox for new orders and requests
+```
 
 ---
 
@@ -289,13 +302,16 @@ The application uses environment variables for sensitive integrations.
 ANTHROPIC_API_KEY=
 # Optional: an NCBI API key raises PubMed's rate limit for Cadus Research
 NCBI_API_KEY=
-SUPABASE_URL=
-SUPABASE_ANON_KEY=
-RESEND_API_KEY=
-TWILIO_ACCOUNT_SID=
-TWILIO_AUTH_TOKEN=
-TWILIO_PHONE_NUMBER=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+BREVO_API_KEY=
+BREVO_FROM_EMAIL=
+# The store
+ADMIN_EMAILS=
+STORE_EMAIL=
 ```
+
+On Cloudflare these are Worker variables and secrets (`npx wrangler secret put NAME`).
 
 **Never commit production API keys or secrets to GitHub.**
 

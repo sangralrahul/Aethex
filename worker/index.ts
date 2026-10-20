@@ -7,15 +7,18 @@
 //   cadus (Cadus), analyze-drug-interactions, interpret-labs,
 //   predict-symptoms, analyze-radiology
 // (the function code lives in supabase/functions for historical reasons and
-// runs here unchanged), and accounts, profiles and carts (worker/auth.ts) on D1.
+// runs here unchanged), accounts, profiles and carts (worker/auth.ts) on D1, and
+// the store: catalogue, cash-on-delivery orders, requests and admin (worker/store.ts).
 //
 // Secrets and variables (Workers & Pages > aethex > Settings > Variables and Secrets):
 //   ANTHROPIC_API_KEY  Claude, the only AI Cadus uses
 //   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET   Google sign-in
-//   BREVO_API_KEY, BREVO_FROM_EMAIL          sign-in codes and cart emails
+//   BREVO_API_KEY, BREVO_FROM_EMAIL          sign-in codes, cart and order emails
+//   ADMIN_EMAILS, STORE_EMAIL                 the store admin, and where orders are emailed
 import { functionHandler, functionNames, useEnv } from "./deno-shim";
 import { handleAuth, handleCart, handleProfile, runScheduled, type AuthEnv } from "./auth";
 import { serveDownload, type R2Bucket } from "./downloads";
+import { handleStore, type StoreEnv } from "./store";
 import "./names/cadus";
 import "../supabase/functions/cadus/index.ts";
 import "./names/analyze-drug-interactions";
@@ -27,7 +30,7 @@ import "../supabase/functions/predict-symptoms/index.ts";
 import "./names/analyze-radiology";
 import "../supabase/functions/analyze-radiology/index.ts";
 
-interface Env extends AuthEnv {
+interface Env extends AuthEnv, StoreEnv {
   ASSETS: { fetch: (request: Request) => Promise<Response> };
   ANTHROPIC_API_KEY?: string;
   /** R2 bucket "aethex-downloads": the desktop installers. */
@@ -62,7 +65,7 @@ export default {
 
     if (url.pathname === "/api/health") {
       // Shows whether the keys are set (never their values), to check the setup.
-      return json({ ok: true, functions: functionNames(), anthropic: !!env.ANTHROPIC_API_KEY, accounts: !!env.DB, google: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET), email: !!env.BREVO_API_KEY, downloads: !!env.DOWNLOADS });
+      return json({ ok: true, functions: functionNames(), anthropic: !!env.ANTHROPIC_API_KEY, accounts: !!env.DB, google: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET), email: !!env.BREVO_API_KEY, downloads: !!env.DOWNLOADS, storeAdmin: !!env.ADMIN_EMAILS });
     }
 
     const account = url.pathname.startsWith("/api/auth/") || url.pathname === "/api/auth" ? handleAuth : url.pathname === "/api/profile" ? handleProfile : url.pathname === "/api/cart" ? handleCart : null;
@@ -77,6 +80,19 @@ export default {
       } catch (e) {
         console.error(`${url.pathname} failed`, e);
         return json({ error: "The account service hit an unexpected error. Please try again." }, 500);
+      }
+    }
+
+    if (url.pathname.startsWith("/api/store/")) {
+      // Reading the catalogue is open to all; anything that changes something must come from our own pages.
+      const origin = request.headers.get("origin");
+      if (origin && !ALLOWED_ORIGIN.test(origin)) return json({ error: "Origin not allowed" }, 403);
+      if (request.method !== "GET" && request.method !== "HEAD" && !origin) return json({ error: "Origin required" }, 403);
+      try {
+        return await handleStore(request, env);
+      } catch (e) {
+        console.error(`${url.pathname} failed`, e);
+        return json({ error: "The store hit an unexpected error. Please try again." }, 500);
       }
     }
 

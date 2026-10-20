@@ -1,66 +1,102 @@
 /**
- * The shop (/shop, /products, /category/:slug): search, category chips, filters
- * (availability, category, price, rating, brand), sort, grid or list.
+ * The shop (/shop, /products, /category/:slug, /brand/:slug): search, category
+ * and brand pages, filters (availability, type, brand, price), sort, grid or
+ * list. Products come from the store catalogue (lib/store).
  * Styles: src/shop.css (.ax-shop) and the product card (.ax-prod).
  */
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useRoute, useSearch } from "wouter";
-import { LayoutGrid, List, Search as SearchIcon, SlidersHorizontal, Star, X } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
-import { useAddToCart, useListCategories, useListProducts, type Product } from "@workspace/api-client-react";
+import { BadgeCheck, ExternalLink, LayoutGrid, List, Search as SearchIcon, SlidersHorizontal, X } from "lucide-react";
 import { ProductCard } from "@/components/ProductCard";
 import { ShopHead, type Crumb } from "@/components/shop/ShopHead";
 import { TopLayer } from "@/components/shop/TopLayer";
-import { useSession } from "@/hooks/use-session";
-import { useToast } from "@/hooks/use-toast";
 import { useSeo } from "@/hooks/use-seo";
+import { useStore, type StoreData } from "@/lib/store/api";
+import type { ProductSummary } from "@/lib/store/types";
+import { discountPct, mixBrands } from "@/lib/store/rules";
 
 const PRICE_RANGES = [
   { id: "u500", label: "Under ₹500", test: (p: number) => p < 500 },
-  { id: "500-2000", label: "₹500 – ₹2,000", test: (p: number) => p >= 500 && p < 2000 },
-  { id: "2000-5000", label: "₹2,000 – ₹5,000", test: (p: number) => p >= 2000 && p < 5000 },
-  { id: "5000+", label: "₹5,000 and above", test: (p: number) => p >= 5000 },
+  { id: "500-1500", label: "₹500 – ₹1,500", test: (p: number) => p >= 500 && p < 1500 },
+  { id: "1500-3000", label: "₹1,500 – ₹3,000", test: (p: number) => p >= 1500 && p < 3000 },
+  { id: "3000+", label: "₹3,000 and above", test: (p: number) => p >= 3000 },
 ];
 
 const SORTS = [
-  { value: "relevance", label: "Relevance" },
+  { value: "relevance", label: "Recommended" },
   { value: "price-asc", label: "Price: low to high" },
   { value: "price-desc", label: "Price: high to low" },
-  { value: "top-rated", label: "Top rated" },
-  { value: "newest", label: "Newest first" },
+  { value: "discount", label: "Biggest discount" },
+  { value: "name", label: "Name: A to Z" },
 ];
 
 const PAGE = 48;
 
-type Category = { id: number; name: string; slug: string; productCount?: number };
+/** Words people search with, mapped to the words products use. */
+const SYNONYMS: Record<string, string[]> = {
+  bp: ["bp", "blood pressure", "sphygmomanometer"], "blood-pressure": ["bp", "blood pressure"],
+  nebuliser: ["nebulizer"], nebulizer: ["nebulizer"], spo2: ["oximeter"], oxygen: ["oximeter"],
+  sugar: ["gluco", "glucose"], glucose: ["gluco", "glucose"], diabetes: ["gluco", "lancet", "strip"],
+  weight: ["scale", "weigh"], weighing: ["scale", "weigh"], paediatric: ["paediatric", "pediatric", "child", "kids", "infant"],
+  pediatric: ["paediatric", "pediatric", "child", "kids"], orthopedic: ["orthopaedic", "orthopedic", "ortho"],
+  colour: ["colour", "color"], fever: ["thermometer"], temperature: ["thermometer"], brace: ["brace", "support", "splint"],
+  massager: ["massager", "tens", "massage"], tens: ["tens"], pillow: ["pillow", "cushion"], cushion: ["cushion", "pillow"],
+};
 
-function asCategories(data: unknown): Category[] {
-  if (Array.isArray(data)) return data as Category[];
-  const d = data as { data?: unknown; categories?: unknown; items?: unknown } | undefined;
-  for (const k of [d?.data, d?.categories, d?.items]) if (Array.isArray(k)) return k as Category[];
-  return [];
+function searchText(p: ProductSummary, store: StoreData) {
+  return `${p.name} ${store.brandName(p.brand)} ${store.category(p.category)?.name ?? ""} ${p.subcategory} ${p.model ?? ""}`.toLowerCase();
+}
+
+function score(p: ProductSummary, words: string[], store: StoreData): number {
+  const name = p.name.toLowerCase();
+  const hay = searchText(p, store);
+  let s = 0;
+  for (const w of words) {
+    const alts = SYNONYMS[w] ?? [w];
+    if (alts.some((a) => name.includes(a))) s += 3;
+    else if (alts.some((a) => hay.includes(a))) s += 1;
+    else return 0;
+  }
+  return s + (p.featured ? 0.5 : 0) + (p.inStock ? 0.25 : 0);
 }
 
 interface FilterProps {
-  categories: Category[];
+  store: StoreData;
+  scope: ProductSummary[];
   category: string;
-  setCategory: (slug: string) => void;
+  brandPage: string;
+  goCategory: (slug: string) => void;
+  sub: string;
+  setSub: (s: string) => void;
   prices: string[];
   togglePrice: (id: string) => void;
-  minRating: number | null;
-  setMinRating: (r: number | null) => void;
   inStock: boolean;
   setInStock: (v: boolean) => void;
+  pricedOnly: boolean;
+  setPricedOnly: (v: boolean) => void;
   brands: string[];
-  allBrands: string[];
   toggleBrand: (b: string) => void;
   onClear: () => void;
   active: boolean;
 }
 
 function Filters(f: FilterProps) {
-  const [brandQ, setBrandQ] = useState("");
-  const shownBrands = f.allBrands.filter((b) => b.toLowerCase().includes(brandQ.toLowerCase()));
+  const subs = useMemo(() => {
+    const m = new Map<string, number>();
+    f.scope.forEach((p) => { if (p.subcategory && (!f.category || p.category === f.category)) m.set(p.subcategory, (m.get(p.subcategory) ?? 0) + 1); });
+    return Array.from(m.entries()).sort((a, b) => b[1] - a[1]);
+  }, [f.scope, f.category]);
+  const brandCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    f.scope.forEach((p) => m.set(p.brand, (m.get(p.brand) ?? 0) + 1));
+    return f.store.brands.filter((b) => m.has(b.slug)).map((b) => ({ ...b, n: m.get(b.slug)! }));
+  }, [f.scope, f.store]);
+  const catCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    f.scope.forEach((p) => m.set(p.category, (m.get(p.category) ?? 0) + 1));
+    return f.store.categories.filter((c) => m.has(c.slug)).map((c) => ({ ...c, n: m.get(c.slug)! }));
+  }, [f.scope, f.store]);
+
   return (
     <div className="ax-filters-in">
       <div className="ax-f-head">
@@ -74,19 +110,39 @@ function Filters(f: FilterProps) {
           <span className="track"><i /></span>
           <span>In stock only</span>
         </label>
+        <label className="ax-switch">
+          <input type="checkbox" checked={f.pricedOnly} onChange={(e) => f.setPricedOnly(e.target.checked)} />
+          <span className="track"><i /></span>
+          <span>Ready to buy (priced)</span>
+        </label>
       </div>
 
-      <div className="ax-f-sec">
-        <h3>Category</h3>
-        <div className="ax-f-cats">
-          <button type="button" className={!f.category ? "on" : ""} onClick={() => f.setCategory("")}>All categories</button>
-          {f.categories.map((c) => (
-            <button type="button" key={c.slug} className={f.category === c.slug ? "on" : ""} onClick={() => f.setCategory(c.slug)}>
-              <span>{c.name}</span>{c.productCount ? <em>{c.productCount}</em> : null}
-            </button>
-          ))}
+      {!f.category && catCounts.length > 1 && (
+        <div className="ax-f-sec">
+          <h3>Category</h3>
+          <div className="ax-f-cats">
+            {catCounts.map((c) => (
+              <button type="button" key={c.slug} onClick={() => f.goCategory(c.slug)}>
+                <span>{c.name}</span><em>{c.n}</em>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
+
+      {subs.length > 1 && (
+        <div className="ax-f-sec">
+          <h3>Type</h3>
+          <div className="ax-f-cats">
+            <button type="button" className={!f.sub ? "on" : ""} onClick={() => f.setSub("")}><span>All types</span></button>
+            {subs.map(([name, n]) => (
+              <button type="button" key={name} className={f.sub === name ? "on" : ""} onClick={() => f.setSub(f.sub === name ? "" : name)}>
+                <span>{name}</span><em>{n}</em>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="ax-f-sec">
         <h3>Price</h3>
@@ -98,30 +154,16 @@ function Filters(f: FilterProps) {
         ))}
       </div>
 
-      <div className="ax-f-sec">
-        <h3>Customer rating</h3>
-        {[4, 3].map((r) => (
-          <label key={r} className="ax-check radio">
-            <input type="radio" name="ax-rating" checked={f.minRating === r} onChange={() => f.setMinRating(r)} onClick={() => f.minRating === r && f.setMinRating(null)} />
-            <span className="box" /> <span className="ax-stars-mini"><Star size={12} fill="currentColor" /> {r}</span> and above
-          </label>
-        ))}
-      </div>
-
-      {f.allBrands.length > 0 && (
+      {!f.brandPage && brandCounts.length > 1 && (
         <div className="ax-f-sec">
           <h3>Brand</h3>
-          {f.allBrands.length > 8 && (
-            <div className="ax-f-search"><SearchIcon size={14} /><input value={brandQ} onChange={(e) => setBrandQ(e.target.value)} placeholder="Find a brand" aria-label="Find a brand" /></div>
-          )}
           <div className="ax-f-brands">
-            {shownBrands.map((b) => (
-              <label key={b} className="ax-check">
-                <input type="checkbox" checked={f.brands.includes(b)} onChange={() => f.toggleBrand(b)} />
-                <span className="box" /> {b}
+            {brandCounts.map((b) => (
+              <label key={b.slug} className="ax-check">
+                <input type="checkbox" checked={f.brands.includes(b.slug)} onChange={() => f.toggleBrand(b.slug)} />
+                <span className="box" /> {b.name} <em className="n">{b.n}</em>
               </label>
             ))}
-            {shownBrands.length === 0 && <p className="ax-f-none">No brand matches.</p>}
           </div>
         </div>
       )}
@@ -131,11 +173,14 @@ function Filters(f: FilterProps) {
 
 export default function Products() {
   const [, setLocation] = useLocation();
-  const [onCategoryPath, catParams] = useRoute("/category/:slug");
+  const [onCategory, catParams] = useRoute("/category/:slug");
+  const [onBrand, brandParams] = useRoute("/brand/:slug");
   const searchString = useSearch();
   const sp = useMemo(() => new URLSearchParams(searchString), [searchString]);
+  const { data: store, isLoading, error, refetch } = useStore();
 
-  const category = (onCategoryPath ? catParams?.slug : sp.get("category")) || "";
+  const category = (onCategory ? catParams?.slug : sp.get("category")) || "";
+  const brandPage = (onBrand ? brandParams?.slug : "") || "";
   const searchFilter = (sp.get("search") || "").trim();
   const brandParam = sp.get("brand") || "";
 
@@ -144,31 +189,31 @@ export default function Products() {
   const [view, setView] = useState<"grid" | "list">("grid");
   const [prices, setPrices] = useState<string[]>([]);
   const [brands, setBrands] = useState<string[]>(brandParam ? [brandParam] : []);
-  const [minRating, setMinRating] = useState<number | null>(null);
+  const [sub, setSub] = useState(sp.get("type") || "");
   const [inStock, setInStock] = useState(false);
+  const [pricedOnly, setPricedOnly] = useState(false);
   const [shown, setShown] = useState(PAGE);
   const [sheet, setSheet] = useState<null | "filter" | "sort">(null);
 
-  const sessionId = useSession();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const addToCart = useAddToCart();
-
-  const { data: productsData, isLoading } = useListProducts({ category: category || undefined, search: searchFilter || undefined, limit: 2000 });
-  const { data: categoriesData } = useListCategories();
-  const categories = asCategories(categoriesData);
-  const activeCategory = categories.find((c) => c.slug === category) ?? null;
-
   useEffect(() => { setLocalSearch(searchFilter); }, [searchFilter]);
   useEffect(() => { setBrands(brandParam ? [brandParam] : []); }, [brandParam]);
-  useEffect(() => { setShown(PAGE); }, [category, searchFilter, prices, brands, minRating, inStock, sortBy]);
+  useEffect(() => { setSub(sp.get("type") || ""); }, [category, brandPage]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setShown(PAGE); }, [category, brandPage, searchFilter, prices, brands, sub, inStock, pricedOnly, sortBy]);
   useEffect(() => { document.body.style.overflow = sheet ? "hidden" : ""; return () => { document.body.style.overflow = ""; }; }, [sheet]);
 
-  const title = searchFilter ? `Results for "${searchFilter}"` : activeCategory?.name ?? "Medical Store";
+  const activeCategory = store && category ? store.category(category) ?? null : null;
+  const activeBrand = store && brandPage ? store.brand(brandPage) ?? null : null;
+  const unknownPage = !!store && ((!!category && !activeCategory) || (!!brandPage && !activeBrand));
+
+  const title = searchFilter ? `Results for "${searchFilter}"` : activeBrand?.name ?? activeCategory?.name ?? "Shop all products";
   useSeo({
-    title: `${title} | Aethex Medical Store`,
-    description: activeCategory ? `Shop ${activeCategory.name.toLowerCase()} on Aethex: genuine products from trusted brands, delivered across India.` : "Genuine medical supplies for Indian doctors and students: stethoscopes, scrubs, books, instruments and equipment.",
-    path: onCategoryPath ? `/category/${category}` : "/shop",
+    title: `${searchFilter ? title : activeBrand ? `${activeBrand.name} products` : activeCategory ? `${activeCategory.name}: buy online` : "Medical devices and supplies"} | Aethex Store`,
+    description: activeBrand
+      ? `${activeBrand.about} Buy genuine ${activeBrand.name} products on Aethex, with cash on delivery across India.`
+      : activeCategory
+        ? `${activeCategory.blurb} Genuine products from OMRON, Dr Trust, Tynor, Accu-Chek, Littmann and more, with cash on delivery across India.`
+        : "Genuine BP monitors, stethoscopes, glucometers, oximeters, orthopaedic supports and diagnostic instruments from verified brands, with cash on delivery across India.",
+    path: onCategory ? `/category/${category}` : onBrand ? `/brand/${brandPage}` : "/shop",
   });
 
   const go = (next: { category?: string; search?: string }) => {
@@ -177,93 +222,143 @@ export default function Products() {
     const c = next.category !== undefined ? next.category : category;
     if (s) params.set("search", s);
     const q = params.toString();
+    if (brandPage && next.category === undefined) { setLocation(`/brand/${brandPage}${q ? `?${q}` : ""}`); return; }
     setLocation(c ? `/category/${c}${q ? `?${q}` : ""}` : `/shop${q ? `?${q}` : ""}`);
   };
-  const setCategory = (slug: string) => { go({ category: slug }); setSheet(null); };
+  const goCategory = (slug: string) => { setSheet(null); setSub(""); setLocation(slug ? `/category/${slug}${searchFilter ? `?search=${encodeURIComponent(searchFilter)}` : ""}` : "/shop"); };
   const submitSearch = (e: React.FormEvent) => { e.preventDefault(); go({ search: localSearch.trim() }); };
-
   const clearAll = () => {
-    setPrices([]); setBrands([]); setMinRating(null); setInStock(false);
-    if (category || searchFilter) setLocation("/shop");
+    setPrices([]); setBrands([]); setSub(""); setInStock(false); setPricedOnly(false);
+    if (searchFilter) go({ search: "" });
   };
 
-  const handleAddToCart = (productId: number) => {
-    if (!sessionId) return;
-    addToCart.mutate(
-      { data: { productId, sessionId, quantity: 1 } },
-      {
-        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/cart"] }); toast({ title: "Added to cart" }); },
-        onError: () => toast({ variant: "destructive", title: "Couldn't add to cart", description: "Please try again." }),
-      },
-    );
-  };
-
-  const all: Product[] = (productsData as { products?: Product[] } | undefined)?.products ?? [];
-  const allBrands = useMemo(() => Array.from(new Set(all.map((p) => p.brand).filter(Boolean))).sort(), [all]);
+  // What this page is about (category, brand, search), before the filters.
+  const scope = useMemo(() => {
+    if (!store) return [];
+    let list = store.products;
+    if (category) list = list.filter((p) => p.category === category);
+    if (brandPage) list = list.filter((p) => p.brand === brandPage);
+    if (searchFilter) {
+      const words = searchFilter.toLowerCase().split(/[\s,]+/).filter((w) => w.length > 1 || /\d/.test(w));
+      list = list.map((p) => ({ p, s: score(p, words, store) })).filter((x) => x.s > 0).sort((a, b) => b.s - a.s).map((x) => x.p);
+    }
+    return list;
+  }, [store, category, brandPage, searchFilter]);
 
   const results = useMemo(() => {
-    let list = all;
-    if (prices.length) list = list.filter((p) => prices.some((id) => PRICE_RANGES.find((r) => r.id === id)?.test(Number(p.price))));
+    let list = scope;
+    if (sub) list = list.filter((p) => p.subcategory === sub);
     if (brands.length) list = list.filter((p) => brands.includes(p.brand));
-    if (minRating !== null) list = list.filter((p) => Number(p.rating) >= minRating);
     if (inStock) list = list.filter((p) => p.inStock);
+    if (pricedOnly || prices.length) list = list.filter((p) => !p.priceOnRequest);
+    if (prices.length) list = list.filter((p) => prices.some((id) => PRICE_RANGES.find((r) => r.id === id)?.test(Number(p.price))));
     const sorted = [...list];
-    if (sortBy === "price-asc") sorted.sort((a, b) => Number(a.price) - Number(b.price));
-    if (sortBy === "price-desc") sorted.sort((a, b) => Number(b.price) - Number(a.price));
-    if (sortBy === "top-rated") sorted.sort((a, b) => Number(b.rating) - Number(a.rating) || b.reviewCount - a.reviewCount);
-    if (sortBy === "newest") sorted.sort((a, b) => b.id - a.id);
+    const priceOf = (p: ProductSummary) => (p.priceOnRequest ? Infinity : Number(p.price));
+    if (sortBy === "relevance" && !searchFilter) {
+      return mixBrands(list, (p) => Number(p.inStock) * 4 + Number(p.featured) * 2 + Number(!p.priceOnRequest));
+    }
+    if (sortBy === "price-asc") sorted.sort((a, b) => priceOf(a) - priceOf(b));
+    if (sortBy === "price-desc") sorted.sort((a, b) => (b.priceOnRequest ? -1 : Number(b.price)) - (a.priceOnRequest ? -1 : Number(a.price)));
+    if (sortBy === "discount") sorted.sort((a, b) => discountPct(b.price, b.mrp) - discountPct(a.price, a.mrp));
+    if (sortBy === "name") sorted.sort((a, b) => a.name.localeCompare(b.name));
     return sorted;
-  }, [all, prices, brands, minRating, inStock, sortBy]);
+  }, [scope, sub, brands, inStock, pricedOnly, prices, sortBy, searchFilter]);
 
-  const filterCount = prices.length + brands.length + (minRating !== null ? 1 : 0) + (inStock ? 1 : 0);
-  const active = !!(category || searchFilter || filterCount);
+  const filterCount = prices.length + brands.length + (sub ? 1 : 0) + (inStock ? 1 : 0) + (pricedOnly ? 1 : 0);
+  const active = !!(searchFilter || filterCount);
   const togglePrice = (id: string) => setPrices((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   const toggleBrand = (b: string) => setBrands((p) => (p.includes(b) ? p.filter((x) => x !== b) : [...p, b]));
 
-  const filterProps: FilterProps = {
-    categories, category, setCategory, prices, togglePrice, minRating, setMinRating, inStock, setInStock,
-    brands, allBrands, toggleBrand, onClear: clearAll, active,
-  };
-
   const crumbs: Crumb[] = [{ label: "Home", href: "/" }, { label: "Shop", href: "/shop" }];
-  if (activeCategory) crumbs.push({ label: activeCategory.name });
+  if (activeBrand) crumbs.push({ label: "Brands", href: "/brands" }, { label: activeBrand.name });
+  else if (activeCategory) crumbs.push({ label: activeCategory.name });
   else if (searchFilter) crumbs.push({ label: "Search" });
 
-  const countText = isLoading ? "Loading products…" : `${results.length.toLocaleString("en-IN")} product${results.length === 1 ? "" : "s"}`;
+  const countText = isLoading || !store ? "Loading products…" : `${results.length.toLocaleString("en-IN")} product${results.length === 1 ? "" : "s"}`;
+  const brandCats = useMemo(() => (store && brandPage ? store.categories.filter((c) => scope.some((p) => p.category === c.slug)) : []), [store, brandPage, scope]);
+
+  if (error && !store) {
+    return (
+      <div className="ax-shop-page">
+        <ShopHead crumbs={crumbs} title="Shop" />
+        <div className="ax-wrap"><div className="ax-empty" style={{ margin: "40px 0" }}>
+          <span className="ic"><SearchIcon size={26} /></span>
+          <h2>The store didn't load</h2>
+          <p>{error.message}</p>
+          <div className="acts"><button type="button" className="ax-btn teal" onClick={() => refetch()}>Try again</button></div>
+        </div></div>
+      </div>
+    );
+  }
+
+  if (unknownPage) {
+    return (
+      <div className="ax-shop-page">
+        <ShopHead crumbs={[{ label: "Home", href: "/" }, { label: "Shop", href: "/shop" }]} title="Not found" />
+        <div className="ax-wrap"><div className="ax-empty" style={{ margin: "40px 0" }}>
+          <span className="ic"><SearchIcon size={26} /></span>
+          <h2>We don't have that {category ? "category" : "brand"}</h2>
+          <p>Browse everything in the store, or search for what you need.</p>
+          <div className="acts"><Link href="/shop" className="ax-btn teal">See all products</Link></div>
+        </div></div>
+      </div>
+    );
+  }
+
+  const filterProps: FilterProps | null = store ? {
+    store, scope, category, brandPage, goCategory, sub, setSub, prices, togglePrice, inStock, setInStock, pricedOnly, setPricedOnly,
+    brands, toggleBrand, onClear: clearAll, active,
+  } : null;
+
+  const sub2 = activeBrand
+    ? <>{activeBrand.about} <span className="ax-sh-meta">{countText}</span></>
+    : activeCategory && !searchFilter
+      ? <>{activeCategory.blurb} <span className="ax-sh-meta">{countText}</span></>
+      : <>{countText}{searchFilter && activeCategory ? ` in ${activeCategory.name}` : ""}{!searchFilter ? " · genuine products from verified brands" : ""}</>;
 
   return (
     <div className="ax-shop-page">
       <ShopHead
         crumbs={crumbs}
-        title={title}
-        sub={activeCategory && !searchFilter ? `${countText} · Genuine products from trusted brands` : `${countText}${searchFilter && activeCategory ? ` in ${activeCategory.name}` : ""}`}
+        title={activeBrand ? <span className="ax-brand-title"><BadgeCheck size={24} aria-hidden="true" /> {activeBrand.name}</span> : title}
+        sub={sub2}
         right={
           <form className="ax-sh-search" role="search" onSubmit={submitSearch}>
             <SearchIcon size={17} aria-hidden="true" />
-            <input value={localSearch} onChange={(e) => setLocalSearch(e.target.value)} placeholder="Search the store" aria-label="Search the store" />
+            <input value={localSearch} onChange={(e) => setLocalSearch(e.target.value)} placeholder={activeBrand ? `Search ${activeBrand.name}` : "Search the store"} aria-label="Search the store" />
             {localSearch && <button type="button" className="clr" onClick={() => { setLocalSearch(""); if (searchFilter) go({ search: "" }); }} aria-label="Clear search"><X size={15} /></button>}
           </form>
         }
       >
-        <div className="ax-chips" role="list" aria-label="Categories">
-          <button type="button" role="listitem" className={!category ? "on" : ""} onClick={() => setCategory("")}>All</button>
-          {categories.map((c) => (
-            <button type="button" role="listitem" key={c.slug} className={category === c.slug ? "on" : ""} onClick={() => setCategory(c.slug)}>{c.name}</button>
-          ))}
-        </div>
+        {activeBrand ? (
+          <div className="ax-chips" role="list" aria-label={`${activeBrand.name} categories`}>
+            {brandCats.map((c) => (
+              <Link role="listitem" key={c.slug} href={`/category/${c.slug}?brand=${activeBrand.slug}`}>{c.name}</Link>
+            ))}
+            {activeBrand.website && <a className="ext" href={activeBrand.website} target="_blank" rel="noopener noreferrer">{activeBrand.name} website <ExternalLink size={12} /></a>}
+          </div>
+        ) : (
+          <div className="ax-chips" role="list" aria-label="Categories">
+            <button type="button" role="listitem" className={!category ? "on" : ""} onClick={() => goCategory("")}>All</button>
+            {store?.categories.map((c) => (
+              <button type="button" role="listitem" key={c.slug} className={category === c.slug ? "on" : ""} onClick={() => goCategory(c.slug)}>{c.name}</button>
+            ))}
+          </div>
+        )}
       </ShopHead>
 
       <div className="ax-wrap ax-shop">
-        <aside className="ax-filters" aria-label="Filters"><Filters {...filterProps} /></aside>
+        <aside className="ax-filters" aria-label="Filters">{filterProps && <Filters {...filterProps} />}</aside>
 
         <div className="ax-results">
           <div className="ax-toolbar">
             <p className="ax-count">{countText}</p>
             <div className="ax-active">
               {inStock && <button type="button" onClick={() => setInStock(false)}>In stock <X size={12} /></button>}
-              {minRating !== null && <button type="button" onClick={() => setMinRating(null)}>{minRating}★ and above <X size={12} /></button>}
+              {pricedOnly && <button type="button" onClick={() => setPricedOnly(false)}>Ready to buy <X size={12} /></button>}
+              {sub && <button type="button" onClick={() => setSub("")}>{sub} <X size={12} /></button>}
               {prices.map((id) => <button type="button" key={id} onClick={() => togglePrice(id)}>{PRICE_RANGES.find((r) => r.id === id)?.label} <X size={12} /></button>)}
-              {brands.map((b) => <button type="button" key={b} onClick={() => toggleBrand(b)}>{b} <X size={12} /></button>)}
+              {brands.map((b) => <button type="button" key={b} onClick={() => toggleBrand(b)}>{store?.brandName(b) ?? b} <X size={12} /></button>)}
             </div>
             <label className="ax-sort">
               <span>Sort</span>
@@ -277,23 +372,23 @@ export default function Products() {
             </div>
           </div>
 
-          {isLoading ? (
+          {isLoading || !store ? (
             <div className={`ax-grid ${view}`}>{Array.from({ length: 8 }, (_, k) => <div key={k} className="ax-prod sk" />)}</div>
           ) : results.length === 0 ? (
             <div className="ax-empty">
               <span className="ic"><SearchIcon size={26} /></span>
               <h2>No products match</h2>
-              <p>Try fewer filters, another category, or a different search.</p>
+              <p>{searchFilter ? "Try a shorter search, or another word for it." : "Try fewer filters, or another category."}</p>
               <div className="acts">
-                <button type="button" className="ax-btn teal" onClick={clearAll}>Clear filters</button>
+                {active && <button type="button" className="ax-btn teal" onClick={clearAll}>Clear filters</button>}
                 <Link href="/shop" className="ax-btn">See all products</Link>
               </div>
             </div>
           ) : (
             <>
               <div className={`ax-grid ${view}`}>
-                {results.slice(0, shown).map((p) => (
-                  <ProductCard key={p.id} product={p} onAddToCart={handleAddToCart} isAdding={addToCart.isPending} viewMode={view} />
+                {results.slice(0, shown).map((p, i) => (
+                  <ProductCard key={p.id} product={p} brandName={store.brandName(p.brand)} viewMode={view} eager={i < 4} />
                 ))}
               </div>
               {results.length > shown && (
@@ -314,26 +409,26 @@ export default function Products() {
       </div>
       {sheet && (
         <TopLayer>
-        <div className="ax-sheet" role="dialog" aria-modal="true" aria-label={sheet === "filter" ? "Filters" : "Sort"} onClick={() => setSheet(null)}>
-          <div className="ax-sheet-in" onClick={(e) => e.stopPropagation()}>
-            <div className="ax-sheet-head">
-              <b>{sheet === "filter" ? "Filters" : "Sort by"}</b>
-              <button type="button" onClick={() => setSheet(null)} aria-label="Close"><X size={18} /></button>
-            </div>
-            <div className="ax-sheet-body">
-              {sheet === "filter" ? <Filters {...filterProps} /> : (
-                <div className="ax-sort-list">
-                  {SORTS.map((s) => (
-                    <button type="button" key={s.value} className={sortBy === s.value ? "on" : ""} onClick={() => { setSortBy(s.value); setSheet(null); }}>{s.label}</button>
-                  ))}
-                </div>
+          <div className="ax-sheet" role="dialog" aria-modal="true" aria-label={sheet === "filter" ? "Filters" : "Sort"} onClick={() => setSheet(null)}>
+            <div className="ax-sheet-in" onClick={(e) => e.stopPropagation()}>
+              <div className="ax-sheet-head">
+                <b>{sheet === "filter" ? "Filters" : "Sort by"}</b>
+                <button type="button" onClick={() => setSheet(null)} aria-label="Close"><X size={18} /></button>
+              </div>
+              <div className="ax-sheet-body">
+                {sheet === "filter" ? (filterProps && <Filters {...filterProps} />) : (
+                  <div className="ax-sort-list">
+                    {SORTS.map((s) => (
+                      <button type="button" key={s.value} className={sortBy === s.value ? "on" : ""} onClick={() => { setSortBy(s.value); setSheet(null); }}>{s.label}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {sheet === "filter" && (
+                <div className="ax-sheet-foot"><button type="button" className="ax-btn teal" onClick={() => setSheet(null)}>Show {results.length.toLocaleString("en-IN")} product{results.length === 1 ? "" : "s"}</button></div>
               )}
             </div>
-            {sheet === "filter" && (
-              <div className="ax-sheet-foot"><button type="button" className="ax-btn teal" onClick={() => setSheet(null)}>Show {results.length.toLocaleString("en-IN")} product{results.length === 1 ? "" : "s"}</button></div>
-            )}
           </div>
-        </div>
         </TopLayer>
       )}
     </div>

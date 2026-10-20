@@ -2,6 +2,7 @@
 import { Link, useLocation } from "wouter";
 import { ArrowRight, Download, Hospital } from "lucide-react";
 import { cadusUrl, downloadsUrl } from "@/lib/host";
+import { BUSINESS } from "@/config/business";
 import { Logo } from "./Navbar";
 
 const COLS: { title: string; links: { href: string; label: string; external?: boolean }[] }[] = [
@@ -9,11 +10,11 @@ const COLS: { title: string; links: { href: string; label: string; external?: bo
     title: "Shop",
     links: [
       { href: "/shop", label: "All products" },
+      { href: "/category/bp-monitors", label: "BP monitors" },
       { href: "/category/stethoscopes", label: "Stethoscopes" },
-      { href: "/category/scrubs", label: "Scrubs & uniforms" },
-      { href: "/books", label: "Medical books" },
-      { href: "/category/equipment", label: "Medical equipment" },
-      { href: "/orders/track", label: "Track an order" },
+      { href: "/category/diabetes-care", label: "Diabetes care" },
+      { href: "/category/orthopaedic-supports", label: "Supports & braces" },
+      { href: "/brands", label: "All brands" },
     ],
   },
   {
@@ -39,14 +40,14 @@ const COLS: { title: string; links: { href: string; label: string; external?: bo
     ],
   },
   {
-    title: "Company",
+    title: "Help",
     links: [
+      { href: "/orders/track", label: "Track an order" },
+      { href: "/orders", label: "My orders" },
+      { href: "/shipping-policy", label: "Shipping & delivery" },
+      { href: "/returns-policy", label: "Returns & replacement" },
+      { href: "/grievance", label: "Grievances" },
       { href: "/contact", label: "Contact us" },
-      { href: "/blog", label: "Blog" },
-      { href: "/news", label: "Medical news" },
-      { href: "/jobs", label: "Jobs" },
-      { href: "/community", label: "Community" },
-      { href: "/institutions", label: "Colleges & hospitals" },
     ],
   },
 ];
@@ -79,12 +80,14 @@ export function Footer() {
           ))}
         </div>
         <div className="ax-foot-bot">
-          <span>© {new Date().getFullYear()} Aethex. Made in India for medical professionals.</span>
+          <span>© {new Date().getFullYear()} {BUSINESS.legalName}. Made in India for medical professionals.{BUSINESS.gstin ? ` GSTIN ${BUSINESS.gstin}.` : ""}</span>
           <nav>
+            <Link href="/blog">Blog</Link>
+            <Link href="/jobs">Jobs</Link>
             <Link href="/privacy-policy">Privacy</Link>
             <Link href="/terms-of-service">Terms</Link>
             <Link href="/medical-disclaimer">Medical disclaimer</Link>
-            <a href="mailto:support@aethex.in">support@aethex.in</a>
+            <a href={`mailto:${BUSINESS.email}`}>{BUSINESS.email}</a>
           </nav>
         </div>
       </div>

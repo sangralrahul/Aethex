@@ -47,7 +47,7 @@ const SECTIONS = [
       "All products sold on AETHEX are sourced from verified, authorised distributors.",
       "Prices are subject to change without notice. The price at time of order confirmation is binding.",
       "We reserve the right to cancel orders in cases of pricing errors or stock unavailability.",
-      "Returns and refunds are governed by our 7-Day Return Policy.",
+      "Orders are paid by cash on delivery. Replacements, returns and refunds follow our Returns & replacement policy (aethex.in/returns-policy); delivery follows our Shipping policy (aethex.in/shipping-policy).",
       "Prescription-only products may require verification of medical credentials.",
     ],
   },

@@ -113,7 +113,10 @@ const SellerStorefront = lazyPage(() => import("@/pages/SellerStorefront"));
 const StudyHub = lazyPage(() => import("@/pages/StudyHub"));
 const Checkout = lazyPage(() => import("@/pages/Checkout"));
 const Account = lazyPage(() => import("@/pages/Account"));
-const Admin = lazyPage(() => import("@/pages/Admin"));
+const StoreAdmin = lazyPage(() => import("@/pages/StoreAdmin"));
+const Brands = lazyPage(() => import("@/pages/Brands"));
+const OrderPlaced = lazyPage(() => import("@/pages/OrderPlaced"));
+const StorePolicy = lazyPage(() => import("@/pages/StorePolicy"));
 
 const Blog = lazyPage(() => import("@/pages/Blog"));
 const BlogPost = lazyPage(() => import("@/pages/BlogPost"));
@@ -362,6 +365,8 @@ function Router() {
                 <Route path="/products" component={Products} />
                 <Route path="/products/:id" component={ProductDetail} />
                 <Route path="/category/:slug" component={Products} />
+                <Route path="/brand/:slug" component={Products} />
+                <Route path="/brands" component={Brands} />
 
                 {/* Cart & Checkout */}
                 <Route path="/cart" component={Cart} />
@@ -373,6 +378,11 @@ function Router() {
                 {/* Orders */}
                 <Route path="/orders" component={Orders} />
                 <Route path="/orders/track" component={OrderTracking} />
+                <Route path="/order/:id" component={OrderPlaced} />
+                <Route path="/shipping-policy" component={StorePolicy} />
+                <Route path="/returns-policy" component={StorePolicy} />
+                <Route path="/cancellation-policy">{() => <Redirect to="/returns-policy" />}</Route>
+                <Route path="/grievance" component={StorePolicy} />
 
                 {/* Account */}
                 <Route path="/account" component={Account} />
@@ -420,7 +430,8 @@ function Router() {
                 <Route path="/my-reviews" component={MyReviews} />
 
                 {/* Admin */}
-                <Route path="/admin" component={Admin} />
+                <Route path="/admin" component={StoreAdmin} />
+                <Route path="/admin/store" component={StoreAdmin} />
                 <Route path="/admin/reviews" component={AdminReviews} />
                 <Route path="/admin/sellers" component={AdminSellers} />
                 <Route path="/admin/blog" component={AdminBlog} />

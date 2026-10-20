@@ -7,140 +7,42 @@ import {
   Sparkles, Trophy, ChevronDown, X, Filter,
 } from "lucide-react";
 import { bookSlug } from "@/pages/BookDetail";
-import { useAddToCart } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
-import { useSession } from "@/hooks/use-session";
-import { useToast } from "@/hooks/use-toast";
+import { EnquiryDialog } from "@/components/store/EnquiryForm";
+import { useSeo } from "@/hooks/use-seo";
 import { CURRICULUM, type Degree, type CurriculumYear, type SubjectGroup, type CurrBook } from "@/data/curriculumBooks";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-// ── Book cover: proxied via our own API server (caches + throttles Google Books)
-const coverCache = new Map<string, string | false>();
-const coverInFlight = new Set<string>();
-
-function useBookCover(title: string, author: string, enabled: boolean) {
-  const key = `${title}|${author}`;
-  const [url, setUrl] = useState<string | false>(false);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!enabled) return;
-    if (coverCache.has(key)) { setUrl(coverCache.get(key)!); return; }
-    if (coverInFlight.has(key)) return;
-    coverInFlight.add(key);
-    setLoading(true);
-    fetch(
-      `${BASE}/api/book-cover?title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}`,
-      { signal: AbortSignal.timeout(15000) }
-    )
-      .then(r => r.json())
-      .then((data: { url: string | null }) => {
-        const v: string | false = data.url || false;
-        coverCache.set(key, v);
-        coverInFlight.delete(key);
-        setUrl(v);
-        setLoading(false);
-      })
-      .catch(() => {
-        coverCache.set(key, false);
-        coverInFlight.delete(key);
-        setUrl(false);
-        setLoading(false);
-      });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, enabled]);
-
-  return { url, loading };
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────
-function discount(price: number, mrp: number) {
-  if (!mrp || mrp <= price) return 0;
-  return Math.round(((mrp - price) / mrp) * 100);
-}
-
 // ── Book Card ─────────────────────────────────────────────────────────────
-function BookCard({
-  book,
-  color,
-  dbId,
-  onCart,
-}: {
-  book: CurrBook;
-  color: string;
-  dbId?: number;
-  onCart: (id: number) => void;
-}) {
-  const disc = discount(book.price, book.mrp);
-  const cardRef = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const el = cardRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
-      { rootMargin: "80px" }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-  const { url: coverUrl, loading: coverLoading } = useBookCover(book.name, book.author, visible);
+export const bookTitle = (name: string) => name.replace(/\s+\d+(?:st|nd|rd|th)\s+Ed(?:ition)?.*$/i, "");
 
+function BookCard({ book, color, onRequest }: { book: CurrBook; color: string; onRequest: (b: CurrBook) => void }) {
   return (
     <div
-      ref={cardRef}
       className="group flex flex-col rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl relative"
       style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.9)", boxShadow: "0 2px 14px rgba(0,0,0,0.07)" }}
     >
       {/* Full-card clickable overlay — sits behind buttons; every book gets its own detail page */}
       <Link href={`/books/${bookSlug(book.name)}`} className="absolute inset-0 z-0" aria-label={`View ${book.name} details`} />
-      {/* Cover */}
+      {/* Cover: a designed spine in the subject's colour */}
       <div className="relative shrink-0 overflow-hidden flex items-center justify-center" style={{ height: 180, background: `linear-gradient(160deg,${color}22,${color}08)` }}>
-        {coverLoading && (
-          <div className="absolute inset-0 animate-pulse" style={{ background: `linear-gradient(135deg,${color}22,${color}10)` }} />
-        )}
-        {coverUrl ? (
-          <img
-            src={coverUrl}
-            alt={book.name}
-            className="h-full w-full object-contain group-hover:scale-105 transition-transform duration-500 p-2"
-            style={{ objectPosition: "center" }}
-          />
-        ) : !coverLoading ? (
-          /* Fallback — styled book spine if no cover found */
-          <div className="flex flex-col items-center justify-center gap-2 px-4 py-6 text-center h-full w-full"
-            style={{ background: `linear-gradient(160deg,${color}DD,${color}88)` }}>
-            <BookOpen className="w-8 h-8 text-white opacity-70" />
-            <p className="text-[10px] font-bold text-white opacity-80 line-clamp-3 leading-tight">
-              {book.name.replace(/\s+\d+(?:st|nd|rd|th)\s+Ed(?:ition)?.*$/i, "")}
-            </p>
-          </div>
-        ) : null}
-
-        {/* Badges */}
-        <div className="absolute top-2 left-2 flex gap-1.5">
-          {disc >= 10 && (
-            <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md" style={{ background: "#FF3B30", color: "#fff" }}>
-              {disc}% OFF
-            </span>
-          )}
-          {book.featured && (
-            <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md" style={{ background: "#FF9500", color: "#fff" }}>
-              ⭐ Featured
-            </span>
-          )}
+        <div className="flex flex-col items-center justify-center gap-2 px-4 py-6 text-center h-full w-full"
+          style={{ background: `linear-gradient(160deg,${color}DD,${color}88)` }}>
+          <BookOpen className="w-8 h-8 text-white opacity-70" />
+          <p className="text-[10px] font-bold text-white opacity-80 line-clamp-3 leading-tight">{bookTitle(book.name)}</p>
         </div>
-        {book.forExam?.length && (
+        {book.featured && (
+          <div className="absolute top-2 left-2 flex gap-1.5">
+            <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md" style={{ background: "#FF9500", color: "#fff" }}>Standard text</span>
+          </div>
+        )}
+        {book.forExam?.length ? (
           <div className="absolute bottom-2 right-2 flex gap-1">
             {book.forExam.slice(0, 2).map(e => (
-              <span key={e} className="text-[8px] font-bold px-1.5 py-0.5 rounded-md" style={{ background: "rgba(0,0,0,0.55)", color: "#fff", backdropFilter: "blur(4px)" }}>
-                {e}
-              </span>
+              <span key={e} className="text-[8px] font-bold px-1.5 py-0.5 rounded-md" style={{ background: "rgba(0,0,0,0.55)", color: "#fff", backdropFilter: "blur(4px)" }}>{e}</span>
             ))}
           </div>
-        )}
-        {/* Edition */}
+        ) : null}
         <div className="absolute top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded-md"
           style={{ background: "rgba(0,0,0,0.45)", color: "rgba(255,255,255,0.9)", backdropFilter: "blur(4px)" }}>
           {book.edition}
@@ -149,48 +51,18 @@ function BookCard({
 
       {/* Body */}
       <div className="flex flex-col flex-1 p-3.5 gap-2">
-        {/* Title */}
-        <h3
-          className="text-[12px] font-bold leading-snug line-clamp-3 group-hover:text-[#007AFF] transition-colors"
-          style={{ color: "#1C1C1E", minHeight: "3.2rem" }}
-        >
-          {book.name.replace(/\s+\d+(?:st|nd|rd|th)\s+Ed(?:ition)?.*$/i, "")}
+        <h3 className="text-[12px] font-bold leading-snug line-clamp-3 group-hover:text-[#007AFF] transition-colors" style={{ color: "#1C1C1E", minHeight: "3.2rem" }}>
+          {bookTitle(book.name)}
         </h3>
-
-        {/* Author */}
-        <p className="text-[10px] truncate" style={{ color: "#8E8E93" }}>
-          {book.author}
-        </p>
-
-        {/* Publisher tag */}
-        <span className="self-start text-[9px] font-semibold px-2 py-0.5 rounded-full" style={{ background: `${color}14`, color }}>
-          {book.publisher}
-        </span>
-
-        {/* Price */}
-        <div className="flex items-baseline gap-2 mt-auto">
-          <span className="text-base font-extrabold" style={{ color: "#1C1C1E" }}>
-            ₹{book.price.toLocaleString("en-IN")}
-          </span>
-          {book.mrp > book.price && (
-            <span className="text-[10px] line-through" style={{ color: "#AEAEB2" }}>
-              ₹{book.mrp.toLocaleString("en-IN")}
-            </span>
-          )}
-        </div>
-
-        {/* Cart button — z-10 to sit above the card-link overlay */}
+        <p className="text-[10px] truncate" style={{ color: "#8E8E93" }}>{book.author}</p>
+        <span className="self-start text-[9px] font-semibold px-2 py-0.5 rounded-full" style={{ background: `${color}14`, color }}>{book.publisher}</span>
         <button
-          onClick={e => { e.preventDefault(); e.stopPropagation(); if (dbId) onCart(dbId); }}
-          className="relative z-10 w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-bold transition-all hover:opacity-90 active:scale-95 mt-1"
-          style={{
-            background: dbId ? `linear-gradient(135deg,${color},${color}CC)` : "#E5E5EA",
-            color: dbId ? "#fff" : "#AEAEB2",
-          }}
-          disabled={!dbId}
+          type="button"
+          onClick={e => { e.preventDefault(); e.stopPropagation(); onRequest(book); }}
+          className="relative z-10 w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-bold transition-all hover:opacity-90 active:scale-95 mt-auto"
+          style={{ background: `linear-gradient(135deg,${color},${color}CC)`, color: "#fff" }}
         >
-          <ShoppingCart className="w-3 h-3" />
-          {dbId ? "Add to Cart" : "Request Book"}
+          <BookMarked className="w-3 h-3" /> Request this book
         </button>
       </div>
     </div>
@@ -201,26 +73,15 @@ function BookCard({
 function SubjectSection({
   subj,
   degreeColor,
-  dbProducts,
-  onCart,
+  onRequest,
 }: {
   subj: SubjectGroup;
   degreeColor: string;
-  dbProducts: Record<string, number>;
-  onCart: (id: number) => void;
+  onRequest: (b: CurrBook) => void;
 }) {
   const color = subj.color || degreeColor;
   const [showAll, setShowAll] = useState(false);
   const visible = showAll ? subj.books : subj.books.slice(0, 10);
-
-  const getDbId = (book: CurrBook): number | undefined => {
-    for (const tag of book.matchTags) {
-      const key = tag.toLowerCase();
-      if (dbProducts[key]) return dbProducts[key];
-    }
-    const nameKey = book.name.toLowerCase().slice(0, 20);
-    return dbProducts[nameKey];
-  };
 
   return (
     <div className="mb-10">
@@ -236,7 +97,7 @@ function SubjectSection({
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
         {visible.map(book => (
-          <BookCard key={book.name} book={book} color={color} dbId={getDbId(book)} onCart={onCart} />
+          <BookCard key={book.name} book={book} color={color} onRequest={onRequest} />
         ))}
       </div>
 
@@ -258,13 +119,11 @@ function SubjectSection({
 function YearPanel({
   year,
   degreeColor,
-  dbProducts,
-  onCart,
+  onRequest,
 }: {
   year: CurriculumYear;
   degreeColor: string;
-  dbProducts: Record<string, number>;
-  onCart: (id: number) => void;
+  onRequest: (b: CurrBook) => void;
 }) {
   const totalBooks = year.subjects.reduce((s, sub) => s + sub.books.length, 0);
   return (
@@ -280,7 +139,7 @@ function YearPanel({
       </div>
 
       {year.subjects.map(subj => (
-        <SubjectSection key={subj.id} subj={subj} degreeColor={degreeColor} dbProducts={dbProducts} onCart={onCart} />
+        <SubjectSection key={subj.id} subj={subj} degreeColor={degreeColor} onRequest={onRequest} />
       ))}
     </div>
   );
@@ -292,14 +151,10 @@ export default function MedicalBooks() {
   const [activeDegreeId, setActiveDegreeId] = useState(CURRICULUM[0].id);
   const [activeYearId, setActiveYearId] = useState(CURRICULUM[0].years[0].id);
   const [activeSubjectId, setActiveSubjectId] = useState<string>("");
-  const [dbProducts, setDbProducts] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(true);
+  const [request, setRequest] = useState<CurrBook | null>(null);
+  const loading = false;
   const yearScrollRef = useRef<HTMLDivElement>(null);
-
-  const sessionId = useSession();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const addToCartMutation = useAddToCart();
+  useSeo({ title: "Medical books by degree and year | Aethex", description: "MBBS, MD, MS, DM, MCh and DNB textbooks by year and subject. Request any book and we'll confirm the edition, price and availability.", path: "/books" });
 
   const activeDegree = CURRICULUM.find(d => d.id === activeDegreeId) ?? CURRICULUM[0];
   const activeYear = activeDegree.years.find(y => y.id === activeYearId) ?? activeDegree.years[0];
@@ -323,54 +178,6 @@ export default function MedicalBooks() {
       setActiveSubjectId(activeYear.subjects[0]?.id ?? "");
     }
   }, [activeYearId, activeDegree.id]);
-
-  // Build a lookup map: lowercase name fragment / tag → product ID from DB
-  useEffect(() => {
-    const slugs = [
-      "books","surgical","cardiac-care","orthopaedic","neurology",
-      "gastroenterology","nephrology","pulmonology","ophthalmology",
-      "paediatric","dermatology","ent","gynaecology","endocrinology",
-      "emergency","radiology","oncology","anaesthesia","physiotherapy",
-      "psychiatry","urology",
-    ];
-    setLoading(true);
-    Promise.all(
-      slugs.map(slug =>
-        fetch(`${BASE}/api/products?category=${slug}&limit=200`)
-          .then(r => r.json())
-          .then(d => d.products ?? [])
-          .catch(() => [])
-      )
-    ).then(results => {
-      const map: Record<string, number> = {};
-      const allProducts: { id: number; name: string; tags: string[] }[] = [];
-      results.flat().forEach((p: any) => {
-        if (!allProducts.find(x => x.id === p.id)) allProducts.push(p);
-      });
-      allProducts.forEach(p => {
-        // key by first 20 chars of name (lowercased)
-        map[p.name.toLowerCase().slice(0, 20)] = p.id;
-        // key by each tag
-        (p.tags ?? []).forEach((t: string) => { map[t.toLowerCase()] = p.id; });
-      });
-      setDbProducts(map);
-      setLoading(false);
-    });
-  }, []);
-
-  const handleCart = (productId: number) => {
-    if (!sessionId) { toast({ title: "Session error", variant: "destructive" }); return; }
-    addToCartMutation.mutate(
-      { data: { productId, sessionId, quantity: 1 } },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
-          toast({ title: "Added to cart ✓", description: "Book added successfully." });
-        },
-        onError: () => toast({ variant: "destructive", title: "Error adding to cart" }),
-      }
-    );
-  };
 
   // Search across all books
   const allBooks = useMemo(() => {
@@ -410,7 +217,7 @@ export default function MedicalBooks() {
       <PageHero
         tag="Medical Library"
         title="Medical Books by Degree & Year"
-        subtitle={`${totalBooks}+ books · MBBS to DM/MCh · NMC curriculum mapped · Best INR prices`}
+        subtitle={`${totalBooks}+ books · MBBS to DM/MCh · by year and subject · request any book`}
         icon={<BookOpen className="w-7 h-7" style={{ color: "rgba(255,255,255,0.85)" }} />}
         right={
           <div className="relative w-full sm:w-80">
@@ -522,18 +329,9 @@ export default function MedicalBooks() {
                       <span className="text-xs" style={{ color: "#AEAEB2" }}>{dBooks.length} result{dBooks.length !== 1 ? "s" : ""}</span>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                      {dBooks.map(({ book, subj }) => {
-                        const getDbId = (b: CurrBook) => {
-                          for (const tag of b.matchTags) {
-                            const key = tag.toLowerCase();
-                            if (dbProducts[key]) return dbProducts[key];
-                          }
-                          return dbProducts[b.name.toLowerCase().slice(0, 20)];
-                        };
-                        return (
-                          <BookCard key={book.name} book={book} color={subj.color || deg.color} dbId={getDbId(book)} onCart={handleCart} />
-                        );
-                      })}
+                      {dBooks.map(({ book, subj }) => (
+                        <BookCard key={book.name} book={book} color={subj.color || deg.color} onRequest={setRequest} />
+                      ))}
                     </div>
                   </div>
                 );
@@ -688,15 +486,13 @@ export default function MedicalBooks() {
                 <SubjectSection
                   subj={activeSubject}
                   degreeColor={activeDegree.color}
-                  dbProducts={dbProducts}
-                  onCart={handleCart}
+                  onRequest={setRequest}
                 />
               ) : (
                 <YearPanel
                   year={activeYear}
                   degreeColor={activeDegree.color}
-                  dbProducts={dbProducts}
-                  onCart={handleCart}
+                  onRequest={setRequest}
                 />
               )}
 
@@ -708,20 +504,28 @@ export default function MedicalBooks() {
                 <BookOpen className="w-10 h-10 mx-auto mb-4 opacity-20 text-white" />
                 <h3 className="text-xl font-display font-bold text-white mb-2">Can't find your book?</h3>
                 <p className="mb-5 text-sm" style={{ color: "rgba(255,255,255,0.45)" }}>
-                  We source any medical textbook on request — Indian & international editions at the best price.
+                  We source medical textbooks on request: tell us the title and edition, and we'll confirm the price and availability.
                 </p>
-                <a href={`${BASE}/contact`}
+                <button type="button" onClick={() => setRequest({ name: "", author: "", publisher: "", edition: "", price: 0, mrp: 0, matchTags: [] } as unknown as CurrBook)}
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm transition-all hover:opacity-90"
                   style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)", color: "#FFFFFF" }}>
                   <Trophy className="w-4 h-4" />
-                  Request a Book
-                </a>
+                  Request a book
+                </button>
               </div>
             </main>
           </div>
         )}
       </div>
       </div>{/* /relative wrapper */}
+      <EnquiryDialog
+        open={!!request}
+        onClose={() => setRequest(null)}
+        title="Request a book"
+        kind="book"
+        item={request?.name ? `${bookTitle(request.name)} (${request.edition}) by ${request.author}, ${request.publisher}` : undefined}
+        itemLabel={request?.name ? `${bookTitle(request.name)} · ${request.edition} · ${request.author}` : "Tell us the title, author and edition below."}
+      />
     </div>
   );
 }

@@ -1,0 +1,184 @@
+/**
+ * The store's data shapes, shared by the site and the Worker (worker/store.ts).
+ * The catalogue itself is src/data/store/catalog.json, built from the brands'
+ * official sites; the Worker serves it with the store's own changes (prices,
+ * stock, hidden items) applied.
+ */
+
+export type ReturnsPolicy = "replacement" | "standard";
+
+export interface Variant {
+  id: string;
+  label: string;
+  sku?: string;
+  price?: number;
+  mrp?: number;
+  inStock: boolean;
+  image?: string;
+}
+
+export interface SizeGuide {
+  how?: string;
+  header: string[];
+  rows: string[][];
+}
+
+export interface Product {
+  id: number;
+  slug: string;
+  brand: string;
+  name: string;
+  category: string;
+  subcategory: string;
+  featured: boolean;
+  /** Selling price including taxes; null while the price is on request. */
+  price: number | null;
+  mrp: number | null;
+  priceOnRequest: boolean;
+  inStock: boolean;
+  images: string[];
+  summary: string;
+  features: string[];
+  model?: string;
+  sku?: string;
+  sections?: { title: string; text: string }[];
+  longDescription?: string;
+  specs?: [string, string][];
+  inTheBox?: string;
+  warranty?: string;
+  manufacturer?: string;
+  countryOfOrigin?: string;
+  optionName?: string;
+  variants?: Variant[];
+  sizeGuide?: SizeGuide;
+  colourNote?: string;
+  source?: string;
+  returns: ReturnsPolicy;
+}
+
+/** A product as lists show it (shop, search, rails, cart). */
+export interface ProductSummary {
+  id: number;
+  slug: string;
+  brand: string;
+  name: string;
+  category: string;
+  subcategory: string;
+  featured: boolean;
+  price: number | null;
+  mrp: number | null;
+  /** The variants don't all cost the same: show "from". */
+  from?: boolean;
+  priceOnRequest: boolean;
+  inStock: boolean;
+  image: string;
+  image2?: string;
+  summary: string;
+  optionName?: string;
+  variants?: Pick<Variant, "id" | "label" | "price" | "mrp" | "inStock">[];
+  model?: string;
+}
+
+export interface Brand {
+  slug: string;
+  name: string;
+  about: string;
+  website: string;
+  count: number;
+}
+
+export interface Category {
+  slug: string;
+  name: string;
+  blurb: string;
+  audience: "home" | "pro";
+  subcategories: string[];
+  count: number;
+}
+
+export interface Catalog {
+  version: string;
+  currency: "INR";
+  brands: Brand[];
+  categories: Category[];
+  products: Product[];
+}
+
+export interface CatalogSummary {
+  version: string;
+  brands: Brand[];
+  categories: Category[];
+  products: ProductSummary[];
+}
+
+/** The store's own changes to a product, set in the store admin. */
+export interface Override {
+  price?: number | null;
+  mrp?: number | null;
+  inStock?: boolean;
+  hidden?: boolean;
+  countryOfOrigin?: string;
+  variants?: Record<string, { price?: number | null; mrp?: number | null; inStock?: boolean }>;
+}
+
+export interface CartLine {
+  productId: number;
+  variantId: string | null;
+  qty: number;
+}
+
+export interface PricedLine extends CartLine {
+  slug: string;
+  name: string;
+  brand: string;
+  variantLabel?: string;
+  image: string;
+  price: number;
+  mrp: number;
+  lineTotal: number;
+}
+
+export type LineIssue = { productId: number; variantId: string | null; reason: "missing" | "unavailable" | "price-on-request" | "out-of-stock" | "choose-option" };
+
+export interface Quote {
+  lines: PricedLine[];
+  issues: LineIssue[];
+  count: number;
+  subtotal: number;
+  mrpTotal: number;
+  savings: number;
+  delivery: number;
+  total: number;
+}
+
+export type OrderStatus = "placed" | "confirmed" | "shipped" | "delivered" | "cancelled";
+
+export interface Address {
+  name: string;
+  phone: string;
+  email?: string;
+  line1: string;
+  line2?: string;
+  landmark?: string;
+  city: string;
+  state: string;
+  pincode: string;
+}
+
+export interface Order {
+  id: string;
+  createdAt: number;
+  status: OrderStatus;
+  payment: "cod";
+  address: Address;
+  lines: PricedLine[];
+  subtotal: number;
+  mrpTotal: number;
+  delivery: number;
+  total: number;
+  history: { status: OrderStatus; at: number; note?: string }[];
+  tracking?: { courier?: string; number?: string; url?: string };
+  notes?: string;
+}
+
+export type EnquiryKind = "price" | "book" | "bulk" | "general";
