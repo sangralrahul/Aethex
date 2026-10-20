@@ -8,15 +8,15 @@ import { Link, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight, BadgeCheck, BookOpen, Brain, Calculator, ChevronLeft, ChevronRight, ClipboardList, CreditCard,
-  FlaskConical, Layers, Pill, RotateCcw, Search, ShieldCheck, ShoppingCart, Sparkles, Star, Timer, Truck,
+  FlaskConical, Layers, Pill, RotateCcw, Search, ShieldCheck, Sparkles, Star, Timer, Truck,
   type LucideProps,
 } from "lucide-react";
 import CadusMark from "@/components/cadus/CadusMark";
+import { ProductCard } from "@/components/ProductCard";
 import { useSeo } from "@/hooks/use-seo";
 import { useSession } from "@/hooks/use-session";
 import { useToast } from "@/hooks/use-toast";
 import { useAddToCart, useListProducts, type Product } from "@workspace/api-client-react";
-import { formatINR } from "@/lib/utils";
 import { cadusUrl, downloadsUrl } from "@/lib/host";
 import { getTodaysCase } from "@/data/clinicalCases";
 
@@ -120,28 +120,6 @@ function HeroCarousel() {
   );
 }
 
-function ProductTile({ p, onAdd, adding }: { p: Product; onAdd: (id: number) => void; adding: boolean }) {
-  const price = Number(p.price), was = Number(p.originalPrice ?? 0);
-  const off = was > price ? Math.round(((was - price) / was) * 100) : 0;
-  return (
-    <article className="ax-prod">
-      <Link href={`/products/${p.id}`} className="img">
-        <img src={p.imageUrl} alt={p.name} loading="lazy" />
-        {off > 0 && <span className="off">{off}% off</span>}
-      </Link>
-      <div className="txt">
-        <small>{p.brand}</small>
-        <Link href={`/products/${p.id}`} className="nm">{p.name}</Link>
-        <span className="rt"><Star size={13} fill="currentColor" /> {Number(p.rating).toFixed(1)} <em>({p.reviewCount.toLocaleString("en-IN")})</em></span>
-        <div className="row">
-          <span className="pr">{formatINR(price)}{off > 0 && <s>{formatINR(was)}</s>}</span>
-          <button type="button" className="add" onClick={() => onAdd(p.id)} disabled={adding} aria-label={`Add ${p.name} to cart`}><ShoppingCart size={15} /></button>
-        </div>
-      </div>
-    </article>
-  );
-}
-
 function ProductRail({ onAdd, adding }: { onAdd: (id: number) => void; adding: boolean }) {
   const [rail, setRail] = useState<(typeof RAILS)[number]["id"]>("best");
   const cur = RAILS.find((r) => r.id === rail)!;
@@ -165,7 +143,7 @@ function ProductRail({ onAdd, adding }: { onAdd: (id: number) => void; adding: b
         <div className="ax-h-rail" ref={track}>
           {isLoading && !products.length
             ? Array.from({ length: 5 }, (_, k) => <div key={k} className="ax-prod sk" />)
-            : products.map((p) => <ProductTile key={p.id} p={p} onAdd={onAdd} adding={adding} />)}
+            : products.map((p) => <ProductCard key={p.id} product={p} onAddToCart={onAdd} isAdding={adding} />)}
         </div>
         <div className="ax-h-more"><Link href={cur.category ? `/category/${cur.category}` : "/shop"} className="ax-link">View all {cur.id === "best" ? "products" : cur.label.toLowerCase()} <ArrowRight size={16} /></Link></div>
       </div>

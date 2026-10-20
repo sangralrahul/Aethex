@@ -1,85 +1,64 @@
+/**
+ * The wishlist (/wishlist): products saved with the heart, newest first, with
+ * add to cart. Saved in this browser (hooks/use-wishlist). Styles: src/shop.css.
+ */
 import { Link } from "wouter";
 import { Heart, ShoppingBag } from "lucide-react";
-import { useWishlist } from "@/hooks/use-wishlist";
-import { useListProducts, useAddToCart, type Product } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAddToCart, useListProducts, type Product } from "@workspace/api-client-react";
 import { ProductCard } from "@/components/ProductCard";
-import { PageHero } from "@/components/PageHero";
-import { Button } from "@/components/ui/button";
+import { ShopHead } from "@/components/shop/ShopHead";
+import { useWishlist } from "@/hooks/use-wishlist";
+import { useSession } from "@/hooks/use-session";
 import { useToast } from "@/hooks/use-toast";
+import { useSeo } from "@/hooks/use-seo";
 
 export default function Wishlist() {
+  useSeo({ title: "Your wishlist | Aethex Medical Store", description: "Products you saved on Aethex.", path: "/wishlist" });
   const { ids, clear } = useWishlist();
-  const { data: raw } = useListProducts({});
+  const sessionId = useSession();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const addToCart = useAddToCart();
 
-  const products: Product[] = Array.isArray(raw)
-    ? (raw as Product[])
-    : Array.isArray((raw as any)?.data)
-      ? ((raw as any).data as Product[])
-      : [];
+  const { data, isLoading } = useListProducts({ ids: ids.join(",") } as never, { query: { enabled: ids.length > 0, placeholderData: (prev: unknown) => prev } as never });
+  const found = ((data as { products?: Product[] } | undefined)?.products ?? []);
+  const items = [...ids].reverse().map((id) => found.find((p) => p.id === id)).filter((p): p is Product => !!p);
 
-  const items = products.filter((p) => ids.includes(p.id));
+  const add = (productId: number) => {
+    if (!sessionId) return;
+    addToCart.mutate(
+      { data: { productId, sessionId, quantity: 1 } },
+      {
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/cart"] }); toast({ title: "Added to cart" }); },
+        onError: () => toast({ variant: "destructive", title: "Couldn't add to cart", description: "Please try again." }),
+      },
+    );
+  };
 
   return (
-    <div style={{ background: "#F5F3EE", minHeight: "100vh" }}>
-      <PageHero
-        icon={<Heart className="w-6 h-6" />}
-        title="My Wishlist"
-        subtitle={`${items.length} ${items.length === 1 ? "item" : "items"} saved`}
+    <div className="ax-cart-page">
+      <ShopHead
+        compact
+        crumbs={[{ label: "Home", href: "/" }, { label: "Shop", href: "/shop" }, { label: "Wishlist" }]}
+        title="Your wishlist"
+        sub={ids.length ? `${ids.length} saved item${ids.length === 1 ? "" : "s"} · kept on this device` : "Save products with the heart to find them here"}
+        right={ids.length > 0 ? <button type="button" className="ax-btn" onClick={() => { clear(); toast({ title: "Wishlist cleared" }); }}>Clear wishlist</button> : undefined}
       />
-
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {items.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-2xl border border-slate-200">
-            <Heart className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-            <h3 className="text-xl font-bold mb-2" style={{ color: "#1C1C1E" }}>
-              Your wishlist is empty
-            </h3>
-            <p className="text-slate-500 mb-6">Tap the heart on any product to save it here.</p>
-            <Link href="/products">
-              <Button style={{ background: "#007AFF" }} className="rounded-xl font-bold">
-                <ShoppingBag className="w-4 h-4 mr-2" />
-                Browse Products
-              </Button>
-            </Link>
+      <div className="ax-wrap" style={{ paddingTop: 28 }}>
+        {ids.length === 0 ? (
+          <div className="ax-empty">
+            <span className="ic"><Heart size={26} /></span>
+            <h2>Nothing saved yet</h2>
+            <p>Tap the heart on any product to keep it here for later.</p>
+            <div className="acts"><Link href="/shop" className="ax-btn teal"><ShoppingBag size={16} /> Browse the store</Link></div>
           </div>
+        ) : isLoading ? (
+          <div className="ax-grid grid">{ids.slice(0, 4).map((id) => <div key={id} className="ax-prod sk" />)}</div>
         ) : (
-          <>
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm text-slate-600">
-                Showing {items.length} of {ids.length} saved
-              </p>
-              <button
-                onClick={() => {
-                  clear();
-                  toast({ title: "Wishlist cleared" });
-                }}
-                className="text-sm font-semibold text-red-600 hover:text-red-700"
-              >
-                Clear all
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-              {items.map((p) => (
-                <ProductCard
-                  key={p.id}
-                  product={p}
-                  onAddToCart={(id) => {
-                    addToCart.mutate(
-                      { productId: id, quantity: 1 },
-                      {
-                        onSuccess: () => toast({ title: "Added to cart" }),
-                        onError: () => toast({ title: "Failed to add", variant: "destructive" }),
-                      },
-                    );
-                  }}
-                  isAdding={addToCart.isPending}
-                />
-              ))}
-            </div>
-          </>
+          <div className="ax-grid grid">
+            {items.map((p) => <ProductCard key={p.id} product={p} onAddToCart={add} isAdding={addToCart.isPending} />)}
+          </div>
         )}
       </div>
     </div>
