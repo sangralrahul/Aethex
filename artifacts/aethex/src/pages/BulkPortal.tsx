@@ -88,7 +88,7 @@ export default function BulkPortal({ segment }: { segment: Segment }) {
         <div className="ax-bulk-cat">
           <div className="ax-bulk-find" role="search">
             <Search size={18} aria-hidden="true" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search every product: Littmann, oximeter, knee brace…" aria-label="Search every product" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={segment === "hospital" ? "Search every product: ICU bed, syringe, monitor, Littmann…" : "Search every product: skeleton, microscope, CPR manikin, Littmann…"} aria-label="Search every product" />
             {q && <button type="button" className="clear" onClick={() => setQ("")} aria-label="Clear the search"><X size={16} /></button>}
           </div>
           {!store ? (

@@ -710,6 +710,7 @@ img.ax-pimg.crop{padding:0!important;clip-path:var(--ax-clip);transform:translat
 
 /* brands */
 .ax-brands{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;padding-top:28px;padding-bottom:56px}
+.ax-brands-h{grid-column:1 / -1;margin:24px 0 0;font-size:22px;letter-spacing:-.02em;color:var(--ax-ink)}
 .ax-brand{display:grid;grid-template-columns:180px 1fr;grid-template-rows:1fr auto;gap:6px 20px;padding:18px;border-radius:18px;border:1px solid var(--ax-line);background:#fff;text-decoration:none;color:inherit;transition:border-color .2s,box-shadow .2s}
 .ax-brand:hover{border-color:#c7d3d9;box-shadow:0 20px 40px -28px rgba(16,24,40,.3)}
 .ax-brand.sk{min-height:170px;background:linear-gradient(90deg,#f2f4f7,#f9fafb,#f2f4f7);background-size:200% 100%;animation:axSk 1.2s linear infinite}
@@ -989,9 +990,10 @@ img.ax-pimg.crop{padding:0!important;clip-path:var(--ax-clip);transform:translat
 .ax-bk .txt .au{margin-top:5px;font-size:13px;color:var(--ax-t2)}
 .ax-bk .txt .ed{margin-top:2px;font-size:12.5px;color:var(--ax-t3)}
 .ax-bk .row{padding-top:10px}
-.ax-bk .row.ask{flex-direction:column;align-items:stretch;gap:8px}
-.ax-bk .row.ask .pr.por{font-size:13.5px}
-.ax-bk .row.ask .add.wide{width:100%;padding:0 12px}
+/* price on request (product and book cards): the note, then a full-width "Ask price" */
+.ax-prod:not(.row) .row.ask{flex-direction:column;align-items:stretch;gap:8px}
+.ax-prod:not(.row) .row.ask .pr.por{font-size:13.5px}
+.ax-prod:not(.row) .row.ask .add.wide{width:100%;padding:0 12px}
 .ax-prod.ax-bk:hover .img img{transform:none}
 .ax-bk:hover .ax-bcv{transform:translateY(-4px)}
 

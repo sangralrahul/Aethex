@@ -3,12 +3,14 @@
  * the brand's photos, size or colour, price with MRP or "ask for the price",
  * add to cart and buy now, delivery, cash on delivery and replacement terms,
  * the full description, specifications, size guide and related products.
+ * Products for hospitals and medical colleges (categories with the
+ * "institution" audience) are quoted: they say so, and can go on the bulk list.
  * Styles: src/shop.css (.ax-pdp).
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import {
-  ArrowLeft, BadgeCheck, Banknote, Building2, Check, ChevronLeft, ChevronRight, Heart, MessageSquareText, Minus, Package, Plus, Ruler,
+  ArrowLeft, BadgeCheck, Banknote, Building2, Check, ChevronLeft, ChevronRight, ClipboardList, Heart, MessageSquareText, Minus, Package, Plus, Ruler,
   RotateCcw, Share2, ShieldCheck, ShoppingCart, Truck, Zap,
 } from "lucide-react";
 import { ProductCard } from "@/components/ProductCard";
@@ -21,12 +23,17 @@ import { useSeo } from "@/hooks/use-seo";
 import { useProduct, useStore } from "@/lib/store/api";
 import { cart } from "@/lib/store/cart";
 import { isBookId } from "@/lib/store/bookdata";
+import { bulk, useBulkLines } from "@/lib/store/bulk";
 import { DELIVERY_FEE, discountPct, FREE_DELIVERY_FROM, MAX_QTY, unitFor } from "@/lib/store/rules";
 import type { Product } from "@/lib/store/types";
 import { BUSINESS, SITE_URL } from "@/config/business";
 import { formatINR } from "@/lib/utils";
 
-const CHOOSE_FIRST = new Set(["Size", "Number", "Option"]);
+/** Options picked for you (the first in stock): only a colour or a style. A size, gauge, volume or model is always the buyer's choice. */
+const PRESELECT = new Set(["Colour", "Style"]);
+/** "size", "model"; "option" for names like "Gauge x length". */
+const optionWord = (optionName: string) => (/^[a-z]+$/.test(optionName.toLowerCase()) ? optionName.toLowerCase() : "option");
+const chooseText = (optionName: string) => { const w = optionWord(optionName); return `choose ${/^[aeiou]/.test(w) ? "an" : "a"} ${w}`; };
 
 function JsonLd({ data }: { data: unknown }) {
   return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, "\\u003c") }} />;
@@ -80,6 +87,7 @@ export default function ProductDetail() {
   const [ask, setAsk] = useState<null | "price" | "bulk">(null);
   const [sizes, setSizes] = useState(false);
   const thumbs = useRef<HTMLDivElement>(null);
+  const bulkLines = useBulkLines();
 
   // Old links by number move to the product's own address; a book's number opens the book's page.
   useEffect(() => {
@@ -91,7 +99,7 @@ export default function ProductDetail() {
     if (!product) return;
     const vs = product.variants ?? [];
     const firstInStock = vs.find((v) => v.inStock) ?? vs[0];
-    setVid(vs.length === 1 ? vs[0].id : vs.length && !CHOOSE_FIRST.has(product.optionName ?? "Option") ? firstInStock?.id ?? null : null);
+    setVid(vs.length === 1 ? vs[0].id : vs.length && PRESELECT.has(product.optionName ?? "Option") ? firstInStock?.id ?? null : null);
     setQty(1); setImg(0); setNeedChoice(false);
     window.scrollTo({ top: 0 });
     if (window.location.hash === "#ask" && product.priceOnRequest) setAsk("price");
@@ -159,6 +167,18 @@ export default function ProductDetail() {
   const optionName = product.optionName ?? "Option";
   const canBuy = !product.priceOnRequest && product.inStock && (!variant || variant.inStock);
   const hygiene = product.returns === "replacement";
+  // Hospital and college ranges: quoted, and kept on the bulk list of /hospitals or /medical-colleges.
+  const inst = category?.audience === "institution";
+  const listPage = ["anatomy-models", "skills-simulators", "lab-equipment"].includes(product.category) ? "/medical-colleges" : "/hospitals";
+  const listed = bulkLines.find((l) => l.productId === product.id && (l.variantId ?? null) === (variant?.id ?? null));
+  const addToList = () => {
+    if (variants.length > 1 && !variant) { setNeedChoice(true); document.getElementById("ax-pick")?.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+    if (!bulk.put(product.id, variant?.id ?? null, listed ? listed.qty : Math.max(qty, 5))) {
+      toast({ variant: "destructive", title: "Your bulk list is full", description: "Send it for a quotation first, or remove something from it." });
+      return;
+    }
+    toast({ title: "Added to your bulk list", description: "Change the quantities on the list before you send it for a quotation." });
+  };
 
   const add = (then?: () => void) => {
     if (variants.length > 1 && !variant) { setNeedChoice(true); document.getElementById("ax-pick")?.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
@@ -259,7 +279,9 @@ export default function ProductDetail() {
             {product.priceOnRequest ? (
               <>
                 <div className="now"><b className="por">Price on request</b></div>
-                <p className="tax">{brandName} doesn't publish prices for India, so we quote each order: you get today's price before you pay anything.</p>
+                <p className="tax">{inst
+                  ? "We quote each order for the quantity you need, with delivery to your address, before you pay anything."
+                  : `${brandName} doesn't publish prices for India, so we quote each order: you get today's price before you pay anything.`}</p>
               </>
             ) : (
               <>
@@ -276,7 +298,7 @@ export default function ProductDetail() {
           {variants.length > 1 && (
             <div className={`ax-pick${needChoice ? " need" : ""}`} id="ax-pick">
               <div className="ax-pick-head">
-                <span>{optionName}: <b>{variant ? variant.label : <em>{CHOOSE_FIRST.has(optionName) ? `choose a ${optionName.toLowerCase()}` : "choose one"}</em>}</b></span>
+                <span>{optionName}: <b>{variant ? variant.label : <em>{chooseText(optionName)}</em>}</b></span>
                 {product.sizeGuide && <button type="button" className="ax-link" onClick={() => setSizes(true)}><Ruler size={15} /> Size guide</button>}
               </div>
               <div className="ax-pick-opts" role="radiogroup" aria-label={optionName}>
@@ -291,8 +313,8 @@ export default function ProductDetail() {
                   );
                 })}
               </div>
-              {needChoice && <p className="ax-pick-err" role="alert">Please choose a {optionName.toLowerCase()} first.</p>}
-              {variant && !variant.inStock && <p className="ax-pick-err">This {optionName.toLowerCase()} is out of stock right now.</p>}
+              {needChoice && <p className="ax-pick-err" role="alert">Please {chooseText(optionName)} first.</p>}
+              {variant && !variant.inStock && <p className="ax-pick-err">This {optionWord(optionName)} is out of stock right now.</p>}
             </div>
           )}
           {product.colourNote && <p className="ax-pdp-note">{product.colourNote}</p>}
@@ -315,11 +337,27 @@ export default function ProductDetail() {
           ) : (
             <div className="ax-pdp-oos">This is out of stock right now. <button type="button" className="ax-link" onClick={() => setAsk("price")}>Tell me when it's back</button> or <Link href={`/category/${product.category}`}>see similar products</Link>.</div>
           )}
-          {!product.priceOnRequest && product.inStock && <p className="ax-pdp-bulk">Buying for a clinic or hospital? <button type="button" className="ax-link" onClick={() => setAsk("bulk")}>Ask for a bulk price</button></p>}
+          {inst ? (
+            <p className="ax-pdp-bulk">
+              Ordering for a hospital or college?{" "}
+              {listed
+                ? <Link href={`${listPage}#list`} className="ax-link"><ClipboardList size={14} /> On your bulk list: open it</Link>
+                : <button type="button" className="ax-link" onClick={addToList}><ClipboardList size={14} /> Add to your bulk list</button>}
+            </p>
+          ) : !product.priceOnRequest && product.inStock && <p className="ax-pdp-bulk">Buying for a clinic or hospital? <button type="button" className="ax-link" onClick={() => setAsk("bulk")}>Ask for a bulk price</button></p>}
 
           <ul className="ax-pdp-perks">
-            <li><Banknote size={20} /><span><b>Cash on delivery</b><small>Pay in cash when your order arrives</small></span></li>
-            <li><Truck size={20} /><span><b>{`Free delivery from ${formatINR(FREE_DELIVERY_FROM)}`}</b><small>{formatINR(DELIVERY_FEE)} below that · ships {BUSINESS.dispatch}</small></span></li>
+            {inst ? (
+              <>
+                <li><Building2 size={20} /><span><b>Quoted for your order</b><small>Price and delivery confirmed before you pay</small></span></li>
+                <li><Truck size={20} /><span><b>Delivered to your institution</b><small>Across India; the delivery charge is in the quotation</small></span></li>
+              </>
+            ) : (
+              <>
+                <li><Banknote size={20} /><span><b>Cash on delivery</b><small>Pay in cash when your order arrives</small></span></li>
+                <li><Truck size={20} /><span><b>{`Free delivery from ${formatINR(FREE_DELIVERY_FROM)}`}</b><small>{formatINR(DELIVERY_FEE)} below that · ships {BUSINESS.dispatch}</small></span></li>
+              </>
+            )}
             <li><RotateCcw size={20} /><span><b>{BUSINESS.replacementDays}-day replacement</b><small>If it arrives damaged, defective or wrong</small></span></li>
             <li><ShieldCheck size={20} /><span><b>Genuine {brandName}</b><small>{product.warranty || "With the manufacturer's warranty"}</small></span></li>
           </ul>
@@ -359,8 +397,17 @@ export default function ProductDetail() {
         <aside className="ax-pdp-side" id="delivery">
           <h2>Delivery & returns</h2>
           <dl>
-            <div><dt>Payment</dt><dd>Cash on delivery. Keep the exact amount ready if you can.</dd></div>
-            <div><dt>Delivery</dt><dd>Free on orders from {formatINR(FREE_DELIVERY_FROM)}; {formatINR(DELIVERY_FEE)} below that. Ships {BUSINESS.dispatch}; delivery is {BUSINESS.delivery}.</dd></div>
+            {inst ? (
+              <>
+                <div><dt>Payment</dt><dd>After you accept the quotation, by bank transfer or against your purchase order.</dd></div>
+                <div><dt>Delivery</dt><dd>To your hospital, college or clinic anywhere in India. The delivery charge and time for your address are in the quotation.</dd></div>
+              </>
+            ) : (
+              <>
+                <div><dt>Payment</dt><dd>Cash on delivery. Keep the exact amount ready if you can.</dd></div>
+                <div><dt>Delivery</dt><dd>Free on orders from {formatINR(FREE_DELIVERY_FROM)}; {formatINR(DELIVERY_FEE)} below that. Ships {BUSINESS.dispatch}; delivery is {BUSINESS.delivery}.</dd></div>
+              </>
+            )}
             <div><dt>Replacement</dt><dd>Tell us within {BUSINESS.replacementDays} days of delivery if it arrives damaged, defective or wrong, and we'll replace it.{hygiene ? " For hygiene reasons it can't be returned once opened or used unless it's faulty." : ""}</dd></div>
             <div><dt>Cancel</dt><dd>Free, any time before it ships.</dd></div>
           </dl>

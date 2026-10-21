@@ -74,7 +74,7 @@ export function ProductCard({ product: p, brandName, viewMode = "grid", eager = 
         <Link href={href} className="nm">{p.name}</Link>
         {needsChoice ? <span className="opt">{plural(variants.length, optionWord(p.optionName))}</span> : <span className="opt sub">{p.subcategory}</span>}
         {viewMode === "list" && p.summary && <p className="desc">{p.summary}</p>}
-        <div className="row">
+        <div className={`row${p.priceOnRequest ? " ask" : ""}`}>
           {p.priceOnRequest ? (
             <span className="pr por">Price on request</span>
           ) : (

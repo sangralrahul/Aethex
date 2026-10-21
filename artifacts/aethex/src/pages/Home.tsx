@@ -140,7 +140,7 @@ function ProductRail() {
 /** One tile per category, with the photo of its most popular product. */
 function CategoryTiles() {
   const { data: store } = useStore();
-  const tiles = useMemo(() => (store ? store.categories.map((c) => {
+  const tiles = useMemo(() => (store ? store.categories.filter((c) => c.audience !== "institution").map((c) => {
     const best = store.products.filter((p) => p.category === c.slug && p.image).sort((a, b) => rank(b) - rank(a))[0];
     return { ...c, pic: best?.image };
   }) : []), [store]);
@@ -176,6 +176,12 @@ export default function Home() {
   const [q, setQ] = useState("");
   const todays = useMemo(() => getTodaysCase(), []);
   const { data: store } = useStore();
+  // The brands of the everyday range; the hospital and college makers are on /brands.
+  const homeBrands = useMemo(() => {
+    if (!store) return [];
+    const everyday = new Set(store.categories.filter((c) => c.audience !== "institution").map((c) => c.slug));
+    return store.brands.filter((b) => store.products.some((p) => p.brand === b.slug && everyday.has(p.category)));
+  }, [store]);
 
   return (
     <div className="ax-home">
@@ -242,12 +248,12 @@ export default function Home() {
           <div className="ax-h-inst">
             <Link href="/hospitals" className="hosp">
               <span className="ic"><Hospital size={22} /></span>
-              <span className="tx"><small>Aethex for Hospitals</small><b>Supplies for every ward and department</b><em>BP monitors, oximeters, diagnostic sets, nebulizers and more, in the quantities you need.</em></span>
+              <span className="tx"><small>Aethex for Hospitals</small><b>Supplies for every ward and department</b><em>Beds, ICU monitors and pumps, resuscitation equipment, syringes and IV supplies, and everyday diagnostics.</em></span>
               <span className="go">Build a list <ArrowRight size={16} /></span>
             </Link>
             <Link href="/medical-colleges" className="coll">
               <span className="ic"><GraduationCap size={22} /></span>
-              <span className="tx"><small>Aethex for Medical Colleges</small><b>Stethoscopes, skills labs and textbooks</b><em>For a whole batch or department: one list, one quotation.</em></span>
+              <span className="tx"><small>Aethex for Medical Colleges</small><b>Skills labs, anatomy, labs and textbooks</b><em>Manikins and trainers, anatomy models, microscopes, stethoscopes and books: one list, one quotation.</em></span>
               <span className="go">Build a list <ArrowRight size={16} /></span>
             </Link>
           </div>
@@ -309,7 +315,7 @@ export default function Home() {
         <div className="ax-wrap">
           <div className="ax-h-title"><h2>Shop by brand</h2><Link href="/brands" className="ax-link">All brands <ArrowRight size={16} /></Link></div>
           <div className="ax-h-brandgrid">
-            {(store?.brands ?? []).map((b) => (
+            {homeBrands.map((b) => (
               <Link key={b.slug} href={`/brand/${b.slug}`}><b>{b.name}</b><small>{b.count} products</small></Link>
             ))}
           </div>

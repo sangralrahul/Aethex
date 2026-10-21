@@ -41,8 +41,8 @@ const SECTIONS: Section[] = [
   {
     id: "institutions", label: "For institutions", match: /^\/(hospitals|medical-colleges|institutions)/, cols: 1,
     items: [
-      { href: "/hospitals", label: "Aethex for Hospitals", hint: "Bulk supplies for wards, OPD and ICU", icon: Hospital },
-      { href: "/medical-colleges", label: "Aethex for Medical Colleges", hint: "Stethoscopes, skills labs and books", icon: GraduationCap },
+      { href: "/hospitals", label: "Aethex for Hospitals", hint: "Beds, ICU, emergency and IV supplies", icon: Hospital },
+      { href: "/medical-colleges", label: "Aethex for Medical Colleges", hint: "Skills labs, anatomy, labs and books", icon: GraduationCap },
       { href: "/institutions", label: "Colleges & hospitals", hint: "Directory across India", icon: Building2 },
     ],
   },

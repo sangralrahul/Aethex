@@ -91,7 +91,8 @@ export interface Category {
   slug: string;
   name: string;
   blurb: string;
-  audience: "home" | "pro";
+  /** home: families; pro: doctors and clinics; institution: hospitals and medical colleges (shown on /hospitals and /medical-colleges, not on the homepage's tiles). */
+  audience: "home" | "pro" | "institution";
   subcategories: string[];
   count: number;
 }
