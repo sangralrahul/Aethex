@@ -54,7 +54,16 @@ export interface Product {
   colourNote?: string;
   source?: string;
   returns: ReturnsPolicy;
+  /** A sale the store is running on it now (the prices already include it). */
+  offer?: OfferTag;
+  /** Approved reviews from buyers (set by the Worker; absent until there is one). */
+  rating?: Rating;
 }
+
+/** Average stars (1 to 5, one decimal) and how many approved reviews. */
+export interface Rating { avg: number; count: number }
+/** What a product's card and page say about a sale: "Diwali sale, 10% off, till 31 Oct". */
+export interface OfferTag { title: string; percent: number; endsAt?: number }
 
 /** A product as lists show it (shop, search, rails, cart). */
 export interface ProductSummary {
@@ -69,6 +78,10 @@ export interface ProductSummary {
   mrp: number | null;
   /** The variants don't all cost the same: show "from". */
   from?: boolean;
+  /** Approved reviews from buyers (absent until there is one). */
+  rating?: Rating;
+  /** A sale the store is running on it now (the price already includes it). */
+  offer?: OfferTag;
   priceOnRequest: boolean;
   inStock: boolean;
   image: string;
@@ -135,6 +148,9 @@ export interface Book {
   standard?: boolean;
   summary: string;
   highlights?: string[];
+  /** Set by the Worker: approved reviews, and a sale on it now. */
+  rating?: Rating;
+  offer?: OfferTag;
 }
 
 export interface Publisher {
@@ -199,12 +215,19 @@ export interface Quote {
   count: number;
   subtotal: number;
   mrpTotal: number;
+  /** MRP savings plus the coupon's discount. */
   savings: number;
+  /** A coupon's discount, taken off the subtotal (delivery is worked out after it). */
+  discount?: number;
+  coupon?: { code: string; label: string };
   delivery: number;
   total: number;
 }
 
-export type OrderStatus = "placed" | "confirmed" | "shipped" | "delivered" | "cancelled";
+/** "pending": paying online and not paid yet. */
+export type OrderStatus = "pending" | "placed" | "confirmed" | "shipped" | "delivered" | "cancelled";
+export type PaymentMethod = "cod" | "online";
+export type PaymentStatus = "pending" | "paid" | "refunded";
 
 export interface Address {
   name: string;
@@ -222,11 +245,19 @@ export interface Order {
   id: string;
   createdAt: number;
   status: OrderStatus;
-  payment: "cod";
+  payment: PaymentMethod;
+  /** Online payments only. */
+  paymentStatus?: PaymentStatus;
+  paidAt?: number;
+  /** A refund of an online payment (Razorpay). */
+  refund?: { amount: number; at: number; status: string };
   address: Address;
   lines: PricedLine[];
   subtotal: number;
   mrpTotal: number;
+  /** A coupon's discount on the subtotal. */
+  discount?: number;
+  coupon?: string;
   delivery: number;
   total: number;
   history: { status: OrderStatus; at: number; note?: string }[];
@@ -299,4 +330,65 @@ export interface BulkRequest {
   estTotal: number;
   /** Lines whose price is on request. */
   unpriced: number;
+  /** The store's note to the institution, shown in its account (e.g. when the quotation went out). */
+  customerNote?: string;
 }
+
+/* ------------------------------------------------------------------ coupons and offers (set in the store admin) */
+
+/** A sale on brands or categories (books: category "books", brand = publisher) for a time: prices drop by the percent. */
+export interface Offer {
+  id: string;
+  title: string;
+  percent: number;
+  categories: string[];
+  brands: string[];
+  /** Milliseconds; absent: from now on, or with no end. */
+  startsAt?: number;
+  endsAt?: number;
+  active: boolean;
+}
+
+/** A code shoppers type at checkout. */
+export interface Coupon {
+  code: string;
+  kind: "percent" | "amount";
+  /** The percent, or the amount in rupees. */
+  value: number;
+  /** Order value (of the items the code covers) it needs. */
+  minOrder: number;
+  /** Most a percent code takes off. */
+  maxDiscount?: number;
+  startsAt?: number;
+  endsAt?: number;
+  /** Orders that can use it in all, and per mobile number. */
+  limit?: number;
+  perPhone?: number;
+  /** Only these categories or brands; empty: everything with a price. */
+  categories?: string[];
+  brands?: string[];
+  /** For shoppers, e.g. "Diwali offer". */
+  label?: string;
+  active: boolean;
+}
+/** What the cart is told about a code. */
+export type PublicCoupon = Pick<Coupon, "code" | "kind" | "value" | "minOrder" | "maxDiscount" | "endsAt" | "categories" | "brands" | "label">;
+
+/* ------------------------------------------------------------------ reviews (buyers of delivered orders, approved in the admin) */
+
+export interface Review {
+  id: string;
+  productId: number;
+  rating: number;
+  title?: string;
+  body: string;
+  /** As the buyer chose to show it: "Meera I." */
+  name: string;
+  city?: string;
+  createdAt: number;
+  /** The store's public reply. */
+  reply?: string;
+}
+export type ReviewStatus = "pending" | "approved" | "rejected";
+/** Average, count and how many of each star (index 0: 5 stars ... index 4: 1 star). */
+export interface RatingSummary extends Rating { dist: number[] }

@@ -30,18 +30,19 @@ const INTRO: Record<EnquiryKind, string> = {
   general: "Ask us anything about a product or an order.",
 };
 
-export function EnquiryForm({ kind, productId, variantId, item, itemLabel, defaultQty = 1, onDone }: {
-  kind: EnquiryKind; productId?: number; variantId?: string | null; item?: string; itemLabel?: string; defaultQty?: number; onDone?: (id: string) => void;
+export function EnquiryForm({ kind, productId, variantId, item, itemLabel, defaultQty = 1, defaultMessage = "", onDone }: {
+  kind: EnquiryKind; productId?: number; variantId?: string | null; item?: string; itemLabel?: string; defaultQty?: number; defaultMessage?: string; onDone?: (id: string) => void;
 }) {
   const { user } = useUserAuth();
   const [f, setF] = useState(() => {
     const c = readContact();
-    return { name: c.name || user?.name || "", phone: c.phone || user?.phone || "", email: c.email || user?.email || "", city: c.city, qty: String(defaultQty), message: "", website: "" };
+    return { name: c.name || user?.name || "", phone: c.phone || user?.phone || "", email: c.email || user?.email || "", city: c.city, qty: String(defaultQty), message: defaultMessage, website: "" };
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [done, setDone] = useState<string | null>(null);
   useEffect(() => { setF((x) => ({ ...x, qty: String(defaultQty) })); }, [defaultQty]);
+  useEffect(() => { if (defaultMessage) setF((x) => ({ ...x, message: defaultMessage })); }, [defaultMessage]);
 
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF((x) => ({ ...x, [k]: e.target.value }));
 

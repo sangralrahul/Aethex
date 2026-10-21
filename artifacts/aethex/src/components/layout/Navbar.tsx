@@ -91,6 +91,7 @@ const ACCOUNT_LINKS: Item[] = [
   { href: "/wishlist", label: "Wishlist", icon: Heart },
   { href: "/cme-hub", label: "CME certificates", icon: GraduationCap },
   { href: "/my-reviews", label: "My reviews", icon: Star },
+  { href: "/account/quotations", label: "Quotation requests", icon: ClipboardList },
 ];
 
 const SEARCH_SUGGESTIONS = ["BP monitor", "Littmann stethoscope", "Pulse oximeter", "Glucometer", "Knee support", "Nebulizer", "Otoscope", "Thermometer"];

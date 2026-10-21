@@ -1,11 +1,13 @@
 /**
  * A product in the store (shop, homepage rails, wishlist, related products):
- * the brand's photo, name, price or "price on request", and one action: add to
- * cart, choose a size or colour, or ask for the price.
+ * the brand's photo, name, stars from buyers, price (with any sale) or "price on
+ * request", and one action: add to cart, choose a size or colour, or ask for
+ * the price. On shop grids it can also be ticked to compare.
  * Styles: src/site.css (.ax-prod) and src/shop.css.
  */
 import { Link } from "wouter";
-import { Heart, MessageSquareText, ShoppingCart } from "lucide-react";
+import { Heart, MessageSquareText, ShoppingCart, Star } from "lucide-react";
+import { CompareTick } from "@/components/store/CompareTray";
 import type { ProductSummary } from "@/lib/store/types";
 import { discountPct } from "@/lib/store/rules";
 import { cart } from "@/lib/store/cart";
@@ -20,6 +22,8 @@ interface ProductCardProps {
   brandName?: string;
   viewMode?: "grid" | "list";
   eager?: boolean;
+  /** Show the "Compare" tick (shop grids). */
+  comparable?: boolean;
 }
 
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : one.endsWith("s") ? "es" : "s"}`;
@@ -28,7 +32,7 @@ const optionWord = (name?: string) => {
   return n === "colour" ? "colour" : n === "size" ? "size" : n === "style" ? "style" : "option";
 };
 
-export function ProductCard({ product: p, brandName, viewMode = "grid", eager = false }: ProductCardProps) {
+export function ProductCard({ product: p, brandName, viewMode = "grid", eager = false, comparable = false }: ProductCardProps) {
   const { has, toggle } = useWishlist();
   const { toast } = useToast();
   const saved = has(p.id);
@@ -65,7 +69,9 @@ export function ProductCard({ product: p, brandName, viewMode = "grid", eager = 
       <Link href={href} className="img" aria-label={p.name}>
         <ProductImage src={p.image} alt={p.name} width={viewMode === "list" ? 380 : 480} eager={eager} book={isBookId(p.id)} />
         {off >= 5 && <span className="off">{off}% off</span>}
+        {p.offer && <span className="sale">{p.offer.title}</span>}
       </Link>
+      {comparable && !isBookId(p.id) && <CompareTick id={p.id} name={p.name} />}
       <button type="button" className={`fav${saved ? " on" : ""}`} onClick={fav} aria-pressed={saved} aria-label={saved ? "Remove from wishlist" : "Save to wishlist"}>
         <Heart size={16} fill={saved ? "currentColor" : "none"} />
       </button>
@@ -73,6 +79,7 @@ export function ProductCard({ product: p, brandName, viewMode = "grid", eager = 
         <small>{brandName ?? p.brand}</small>
         <Link href={href} className="nm">{p.name}</Link>
         {needsChoice ? <span className="opt">{plural(variants.length, optionWord(p.optionName))}</span> : <span className="opt sub">{p.subcategory}</span>}
+        {p.rating && p.rating.count > 0 && <span className="rt" aria-label={`${p.rating.avg.toFixed(1)} out of 5 stars from ${p.rating.count} review${p.rating.count === 1 ? "" : "s"}`}><Star size={13} fill="currentColor" /> {p.rating.avg.toFixed(1)} <em>({p.rating.count})</em></span>}
         {viewMode === "list" && p.summary && <p className="desc">{p.summary}</p>}
         <div className={`row${p.priceOnRequest ? " ask" : ""}`}>
           {p.priceOnRequest ? (

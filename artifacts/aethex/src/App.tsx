@@ -107,7 +107,9 @@ const LegalTerms = legal("terms"), LegalPrivacy = legal("privacy"), LegalDisclai
 const OrderTracking = lazyPage(() => import("@/pages/OrderTracking"));
 const Orders = lazyPage(() => import("@/pages/Orders"));
 const MyReviews = lazyPage(() => import("@/pages/MyReviews"));
-const AdminReviews = lazyPage(() => import("@/pages/AdminReviews"));
+const MyQuotes = lazyPage(() => import("@/pages/MyQuotes"));
+const Compare = lazyPage(() => import("@/pages/Compare"));
+const AlertsStop = lazyPage(() => import("@/pages/AlertsStop"));
 const AdminSellers = lazyPage(() => import("@/pages/AdminSellers"));
 const SellerStorefront = lazyPage(() => import("@/pages/SellerStorefront"));
 const StudyHub = lazyPage(() => import("@/pages/StudyHub"));
@@ -372,6 +374,8 @@ function Router() {
                 {/* Cart & Checkout */}
                 <Route path="/cart" component={Cart} />
                 <Route path="/wishlist" component={Wishlist} />
+                <Route path="/compare" component={Compare} />
+                <Route path="/alerts/stop" component={AlertsStop} />
                 <Route path="/flashcards" component={Flashcards} />
                 <Route path="/flashcards/:deckId" component={Flashcards} />
                 <Route path="/checkout" component={Checkout} />
@@ -431,11 +435,13 @@ function Router() {
 
                 {/* Reviews */}
                 <Route path="/my-reviews" component={MyReviews} />
+                <Route path="/account/quotations" component={MyQuotes} />
+                <Route path="/my-quotations">{() => <Redirect to="/account/quotations" />}</Route>
 
                 {/* Admin */}
                 <Route path="/admin" component={StoreAdmin} />
                 <Route path="/admin/store" component={StoreAdmin} />
-                <Route path="/admin/reviews" component={AdminReviews} />
+                <Route path="/admin/reviews">{() => <Redirect to="/admin" />}</Route>
                 <Route path="/admin/sellers" component={AdminSellers} />
                 <Route path="/admin/blog" component={AdminBlog} />
 

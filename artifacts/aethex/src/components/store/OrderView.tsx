@@ -1,16 +1,23 @@
 /**
  * One order as the customer sees it: progress, items, totals, delivery
- * address, courier details and cancelling (until it ships). Used by the order
- * confirmation, order tracking and my orders. Styles: src/shop.css (.ax-ov).
+ * address, how it's paid (cash on delivery, or online: paying again or
+ * switching to cash while the payment is due, and refunds), courier details,
+ * cancelling (until it ships) and, once delivered, reviewing what was bought.
+ * Used by the order confirmation, order tracking and my orders.
+ * Styles: src/shop.css (.ax-ov).
  */
 import { useState } from "react";
 import { Link } from "wouter";
-import { Banknote, Check, CheckCircle2, Copy, ExternalLink, Loader2, MapPin, Package, PackageCheck, Truck, XCircle } from "lucide-react";
-import { cancelOrder, type CustomerOrder } from "@/lib/store/api";
-import { STATUS_LABEL } from "@/lib/store/rules";
+import {
+  Banknote, Check, CheckCircle2, Clock, Copy, CreditCard, ExternalLink, Loader2, MapPin, Package, PackageCheck, PenLine, RotateCcw, Star, Truck, XCircle,
+} from "lucide-react";
+import { cancelOrder, payOrder, retryPayment, switchToCod, type CustomerOrder } from "@/lib/store/api";
+import { payWithRazorpay } from "@/lib/store/razorpay";
+import { COD_LIMIT, STATUS_LABEL } from "@/lib/store/rules";
 import { formatINR } from "@/lib/utils";
 import { BUSINESS } from "@/config/business";
 import { ProductImage } from "./ProductImage";
+import { ReviewDialog, Stars, type ReviewTarget } from "./Reviews";
 import { isBookId, itemHref } from "@/lib/store/bookdata";
 
 const STEPS = [
@@ -21,6 +28,15 @@ const STEPS = [
 ] as const;
 
 export const when = (ms: number) => new Date(ms).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
+const day = (ms: number) => new Date(ms).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+
+/** "Cash on delivery", "Paid online on 21 Oct 2026", "Refunded", "Online payment due". */
+export function paymentText(o: CustomerOrder): string {
+  if (o.payment === "cod") return "Cash on delivery";
+  if (o.paymentStatus === "refunded") return `Paid online, refunded${o.refund ? ` on ${day(o.refund.at)}` : ""}`;
+  if (o.paymentStatus === "paid") return `Paid online${o.paidAt ? ` on ${day(o.paidAt)}` : ""}${o.refund ? `, ${formatINR(o.refund.amount)} refunded` : ""}`;
+  return o.status === "cancelled" ? "Not paid" : "Online payment due";
+}
 
 export function OrderView({ order, token, phone, onChange, compact = false }: {
   order: CustomerOrder; token?: string; phone?: string; onChange?: (o: CustomerOrder) => void; compact?: boolean;
@@ -28,25 +44,55 @@ export function OrderView({ order, token, phone, onChange, compact = false }: {
   const [copied, setCopied] = useState(false);
   const [asking, setAsking] = useState(false);
   const [reason, setReason] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<"" | "cancel" | "pay" | "cod">("");
   const [err, setErr] = useState("");
+  const [payErr, setPayErr] = useState("");
+  const [reviewing, setReviewing] = useState<ReviewTarget | null>(null);
   const cancelled = order.status === "cancelled";
+  const due = order.status === "pending";
+  const paid = order.payment === "online" && (order.paymentStatus === "paid" || order.paymentStatus === "refunded");
   const reached = STEPS.findIndex((s) => s.key === order.status);
-  const at = (k: string) => order.history.find((h) => h.status === k)?.at;
+  const at = (k: string) => [...order.history].reverse().find((h) => h.status === k)?.at;
   const a = order.address;
+  const access = { token, phone };
 
   const doCancel = async () => {
-    setBusy(true); setErr("");
+    setBusy("cancel"); setErr("");
     try {
-      const r = await cancelOrder(order.id, { token, phone, reason: reason.trim() || undefined });
+      const r = await cancelOrder(order.id, { ...access, reason: reason.trim() || undefined });
       onChange?.(r.order);
       setAsking(false);
     } catch (e) {
       setErr((e as Error).message);
     } finally {
-      setBusy(false);
+      setBusy("");
     }
   };
+  const payNow = async () => {
+    setBusy("pay"); setPayErr("");
+    try {
+      const r = await retryPayment(order.id, access);
+      if (!r.checkout) { onChange?.(r.order); return; }
+      const out = await payWithRazorpay(r.checkout);
+      if ("paid" in out) onChange?.((await payOrder(order.id, out.paid, access)).order);
+      else setPayErr(out.failure ? `${out.failure} No money is taken for a failed payment: try again, or pay cash on delivery.` : "The payment wasn't completed. Try again when you're ready.");
+    } catch (e) {
+      setPayErr((e as Error).message);
+    } finally {
+      setBusy("");
+    }
+  };
+  const toCod = async () => {
+    setBusy("cod"); setPayErr("");
+    try { onChange?.((await switchToCod(order.id, access)).order); } catch (e) { setPayErr((e as Error).message); } finally { setBusy(""); }
+  };
+
+  const cancelledText = (() => {
+    const on = at("cancelled") ? ` on ${when(at("cancelled")!)}` : "";
+    if (order.refund) return `This order was cancelled${on}. We've refunded ${formatINR(order.refund.amount)} to the account, card or UPI app you paid with; it usually reaches you in 5 to 7 business days.`;
+    if (paid) return `This order was cancelled${on}. Your payment of ${formatINR(order.total)} will be refunded; we'll email you when it's on its way.`;
+    return `This order was cancelled${on}. Nothing is due.`;
+  })();
 
   return (
     <div className={`ax-ov${compact ? " compact" : ""}`}>
@@ -64,7 +110,20 @@ export function OrderView({ order, token, phone, onChange, compact = false }: {
       </div>
 
       {cancelled ? (
-        <div className="ax-ov-cancelled"><XCircle size={18} /><span>This order was cancelled{at("cancelled") ? ` on ${when(at("cancelled")!)}` : ""}. Nothing is due.</span></div>
+        <div className="ax-ov-cancelled"><XCircle size={18} /><span>{cancelledText}</span></div>
+      ) : due ? (
+        <div className="ax-ov-due">
+          <Clock size={19} />
+          <div>
+            <b>Waiting for your payment of {formatINR(order.total)}</b>
+            <p>Your order is kept for a day. If you've paid already, it shows here within a few minutes.</p>
+            <div className="row">
+              <button type="button" className="ax-btn teal" onClick={payNow} disabled={!!busy}>{busy === "pay" ? <Loader2 size={16} className="spin" /> : <CreditCard size={16} />} Pay {formatINR(order.total)} now</button>
+              {order.total <= COD_LIMIT && <button type="button" className="ax-btn" onClick={toCod} disabled={!!busy}>{busy === "cod" ? <Loader2 size={16} className="spin" /> : <Banknote size={16} />} Pay cash on delivery instead</button>}
+            </div>
+            {payErr && <p className="ax-form-err" role="alert">{payErr}</p>}
+          </div>
+        </div>
       ) : (
         <ol className="ax-ov-steps" aria-label="Order progress">
           {STEPS.map((s, i) => (
@@ -84,24 +143,40 @@ export function OrderView({ order, token, phone, onChange, compact = false }: {
 
       {!compact && (
         <>
+          {order.status === "delivered" && <p className="ax-ov-rate"><Star size={15} /> How was it? Your review helps other buyers, and we read every one.</p>}
           <ul className="ax-ov-items">
-            {order.lines.map((l) => (
-              <li key={`${l.productId}:${l.variantId ?? ""}`}>
-                <Link href={itemHref(l.productId, l.slug)} className="img"><ProductImage src={l.image} width={120} book={isBookId(l.productId)} /></Link>
-                <span><Link href={itemHref(l.productId, l.slug)}>{l.name}</Link><em>{l.variantLabel ? `${l.variantLabel} · ` : ""}Qty {l.qty} × {formatINR(l.price)}</em></span>
-                <b>{formatINR(l.lineTotal)}</b>
-              </li>
-            ))}
+            {order.lines.map((l) => {
+              const rv = order.reviews?.[l.productId];
+              return (
+                <li key={`${l.productId}:${l.variantId ?? ""}`}>
+                  <Link href={itemHref(l.productId, l.slug)} className="img"><ProductImage src={l.image} width={120} book={isBookId(l.productId)} /></Link>
+                  <span>
+                    <Link href={itemHref(l.productId, l.slug)}>{l.name}</Link><em>{l.variantLabel ? `${l.variantLabel} · ` : ""}Qty {l.qty} × {formatINR(l.price)}</em>
+                    {order.status === "delivered" && (
+                      <span className="rv">
+                        {rv && <><Stars value={rv.rating} size={13} /> <small>{rv.status === "approved" ? "Your review is live" : rv.status === "pending" ? "Review sent: we're checking it" : "Your review wasn't published"}</small></>}
+                        <button type="button" className="ax-link" onClick={() => setReviewing({ orderId: order.id, productId: l.productId, name: l.name, existing: rv })}>
+                          <PenLine size={13} /> {rv ? "Change" : "Write a review"}
+                        </button>
+                      </span>
+                    )}
+                  </span>
+                  <b>{formatINR(l.lineTotal)}</b>
+                </li>
+              );
+            })}
           </ul>
           <div className="ax-ov-foot">
             <dl>
               <div><dt>Items</dt><dd>{formatINR(order.subtotal)}</dd></div>
+              {!!order.discount && <div className="good"><dt>Coupon{order.coupon ? ` ${order.coupon}` : ""}</dt><dd>− {formatINR(order.discount)}</dd></div>}
               <div><dt>Delivery</dt><dd>{order.delivery ? formatINR(order.delivery) : "Free"}</dd></div>
-              <div className="total"><dt>{cancelled ? "Total" : "To pay on delivery"}</dt><dd>{formatINR(order.total)}</dd></div>
+              <div className="total"><dt>{cancelled ? "Total" : paid ? "Paid online" : due ? "To pay now" : "To pay on delivery"}</dt><dd>{formatINR(order.total)}</dd></div>
+              {order.refund && <div className="good"><dt>Refunded</dt><dd>{formatINR(order.refund.amount)}</dd></div>}
             </dl>
             <div className="ax-ov-addr">
               <p><MapPin size={15} /> <span><b>{a.name}</b>{a.line1 ? <><br />{a.line1}{a.line2 ? `, ${a.line2}` : ""}{a.landmark ? `, near ${a.landmark}` : ""}</> : null}<br />{a.city}, {a.state} {a.pincode}<br />{a.phone}</span></p>
-              <p><Banknote size={15} /> <span>Cash on delivery</span></p>
+              <p>{order.refund ? <RotateCcw size={15} /> : order.payment === "online" ? <CreditCard size={15} /> : <Banknote size={15} />} <span>{paymentText(order)}</span></p>
             </div>
           </div>
         </>
@@ -113,10 +188,11 @@ export function OrderView({ order, token, phone, onChange, compact = false }: {
             <button type="button" className="ax-link danger" onClick={() => setAsking(true)}>Cancel this order</button>
           ) : (
             <div className="ax-ov-cancel-box">
+              {paid && <p className="fine">Your payment of {formatINR(order.total)} is refunded to the account, card or UPI app you paid with.</p>}
               <label className="f"><span>Why are you cancelling? <em>(optional)</em></span><input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} /></label>
               <div className="row">
-                <button type="button" className="ax-btn danger" onClick={doCancel} disabled={busy}>{busy ? <Loader2 size={16} className="spin" /> : null} Yes, cancel the order</button>
-                <button type="button" className="ax-btn" onClick={() => setAsking(false)} disabled={busy}>Keep it</button>
+                <button type="button" className="ax-btn danger" onClick={doCancel} disabled={!!busy}>{busy === "cancel" ? <Loader2 size={16} className="spin" /> : null} Yes, cancel the order</button>
+                <button type="button" className="ax-btn" onClick={() => setAsking(false)} disabled={!!busy}>Keep it</button>
               </div>
               {err && <p className="ax-form-err" role="alert">{err}</p>}
             </div>
@@ -124,6 +200,15 @@ export function OrderView({ order, token, phone, onChange, compact = false }: {
         </div>
       )}
       {!compact && <p className="ax-ov-help">Questions about this order? Write to <a href={`mailto:${BUSINESS.email}?subject=${encodeURIComponent(`Order ${order.id}`)}`}>{BUSINESS.email}</a>{BUSINESS.phone ? <> or call {BUSINESS.phone}</> : null} with your order number.</p>}
+
+      <ReviewDialog
+        target={reviewing}
+        access={access}
+        onClose={() => setReviewing(null)}
+        onDone={(productId, status, r) => {
+          onChange?.({ ...order, reviews: { ...(order.reviews ?? {}), [productId]: { status, rating: r.rating, body: r.body, name: r.name, ...(r.title ? { title: r.title } : {}), ...(r.city ? { city: r.city } : {}) } } });
+        }}
+      />
     </div>
   );
 }

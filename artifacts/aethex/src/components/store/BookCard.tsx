@@ -9,7 +9,7 @@
  */
 import { useEffect, useState, type CSSProperties } from "react";
 import { Link } from "wouter";
-import { Heart, MessageSquareText, ShoppingCart } from "lucide-react";
+import { Heart, MessageSquareText, ShoppingCart, Star } from "lucide-react";
 import type { Book } from "@/lib/store/types";
 import { discountPct } from "@/lib/store/rules";
 import { bookName } from "@/lib/store/bookdata";
@@ -73,6 +73,7 @@ export function BookCard({ book, publisher, eager = false }: { book: Book; publi
       <Link href={href} className="img" aria-label={bookName(book)}>
         <BookCover book={book} publisher={publisher} eager={eager} />
         {off >= 5 && <span className="off">{off}% off</span>}
+        {book.offer && <span className="sale">{book.offer.title}</span>}
       </Link>
       <button type="button" className={`fav${saved ? " on" : ""}`} onClick={() => { const a = toggle(book.id); toast({ title: a ? "Saved to your wishlist" : "Removed from your wishlist" }); }} aria-pressed={saved} aria-label={saved ? "Remove from wishlist" : "Save to wishlist"}>
         <Heart size={16} fill={saved ? "currentColor" : "none"} />
@@ -81,6 +82,7 @@ export function BookCard({ book, publisher, eager = false }: { book: Book; publi
         <Link href={href} className="nm">{book.title}</Link>
         {book.authors && <span className="au">{shortAuthors(book.authors)}</span>}
         <span className="ed">{[book.edition, publisher].filter(Boolean).join(" · ")}</span>
+        {book.rating && book.rating.count > 0 && <span className="rt" aria-label={`${book.rating.avg.toFixed(1)} out of 5 stars from ${book.rating.count} review${book.rating.count === 1 ? "" : "s"}`}><Star size={13} fill="currentColor" /> {book.rating.avg.toFixed(1)} <em>({book.rating.count})</em></span>}
         <div className={`row${priced ? "" : " ask"}`}>
           {priced ? (
             <span className="pr">{formatINR(Number(book.price))}{off >= 5 && <s>{formatINR(Number(book.mrp))}</s>}</span>

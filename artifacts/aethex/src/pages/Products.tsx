@@ -9,6 +9,7 @@ import { Link, useLocation, useRoute, useSearch } from "wouter";
 import { ArrowRight, BadgeCheck, ExternalLink, LayoutGrid, List, Search as SearchIcon, SlidersHorizontal, X } from "lucide-react";
 import { ProductCard } from "@/components/ProductCard";
 import { BookCard } from "@/components/store/BookCard";
+import { CompareTray } from "@/components/store/CompareTray";
 import { ShopHead, type Crumb } from "@/components/shop/ShopHead";
 import { TopLayer } from "@/components/shop/TopLayer";
 import { useSeo } from "@/hooks/use-seo";
@@ -30,6 +31,7 @@ const SORTS = [
   { value: "price-asc", label: "Price: low to high" },
   { value: "price-desc", label: "Price: high to low" },
   { value: "discount", label: "Biggest discount" },
+  { value: "rating", label: "Customer rating" },
   { value: "name", label: "Name: A to Z" },
 ];
 
@@ -255,6 +257,8 @@ export default function Products() {
     if (sortBy === "price-desc") sorted.sort((a, b) => (b.priceOnRequest ? -1 : Number(b.price)) - (a.priceOnRequest ? -1 : Number(a.price)));
     if (sortBy === "discount") sorted.sort((a, b) => discountPct(b.price, b.mrp) - discountPct(a.price, a.mrp));
     if (sortBy === "name") sorted.sort((a, b) => a.name.localeCompare(b.name));
+    // Rated first (best average, then most reviews); the rest keep their order.
+    if (sortBy === "rating") sorted.sort((a, b) => (b.rating?.avg ?? 0) - (a.rating?.avg ?? 0) || (b.rating?.count ?? 0) - (a.rating?.count ?? 0));
     return sorted;
   }, [scope, sub, brands, inStock, pricedOnly, prices, sortBy, searchFilter]);
 
@@ -385,7 +389,7 @@ export default function Products() {
             <>
               <div className={`ax-grid ${view}`}>
                 {results.slice(0, shown).map((p, i) => (
-                  <ProductCard key={p.id} product={p} brandName={store.brandName(p.brand)} viewMode={view} eager={i < 4} />
+                  <ProductCard key={p.id} product={p} brandName={store.brandName(p.brand)} viewMode={view} eager={i < 4} comparable={store.category(p.category)?.audience !== "institution"} />
                 ))}
               </div>
               {results.length > shown && (
@@ -429,6 +433,7 @@ export default function Products() {
           </div>
         </TopLayer>
       )}
+      <CompareTray />
     </div>
   );
 }

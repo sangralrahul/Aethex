@@ -99,11 +99,19 @@ orthopaedic supports, pain relief, pillows and cushions, rehab and mobility).
   (`/api/store/catalog`, `/api/store/products/:slug`) with the store's own prices and stock applied.
 - **Price on request:** brands that don't publish Indian prices (MDF, Littmann, HEINE, Rossmax)
   take price requests until a price is set in the admin.
-- **Orders:** cash on delivery, priced again on the server; confirmation and status emails;
-  tracking with order number and mobile; cancelling until shipped.
+- **Orders:** cash on delivery, or paid online through Razorpay (UPI, cards, netbanking,
+  wallets) once its keys are set; priced again on the server; confirmation and status emails;
+  tracking with order number and mobile; cancelling until shipped (a paid order is refunded).
+- **Offers and coupons:** sales on brands or categories for a time, and coupon codes (percent
+  with a cap, or an amount, from a minimum order), set in the admin.
+- **Reviews:** only buyers of delivered orders can review, and the admin approves each one;
+  the stars on products and in search results come from these reviews only.
+- **Also:** delivery check by PIN code (India Post data in `public/pincodes`), back-in-stock and
+  price-drop emails, compare up to three products, book sets by year, "bought together" from
+  real orders, and quotation requests in a hospital's or college's account.
 - **Admin:** `aethex.in/admin` for the accounts in `ADMIN_EMAILS`: orders (confirm, ship with
-  tracking, deliver, cancel, CSV export), price/book requests, and product prices, MRP, stock,
-  country of origin and visibility.
+  tracking, deliver, cancel, refund, CSV export), price/book requests, bulk quotations, product
+  prices, MRP, stock, country of origin and visibility, offers and coupons, and reviews.
 - **Business details and policies:** `artifacts/aethex/src/config/business.ts`
   (legal name, address, GSTIN, phone, Grievance Officer, dispatch and delivery promises).
 
@@ -114,6 +122,25 @@ npx wrangler d1 migrations apply aethex --remote   # creates the store tables (a
 npx wrangler secret put ADMIN_EMAILS               # e.g. you@aethex.in (comma-separated for several)
 npx wrangler secret put STORE_EMAIL                # optional: inbox for new orders and requests
 ```
+
+### Online payments (Razorpay, when you're ready)
+
+Checkout offers cash on delivery only until both keys are set. Create API keys in the
+Razorpay Dashboard (test keys start with `rzp_test_` and take no real money; use the
+`rzp_live_` keys to go live), then:
+
+```bash
+npx wrangler secret put RAZORPAY_KEY_ID
+npx wrangler secret put RAZORPAY_KEY_SECRET
+npx wrangler secret put RAZORPAY_WEBHOOK_SECRET    # optional, see below
+```
+
+Optional but recommended: in the Razorpay Dashboard, add a webhook to
+`https://aethex.in/api/store/razorpay/webhook` with the events `payment.authorized`,
+`payment.captured`, `order.paid`, `refund.processed` and `refund.failed`, and a secret of
+your choosing; set the same secret as `RAZORPAY_WEBHOOK_SECRET`. Without it, a payment whose
+page was closed early is still found when the order is opened, and by the hourly job; with it,
+refunds made in the Razorpay Dashboard (and any that fail) show on the order too.
 
 ---
 
@@ -309,6 +336,10 @@ BREVO_FROM_EMAIL=
 # The store
 ADMIN_EMAILS=
 STORE_EMAIL=
+# Online payments (optional: off until both keys are set)
+RAZORPAY_KEY_ID=
+RAZORPAY_KEY_SECRET=
+RAZORPAY_WEBHOOK_SECRET=
 ```
 
 On Cloudflare these are Worker variables and secrets (`npx wrangler secret put NAME`).

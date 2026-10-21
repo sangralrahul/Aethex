@@ -13,6 +13,8 @@ export const MAX_QTY = 10;
 export const MAX_LINES = 30;
 /** Cash on delivery is offered up to this order total. */
 export const COD_LIMIT = 50000;
+/** Orders paid online (Razorpay) can go up to this total. */
+export const ONLINE_LIMIT = 200000;
 
 export const round2 = (n: number) => Math.round(n * 100) / 100;
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? round2(v) : null);
@@ -99,6 +101,7 @@ export function summarize(p: Product): ProductSummary {
     image: p.images[0] ?? "", summary: p.summary.length > 180 ? `${p.summary.slice(0, 177).replace(/\s+\S*$/, "")}…` : p.summary,
   };
   if (from) s.from = true;
+  if (p.offer) s.offer = p.offer;
   if (p.images[1]) s.image2 = p.images[1];
   if (p.model) s.model = p.model;
   if (vs.length) {
@@ -172,12 +175,12 @@ export const INDIAN_STATES = [
   "Uttar Pradesh", "Uttarakhand", "West Bengal",
 ];
 
-export const ORDER_STATUSES = ["placed", "confirmed", "shipped", "delivered", "cancelled"] as const;
+export const ORDER_STATUSES = ["pending", "placed", "confirmed", "shipped", "delivered", "cancelled"] as const;
 export const STATUS_LABEL: Record<(typeof ORDER_STATUSES)[number], string> = {
-  placed: "Order placed", confirmed: "Confirmed", shipped: "Shipped", delivered: "Delivered", cancelled: "Cancelled",
+  pending: "Awaiting payment", placed: "Order placed", confirmed: "Confirmed", shipped: "Shipped", delivered: "Delivered", cancelled: "Cancelled",
 };
-/** A customer may cancel until the order ships. */
-export const cancellable = (status: string) => status === "placed" || status === "confirmed";
+/** A customer may cancel until the order ships (or while an online payment is still due). */
+export const cancellable = (status: string) => status === "pending" || status === "placed" || status === "confirmed";
 
 /**
  * "Recommended" order: better tiers first (in stock, popular, priced), and within

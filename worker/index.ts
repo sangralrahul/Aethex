@@ -8,17 +8,20 @@
 //   predict-symptoms, analyze-radiology
 // (the function code lives in supabase/functions for historical reasons and
 // runs here unchanged), accounts, profiles and carts (worker/auth.ts) on D1, and
-// the store: catalogue, cash-on-delivery orders, requests and admin (worker/store.ts).
+// the store: catalogue, orders (cash on delivery, or paid online through
+// Razorpay), coupons, reviews, alerts, requests and admin (worker/store.ts).
 //
 // Secrets and variables (Workers & Pages > aethex > Settings > Variables and Secrets):
 //   ANTHROPIC_API_KEY  Claude, the only AI Cadus uses
 //   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET   Google sign-in
 //   BREVO_API_KEY, BREVO_FROM_EMAIL          sign-in codes, cart and order emails
 //   ADMIN_EMAILS, STORE_EMAIL                 the store admin, and where orders are emailed
+//   RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET      online payments (off until both are set)
+//   RAZORPAY_WEBHOOK_SECRET                   Razorpay's webhook to /api/store/razorpay/webhook (optional)
 import { functionHandler, functionNames, useEnv } from "./deno-shim";
 import { handleAuth, handleCart, handleProfile, runScheduled, type AuthEnv } from "./auth";
 import { serveDownload, type R2Bucket } from "./downloads";
-import { handleStore, type StoreEnv } from "./store";
+import { handleStore, runStoreScheduled, type StoreEnv } from "./store";
 import "./names/cadus";
 import "../supabase/functions/cadus/index.ts";
 import "./names/analyze-drug-interactions";
@@ -49,7 +52,7 @@ const json = (payload: unknown, status = 200) =>
   });
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx?: { waitUntil: (p: Promise<unknown>) => void }): Promise<Response> {
     const url = new URL(request.url);
 
     // downloads.aethex.in: installers from R2; every other path is the download page.
@@ -65,7 +68,7 @@ export default {
 
     if (url.pathname === "/api/health") {
       // Shows whether the keys are set (never their values), to check the setup.
-      return json({ ok: true, functions: functionNames(), anthropic: !!env.ANTHROPIC_API_KEY, accounts: !!env.DB, google: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET), email: !!env.BREVO_API_KEY, downloads: !!env.DOWNLOADS, storeAdmin: !!env.ADMIN_EMAILS });
+      return json({ ok: true, functions: functionNames(), anthropic: !!env.ANTHROPIC_API_KEY, accounts: !!env.DB, google: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET), email: !!env.BREVO_API_KEY, downloads: !!env.DOWNLOADS, storeAdmin: !!env.ADMIN_EMAILS, onlinePayments: !!(env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET), paymentWebhook: !!env.RAZORPAY_WEBHOOK_SECRET });
     }
 
     const account = url.pathname.startsWith("/api/auth/") || url.pathname === "/api/auth" ? handleAuth : url.pathname === "/api/profile" ? handleProfile : url.pathname === "/api/cart" ? handleCart : null;
@@ -84,12 +87,15 @@ export default {
     }
 
     if (url.pathname.startsWith("/api/store/")) {
-      // Reading the catalogue is open to all; anything that changes something must come from our own pages.
-      const origin = request.headers.get("origin");
-      if (origin && !ALLOWED_ORIGIN.test(origin)) return json({ error: "Origin not allowed" }, 403);
-      if (request.method !== "GET" && request.method !== "HEAD" && !origin) return json({ error: "Origin required" }, 403);
+      // Reading the catalogue is open to all; anything that changes something must come from our own pages,
+      // except Razorpay's webhook, which comes from Razorpay's servers and is checked by its signature.
+      if (url.pathname !== "/api/store/razorpay/webhook") {
+        const origin = request.headers.get("origin");
+        if (origin && !ALLOWED_ORIGIN.test(origin)) return json({ error: "Origin not allowed" }, 403);
+        if (request.method !== "GET" && request.method !== "HEAD" && !origin) return json({ error: "Origin required" }, 403);
+      }
       try {
-        return await handleStore(request, env);
+        return await handleStore(request, env, ctx);
       } catch (e) {
         console.error(`${url.pathname} failed`, e);
         return json({ error: "The store hit an unexpected error. Please try again." }, 500);
@@ -119,8 +125,10 @@ export default {
     return env.ASSETS.fetch(request);
   },
 
-  // Hourly (wrangler.jsonc "triggers"): store cart reminders and clean-up.
+  // Hourly (wrangler.jsonc "triggers"): cart reminders and clean-up; online payments that never reported
+  // back, unpaid online orders (cancelled after a day), and back-in-stock and price-drop alerts.
   async scheduled(_event: unknown, env: Env, ctx: { waitUntil: (p: Promise<unknown>) => void }) {
     ctx.waitUntil(runScheduled(env).then((r) => console.log("scheduled", r), (e) => console.error("scheduled failed", e)));
+    ctx.waitUntil(runStoreScheduled(env).then((r) => console.log("store scheduled", r), (e) => console.error("store scheduled failed", e)));
   },
 };

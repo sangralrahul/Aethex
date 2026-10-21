@@ -1,27 +1,39 @@
 // The store on Cloudflare (/api/store/*): the catalogue with the store's own
-// prices and stock, cash-on-delivery orders, order tracking and cancelling,
-// price and book requests, bulk quotation requests from hospitals and medical
-// colleges, and the store admin. Orders, requests and the store's changes to
-// products live in D1 (tables below; the same SQL is in migrations/0002_store.sql
-// and 0003_bulk_requests.sql, and the tables are also created on first use).
+// prices, stock and offers, orders paid by cash on delivery or online
+// (Razorpay, worker/razorpay.ts), coupons, order tracking and cancelling,
+// reviews from buyers, back-in-stock and price-drop alerts, price and book
+// requests, bulk quotation requests from hospitals and medical colleges (and
+// their accounts' list of them), and the store admin. Orders, requests,
+// reviews, coupons, offers, alerts and the store's changes to products live in
+// D1 (tables below; the same SQL is in migrations/0002 to 0004, and the tables
+// are also created on first use).
 //
 // Variables (Workers & Pages > aethex > Settings > Variables and Secrets):
 //   ADMIN_EMAILS  accounts that may open aethex.in/admin, comma-separated
 //   STORE_EMAIL   where new orders and requests are emailed
 //                 (default: the first ADMIN_EMAILS address, else the support address)
+//   RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET   online payments (worker/razorpay.ts)
 // Order and request emails go out through Brevo, like the sign-in codes.
 import catalogJson from "../artifacts/aethex/src/data/store/catalog.json";
 import booksJson from "../artifacts/aethex/src/data/store/books.json";
-import type { Address, BookCatalog, BulkItem, BulkRequest, BulkStatus, CartLine, Catalog, EnquiryKind, Order, OrderStatus, Override, PricedLine, Product, Quote, Segment } from "../artifacts/aethex/src/lib/store/types";
+import type {
+  Address, BookCatalog, BulkItem, BulkRequest, BulkStatus, CartLine, Catalog, Coupon, EnquiryKind, Offer, Order, OrderStatus, Override, PaymentMethod, PricedLine, Product, ProductSummary, Quote,
+  Rating, RatingSummary, Review, ReviewStatus, Segment,
+} from "../artifacts/aethex/src/lib/store/types";
 import { bookAsProduct, isBookId, itemHref } from "../artifacts/aethex/src/lib/store/bookdata";
 import {
-  applyOverride, BULK_STATUSES, cancellable, cleanSchedule, COD_LIMIT, everyText, formatDay, INDIAN_STATES, INSTITUTION_TYPES, normPhone, ORDER_STATUSES, priceBulk, quoteLines, round2, STATUS_LABEL,
-  scheduleText, summarize, validEmail, validGstin, validPincode,
+  applyOverride, BULK_STATUSES, cancellable, cleanSchedule, COD_LIMIT, everyText, formatDay, INDIAN_STATES, INSTITUTION_TYPES, normPhone, ONLINE_LIMIT, ORDER_STATUSES, priceBulk, quoteLines, round2,
+  STATUS_LABEL, scheduleText, summarize, validEmail, validGstin, validPincode,
 } from "../artifacts/aethex/src/lib/store/rules";
+import { applyCoupon, applyOffers, cleanCouponCode, couponLive, liveOfferKey, publicCoupon } from "../artifacts/aethex/src/lib/store/promo";
+import {
+  captureOrFetch, createRzpOrder, fetchRzpOrderPayments, fetchRzpPayment, fetchRzpRefunds, paise, paymentSignatureOk, razorpayReady, RazorpayError, refundRzpPayment, webhookSignatureOk,
+  type RazorpayEnv, type RzpRefund,
+} from "./razorpay";
 import { BUSINESS, SITE_URL, launchGaps } from "../artifacts/aethex/src/config/business";
 import { allow, clientIp, currentUser, escapeHtml, normEmail, sendEmail, sha256, shell, type AuthEnv, type D1Like } from "./auth";
 
-export interface StoreEnv extends AuthEnv {
+export interface StoreEnv extends AuthEnv, RazorpayEnv {
   ADMIN_EMAILS?: string;
   STORE_EMAIL?: string;
 }
@@ -78,11 +90,42 @@ export const STORE_TABLES = [
     items TEXT NOT NULL, units INTEGER NOT NULL, est_total REAL NOT NULL, unpriced INTEGER NOT NULL, admin_note TEXT, user_id TEXT, ip TEXT,
     repeat_every INTEGER, repeat_months INTEGER)`,
   "CREATE INDEX IF NOT EXISTS store_bulk_requests_created ON store_bulk_requests(created_at)",
+  `CREATE TABLE IF NOT EXISTS store_reviews (
+    id TEXT PRIMARY KEY, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, product_id INTEGER NOT NULL, order_id TEXT NOT NULL,
+    rating INTEGER NOT NULL, title TEXT, body TEXT NOT NULL, name TEXT NOT NULL, city TEXT, status TEXT NOT NULL DEFAULT 'pending',
+    reply TEXT, user_id TEXT, ip TEXT)`,
+  "CREATE INDEX IF NOT EXISTS store_reviews_product ON store_reviews(product_id, status)",
+  "CREATE UNIQUE INDEX IF NOT EXISTS store_reviews_order_product ON store_reviews(order_id, product_id)",
+  "CREATE TABLE IF NOT EXISTS store_coupons (code TEXT PRIMARY KEY, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, data TEXT NOT NULL)",
+  "CREATE TABLE IF NOT EXISTS store_offers (id TEXT PRIMARY KEY, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, data TEXT NOT NULL)",
+  `CREATE TABLE IF NOT EXISTS store_alerts (
+    id TEXT PRIMARY KEY, created_at INTEGER NOT NULL, product_id INTEGER NOT NULL, variant_id TEXT NOT NULL DEFAULT '', kind TEXT NOT NULL,
+    email TEXT NOT NULL, price_at REAL, notified_at INTEGER, checked_at INTEGER, token TEXT NOT NULL, ip TEXT)`,
+  "CREATE UNIQUE INDEX IF NOT EXISTS store_alerts_unique ON store_alerts(product_id, variant_id, kind, email)",
+  "CREATE INDEX IF NOT EXISTS store_alerts_open ON store_alerts(notified_at, product_id)",
+  "CREATE INDEX IF NOT EXISTS store_alerts_token ON store_alerts(token)",
 ];
 /** Columns added after a table was first made: added where missing (an existing column is left alone). */
 export const STORE_COLUMNS: [table: string, column: string, type: string][] = [
   ["store_bulk_requests", "repeat_every", "INTEGER"],
   ["store_bulk_requests", "repeat_months", "INTEGER"],
+  ["store_bulk_requests", "customer_note", "TEXT"],
+  ["store_orders", "payment_status", "TEXT"],
+  ["store_orders", "payment_ref", "TEXT"],
+  ["store_orders", "payment_id", "TEXT"],
+  ["store_orders", "paid_at", "INTEGER"],
+  ["store_orders", "refund", "TEXT"],
+  ["store_orders", "coupon", "TEXT"],
+  ["store_orders", "discount", "REAL"],
+  ["store_orders", "payment_checked_at", "INTEGER"],
+  ["store_alerts", "checked_at", "INTEGER"],
+];
+/** Indexes on those added columns (made once the columns are there). */
+const STORE_INDEXES = [
+  "CREATE INDEX IF NOT EXISTS store_orders_payment_ref ON store_orders(payment_ref)",
+  "CREATE INDEX IF NOT EXISTS store_orders_payment_id ON store_orders(payment_id)",
+  "CREATE INDEX IF NOT EXISTS store_orders_coupon ON store_orders(coupon)",
+  "CREATE INDEX IF NOT EXISTS store_orders_token ON store_orders(token_hash)",
 ];
 let tablesReady: Promise<void> | null = null;
 function ensureTables(db: D1Like): Promise<void> {
@@ -96,6 +139,7 @@ function ensureTables(db: D1Like): Promise<void> {
           if (!/duplicate column/i.test(String((e as Error)?.message ?? e))) throw e;
         }
       }
+      for (const sql of STORE_INDEXES) await db.prepare(sql).run();
     })().catch((e) => { tablesReady = null; throw e; });
   }
   return tablesReady;
@@ -119,44 +163,104 @@ async function overrides(env: StoreEnv): Promise<{ stamp: string; map: Map<numbe
 }
 const forgetOverrides = () => { overrideCache = null; summaryCache = null; booksCache = null; };
 
+/** The offers set in the admin (sales on brands or categories), read every 30 seconds. */
+let offerCache: { at: number; offers: Offer[]; stamp: string } | null = null;
+async function offers(env: StoreEnv): Promise<{ offers: Offer[]; stamp: string }> {
+  if (!env.DB) return { offers: [], stamp: "" };
+  if (offerCache && Date.now() - offerCache.at < 30_000) return offerCache;
+  await ensureTables(env.DB);
+  const { results } = await env.DB.prepare("SELECT id, data, updated_at FROM store_offers").all<{ id: string; data: string; updated_at: number }>();
+  const list: Offer[] = [];
+  let latest = 0;
+  for (const r of results) {
+    const o = parse<Offer | null>(r.data, null);
+    if (o) { list.push({ ...o, id: r.id }); latest = Math.max(latest, Number(r.updated_at) || 0); }
+  }
+  offerCache = { at: Date.now(), offers: list, stamp: list.length ? `${list.length}.${latest}` : "" };
+  return offerCache;
+}
+const forgetOffers = () => { offerCache = null; summaryCache = null; booksCache = null; };
+
+/** Approved reviews, as stars and counts per product, read every minute. */
+let ratingCache: { at: number; map: Map<number, Rating>; stamp: string } | null = null;
+async function ratings(env: StoreEnv): Promise<{ map: Map<number, Rating>; stamp: string }> {
+  if (!env.DB) return { map: new Map(), stamp: "" };
+  if (ratingCache && Date.now() - ratingCache.at < 60_000) return ratingCache;
+  await ensureTables(env.DB);
+  const { results } = await env.DB.prepare("SELECT product_id, COUNT(*) AS n, AVG(rating) AS avg, MAX(updated_at) AS latest FROM store_reviews WHERE status = 'approved' GROUP BY product_id")
+    .all<{ product_id: number; n: number; avg: number; latest: number }>();
+  const map = new Map<number, Rating>();
+  let latest = 0, total = 0;
+  for (const r of results) {
+    map.set(Number(r.product_id), { avg: Math.round(Number(r.avg) * 10) / 10, count: Number(r.n) });
+    latest = Math.max(latest, Number(r.latest) || 0); total += Number(r.n);
+  }
+  ratingCache = { at: Date.now(), map, stamp: total ? `${total}.${latest}` : "" };
+  return ratingCache;
+}
+const forgetRatings = () => { ratingCache = null; summaryCache = null; booksCache = null; };
+
+/** Everything that changes what the catalogue shows: the store's changes, the offers running now, the reviews. */
+async function storeState(env: StoreEnv) {
+  const [ov, of, rt] = await Promise.all([overrides(env), offers(env), ratings(env)]);
+  const now = Date.now();
+  const live = liveOfferKey(of.offers, now);
+  const stamp = [ov.stamp, of.stamp && live ? `${of.stamp}:${live}` : "", rt.stamp].join("|").replace(/^\|+$/, "");
+  return { overrides: ov.map, offers: of.offers, ratings: rt.map, now, stamp };
+}
+
+/** A product as it sells now: the store's changes, then any offer. */
+function sellAs(p: Product, o: Override | undefined, list: Offer[], now: number): Product | null {
+  const q = applyOverride(p, o);
+  return q ? applyOffers(q, list, now) : null;
+}
+
 async function finder(env: StoreEnv) {
-  const { map } = await overrides(env);
-  return (id: number) => { const p = byId.get(id); return p ? applyOverride(p, map.get(id)) : null; };
+  const st = await storeState(env);
+  return (id: number) => { const p = byId.get(id); return p ? sellAs(p, st.overrides.get(id), st.offers, st.now) : null; };
 }
 
 let summaryCache: { stamp: string; body: string } | null = null;
 async function catalogSummary(env: StoreEnv): Promise<string> {
-  const { stamp, map } = await overrides(env);
-  if (summaryCache && summaryCache.stamp === stamp) return summaryCache.body;
-  const products = [];
+  const st = await storeState(env);
+  if (summaryCache && summaryCache.stamp === st.stamp) return summaryCache.body;
+  const products: ProductSummary[] = [];
   for (const p of catalog.products) {
-    const q = applyOverride(p, map.get(p.id));
-    if (q) products.push(summarize(q));
+    const q = sellAs(p, st.overrides.get(p.id), st.offers, st.now);
+    if (!q) continue;
+    const s = summarize(q);
+    const r = st.ratings.get(p.id);
+    if (r) s.rating = r;
+    products.push(s);
   }
   const count = (key: "brand" | "category", v: string) => products.filter((p) => p[key] === v).length;
   const body = JSON.stringify({
-    version: stamp ? `${catalog.version}.${stamp}` : catalog.version,
+    version: st.stamp ? `${catalog.version}.${st.stamp}` : catalog.version,
     brands: catalog.brands.map((b) => ({ ...b, count: count("brand", b.slug) })),
     categories: catalog.categories.map((c) => ({ ...c, count: count("category", c.slug) })),
     products,
   });
-  summaryCache = { stamp, body };
+  summaryCache = { stamp: st.stamp, body };
   return body;
 }
 
-/** The medical books, with the store's prices and stock (and without the hidden ones). */
+/** The medical books, with the store's prices, stock, offers and reviews (and without the hidden ones). */
 let booksCache: { stamp: string; body: string } | null = null;
 async function booksBody(env: StoreEnv): Promise<string> {
-  const { stamp, map } = await overrides(env);
-  if (booksCache && booksCache.stamp === stamp) return booksCache.body;
+  const st = await storeState(env);
+  if (booksCache && booksCache.stamp === st.stamp) return booksCache.body;
   const books = [];
   for (const b of bookCatalog.books) {
-    const q = applyOverride(bookAsProduct(b), map.get(b.id));
+    const q = sellAs(bookAsProduct(b), st.overrides.get(b.id), st.offers, st.now);
     if (!q) continue;
-    books.push({ ...b, price: q.price, mrp: q.price === null ? null : q.mrp, priceOnRequest: q.priceOnRequest, inStock: q.inStock });
+    const out: Record<string, unknown> = { ...b, price: q.price, mrp: q.price === null ? null : q.mrp, priceOnRequest: q.priceOnRequest, inStock: q.inStock };
+    if (q.offer) out.offer = q.offer;
+    const r = st.ratings.get(b.id);
+    if (r) out.rating = r;
+    books.push(out);
   }
-  const body = JSON.stringify({ version: stamp ? `${bookCatalog.version}.${stamp}` : bookCatalog.version, publishers: bookCatalog.publishers, books });
-  booksCache = { stamp, body };
+  const body = JSON.stringify({ version: st.stamp ? `${bookCatalog.version}.${st.stamp}` : bookCatalog.version, publishers: bookCatalog.publishers, books });
+  booksCache = { stamp: st.stamp, body };
   return body;
 }
 
@@ -176,12 +280,14 @@ type OrderRow = {
   id: string; created_at: number; updated_at: number; status: string; user_id: string | null; email: string | null; phone: string; name: string;
   pincode: string; address: string; lines: string; item_count: number; subtotal: number; mrp_total: number; delivery: number; total: number;
   payment: string; history: string; tracking: string | null; notes: string | null; admin_note: string | null; token_hash: string; ip: string | null;
+  payment_status?: string | null; payment_ref?: string | null; payment_id?: string | null; paid_at?: number | null; refund?: string | null;
+  coupon?: string | null; discount?: number | null;
 };
 const parse = <T>(s: string | null, fallback: T): T => { try { return s ? JSON.parse(s) : fallback; } catch { return fallback; } };
 
 function toOrder(r: OrderRow): Order {
   const o: Order = {
-    id: r.id, createdAt: r.created_at, status: r.status as OrderStatus, payment: "cod",
+    id: r.id, createdAt: r.created_at, status: r.status as OrderStatus, payment: r.payment === "online" ? "online" : "cod",
     address: parse<Address>(r.address, { name: r.name, phone: r.phone, line1: "", city: "", state: "", pincode: r.pincode }),
     lines: parse<PricedLine[]>(r.lines, []), subtotal: r.subtotal, mrpTotal: r.mrp_total, delivery: r.delivery, total: r.total,
     history: parse(r.history, []),
@@ -189,6 +295,13 @@ function toOrder(r: OrderRow): Order {
   const t = parse<Order["tracking"] | null>(r.tracking, null);
   if (t) o.tracking = t;
   if (r.notes) o.notes = r.notes;
+  if (o.payment === "online") {
+    o.paymentStatus = r.payment_status === "paid" || r.payment_status === "refunded" ? r.payment_status : "pending";
+    if (r.paid_at) o.paidAt = r.paid_at;
+    const refund = parse<Order["refund"] | null>(r.refund ?? null, null);
+    if (refund) o.refund = refund;
+  }
+  if (r.discount) { o.discount = r.discount; if (r.coupon) o.coupon = r.coupon; }
   return o;
 }
 
@@ -228,14 +341,16 @@ function cleanAddress(raw: unknown): { address: Address } | { error: string } {
 }
 
 const addressHtml = (a: Address) =>
-  [a.name, a.line1, a.line2, a.landmark ? `Near ${a.landmark}` : "", `${a.city}, ${a.state} ${a.pincode}`, `Phone ${a.phone}`].filter(Boolean).map(escapeHtml).join("<br>");
+  [a.name, a.line1, a.line2, a.landmark ? `Near ${a.landmark}` : "", `${a.city}, ${a.state} ${a.pincode}`, `Phone ${a.phone}`].filter((x): x is string => !!x).map(escapeHtml).join("<br>");
 
 function linesHtml(o: Order) {
   const rows = o.lines.map((l) => `<tr><td style="padding:9px 0;border-bottom:1px solid #EDF0F4;font-size:14px;">${escapeHtml(l.name)}${l.variantLabel ? `<br><span style="color:#718096;font-size:12px;">${escapeHtml(l.variantLabel)}</span>` : ""}</td><td style="padding:9px 0;border-bottom:1px solid #EDF0F4;font-size:14px;color:#718096;text-align:center;">&times;${l.qty}</td><td style="padding:9px 0;border-bottom:1px solid #EDF0F4;font-size:14px;text-align:right;">${money(l.lineTotal)}</td></tr>`).join("");
+  const how = o.payment === "online" ? (o.paymentStatus === "paid" || o.paymentStatus === "refunded" ? "paid online" : "to pay online") : "cash on delivery";
   return `<table style="width:100%;border-collapse:collapse;margin:6px 0 10px;">${rows}</table>
 <table style="width:100%;border-collapse:collapse;font-size:14px;"><tr><td style="padding:3px 0;color:#4A5568;">Items</td><td style="text-align:right;">${money(o.subtotal)}</td></tr>
+${o.discount ? `<tr><td style="padding:3px 0;color:#4A5568;">Coupon${o.coupon ? ` ${escapeHtml(o.coupon)}` : ""}</td><td style="text-align:right;color:#0F7A43;">&minus;${money(o.discount)}</td></tr>` : ""}
 <tr><td style="padding:3px 0;color:#4A5568;">Delivery</td><td style="text-align:right;">${o.delivery ? money(o.delivery) : "Free"}</td></tr>
-<tr><td style="padding:6px 0;font-weight:700;">Total (cash on delivery)</td><td style="text-align:right;font-weight:700;">${money(o.total)}</td></tr></table>`;
+<tr><td style="padding:6px 0;font-weight:700;">Total (${how})</td><td style="text-align:right;font-weight:700;">${money(o.total)}</td></tr></table>`;
 }
 
 const button = (href: string, label: string) => `<p style="text-align:center;margin:22px 0 0;"><a href="${href}" style="display:inline-block;background:#1F3F7A;color:#fff;text-decoration:none;padding:12px 26px;border-radius:8px;font-weight:700;">${label}</a></p>`;
@@ -244,12 +359,18 @@ const trackUrl = (id: string) => `${SITE_URL}/orders/track?order=${encodeURIComp
 
 function customerEmail(o: Order, kind: "placed" | OrderStatus, note?: string) {
   const first = escapeHtml(o.address.name.split(" ")[0] || o.address.name);
+  const paid = o.payment === "online" && (o.paymentStatus === "paid" || o.paymentStatus === "refunded");
+  const cancelText = o.refund
+    ? `We've refunded ${money(o.refund.amount)} to the account or card you paid with. Refunds usually reach you in 5 to 7 business days.`
+    : paid ? "Your online payment will be refunded to the account or card you paid with; we'll email you when it's on its way." : "No payment is due.";
   const heads: Record<string, [string, string]> = {
-    placed: [`Thank you, ${first}. Your order is placed`, `We'll confirm it shortly and ship it ${escapeHtml(BUSINESS.dispatch)}. Please keep ${money(o.total)} ready to pay in cash when it arrives.`],
+    placed: [`Thank you, ${first}. Your order is placed`, paid
+      ? `We've received your payment of ${money(o.total)}. We'll confirm the order shortly and ship it ${escapeHtml(BUSINESS.dispatch)}.`
+      : `We'll confirm it shortly and ship it ${escapeHtml(BUSINESS.dispatch)}. Please keep ${money(o.total)} ready to pay in cash when it arrives.`],
     confirmed: ["Your order is confirmed", `We're packing it now. It ships ${escapeHtml(BUSINESS.dispatch)}.`],
-    shipped: ["Your order is on its way", `Delivery is ${escapeHtml(BUSINESS.delivery)}. Please keep ${money(o.total)} ready to pay in cash.`],
-    delivered: ["Your order has been delivered", `Thank you for shopping with ${escapeHtml(BUSINESS.brand)}. If anything arrived damaged, defective or wrong, tell us within ${BUSINESS.replacementDays} days and we'll replace it.`],
-    cancelled: ["Your order has been cancelled", "No payment is due. If you didn't ask for this, reply to this email and we'll help."],
+    shipped: ["Your order is on its way", `Delivery is ${escapeHtml(BUSINESS.delivery)}.${paid ? "" : ` Please keep ${money(o.total)} ready to pay in cash.`}`],
+    delivered: ["Your order has been delivered", `Thank you for shopping with ${escapeHtml(BUSINESS.brand)}. If anything arrived damaged, defective or wrong, tell us within ${BUSINESS.replacementDays} days and we'll replace it. You can rate what you bought from your order page.`],
+    cancelled: ["Your order has been cancelled", `${cancelText} If you didn't ask for this, reply to this email and we'll help.`],
   };
   const [h, p] = heads[kind] ?? heads.placed;
   const t = o.tracking;
@@ -317,7 +438,7 @@ function cleanOverride(raw: Record<string, any>, p: Product): Override | { error
 
 const csvCell = (v: unknown) => { const s = String(v ?? ""); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
 
-async function handleAdmin(request: Request, env: DBEnv, path: string): Promise<Response> {
+async function handleAdmin(request: Request, env: DBEnv, path: string, ctx?: Ctx): Promise<Response> {
   const who = await requireAdmin(request, env);
   if (who instanceof Response) return who;
   const url = new URL(request.url);
@@ -331,6 +452,7 @@ async function handleAdmin(request: Request, env: DBEnv, path: string): Promise<
     const today = await env.DB.prepare("SELECT COUNT(*) AS n, SUM(total) AS total FROM store_orders WHERE created_at > ?").bind(dayStart).first<{ n: number; total: number }>();
     const openEnq = await env.DB.prepare("SELECT COUNT(*) AS n FROM store_enquiries WHERE status = 'new'").first<{ n: number }>();
     const openBulk = await env.DB.prepare("SELECT COUNT(*) AS n FROM store_bulk_requests WHERE status = 'new'").first<{ n: number }>();
+    const newReviews = await env.DB.prepare("SELECT COUNT(*) AS n FROM store_reviews WHERE status = 'pending'").first<{ n: number }>();
     const find = await finder(env);
     let priceOnRequest = 0, noOrigin = 0, hidden = 0, outOfStock = 0;
     for (const p of catalog.products) {
@@ -345,8 +467,14 @@ async function handleAdmin(request: Request, env: DBEnv, path: string): Promise<
       last24h: { count: today?.n || 0, total: round2(today?.total || 0) },
       openEnquiries: openEnq?.n || 0,
       openBulk: openBulk?.n || 0,
+      pendingReviews: newReviews?.n || 0,
       catalog: { products: catalog.products.length, priceOnRequest, noOrigin, hidden, outOfStock },
-      setup: { email: !!env.BREVO_API_KEY, storeEmail: storeInbox(env), admins: adminEmails(env).length, gaps: launchGaps() },
+      setup: {
+        email: !!env.BREVO_API_KEY, storeEmail: storeInbox(env), admins: adminEmails(env).length, gaps: launchGaps(),
+        // Online payments: on once both Razorpay keys are set ("test" keys take no real money). Never the keys themselves.
+        onlinePayments: razorpayReady(env), razorpayMode: !env.RAZORPAY_KEY_ID ? "" : env.RAZORPAY_KEY_ID.startsWith("rzp_live_") ? "live" : "test",
+        webhook: !!env.RAZORPAY_WEBHOOK_SECRET, webhookUrl: `${SITE_URL}/api/store/razorpay/webhook`,
+      },
     });
   }
 
@@ -366,22 +494,42 @@ async function handleAdmin(request: Request, env: DBEnv, path: string): Promise<
     const sql = `SELECT * FROM store_orders${where.length ? ` WHERE ${where.join(" AND ")}` : ""} ORDER BY created_at DESC LIMIT ? OFFSET ?`;
     const { results } = await env.DB.prepare(sql).bind(...args, path === "orders.csv" ? 5000 : limit, path === "orders.csv" ? 0 : offset).all<OrderRow>();
     if (path === "orders.csv") {
-      const head = ["Order", "Placed (IST)", "Status", "Name", "Phone", "Email", "Address", "City", "State", "PIN", "Items", "Item count", "Subtotal", "Delivery", "Total (COD)", "Courier", "Tracking number", "Customer note", "Admin note"];
+      const head = ["Order", "Placed (IST)", "Status", "Name", "Phone", "Email", "Address", "City", "State", "PIN", "Items", "Item count", "Subtotal", "Coupon", "Discount", "Delivery", "Total", "Payment", "Paid (IST)", "Refunded", "Razorpay payment", "Courier", "Tracking number", "Customer note", "Admin note"];
+      const ist = (t: number) => new Date(t + 5.5 * 3600_000).toISOString().replace("T", " ").slice(0, 16);
+      const payText = (o: Order) => o.payment === "cod" ? "Cash on delivery" : o.paymentStatus === "refunded" ? "Online, refunded" : o.paymentStatus === "paid" ? "Online, paid" : "Online, not paid";
       const rows = results.map((r) => {
         const o = toOrder(r); const a = o.address;
-        const ist = new Date(r.created_at + 5.5 * 3600_000).toISOString().replace("T", " ").slice(0, 16);
-        return [o.id, ist, o.status, a.name, a.phone, a.email || "", [a.line1, a.line2, a.landmark].filter(Boolean).join(", "), a.city, a.state, a.pincode,
-          o.lines.map((l) => `${l.name}${l.variantLabel ? ` (${l.variantLabel})` : ""} x${l.qty}`).join("; "), r.item_count, o.subtotal, o.delivery, o.total,
+        return [o.id, ist(r.created_at), o.status, a.name, a.phone, a.email || "", [a.line1, a.line2, a.landmark].filter(Boolean).join(", "), a.city, a.state, a.pincode,
+          o.lines.map((l) => `${l.name}${l.variantLabel ? ` (${l.variantLabel})` : ""} x${l.qty}`).join("; "), r.item_count, o.subtotal, o.coupon || "", o.discount || "", o.delivery, o.total,
+          payText(o), o.paidAt ? ist(o.paidAt) : "", o.refund?.amount || "", r.payment_id || "",
           o.tracking?.courier || "", o.tracking?.number || "", o.notes || "", r.admin_note || ""].map(csvCell).join(",");
       });
       return new Response(`﻿${head.join(",")}\n${rows.join("\n")}\n`, { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="aethex-orders-${new Date().toISOString().slice(0, 10)}.csv"`, "cache-control": "no-store" } });
     }
-    return json({ orders: results.map((r) => ({ ...toOrder(r), userId: r.user_id, adminNote: r.admin_note || "", updatedAt: r.updated_at })) });
+    return json({ orders: results.map((r) => ({ ...toOrder(r), userId: r.user_id, adminNote: r.admin_note || "", updatedAt: r.updated_at, paymentId: r.payment_id || "" })) });
+  }
+
+  const rf = /^orders\/([A-Z0-9-]{6,20})\/refund$/.exec(path);
+  if (rf && method === "POST") {
+    const r = await rowById(env, rf[1]);
+    if (!r) return json({ error: "No such order." }, 404);
+    const b = await readJson(request);
+    const o = toOrder(r);
+    const left = round2(o.total - (o.refund?.amount ?? 0));
+    const amount = b?.amount === undefined || b?.amount === null || b?.amount === "" ? left : Number(b.amount);
+    if (!Number.isFinite(amount) || amount < 1 || amount > left + 0.005) return json({ error: `Refund from ₹1 up to ₹${left.toLocaleString("en-IN")}.` }, 400);
+    const why = str(b?.reason, 200) || "Refunded by the store";
+    const done = await refundOrder(env, r, o, amount, why);
+    if ("error" in done) return json(done, 409);
+    let emailed = false;
+    if (o.address.email && b?.notify !== false) emailed = await sendEmail(env, o.address.email, `Order ${o.id}: ${rupees(done.amount)} refunded`, refundEmail(o, done.amount, why)).catch(() => false);
+    const fresh = (await rowById(env, o.id)) ?? r;
+    return json({ order: { ...toOrder(fresh), userId: fresh.user_id, adminNote: fresh.admin_note || "", updatedAt: fresh.updated_at, paymentId: fresh.payment_id || "" }, refunded: done.amount, emailed });
   }
 
   const om = /^orders\/([A-Z0-9-]{6,20})$/.exec(path);
   if (om && method === "PATCH") {
-    const r = await env.DB.prepare("SELECT * FROM store_orders WHERE id = ?").bind(om[1]).first<OrderRow>();
+    const r = await rowById(env, om[1]);
     if (!r) return json({ error: "No such order." }, 404);
     const b = await readJson(request);
     if (!b) return json({ error: "Send the changes as JSON." }, 400);
@@ -396,9 +544,11 @@ async function handleAdmin(request: Request, env: DBEnv, path: string): Promise<
       changed = true;
     }
     let notify: OrderStatus | null = null;
+    const was = r.status;
     if (status && status !== o.status) {
-      if (!(ORDER_STATUSES as readonly string[]).includes(status)) return json({ error: "Unknown status." }, 400);
+      if (!(ORDER_STATUSES as readonly string[]).includes(status) || status === "pending") return json({ error: "Unknown status." }, 400);
       if (o.status === "cancelled" || o.status === "delivered") return json({ error: `This order is already ${o.status}.` }, 409);
+      if (o.status === "pending" && status !== "cancelled") return json({ error: "This order is waiting for its online payment. You can cancel it, or wait: it's placed once the payment comes through." }, 409);
       o.status = status;
       o.history.push({ status, at: now, ...(note ? { note } : {}) });
       notify = status;
@@ -406,14 +556,21 @@ async function handleAdmin(request: Request, env: DBEnv, path: string): Promise<
     }
     const adminNote = typeof b.adminNote === "string" ? longStr(b.adminNote, 1000) : r.admin_note;
     if (adminNote !== r.admin_note) changed = true;
-    if (!changed) return json({ order: { ...o, adminNote: r.admin_note || "" } });
-    await env.DB.prepare("UPDATE store_orders SET status = ?, history = ?, tracking = ?, admin_note = ?, updated_at = ? WHERE id = ?")
-      .bind(o.status, JSON.stringify(o.history), o.tracking ? JSON.stringify(o.tracking) : null, adminNote || null, now, o.id).run();
+    if (!changed) return json({ order: { ...o, adminNote: r.admin_note || "", paymentId: r.payment_id || "" } });
+    const res = await env.DB.prepare("UPDATE store_orders SET status = ?, history = ?, tracking = ?, admin_note = ?, updated_at = ? WHERE id = ? AND status = ?")
+      .bind(o.status, JSON.stringify(o.history), o.tracking ? JSON.stringify(o.tracking) : null, adminNote || null, now, o.id, was).run();
+    if (!changes(res)) return json({ error: "This order has just changed (a payment or the customer). Reload it and try again." }, 409);
+    // Cancelling an order paid online gives the money back (unless the admin says not to).
+    let refundError = "";
+    if (notify === "cancelled" && o.payment === "online" && o.paymentStatus === "paid" && b.refund !== false) {
+      const done = await refundOrder(env, { ...r, status: "cancelled" }, o, o.total, note || "Cancelled by the store");
+      if ("error" in done) refundError = done.error;
+    }
     let emailed = false;
-    if (notify && o.address.email && b.notify !== false) {
+    if (notify && was !== "pending" && o.address.email && b.notify !== false) {
       emailed = await sendEmail(env, o.address.email, `${STATUS_LABEL[notify]}: order ${o.id}`, customerEmail(o, notify, note || undefined)).catch(() => false);
     }
-    return json({ order: { ...o, adminNote: adminNote || "" }, emailed });
+    return json({ order: { ...o, adminNote: adminNote || "", paymentId: r.payment_id || "" }, emailed, ...(refundError ? { refundError } : {}) });
   }
 
   if (path === "enquiries" && method === "GET") {
@@ -445,9 +602,10 @@ async function handleAdmin(request: Request, env: DBEnv, path: string): Promise<
     const status = b.status === undefined ? r.status : str(b.status, 20);
     if (!(BULK_STATUSES as readonly string[]).includes(status)) return json({ error: "Status must be new, quoted, ordered or closed." }, 400);
     const adminNote = typeof b.adminNote === "string" ? longStr(b.adminNote, 2000) : r.admin_note;
+    const customerNote = typeof b.customerNote === "string" ? longStr(b.customerNote, 1000) : r.customer_note ?? null;
     const now = Date.now();
-    await env.DB.prepare("UPDATE store_bulk_requests SET status = ?, admin_note = ?, updated_at = ? WHERE id = ?").bind(status, adminNote || null, now, r.id).run();
-    return json({ request: { ...toBulk({ ...r, status, admin_note: adminNote ?? null, updated_at: now }), adminNote: adminNote || "", updatedAt: now } });
+    await env.DB.prepare("UPDATE store_bulk_requests SET status = ?, admin_note = ?, customer_note = ?, updated_at = ? WHERE id = ?").bind(status, adminNote || null, customerNote || null, now, r.id).run();
+    return json({ request: { ...toBulk({ ...r, status, admin_note: adminNote ?? null, customer_note: customerNote || null, updated_at: now }), adminNote: adminNote || "", updatedAt: now } });
   }
 
   if (path === "overrides" && method === "GET") {
@@ -466,8 +624,83 @@ async function handleAdmin(request: Request, env: DBEnv, path: string): Promise<
     else await env.DB.prepare("INSERT INTO store_overrides (product_id, data, updated_at, updated_by) VALUES (?, ?, ?, ?) ON CONFLICT(product_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at, updated_by = excluded.updated_by")
       .bind(p.id, JSON.stringify(o), Date.now(), who).run();
     forgetOverrides();
+    await later(ctx, processAlerts(env, p.id, 10));
     const q = applyOverride(p, o);
     return json({ ok: true, override: o, product: q ? summarize(q) : null });
+  }
+
+  /* offers and coupons */
+  if (path === "promos" && method === "GET") {
+    const [cs, os, used] = await Promise.all([
+      env.DB.prepare("SELECT * FROM store_coupons ORDER BY updated_at DESC").all<CouponRow>(),
+      env.DB.prepare("SELECT * FROM store_offers ORDER BY updated_at DESC").all<{ id: string; data: string; updated_at: number }>(),
+      env.DB.prepare(`SELECT coupon, COUNT(*) AS n, SUM(discount) AS d FROM store_orders WHERE coupon IS NOT NULL AND ${USED} GROUP BY coupon`).all<{ coupon: string; n: number; d: number }>(),
+    ]);
+    const uses = new Map(used.results.map((u) => [u.coupon, { orders: Number(u.n) || 0, discount: round2(Number(u.d) || 0) }]));
+    return json({
+      coupons: cs.results.map((r) => { const c = parse<Coupon | null>(r.data, null); return c ? { ...c, code: r.code, updatedAt: r.updated_at, uses: uses.get(r.code) ?? { orders: 0, discount: 0 } } : null; }).filter(Boolean),
+      offers: os.results.map((r) => { const o = parse<Offer | null>(r.data, null); return o ? { ...o, id: r.id, updatedAt: r.updated_at } : null; }).filter(Boolean),
+    });
+  }
+  const cm = /^coupons\/([A-Za-z0-9]{3,20})$/.exec(path);
+  if (cm && method === "PUT") {
+    const b = await readJson(request);
+    if (!b) return json({ error: "Send the coupon as JSON." }, 400);
+    const c = cleanCoupon(b, cm[1]);
+    if ("error" in c) return json(c, 400);
+    const now = Date.now();
+    await env.DB.prepare("INSERT INTO store_coupons (code, created_at, updated_at, data) VALUES (?, ?, ?, ?) ON CONFLICT(code) DO UPDATE SET updated_at = excluded.updated_at, data = excluded.data")
+      .bind(c.code, now, now, JSON.stringify(c)).run();
+    return json({ coupon: { ...c, updatedAt: now } });
+  }
+  if (cm && method === "DELETE") {
+    await env.DB.prepare("DELETE FROM store_coupons WHERE code = ?").bind(cleanCouponCode(cm[1])).run();
+    return json({ ok: true });
+  }
+  const fm = /^offers\/([A-Za-z0-9-]{3,24})$/.exec(path);
+  if (fm && method === "PUT") {
+    const b = await readJson(request);
+    if (!b) return json({ error: "Send the offer as JSON." }, 400);
+    const id = fm[1] === "new" ? `OF-${orderId().slice(-6)}` : fm[1];
+    const o = cleanOffer(b, id);
+    if ("error" in o) return json(o, 400);
+    const now = Date.now();
+    await env.DB.prepare("INSERT INTO store_offers (id, created_at, updated_at, data) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET updated_at = excluded.updated_at, data = excluded.data")
+      .bind(id, now, now, JSON.stringify(o)).run();
+    forgetOffers();
+    return json({ offer: { ...o, updatedAt: now } });
+  }
+  if (fm && method === "DELETE") {
+    await env.DB.prepare("DELETE FROM store_offers WHERE id = ?").bind(fm[1]).run();
+    forgetOffers();
+    return json({ ok: true });
+  }
+
+  /* reviews */
+  if (path === "reviews" && method === "GET") {
+    const status = str(url.searchParams.get("status"), 20);
+    const ok = ["pending", "approved", "rejected"].includes(status);
+    const { results } = await env.DB.prepare(`SELECT * FROM store_reviews${ok ? " WHERE status = ?" : ""} ORDER BY updated_at DESC LIMIT 200`).bind(...(ok ? [status] : [])).all<ReviewRow>();
+    return json({
+      reviews: results.map((r) => {
+        const p = byId.get(Number(r.product_id));
+        return { ...toReview(r), status: r.status, orderId: r.order_id, updatedAt: r.updated_at, product: p ? { id: p.id, slug: p.slug, name: isBookId(p.id) ? p.name : `${brandName(p.brand)} ${p.name}`, href: itemHref(p.id, p.slug) } : null };
+      }),
+    });
+  }
+  const rm = /^reviews\/([A-Z0-9-]{6,24})$/.exec(path);
+  if (rm && method === "PATCH") {
+    const b = await readJson(request);
+    if (!b) return json({ error: "Send the changes as JSON." }, 400);
+    const r = await env.DB.prepare("SELECT * FROM store_reviews WHERE id = ?").bind(rm[1]).first<ReviewRow>();
+    if (!r) return json({ error: "No such review." }, 404);
+    const status = b.status === undefined ? r.status : str(b.status, 20);
+    if (!["pending", "approved", "rejected"].includes(status)) return json({ error: "Status must be pending, approved or rejected." }, 400);
+    const reply = typeof b.reply === "string" ? longStr(b.reply, 1000) : r.reply;
+    const now = Date.now();
+    await env.DB.prepare("UPDATE store_reviews SET status = ?, reply = ?, updated_at = ? WHERE id = ?").bind(status, reply || null, now, r.id).run();
+    forgetRatings();
+    return json({ review: { ...toReview({ ...r, reply: reply || null }), status, orderId: r.order_id, updatedAt: now } });
   }
 
   return json({ error: "Not found" }, 404);
@@ -524,7 +757,7 @@ type BulkRow = {
   id: string; created_at: number; updated_at: number; status: string; segment: string; institution: string; inst_type: string; contact_name: string;
   designation: string | null; phone: string; email: string; gstin: string | null; address: string | null; city: string; state: string; pincode: string;
   need_by: string | null; notes: string | null; items: string; units: number; est_total: number; unpriced: number; admin_note: string | null;
-  user_id: string | null; ip: string | null; repeat_every?: number | null; repeat_months?: number | null;
+  user_id: string | null; ip: string | null; repeat_every?: number | null; repeat_months?: number | null; customer_note?: string | null;
 };
 
 function toBulk(r: BulkRow): BulkRequest {
@@ -540,6 +773,7 @@ function toBulk(r: BulkRow): BulkRequest {
   const schedule = cleanSchedule(r.repeat_every ? { every: r.repeat_every, months: r.repeat_months ?? 0 } : null);
   if (schedule && schedule !== "bad") b.schedule = schedule;
   if (r.notes) b.notes = r.notes;
+  if (r.customer_note) b.customerNote = r.customer_note;
   return b;
 }
 
@@ -675,9 +909,614 @@ ${button(`${SITE_URL}/admin`, "Open the store admin")}`)),
   return json({ ok: true, id }, 201);
 }
 
+/* ------------------------------------------------------------------ who may see an order */
+
+const rowById = (db: DBEnv, id: string) => db.DB.prepare("SELECT * FROM store_orders WHERE id = ?").bind(id).first<OrderRow>();
+/** Rows an UPDATE changed (D1 reports them in meta). */
+const changes = (res: unknown) => Number((res as { meta?: { changes?: number }; changes?: number })?.meta?.changes ?? (res as { changes?: number })?.changes ?? 0);
+
+/** The order, if the request may see it: the browser that placed it (its token), its account, or the order number with the phone. */
+async function orderFor(request: Request, db: DBEnv, idIn: unknown, phoneIn?: unknown): Promise<{ r: OrderRow; full: boolean } | Response> {
+  const id = cleanOrderId(idIn);
+  const token = str(request.headers.get("x-order-token"), 64);
+  const r = id ? await rowById(db, id) : null;
+  let full = false, allowed = false;
+  if (r && token && (await sha256(token)) === r.token_hash) { full = true; allowed = true; }
+  if (r && !allowed) {
+    const user = await currentUser(request, db).catch(() => null);
+    if (user && (r.user_id === user.id || (r.email && r.email === normEmail(user.email)))) { full = true; allowed = true; }
+  }
+  if (!allowed && phoneIn !== undefined && phoneIn !== null && phoneIn !== "") {
+    if (!(await allow(db, `store:lookup:ip:${clientIp(request)}`, 30, 3600_000))) return json({ error: "Too many tries. Please wait a while and try again." }, 429);
+    const phone = normPhone(phoneIn);
+    if (r && phone && phone === r.phone) allowed = true;
+  }
+  if (!r || !allowed) return json({ error: "We couldn't find an order with that number and phone. Please check both and try again." }, 404);
+  return { r, full };
+}
+
+type ReviewMark = { status: ReviewStatus; rating: number; title?: string; body: string; name: string; city?: string };
+/** The buyer's own reviews of a delivered order's items, by order and product: what the order page shows next to each item (and edits). */
+async function reviewsFor(db: DBEnv, orderIds: string[]): Promise<Map<string, Record<number, ReviewMark>>> {
+  const out = new Map<string, Record<number, ReviewMark>>();
+  const ids = orderIds.slice(0, 90);
+  if (!ids.length) return out;
+  const { results } = await db.DB.prepare(`SELECT order_id, product_id, status, rating, title, body, name, city FROM store_reviews WHERE order_id IN (${ids.map(() => "?").join(",")})`)
+    .bind(...ids).all<{ order_id: string; product_id: number; status: ReviewStatus; rating: number; title: string | null; body: string; name: string; city: string | null }>();
+  for (const x of results) {
+    const m = out.get(x.order_id) ?? {};
+    m[Number(x.product_id)] = { status: x.status, rating: Number(x.rating), body: x.body, name: x.name, ...(x.title ? { title: x.title } : {}), ...(x.city ? { city: x.city } : {}) };
+    out.set(x.order_id, m);
+  }
+  return out;
+}
+
+/* ------------------------------------------------------------------ coupons */
+
+type CouponRow = { code: string; created_at: number; updated_at: number; data: string };
+
+async function loadCoupon(db: DBEnv, code: string): Promise<Coupon | null> {
+  const r = await db.DB.prepare("SELECT * FROM store_coupons WHERE code = ?").bind(code).first<CouponRow>();
+  const c = r ? parse<Coupon | null>(r.data, null) : null;
+  return c && r ? { ...c, code: r.code } : null;
+}
+
+/** Orders that count as using a code: placed ones (not cancelled, and not still waiting for their online payment). */
+const USED = "status NOT IN ('cancelled', 'pending')";
+async function couponUses(db: DBEnv, code: string, phone?: string): Promise<{ all: number; mine: number }> {
+  const all = await db.DB.prepare(`SELECT COUNT(*) AS n FROM store_orders WHERE coupon = ? AND ${USED}`).bind(code).first<{ n: number }>();
+  const mine = phone ? await db.DB.prepare(`SELECT COUNT(*) AS n FROM store_orders WHERE coupon = ? AND phone = ? AND ${USED}`).bind(code, phone).first<{ n: number }>() : null;
+  return { all: Number(all?.n) || 0, mine: Number(mine?.n) || 0 };
+}
+
+/** The quote with a coupon taken off, once the code is checked: running, not used up (in all, or by this phone), and covering the cart. */
+async function withCoupon(db: DBEnv, quote: Quote, codeIn: unknown, find: (id: number) => Product | null, phone?: string): Promise<{ quote: Quote; coupon: Coupon } | { error: string }> {
+  const code = cleanCouponCode(codeIn);
+  if (!code) return { error: "That doesn't look like a coupon code." };
+  const c = await loadCoupon(db, code);
+  const now = Date.now();
+  if (!c || !c.active) return { error: `${code} isn't a valid code.` };
+  if (c.startsAt && c.startsAt > now) return { error: `${code} can't be used yet.` };
+  if (c.endsAt && now >= c.endsAt) return { error: `${code} has expired.` };
+  const uses = await couponUses(db, code, phone);
+  if (c.limit && uses.all >= c.limit) return { error: `${code} has been used up.` };
+  if (phone && c.perPhone && uses.mine >= c.perPhone) return { error: `You've already used ${code}${c.perPhone > 1 ? ` ${c.perPhone} times` : ""}.` };
+  const r = applyCoupon(quote, publicCoupon(c), (id) => { const p = find(id); return p ? { category: p.category, brand: p.brand } : undefined; });
+  return "error" in r ? r : { quote: r, coupon: c };
+}
+
+const known = {
+  categories: () => new Set([...catalog.categories.map((c) => c.slug), "books"]),
+  brands: () => new Set([...catalog.brands.map((b) => b.slug), ...bookCatalog.publishers.map((p) => p.slug)]),
+};
+/** A date from the admin: milliseconds, or "YYYY-MM-DD" (India time; an end date runs to the end of that day). */
+function when2ms(v: unknown, end = false): number | undefined {
+  if (typeof v === "number" && Number.isFinite(v) && v > 0) return Math.round(v);
+  const s = str(v, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return undefined;
+  const t = Date.parse(`${s}T${end ? "23:59:59" : "00:00:00"}+05:30`);
+  return Number.isFinite(t) ? t + (end ? 1000 : 0) : undefined;
+}
+const intIn = (v: unknown, lo: number, hi: number) => { const n = Math.trunc(Number(v)); return v !== "" && v !== null && Number.isFinite(n) && n >= lo && n <= hi ? n : undefined; };
+const pickSlugs = (v: unknown, ok: Set<string>) => (Array.isArray(v) ? Array.from(new Set(v.map((x) => str(x, 60)).filter((x) => ok.has(x)))) : []);
+
+function cleanCoupon(raw: Record<string, any>, codeIn: unknown): Coupon | { error: string } {
+  const code = cleanCouponCode(codeIn);
+  if (!code) return { error: "A code is 3 to 20 letters and digits, like DIWALI10." };
+  const kind = raw.kind === "amount" ? "amount" : "percent";
+  const value = kind === "percent" ? intIn(raw.value, 1, 90) : intIn(raw.value, 1, 100_000);
+  if (value === undefined) return { error: kind === "percent" ? "The discount is a percent from 1 to 90." : "The discount is an amount from ₹1." };
+  const minOrder = raw.minOrder === undefined || raw.minOrder === "" || raw.minOrder === null ? 0 : intIn(raw.minOrder, 0, 1_000_000);
+  if (minOrder === undefined) return { error: "Check the minimum order." };
+  if (kind === "amount" && minOrder && value > minOrder) return { error: "The discount can't be more than the minimum order." };
+  const c: Coupon = { code, kind, value, minOrder, active: raw.active !== false };
+  if (kind === "percent" && raw.maxDiscount !== undefined && raw.maxDiscount !== "" && raw.maxDiscount !== null) {
+    const m = intIn(raw.maxDiscount, 1, 1_000_000); if (m === undefined) return { error: "Check the most it can take off." }; c.maxDiscount = m;
+  }
+  const startsAt = when2ms(raw.startsAt), endsAt = when2ms(raw.endsAt, true);
+  if (startsAt) c.startsAt = startsAt;
+  if (endsAt) c.endsAt = endsAt;
+  if (startsAt && endsAt && endsAt <= startsAt) return { error: "The end date must come after the start date." };
+  for (const k of ["limit", "perPhone"] as const) {
+    if (raw[k] === undefined || raw[k] === "" || raw[k] === null) continue;
+    const n = intIn(raw[k], 1, 1_000_000); if (n === undefined) return { error: k === "limit" ? "Check how many orders can use it." : "Check how many times one customer can use it." }; c[k] = n;
+  }
+  const categories = pickSlugs(raw.categories, known.categories()), brands = pickSlugs(raw.brands, known.brands());
+  if (categories.length) c.categories = categories;
+  if (brands.length) c.brands = brands;
+  const label = str(raw.label, 60);
+  if (label) c.label = label;
+  return c;
+}
+
+function cleanOffer(raw: Record<string, any>, id: string): Offer | { error: string } {
+  const title = str(raw.title, 60);
+  if (title.length < 3) return { error: "Give the offer a name shoppers will see, like \"Diwali sale\"." };
+  const percent = intIn(raw.percent, 1, 90);
+  if (percent === undefined) return { error: "The offer takes 1 to 90 percent off." };
+  const categories = pickSlugs(raw.categories, known.categories()), brands = pickSlugs(raw.brands, known.brands());
+  if (!categories.length && !brands.length) return { error: "Choose the categories or brands the offer is on." };
+  const o: Offer = { id, title, percent, categories, brands, active: raw.active !== false };
+  const startsAt = when2ms(raw.startsAt), endsAt = when2ms(raw.endsAt, true);
+  if (startsAt) o.startsAt = startsAt;
+  if (endsAt) o.endsAt = endsAt;
+  if (startsAt && endsAt && endsAt <= startsAt) return { error: "The end date must come after the start date." };
+  return o;
+}
+
+/* ------------------------------------------------------------------ order emails */
+
+const itemCount = (o: Order) => o.lines.reduce((s, l) => s + l.qty, 0);
+
+/** The emails for a newly placed order, to the customer and the store. True when the customer's went out. */
+async function placedEmails(db: DBEnv, o: Order, paymentId?: string): Promise<boolean> {
+  const a = o.address;
+  const paid = o.payment === "online" && o.paymentStatus === "paid";
+  const n = itemCount(o);
+  const results = await Promise.allSettled([
+    a.email ? sendEmail(db, a.email, `Order ${o.id} placed: ${rupees(o.total)} ${paid ? "paid" : "cash on delivery"}`, customerEmail(o, "placed")) : Promise.resolve(false),
+    sendEmail(db, storeInbox(db), `New order ${o.id}: ${rupees(o.total)} ${paid ? "paid online" : "COD"}, ${a.city} ${a.pincode}`, shell(`<h2 style="margin:0 0 8px;font-size:19px;">${paid ? "New order, paid online" : "New cash-on-delivery order"}</h2>
+<p style="margin:0 0 4px;font-size:14px;">Order <b>${o.id}</b> · ${n} item${n === 1 ? "" : "s"} · <b>${money(o.total)}</b>${o.coupon ? ` · coupon ${escapeHtml(o.coupon)}` : ""}${paymentId ? ` · Razorpay payment ${escapeHtml(paymentId)}` : ""}</p>
+${linesHtml(o)}<p style="margin:12px 0 0;font-size:14px;line-height:1.5;">${addressHtml(a)}${a.email ? `<br>${escapeHtml(a.email)}` : ""}</p>
+${o.notes ? `<p style="margin:10px 0 0;font-size:14px;"><b>Note:</b> ${escapeHtml(o.notes)}</p>` : ""}
+${button(`${SITE_URL}/admin`, "Open the store admin")}`)),
+  ]);
+  return results[0].status === "fulfilled" && results[0].value === true;
+}
+
+function refundEmail(o: Order, amount: number, why: string) {
+  return shell(`<h2 style="margin:0 0 8px;font-size:20px;">We've refunded ${money(amount)}</h2>
+<p style="color:#4A5568;margin:0 0 6px;line-height:1.55;">${escapeHtml(why)}. The refund for order <b>${escapeHtml(o.id)}</b> goes back to the account, card or UPI app you paid with, and usually reaches you in 5 to 7 business days.</p>
+${button(trackUrl(o.id), "View your order")}${signoff()}`);
+}
+
+/* ------------------------------------------------------------------ online payments (Razorpay) */
+
+/** What the site's checkout needs to open Razorpay for an order. */
+function checkoutFor(env: StoreEnv, o: Order, rzpOrderId: string) {
+  return {
+    key: env.RAZORPAY_KEY_ID, orderId: rzpOrderId, amount: paise(o.total), currency: "INR", name: BUSINESS.brand, description: `Order ${o.id}`,
+    prefill: { name: o.address.name, contact: o.address.phone, ...(o.address.email ? { email: o.address.email } : {}) },
+  };
+}
+
+/**
+ * Our record of a payment's refunds, rebuilt from Razorpay's own list: refunds made at the same moment
+ * both count, and one that failed later no longer does (the order is then "paid" again, to refund anew).
+ */
+async function syncRefunds(db: DBEnv, r: OrderRow, atLeast = 0): Promise<NonNullable<Order["refund"]> | null> {
+  if (!r.payment_id) return null;
+  const list = (await fetchRzpRefunds(db, r.payment_id)).filter((x) => x.status !== "failed");
+  const amount = round2(Math.max(atLeast, list.reduce((n, x) => n + x.amount, 0) / 100));
+  const latest = list.reduce<RzpRefund | null>((a, x) => (!a || (x.created_at ?? 0) >= (a.created_at ?? 0) ? x : a), null);
+  const refund = amount > 0 ? { amount, at: latest?.created_at ? latest.created_at * 1000 : Date.now(), status: list.some((x) => x.status === "pending") ? "pending" : "processed" } : null;
+  await db.DB.prepare("UPDATE store_orders SET refund = ?, payment_status = ?, updated_at = ? WHERE id = ? AND payment_status IN ('paid', 'refunded')")
+    .bind(refund ? JSON.stringify(refund) : null, refund && refund.amount >= r.total - 0.005 ? "refunded" : "paid", Date.now(), r.id).run();
+  return refund;
+}
+
+/** Give back an online payment, in full or in part, through Razorpay. */
+async function refundOrder(db: DBEnv, r: OrderRow, o: Order, amount: number, why: string): Promise<{ ok: true; refund: NonNullable<Order["refund"]>; amount: number } | { error: string }> {
+  if (o.payment !== "online" || !r.payment_id || (o.paymentStatus !== "paid" && o.paymentStatus !== "refunded")) return { error: "This order has no online payment to refund." };
+  // What has gone back already, by Razorpay's record (another refund may have just gone through).
+  let before = o.refund?.amount ?? 0;
+  try { before = (await syncRefunds(db, r))?.amount ?? 0; } catch { /* go by ours */ }
+  const amt = round2(Math.min(amount, o.total - before));
+  if (amt <= 0) return { error: "This payment has already been refunded in full." };
+  let rf: RzpRefund;
+  try {
+    rf = await refundRzpPayment(db, r.payment_id, paise(amt), { order: o.id, reason: why.slice(0, 200) });
+  } catch (e) {
+    return { error: e instanceof RazorpayError ? `Razorpay couldn't refund it: ${e.message}` : "The refund didn't go through. Try again from the admin." };
+  }
+  // Razorpay has the money going back: record it, from its list when it answers, else from this refund.
+  const atLeast = round2(before + rf.amount / 100);
+  let refund = await syncRefunds(db, r, atLeast).catch(() => null);
+  if (!refund) {
+    refund = { amount: atLeast, at: Date.now(), status: rf.status };
+    await db.DB.prepare("UPDATE store_orders SET refund = ?, payment_status = ?, updated_at = ? WHERE id = ?").bind(JSON.stringify(refund), atLeast >= o.total - 0.005 ? "refunded" : "paid", Date.now(), o.id).run();
+  }
+  o.refund = refund;
+  if (refund.amount >= o.total - 0.005) o.paymentStatus = "refunded";
+  return { ok: true, refund, amount: round2(rf.amount / 100) };
+}
+
+/**
+ * Record an online payment, once (from the checkout, Razorpay's webhook, or a look at Razorpay's record).
+ * A pending order is placed and both sides are emailed. Paid after the order was cancelled, or after it was
+ * delivered and paid in cash, the money goes back; paid after switching to cash on delivery, no cash is due.
+ */
+async function markPaid(db: DBEnv, r: OrderRow, paymentId: string): Promise<OrderRow> {
+  const now = Date.now();
+  // One statement: the payment is recorded and a pending order placed together, or neither.
+  const res = await db.DB.prepare(`UPDATE store_orders SET
+      history = CASE WHEN status = 'pending' THEN json_insert(history, '$[#]', json_object('status', 'placed', 'at', ?, 'note', 'Paid online')) ELSE history END,
+      status = CASE WHEN status = 'pending' THEN 'placed' ELSE status END,
+      payment = 'online', payment_status = 'paid', payment_id = ?, paid_at = ?, updated_at = ?
+    WHERE id = ? AND (payment_status IS NULL OR payment_status = 'pending')`).bind(now, paymentId, now, now, r.id).run();
+  const row = (await rowById(db, r.id)) ?? r;
+  if (!changes(res)) return row; // recorded already
+  const o = toOrder(row);
+  const last = o.history[o.history.length - 1];
+  if (row.status === "placed" && last?.note === "Paid online" && last.at === now) {
+    await placedEmails(db, o, paymentId);
+    return row;
+  }
+  const backTo = async (why: string, storeLine: string) => {
+    const done = await refundOrder(db, row, o, o.total, why);
+    await Promise.allSettled([
+      "error" in done || !o.address.email ? Promise.resolve(false) : sendEmail(db, o.address.email, `Order ${o.id}: ${rupees(done.amount)} refunded`, refundEmail(o, done.amount, why)),
+      sendEmail(db, storeInbox(db), `${storeLine}: ${o.id}`, shell(`<p style="margin:0;font-size:14px;line-height:1.6;">Order <b>${o.id}</b> was paid online (${money(o.total)}, Razorpay payment ${escapeHtml(paymentId)}) when ${escapeHtml(why.charAt(0).toLowerCase() + why.slice(1))}. ${"error" in done ? `<b>Refund it from the admin:</b> ${escapeHtml(done.error)}` : "The payment has been refunded."}</p>`)),
+    ]);
+    return (await rowById(db, r.id)) ?? row;
+  };
+  if (row.status === "cancelled") return backTo("The order had been cancelled", "Paid after cancelling");
+  if (row.status === "delivered") return backTo("The order had already been delivered and paid in cash", "Paid online after a cash delivery");
+  // Paid after switching to cash on delivery (not delivered yet): the payment counts, so no cash is due.
+  await Promise.allSettled([
+    o.address.email ? sendEmail(db, o.address.email, `Order ${o.id}: payment received`, customerEmail(o, o.status, `We've received your online payment of ${rupees(o.total)}, so there's nothing to pay at delivery.`)) : Promise.resolve(false),
+    sendEmail(db, storeInbox(db), `Order ${o.id} is paid online: don't collect cash`, shell(`<p style="margin:0;font-size:14px;line-height:1.6;">Order <b>${o.id}</b> (${escapeHtml(o.address.city)}) had switched to cash on delivery, but the customer's online payment of ${money(o.total)} then went through (Razorpay payment ${escapeHtml(paymentId)}). It's marked paid: <b>don't collect cash</b> at delivery${o.status === "shipped" ? ", and tell the courier" : ""}.</p>${button(`${SITE_URL}/admin`, "Open the store admin")}`)),
+  ]);
+  return row;
+}
+
+/** A payment made on Razorpay for this order that never reported back (the page closed first): found and counted. */
+async function settleFromRazorpay(db: DBEnv, r: OrderRow): Promise<OrderRow> {
+  if (!razorpayReady(db) || !r.payment_ref || r.payment_status === "paid" || r.payment_status === "refunded") return r;
+  const want = paise(r.total);
+  const payments = await fetchRzpOrderPayments(db, r.payment_ref);
+  const fits = (s: string) => payments.find((p) => p.status === s && p.amount === want && p.currency === "INR");
+  let pay = fits("captured") ?? fits("authorized");
+  if (!pay) return r;
+  if (pay.status === "authorized") pay = await captureOrFetch(db, pay.id, pay.amount);
+  return pay.status === "captured" ? markPaid(db, r, pay.id) : r;
+}
+
+/* ------------------------------------------------------------------ orders: placing and paying */
+
+async function createOrder(request: Request, db: DBEnv): Promise<Response> {
+  const b = await readJson(request);
+  if (!b) return json({ error: "Please fill in your delivery details." }, 400);
+  // The checkout's own key for this order: sent again after a lost answer, it finds the order already made
+  // instead of making a second one. It is also the order's browser token (stored only as a hash).
+  const key = typeof b.key === "string" && /^[A-Za-z0-9_-]{24,100}$/.test(b.key) ? b.key : "";
+  if (key) {
+    const made = await db.DB.prepare("SELECT * FROM store_orders WHERE token_hash = ?").bind(await sha256(key)).first<OrderRow>();
+    if (made) {
+      const checkout = made.status === "pending" && made.payment_ref ? checkoutFor(db, toOrder(made), made.payment_ref) : undefined;
+      return json({ order: customerView(made, true), token: key, emailed: false, ...(checkout ? { checkout } : {}) }, 200);
+    }
+  }
+  const cleaned = cleanAddress(b.address);
+  if ("error" in cleaned) return json({ error: cleaned.error, field: "address" }, 400);
+  const address = cleaned.address;
+  const payment: PaymentMethod = b.payment === "online" ? "online" : "cod";
+  if (payment === "online" && !razorpayReady(db)) return json({ error: "Paying online isn't available yet. Please choose cash on delivery.", field: "payment" }, 400);
+  const find = await finder(db);
+  let quote: Quote = quoteLines(Array.isArray(b.lines) ? (b.lines as CartLine[]) : [], find);
+  if (quote.issues.length) return json({ error: "Some items in your cart can't be ordered right now. Please review your cart.", quote }, 409);
+  if (!quote.lines.length) return json({ error: "Your cart is empty." }, 400);
+  let couponCode = "";
+  let limits = { all: 0, phone: 0 };
+  if (b.coupon) {
+    const c = await withCoupon(db, quote, b.coupon, find, address.phone);
+    if ("error" in c) return json({ error: c.error, field: "coupon", quote }, 409);
+    quote = c.quote; couponCode = c.coupon.code;
+    limits = { all: c.coupon.limit ?? 0, phone: c.coupon.perPhone ?? 0 };
+  }
+  if (typeof b.expectTotal === "number" && Math.abs(b.expectTotal - quote.total) >= 1) return json({ error: "Prices in your cart have changed. Please check the new total.", quote }, 409);
+  if (payment === "cod" && quote.total > COD_LIMIT) {
+    return json({ error: `Cash on delivery is available on orders up to ₹${COD_LIMIT.toLocaleString("en-IN")}.${razorpayReady(db) ? " Please pay online, or split the order." : " Please split the order, or contact us."}`, field: "payment" }, 400);
+  }
+  if (payment === "online" && quote.total > ONLINE_LIMIT) return json({ error: `Orders paid online can be up to ₹${ONLINE_LIMIT.toLocaleString("en-IN")}. Please split the order, or contact us.`, field: "payment" }, 400);
+  const ip = clientIp(request);
+  if (!(await allow(db, `store:order:ip:${ip}`, 8, 3600_000)) || !(await allow(db, `store:order:phone:${address.phone}`, 6, 86400_000))) {
+    return json({ error: "Too many orders in a short time. Please try again later, or contact us." }, 429);
+  }
+  const user = await currentUser(request, db).catch(() => null);
+  const token = key || newToken();
+  const now = Date.now();
+  const id = orderId();
+  let rzpId = "";
+  if (payment === "online") {
+    try { rzpId = (await createRzpOrder(db, paise(quote.total), id, { order: id })).id; }
+    catch (e) { return json({ error: `${e instanceof RazorpayError ? e.message : "Couldn't start the payment."} Please try again, or choose cash on delivery.` }, 502); }
+  }
+  const status: OrderStatus = payment === "online" ? "pending" : "placed";
+  const order: Order = {
+    id, createdAt: now, status, payment, address, lines: quote.lines,
+    subtotal: quote.subtotal, mrpTotal: quote.mrpTotal, delivery: quote.delivery, total: quote.total,
+    history: [{ status, at: now }],
+  };
+  if (payment === "online") order.paymentStatus = "pending";
+  if (quote.discount) { order.discount = quote.discount; order.coupon = couponCode; }
+  const notes = longStr(b.notes, 500);
+  if (notes) order.notes = notes;
+  const email = address.email || (user ? normEmail(user.email) : "");
+  // Saved only while a limited code still has uses left (checked in the same statement, so orders
+  // placed at the same moment can't go past the limit).
+  const saved = await db.DB.prepare(`INSERT INTO store_orders (id, created_at, updated_at, status, user_id, email, phone, name, pincode, address, lines, item_count, subtotal, mrp_total, delivery, total, payment, history, notes, token_hash, ip, payment_status, payment_ref, coupon, discount)
+    SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+    WHERE (? = 0 OR (SELECT COUNT(*) FROM store_orders WHERE coupon = ? AND ${USED}) < ?)
+      AND (? = 0 OR (SELECT COUNT(*) FROM store_orders WHERE coupon = ? AND phone = ? AND ${USED}) < ?)`)
+    .bind(order.id, now, now, status, user?.id ?? null, email || null, address.phone, address.name, address.pincode, JSON.stringify(address), JSON.stringify(order.lines),
+      quote.count, order.subtotal, order.mrpTotal, order.delivery, order.total, payment, JSON.stringify(order.history), notes || null, await sha256(token), ip,
+      payment === "online" ? "pending" : null, rzpId || null, couponCode || null, order.discount ?? null,
+      limits.all, couponCode, limits.all, limits.phone, couponCode, address.phone, limits.phone).run();
+  if (!changes(saved)) return json({ error: `${couponCode} has just been used up. Remove it to order without it.`, field: "coupon" }, 409);
+  // Paying online, the emails go out once the payment comes through (markPaid).
+  if (payment === "online") return json({ order: { ...order, canCancel: true }, token, emailed: false, checkout: checkoutFor(db, order, rzpId) }, 201);
+  const emailed = await placedEmails(db, order);
+  return json({ order: { ...order, canCancel: true }, token, emailed }, 201);
+}
+
+/** The checkout's report of a payment: it counts once its signature and Razorpay's own record of it check out. */
+async function confirmPayment(db: DBEnv, r: OrderRow, b: Record<string, any> | null): Promise<OrderRow | Response> {
+  // An order switched to cash on delivery keeps its Razorpay order: a payment made on it still counts.
+  if (!r.payment_ref) return json({ error: "This order isn't paid online." }, 409);
+  if (r.payment_status === "paid" || r.payment_status === "refunded") return r;
+  const pid = str(b?.razorpay_payment_id, 64), oid = str(b?.razorpay_order_id, 64), sig = str(b?.razorpay_signature, 128);
+  if (!pid || oid !== r.payment_ref || !(await paymentSignatureOk(db, oid, pid, sig))) {
+    return json({ error: "We couldn't confirm this payment. If money left your account, write to us with your order number and we'll sort it out." }, 400);
+  }
+  try {
+    let pay = await fetchRzpPayment(db, pid);
+    if (pay.order_id !== r.payment_ref || pay.amount !== paise(r.total) || pay.currency !== "INR") return json({ error: "This payment doesn't match the order. Please write to us with your order number." }, 400);
+    if (pay.status === "authorized") pay = await captureOrFetch(db, pid, pay.amount);
+    if (pay.status !== "captured") return json({ error: "The payment isn't complete yet. If money left your account, this page will show it soon; otherwise, try again." }, 409);
+  } catch (e) {
+    return json({ error: e instanceof RazorpayError ? `Couldn't check the payment with Razorpay (${e.message}). Please wait a minute and reload this page.` : "Couldn't check the payment. Please reload this page." }, 502);
+  }
+  return markPaid(db, r, pid);
+}
+
+/** Razorpay's webhook (payments and refunds): for payments whose page closed before the checkout reported back. */
+async function razorpayWebhook(request: Request, db: DBEnv): Promise<Response> {
+  const raw = await request.text().catch(() => "");
+  if (raw.length > 200_000 || !(await webhookSignatureOk(db, raw, request.headers.get("x-razorpay-signature") || ""))) return json({ error: "Bad signature" }, 400);
+  const ev = parse<any>(raw, null);
+  const tell = (subject: string, line: string) => sendEmail(db, storeInbox(db), subject, shell(`<p style="margin:0;font-size:14px;line-height:1.6;">${line}</p>${button(`${SITE_URL}/admin`, "Open the store admin")}`)).catch(() => false);
+  try {
+    const pay = ev?.payload?.payment?.entity;
+    if (["payment.authorized", "payment.captured", "order.paid"].includes(ev?.event) && pay?.order_id && pay?.id) {
+      const r = await db.DB.prepare("SELECT * FROM store_orders WHERE payment_ref = ?").bind(String(pay.order_id)).first<OrderRow>();
+      const fits = r && Number(pay.amount) === paise(r.total) && pay.currency === "INR";
+      if (r && fits && r.payment_status !== "paid" && r.payment_status !== "refunded") {
+        let status = String(pay.status);
+        if (status === "authorized") status = (await captureOrFetch(db, String(pay.id), Number(pay.amount))).status;
+        if (status === "captured") await markPaid(db, r, String(pay.id));
+      } else if (r && pay.status === "captured" && r.payment_id !== String(pay.id)) {
+        // Money we didn't expect on one of our orders (paid twice, or the wrong amount): the store decides.
+        await tell(`Check a payment on order ${r.id}`, `Razorpay payment <b>${escapeHtml(String(pay.id))}</b> of ${money(Number(pay.amount) / 100)} came in on order <b>${escapeHtml(r.id)}</b> (${money(r.total)}), which ${r.payment_status === "paid" || r.payment_status === "refunded" ? `was already paid (payment ${escapeHtml(r.payment_id || "")})` : "it doesn't match"}. Refund it in Razorpay if it shouldn't be kept.`);
+      }
+    }
+    const rf = ev?.payload?.refund?.entity;
+    if ((ev?.event === "refund.processed" || ev?.event === "refund.failed") && rf?.payment_id) {
+      const r = await db.DB.prepare("SELECT * FROM store_orders WHERE payment_id = ?").bind(String(rf.payment_id)).first<OrderRow>();
+      if (r) {
+        await syncRefunds(db, r);
+        if (ev.event === "refund.failed") await tell(`A refund failed: order ${r.id}`, `Razorpay couldn't complete the refund of ${money(Number(rf.amount) / 100)} on order <b>${escapeHtml(r.id)}</b>. It's no longer counted as refunded: refund it again from the admin.`);
+      }
+    }
+  } catch (e) {
+    console.error("razorpay webhook", e);
+    return json({ error: "Try again" }, 503); // Razorpay sends it again later
+  }
+  return json({ ok: true });
+}
+
+/* ------------------------------------------------------------------ reviews */
+
+type ReviewRow = {
+  id: string; created_at: number; updated_at: number; product_id: number; order_id: string; rating: number; title: string | null; body: string;
+  name: string; city: string | null; status: ReviewStatus; reply: string | null; user_id: string | null; ip: string | null;
+};
+function toReview(r: ReviewRow): Review {
+  const v: Review = { id: r.id, productId: Number(r.product_id), rating: Number(r.rating), body: r.body, name: r.name, createdAt: r.created_at };
+  if (r.title) v.title = r.title;
+  if (r.city) v.city = r.city;
+  if (r.reply) v.reply = r.reply;
+  return v;
+}
+
+async function productReviews(db: DBEnv, productId: number): Promise<{ summary: RatingSummary; reviews: Review[] }> {
+  const { results } = await db.DB.prepare("SELECT * FROM store_reviews WHERE product_id = ? AND status = 'approved' ORDER BY created_at DESC LIMIT 200").bind(productId).all<ReviewRow>();
+  const dist = [0, 0, 0, 0, 0];
+  let sum = 0;
+  for (const r of results) { dist[5 - Math.min(5, Math.max(1, Number(r.rating)))]++; sum += Number(r.rating); }
+  const count = results.length;
+  return { summary: { avg: count ? Math.round((sum / count) * 10) / 10 : 0, count, dist }, reviews: results.map(toReview) };
+}
+
+/** A buyer's review of something from a delivered order: shown once the store approves it. */
+async function createReview(request: Request, db: DBEnv): Promise<Response> {
+  const b = await readJson(request);
+  if (!b) return json({ error: "Please write your review." }, 400);
+  const access = await orderFor(request, db, b.orderId, b.phone);
+  if (access instanceof Response) return access;
+  const { r } = access;
+  if (r.status !== "delivered") return json({ error: "You can review what you bought once the order is delivered." }, 409);
+  const productId = Math.trunc(Number(b.productId));
+  if (!toOrder(r).lines.some((l) => l.productId === productId)) return json({ error: "That item isn't in this order." }, 400);
+  const rating = intIn(b.rating, 1, 5);
+  const title = str(b.title, 100);
+  const body = longStr(b.body, 2000);
+  const name = str(b.name, 40);
+  const city = str(b.city, 40);
+  if (rating === undefined) return json({ error: "Choose from 1 to 5 stars.", field: "rating" }, 400);
+  if (body.length < 20) return json({ error: "Tell other buyers a little more (at least a sentence).", field: "body" }, 400);
+  if (name.length < 2) return json({ error: "Add the name to show with your review.", field: "name" }, 400);
+  if (!(await allow(db, `store:review:ip:${clientIp(request)}`, 20, 3600_000))) return json({ error: "Too many reviews in a short time. Please try again later." }, 429);
+  const user = await currentUser(request, db).catch(() => null);
+  const now = Date.now();
+  const existing = await db.DB.prepare("SELECT id FROM store_reviews WHERE order_id = ? AND product_id = ?").bind(r.id, productId).first<{ id: string }>();
+  const id = existing?.id ?? `AXR-${orderId().slice(2)}`;
+  if (existing) {
+    await db.DB.prepare("UPDATE store_reviews SET rating = ?, title = ?, body = ?, name = ?, city = ?, status = 'pending', updated_at = ?, user_id = COALESCE(user_id, ?), ip = ? WHERE id = ?")
+      .bind(rating, title || null, body, name, city || null, now, user?.id ?? null, clientIp(request), id).run();
+  } else {
+    await db.DB.prepare("INSERT INTO store_reviews (id, created_at, updated_at, product_id, order_id, rating, title, body, name, city, status, user_id, ip) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)")
+      .bind(id, now, now, productId, r.id, rating, title || null, body, name, city || null, user?.id ?? null, clientIp(request)).run();
+  }
+  forgetRatings();
+  const p = byId.get(productId);
+  const what = p ? (isBookId(p.id) ? p.name : `${brandName(p.brand)} ${p.name}`) : `item ${productId}`;
+  await sendEmail(db, storeInbox(db), `Review to check: ${rating} star${rating === 1 ? "" : "s"}, ${what}`, shell(`<h2 style="margin:0 0 8px;font-size:19px;">A buyer reviewed ${escapeHtml(what)}</h2>
+<p style="margin:0 0 6px;font-size:14px;"><span style="color:#D97706;">${"&#9733;".repeat(rating)}${"&#9734;".repeat(5 - rating)}</span> · ${escapeHtml(name)}${city ? `, ${escapeHtml(city)}` : ""} · order ${escapeHtml(r.id)}</p>
+${title ? `<p style="margin:8px 0 0;font-size:14px;"><b>${escapeHtml(title)}</b></p>` : ""}<p style="margin:6px 0 0;font-size:14px;line-height:1.6;white-space:pre-wrap;">${escapeHtml(body)}</p>
+${button(`${SITE_URL}/admin`, "Approve it in the admin")}`)).catch(() => false);
+  return json({ ok: true, id, status: "pending" }, existing ? 200 : 201);
+}
+
+/* ------------------------------------------------------------------ back-in-stock and price-drop alerts */
+
+type AlertRow = { id: string; created_at: number; product_id: number; variant_id: string; kind: "stock" | "price"; email: string; price_at: number | null; notified_at: number | null; token: string };
+
+/** Price and stock of a product (or one of its options) as it sells now. */
+function nowFor(p: Product, variantId: string): { price: number | null; inStock: boolean } {
+  const vs = p.variants ?? [];
+  if (variantId && vs.length) {
+    const v = vs.find((x) => x.id === variantId);
+    if (!v) return { price: null, inStock: false };
+    return { price: p.priceOnRequest ? null : v.price ?? p.price ?? null, inStock: p.inStock && v.inStock };
+  }
+  const s = summarize(p);
+  return { price: s.priceOnRequest ? null : s.price, inStock: s.inStock };
+}
+
+const maskEmail = (e: string) => e.replace(/^(.)(.*)(@.*)$/, (_, a: string, b: string, c: string) => `${a}${"•".repeat(Math.min(6, Math.max(2, b.length)))}${c}`);
+
+async function createAlert(request: Request, db: DBEnv): Promise<Response> {
+  const b = await readJson(request);
+  if (!b) return json({ error: "Please enter your email address." }, 400);
+  const kind = b.kind === "price" ? "price" : "stock";
+  const email = normEmail(b.email).slice(0, 254);
+  if (!validEmail(email)) return json({ error: "Please enter your email address, so we can tell you.", field: "email" }, 400);
+  const p = (await finder(db))(Math.trunc(Number(b.productId)));
+  if (!p) return json({ error: "That item isn't in the store." }, 404);
+  const variantId = p.variants?.some((v) => v.id === b.variantId) ? String(b.variantId) : "";
+  const cur = nowFor(p, variantId);
+  if (kind === "stock" && cur.inStock) return json({ error: "Good news: it's in stock now." }, 409);
+  if (kind === "price" && cur.price === null) return json({ error: "This one has no price to watch: ask for the price instead." }, 409);
+  const ip = clientIp(request);
+  if (!(await allow(db, `store:alert:ip:${ip}`, 20, 3600_000)) || !(await allow(db, `store:alert:email:${email}`, 10, 86400_000))) return json({ error: "Too many alerts in a short time. Please try again later." }, 429);
+  await db.DB.prepare(`INSERT INTO store_alerts (id, created_at, product_id, variant_id, kind, email, price_at, notified_at, token, ip) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)
+    ON CONFLICT(product_id, variant_id, kind, email) DO UPDATE SET created_at = excluded.created_at, price_at = excluded.price_at, notified_at = NULL`)
+    .bind(`AXA-${orderId().slice(2)}`, Date.now(), p.id, variantId, kind, email, cur.price, newToken(), ip).run();
+  return json({ ok: true, kind, price: cur.price }, 201);
+}
+
+/** Email the alerts that came true (back in stock, or cheaper than when asked), once each: from the hourly job, and after the admin changes a product. */
+async function processAlerts(db: DBEnv, productId?: number, maxEmails = 15): Promise<{ sent: number; checked: number }> {
+  if (!db.BREVO_API_KEY) return { sent: 0, checked: 0 };
+  // The ones looked at least recently first, so alerts that never come true don't crowd out the rest.
+  const { results } = await db.DB.prepare(`SELECT * FROM store_alerts WHERE notified_at IS NULL${productId ? " AND product_id = ?" : ""} ORDER BY COALESCE(checked_at, 0), created_at LIMIT 300`)
+    .bind(...(productId ? [productId] : [])).all<AlertRow>();
+  if (!results.length) return { sent: 0, checked: 0 };
+  const seen = Date.now();
+  for (let k = 0; k < results.length; k += 90) {
+    const ids = results.slice(k, k + 90).map((a) => a.id);
+    await db.DB.prepare(`UPDATE store_alerts SET checked_at = ? WHERE id IN (${ids.map(() => "?").join(",")})`).bind(seen, ...ids).run();
+  }
+  const find = await finder(db);
+  let sent = 0;
+  for (const a of results) {
+    if (sent >= maxEmails) break;
+    const p = find(Number(a.product_id));
+    if (!p) continue;
+    const cur = nowFor(p, a.variant_id);
+    const v = a.variant_id ? p.variants?.find((x) => x.id === a.variant_id) : undefined;
+    const name = `${isBookId(p.id) ? p.name : `${brandName(p.brand)} ${p.name}`}${v ? ` (${v.label})` : ""}`;
+    let subject = "", line = "";
+    if (a.kind === "stock" && cur.inStock) {
+      subject = `Back in stock: ${name}`;
+      line = `${escapeHtml(name)} is back in stock${cur.price !== null ? ` at ${money(cur.price)}` : ""}. Stock can run out again, so order soon if you need it.`;
+    } else if (a.kind === "price" && cur.inStock && cur.price !== null && a.price_at !== null && cur.price <= a.price_at - 1) {
+      subject = `Price drop: ${name} is now ${rupees(cur.price)}`;
+      line = `${escapeHtml(name)} is now ${money(cur.price)}, down from ${money(a.price_at)} when you asked us to watch it${p.offer ? ` (${escapeHtml(p.offer.title)}, ${p.offer.percent}% off)` : ""}.`;
+    }
+    if (!subject) continue;
+    const ok = await sendEmail(db, a.email, subject, shell(`<h2 style="margin:0 0 8px;font-size:20px;">${escapeHtml(subject)}</h2>
+<p style="color:#4A5568;margin:0 0 6px;line-height:1.55;">${line}</p>${button(`${SITE_URL}${itemHref(p.id, p.slug)}`, "View it on Aethex")}
+<p style="color:#718096;font-size:12px;margin-top:22px;line-height:1.5;">You asked us to email you about this item, and this is the only email for this alert. Didn't ask for it, or want no more? <a href="${SITE_URL}/alerts/stop?token=${encodeURIComponent(a.token)}">Stop all Aethex alerts to this address</a>.</p>`)).catch(() => false);
+    if (ok) { await db.DB.prepare("UPDATE store_alerts SET notified_at = ? WHERE id = ?").bind(Date.now(), a.id).run(); sent++; }
+  }
+  return { sent, checked: results.length };
+}
+
+/* ------------------------------------------------------------------ bought together (from real orders) */
+
+let togetherCache: { at: number; pairs: Map<number, Map<number, number>> } | null = null;
+/** Items that were in the same orders as this one (at least twice in the last year), most often first. */
+async function boughtTogether(db: DBEnv, id: number): Promise<number[]> {
+  if (!togetherCache || Date.now() - togetherCache.at > 3600_000) {
+    const { results } = await db.DB.prepare("SELECT lines FROM store_orders WHERE status IN ('placed', 'confirmed', 'shipped', 'delivered') AND created_at > ? ORDER BY created_at DESC LIMIT 5000")
+      .bind(Date.now() - 365 * 86400_000).all<{ lines: string }>();
+    const pairs = new Map<number, Map<number, number>>();
+    for (const r of results) {
+      const ids = Array.from(new Set(parse<PricedLine[]>(r.lines, []).map((l) => Number(l.productId)))).slice(0, 30);
+      for (const x of ids) for (const y of ids) {
+        if (x === y) continue;
+        const m = pairs.get(x) ?? new Map<number, number>();
+        m.set(y, (m.get(y) ?? 0) + 1);
+        pairs.set(x, m);
+      }
+    }
+    togetherCache = { at: Date.now(), pairs };
+  }
+  const m = togetherCache.pairs.get(id);
+  if (!m) return [];
+  return Array.from(m.entries()).filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k]) => k);
+}
+
+/* ------------------------------------------------------------------ the hourly job */
+
+/**
+ * Online payments not recorded yet, for a week after the order (a page closed before it reported back, or a
+ * payment that came in after the order was cancelled or switched to cash): unpaid orders are looked at every
+ * hour, the others every six. An order left unpaid for a day is cancelled, so it doesn't linger. Then the
+ * alerts that came true.
+ */
+export async function runStoreScheduled(env: StoreEnv): Promise<{ alerts: number; paid: number; expired: number }> {
+  if (!env.DB) return { alerts: 0, paid: 0, expired: 0 };
+  const db = env as DBEnv;
+  await ensureTables(db.DB);
+  const now = Date.now();
+  // A few at a time: the run's budget of requests (Razorpay, D1, email) is shared with the cart reminders.
+  const { results } = await db.DB.prepare(`SELECT * FROM store_orders WHERE payment_ref IS NOT NULL AND (payment_status IS NULL OR payment_status = 'pending')
+      AND created_at > ? AND created_at < ? AND COALESCE(payment_checked_at, 0) < (CASE WHEN status = 'pending' THEN ? ELSE ? END)
+      ORDER BY COALESCE(payment_checked_at, 0) LIMIT 10`)
+    .bind(now - 7 * 86400_000, now - 15 * 60_000, now - 50 * 60_000, now - 6 * 3600_000).all<OrderRow>();
+  let paid = 0, expired = 0;
+  for (const r0 of results) {
+    let r = r0, checked = false;
+    try { r = await settleFromRazorpay(db, r0); checked = true; } catch (e) { console.error("store: checking a payment", r0.id, e); }
+    await db.DB.prepare("UPDATE store_orders SET payment_checked_at = ? WHERE id = ?").bind(Date.now(), r0.id).run();
+    if (r.payment_status === "paid" || r.payment_status === "refunded") { paid++; continue; }
+    // Unpaid for a day, and Razorpay has no payment for it (when it couldn't be asked, it waits for the next run).
+    if (checked && r.status === "pending" && r.created_at < now - 86400_000) {
+      const res = await db.DB.prepare(`UPDATE store_orders SET status = 'cancelled', updated_at = ?,
+          history = json_insert(history, '$[#]', json_object('status', 'cancelled', 'at', ?, 'note', 'The online payment wasn''t completed'))
+        WHERE id = ? AND status = 'pending' AND (payment_status IS NULL OR payment_status = 'pending')`).bind(Date.now(), Date.now(), r.id).run();
+      if (changes(res)) expired++;
+    }
+  }
+  // Alerts that never came true are dropped after six months, sent ones after a month.
+  await db.DB.prepare("DELETE FROM store_alerts WHERE (notified_at IS NULL AND created_at < ?) OR (notified_at IS NOT NULL AND notified_at < ?)").bind(now - 182 * 86400_000, now - 30 * 86400_000).run();
+  const a = await processAlerts(db);
+  return { alerts: a.sent, paid, expired };
+}
+
 /* ------------------------------------------------------------------ the router */
 
-export async function handleStore(request: Request, env: StoreEnv): Promise<Response> {
+type Ctx = { waitUntil(p: Promise<unknown>): void };
+/** Work that can finish after the response (alert emails); without a way to wait, it's done now. */
+async function later(ctx: Ctx | undefined, p: Promise<unknown>) {
+  const q = p.catch((e) => console.error("store, in the background", e));
+  if (ctx) ctx.waitUntil(q); else await q;
+}
+
+export async function handleStore(request: Request, env: StoreEnv, ctx?: Ctx): Promise<Response> {
   const url = new URL(request.url);
   const path = url.pathname.replace(/^\/api\/store\/?/, "").replace(/\/+$/, "");
   const method = request.method;
@@ -699,119 +1538,197 @@ export async function handleStore(request: Request, env: StoreEnv): Promise<Resp
       return new Response(await booksBody({ ...env, DB: undefined }), { headers: { "content-type": "application/json", "cache-control": "no-store" } });
     }
   }
+  if (path === "config" && method === "GET") {
+    return json({ onlinePayments: razorpayReady(env), codLimit: COD_LIMIT, onlineLimit: ONLINE_LIMIT }, 200, { "cache-control": "public, max-age=60" });
+  }
   const pp = /^products\/([a-z0-9-]{1,120})$/.exec(path);
   if (pp && method === "GET") {
     const key = pp[1];
     const base = /^\d+$/.test(key) ? byId.get(Number(key)) : bySlug.get(key);
     if (!base) return json({ error: "Product not found" }, 404);
-    const { map } = await overrides(env).catch(() => ({ map: new Map<number, Override>() }));
-    const p = applyOverride(base, map.get(base.id));
+    const st = await storeState(env).catch(() => null);
+    const p = st ? sellAs(base, st.overrides.get(base.id), st.offers, st.now) : base;
     if (!p) return json({ error: "Product not found" }, 404);
-    return json(p, 200, CACHED);
+    const rating = st?.ratings.get(base.id);
+    return json(rating ? { ...p, rating } : p, 200, CACHED);
   }
   if (path === "quote" && method === "POST") {
     const b = await readJson(request);
-    const quote = quoteLines(Array.isArray(b?.lines) ? (b!.lines as CartLine[]) : [], await finder(env).catch(() => (id: number) => byId.get(id) ?? null));
-    return json({ ...quote, codAvailable: quote.total <= COD_LIMIT, codLimit: COD_LIMIT });
+    const find = await finder(env).catch(() => (id: number) => byId.get(id) ?? null);
+    let quote = quoteLines(Array.isArray(b?.lines) ? (b!.lines as CartLine[]) : [], find);
+    let couponError = "";
+    if (b?.coupon && quote.lines.length) {
+      if (!env.DB) couponError = "Coupons can't be checked right now. Please try again later.";
+      else {
+        const db = env as DBEnv;
+        await ensureTables(db.DB);
+        if (!(await allow(db, `store:coupon:ip:${clientIp(request)}`, 120, 3600_000))) couponError = "Too many tries. Please wait a while and try again.";
+        else {
+          const c = await withCoupon(db, quote, b.coupon, find, normPhone(b.phone) || undefined);
+          if ("error" in c) couponError = c.error; else quote = c.quote;
+        }
+      }
+    }
+    return json({
+      ...quote, ...(couponError ? { couponError } : {}),
+      codAvailable: quote.total <= COD_LIMIT, codLimit: COD_LIMIT, onlinePayments: razorpayReady(env), onlineLimit: ONLINE_LIMIT,
+    });
+  }
+  const tg = /^together\/(\d{1,7})$/.exec(path);
+  if (tg && method === "GET") {
+    if (!env.DB) return json({ ids: [] });
+    await ensureTables(env.DB);
+    const ids = await boughtTogether(env as DBEnv, Number(tg[1])).catch(() => [] as number[]);
+    return json({ ids }, 200, { "cache-control": "public, max-age=600" });
+  }
+  const rv = /^reviews\/(\d{1,7})$/.exec(path);
+  if (rv && method === "GET") {
+    if (!env.DB) return json({ summary: { avg: 0, count: 0, dist: [0, 0, 0, 0, 0] }, reviews: [] });
+    await ensureTables(env.DB);
+    return json(await productReviews(env as DBEnv, Number(rv[1])), 200, CACHED);
   }
 
   if (!env.DB) return json({ error: "The store's database isn't set up on the server yet (D1 binding DB)." }, 503);
   const db = env as DBEnv;
   await ensureTables(db.DB);
 
-  if (path.startsWith("admin/") || path === "admin") return handleAdmin(request, db, path.replace(/^admin\/?/, ""));
+  if (path === "razorpay/webhook" && method === "POST") return razorpayWebhook(request, db);
+  if (path.startsWith("admin/") || path === "admin") return handleAdmin(request, db, path.replace(/^admin\/?/, ""), ctx);
 
   if (path === "enquiries" && method === "POST") return createEnquiry(request, db);
   if (path === "contact" && method === "POST") return createContact(request, db);
   if (path === "bulk-requests" && method === "POST") return createBulkRequest(request, db);
-
-  if (path === "orders" && method === "POST") {
+  if (path === "orders" && method === "POST") return createOrder(request, db);
+  if (path === "reviews" && method === "POST") return createReview(request, db);
+  if (path === "alerts" && method === "POST") return createAlert(request, db);
+  if (path === "alerts/stop" && method === "POST") {
     const b = await readJson(request);
-    if (!b) return json({ error: "Please fill in your delivery details." }, 400);
-    const cleaned = cleanAddress(b.address);
-    if ("error" in cleaned) return json({ error: cleaned.error, field: "address" }, 400);
-    const address = cleaned.address;
-    const quote: Quote = quoteLines(Array.isArray(b.lines) ? (b.lines as CartLine[]) : [], await finder(db));
-    if (quote.issues.length) return json({ error: "Some items in your cart can't be ordered right now. Please review your cart.", quote }, 409);
-    if (!quote.lines.length) return json({ error: "Your cart is empty." }, 400);
-    if (typeof b.expectTotal === "number" && Math.abs(b.expectTotal - quote.total) >= 1) return json({ error: "Prices in your cart have changed. Please check the new total.", quote }, 409);
-    if (quote.total > COD_LIMIT) return json({ error: `Cash on delivery is available on orders up to ₹${COD_LIMIT.toLocaleString("en-IN")}. Please split the order, or contact us.` }, 400);
-    const ip = clientIp(request);
-    if (!(await allow(db, `store:order:ip:${ip}`, 8, 3600_000)) || !(await allow(db, `store:order:phone:${address.phone}`, 6, 86400_000))) {
-      return json({ error: "Too many orders in a short time. Please try again later, or contact us." }, 429);
-    }
-    const user = await currentUser(request, db).catch(() => null);
-    const token = newToken();
-    const now = Date.now();
-    const order: Order = {
-      id: orderId(), createdAt: now, status: "placed", payment: "cod", address, lines: quote.lines,
-      subtotal: quote.subtotal, mrpTotal: quote.mrpTotal, delivery: quote.delivery, total: quote.total,
-      history: [{ status: "placed", at: now }],
-    };
-    const notes = longStr(b.notes, 500);
-    if (notes) order.notes = notes;
-    const email = address.email || (user ? normEmail(user.email) : "");
-    await db.DB.prepare(`INSERT INTO store_orders (id, created_at, updated_at, status, user_id, email, phone, name, pincode, address, lines, item_count, subtotal, mrp_total, delivery, total, payment, history, notes, token_hash, ip)
-      VALUES (?, ?, ?, 'placed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'cod', ?, ?, ?, ?)`)
-      .bind(order.id, now, now, user?.id ?? null, email || null, address.phone, address.name, address.pincode, JSON.stringify(address), JSON.stringify(order.lines),
-        quote.count, order.subtotal, order.mrpTotal, order.delivery, order.total, JSON.stringify(order.history), notes || null, await sha256(token), ip).run();
-    const inbox = storeInbox(db);
-    const results = await Promise.allSettled([
-      email ? sendEmail(db, email, `Order ${order.id} placed: ${rupees(order.total)} cash on delivery`, customerEmail(order, "placed")) : Promise.resolve(false),
-      sendEmail(db, inbox, `New order ${order.id}: ${rupees(order.total)} COD, ${address.city} ${address.pincode}`, shell(`<h2 style="margin:0 0 8px;font-size:19px;">New cash-on-delivery order</h2>
-<p style="margin:0 0 4px;font-size:14px;">Order <b>${order.id}</b> · ${quote.count} item${quote.count === 1 ? "" : "s"} · <b>${money(order.total)}</b></p>
-${linesHtml(order)}<p style="margin:12px 0 0;font-size:14px;line-height:1.5;">${addressHtml(address)}${address.email ? `<br>${escapeHtml(address.email)}` : ""}</p>
-${notes ? `<p style="margin:10px 0 0;font-size:14px;"><b>Note:</b> ${escapeHtml(notes)}</p>` : ""}
-${button(`${SITE_URL}/admin`, "Open the store admin")}`)),
-    ]);
-    const emailed = results[0].status === "fulfilled" && results[0].value === true;
-    return json({ order: { ...order, canCancel: true }, token, emailed }, 201);
+    const token = str(b?.token, 64);
+    const a = token ? await db.DB.prepare("SELECT email FROM store_alerts WHERE token = ?").bind(token).first<{ email: string }>() : null;
+    if (!a) return json({ error: "There are no alerts for this link: they may have been stopped already." }, 404);
+    await db.DB.prepare("DELETE FROM store_alerts WHERE email = ?").bind(a.email).run();
+    return json({ ok: true, email: maskEmail(a.email) });
   }
 
-  if (path === "orders" && method === "GET") {
+  // A signed-in account: its orders, what it can review, and its quotation requests.
+  if ((path === "orders" || path === "my-reviews" || path === "my-quotes") && method === "GET") {
     const user = await currentUser(request, db);
-    if (!user) return json({ error: "Sign in to see your orders.", signIn: true }, 401);
-    const { results } = await db.DB.prepare("SELECT * FROM store_orders WHERE user_id = ? OR email = ? ORDER BY created_at DESC LIMIT 100").bind(user.id, normEmail(user.email)).all<OrderRow>();
-    return json({ orders: results.map((r) => customerView(r, true)) });
+    const what = { orders: "your orders", "my-reviews": "what you can review", "my-quotes": "your quotation requests" }[path];
+    if (!user) return json({ error: `Sign in to see ${what}.`, signIn: true }, 401);
+    const email = normEmail(user.email);
+    if (path === "my-quotes") {
+      const { results } = await db.DB.prepare("SELECT * FROM store_bulk_requests WHERE user_id = ? OR email = ? ORDER BY created_at DESC LIMIT 100").bind(user.id, email).all<BulkRow>();
+      return json({ requests: results.map((r) => ({ ...toBulk(r), updatedAt: r.updated_at })) });
+    }
+    if (path === "orders") {
+      const { results } = await db.DB.prepare("SELECT * FROM store_orders WHERE user_id = ? OR email = ? ORDER BY created_at DESC LIMIT 100").bind(user.id, email).all<OrderRow>();
+      const reviews = await reviewsFor(db, results.filter((r) => r.status === "delivered").map((r) => r.id));
+      return json({ orders: results.map((r) => ({ ...customerView(r, true), ...(reviews.has(r.id) ? { reviews: reviews.get(r.id) } : {}) })) });
+    }
+    const { results } = await db.DB.prepare("SELECT * FROM store_orders WHERE (user_id = ? OR email = ?) AND status = 'delivered' ORDER BY created_at DESC LIMIT 60").bind(user.id, email).all<OrderRow>();
+    const ids = results.map((r) => r.id);
+    const written = ids.length
+      ? (await db.DB.prepare(`SELECT * FROM store_reviews WHERE order_id IN (${ids.map(() => "?").join(",")})`).bind(...ids).all<ReviewRow>()).results
+      : [];
+    const byKey = new Map(written.map((w) => [`${w.order_id}:${w.product_id}`, w]));
+    const items: Record<string, unknown>[] = [];
+    const seen = new Set<string>();
+    for (const r of results) {
+      const o = toOrder(r);
+      const deliveredAt = [...o.history].reverse().find((h) => h.status === "delivered")?.at ?? r.updated_at;
+      for (const l of o.lines) {
+        const k = `${r.id}:${l.productId}`;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        const w = byKey.get(k);
+        items.push({
+          orderId: r.id, deliveredAt, productId: l.productId, slug: l.slug, name: l.name, brand: brandName(l.brand), image: l.image,
+          review: w ? { ...toReview(w), status: w.status } : null,
+        });
+      }
+    }
+    return json({ items });
   }
 
-  // GET orders/:id (the browser that placed it sends its token in x-order-token, or its account is signed in),
-  // POST orders/:id/lookup {phone} (order number and phone), POST orders/:id/cancel {phone?}.
-  const om = /^orders\/([A-Za-z0-9-]{6,20})(\/cancel|\/lookup)?$/.exec(path);
+  // orders/:id (GET: the browser that placed it sends its token in x-order-token, or its account is signed in),
+  // POST orders/:id/lookup {phone}, /cancel {phone?, reason?, ifUnpaid?}, /pay {razorpay_*}, /payment (pay again), /cod (cash on delivery instead).
+  const om = /^orders\/([A-Za-z0-9-]{6,20})(?:\/(cancel|lookup|pay|payment|cod))?$/.exec(path);
   if (om && ((method === "GET" && !om[2]) || (method === "POST" && om[2]))) {
-    const id = cleanOrderId(om[1]);
     const b = method === "POST" ? await readJson(request) : null;
-    const token = str(request.headers.get("x-order-token"), 64);
-    const phoneIn = b?.phone;
-    const r = await db.DB.prepare("SELECT * FROM store_orders WHERE id = ?").bind(id).first<OrderRow>();
-    // Who may see it: the browser that placed it (token), its account, or someone with the order number and phone.
-    let full = false, allowed = false;
-    if (r && token && (await sha256(token)) === r.token_hash) { full = true; allowed = true; }
-    if (r && !allowed) {
-      const user = await currentUser(request, db).catch(() => null);
-      if (user && (r.user_id === user.id || (r.email && r.email === normEmail(user.email)))) { full = true; allowed = true; }
-    }
-    if (!allowed && phoneIn !== undefined && phoneIn !== null) {
-      if (!(await allow(db, `store:lookup:ip:${clientIp(request)}`, 30, 3600_000))) return json({ error: "Too many tries. Please wait a while and try again." }, 429);
-      const phone = normPhone(phoneIn);
-      if (r && phone && phone === r.phone) allowed = true;
-    }
-    if (!r || !allowed) return json({ error: "We couldn't find an order with that number and phone. Please check both and try again." }, 404);
+    const access = await orderFor(request, db, om[1], b?.phone);
+    if (access instanceof Response) return access;
+    const { full } = access;
+    let r = access.r;
+    const act = om[2];
+    const view = async (row: OrderRow) => {
+      const reviews = row.status === "delivered" ? (await reviewsFor(db, [row.id])).get(row.id) : undefined;
+      return { ...customerView(row, full), ...(reviews ? { reviews } : {}) };
+    };
+    const settle = async () => { try { r = await settleFromRazorpay(db, r); } catch (e) { console.error("store: checking a payment", r.id, e); } };
 
-    if (method === "GET" || om[2] === "/lookup") return json({ order: customerView(r, full) });
-    if (om[2] === "/cancel") {
+    if (!act || act === "lookup") {
+      // A payment that never reported back (the page closed first) shows up when the order is opened.
+      if (r.status === "pending" && Date.now() - r.created_at > 60_000 && (await allow(db, `store:settle:${r.id}`, 6, 600_000))) await settle();
+      return json({ order: await view(r) });
+    }
+
+    if (act === "pay") {
+      const out = await confirmPayment(db, r, b);
+      return out instanceof Response ? out : json({ order: await view(out) });
+    }
+
+    if (act === "payment") {
+      if (r.payment !== "online" || r.status !== "pending") return json({ error: r.status === "cancelled" ? "This order has been cancelled." : "This order doesn't need paying.", order: await view(r) }, 409);
+      if (!razorpayReady(db) || !r.payment_ref) return json({ error: "Paying online isn't available right now. You can pay cash on delivery instead." }, 409);
+      await settle();
+      if (r.status !== "pending") return json({ order: await view(r) });
+      return json({ order: await view(r), checkout: checkoutFor(db, toOrder(r), r.payment_ref) });
+    }
+
+    if (act === "cod") {
+      if (r.payment !== "online" || r.status !== "pending") return json({ error: "This order isn't waiting for a payment.", order: await view(r) }, 409);
+      if (r.total > COD_LIMIT) return json({ error: `Cash on delivery is available on orders up to ₹${COD_LIMIT.toLocaleString("en-IN")}.` }, 409);
+      await settle();
+      if (r.status !== "pending") return json({ order: await view(r) }); // it was paid after all
+      const o = toOrder(r);
+      const now = Date.now();
+      o.status = "placed"; o.payment = "cod";
+      delete o.paymentStatus;
+      o.history.push({ status: "placed", at: now, note: "Cash on delivery" });
+      const res = await db.DB.prepare("UPDATE store_orders SET status = 'placed', payment = 'cod', payment_status = NULL, history = ?, updated_at = ? WHERE id = ? AND status = 'pending' AND payment_status = 'pending'")
+        .bind(JSON.stringify(o.history), now, r.id).run();
+      if (changes(res)) await placedEmails(db, o);
+      return json({ order: await view((await rowById(db, r.id)) ?? r) });
+    }
+
+    if (act === "cancel") {
       if (!cancellable(r.status)) return json({ error: r.status === "cancelled" ? "This order is already cancelled." : "This order has shipped, so it can't be cancelled now. You can refuse it at delivery, or contact us." }, 409);
+      if (r.status === "pending") {
+        await settle(); // paid after all: cancelled and refunded below
+        // The checkout dropping an unpaid order it's replacing: one that turns out to be paid is kept.
+        if (b?.ifUnpaid === true && r.status !== "pending") return json({ error: "This order has been paid.", order: await view(r) }, 409);
+      }
+      const was = r.status;
       const o = toOrder(r);
       const now = Date.now();
       const reason = str(b?.reason, 200);
       o.status = "cancelled";
       o.history.push({ status: "cancelled", at: now, note: reason ? `Cancelled by the customer: ${reason}` : "Cancelled by the customer" });
-      await db.DB.prepare("UPDATE store_orders SET status = 'cancelled', history = ?, updated_at = ? WHERE id = ?").bind(JSON.stringify(o.history), now, o.id).run();
-      await Promise.allSettled([
-        o.address.email ? sendEmail(db, o.address.email, `Order ${o.id} cancelled`, customerEmail(o, "cancelled")) : Promise.resolve(false),
-        sendEmail(db, storeInbox(db), `Cancelled by the customer: ${o.id}`, shell(`<p style="margin:0;font-size:14px;line-height:1.6;">Order <b>${o.id}</b> (${money(o.total)}, ${escapeHtml(o.address.city)}) was cancelled by the customer.${reason ? `<br>Reason: ${escapeHtml(reason)}` : ""}</p>`)),
-      ]);
-      return json({ order: { ...o, address: customerView(r, full).address, canCancel: false } });
+      const res = await db.DB.prepare("UPDATE store_orders SET status = 'cancelled', history = ?, updated_at = ? WHERE id = ? AND status = ?").bind(JSON.stringify(o.history), now, o.id, was).run();
+      if (!changes(res)) return json({ error: "This order has just changed. Please reload the page and try again." }, 409);
+      let refundNote = "";
+      if (o.payment === "online" && o.paymentStatus === "paid") {
+        const done = await refundOrder(db, { ...r, status: "cancelled", history: JSON.stringify(o.history) }, o, o.total, "Cancelled by the customer");
+        refundNote = "error" in done ? `<br><b>Refund it from the admin:</b> ${escapeHtml(done.error)}` : `<br>The online payment (${money(done.amount)}) has been refunded.`;
+      }
+      // An order cancelled before its online payment was never placed: there's nothing to tell anyone.
+      if (was !== "pending") {
+        await Promise.allSettled([
+          o.address.email ? sendEmail(db, o.address.email, `Order ${o.id} cancelled`, customerEmail(o, "cancelled")) : Promise.resolve(false),
+          sendEmail(db, storeInbox(db), `Cancelled by the customer: ${o.id}`, shell(`<p style="margin:0;font-size:14px;line-height:1.6;">Order <b>${o.id}</b> (${money(o.total)}, ${escapeHtml(o.address.city)}) was cancelled by the customer.${reason ? `<br>Reason: ${escapeHtml(reason)}` : ""}${refundNote}</p>`)),
+        ]);
+      }
+      return json({ order: { ...(await view((await rowById(db, o.id)) ?? r)), canCancel: false } });
     }
   }
 

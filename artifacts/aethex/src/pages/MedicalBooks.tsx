@@ -4,18 +4,23 @@
  * with one it works like the shop: filters (year or degree, subject,
  * publisher, priced), sort, and a grid. The state lives in the address
  * (?course=&group=&subject=&pub=&priced=1&sort=&q=) so any view can be shared.
- * Books come from useBooks() (src/data/store/books.json with the store's
- * prices). Styles: src/shop.css (.ax-shop, .ax-bk) and the product card.
+ * A year or degree also shows its set of standard books (one per subject) to
+ * order in one go (components/store/BookSet.tsx, #set); the first view lists
+ * the sets. Books come from useBooks() (src/data/store/books.json with the
+ * store's prices). Styles: src/shop.css (.ax-shop, .ax-bk, .ax-bset) and the
+ * product card.
  */
 import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import {
-  Activity, ArrowRight, BookOpen, Brain, ChevronLeft, ChevronRight, FlaskConical, GraduationCap, HeartPulse, Leaf, Library, MessageSquareText,
+  Activity, ArrowRight, BookOpen, Brain, ChevronLeft, ChevronRight, FlaskConical, GraduationCap, HeartPulse, Layers, Leaf, Library, MessageSquareText,
   Pill, Search as SearchIcon, SlidersHorizontal, Smile, Stethoscope, Target, X, type LucideProps,
 } from "lucide-react";
 import { ShopHead, type Crumb } from "@/components/shop/ShopHead";
 import { TopLayer } from "@/components/shop/TopLayer";
 import { BookCard } from "@/components/store/BookCard";
+import { BookSetPanel } from "@/components/store/BookSet";
+import { bookSet, buyable, setGroups } from "@/lib/store/booksets";
 import { EnquiryDialog } from "@/components/store/EnquiryForm";
 import { useSeo } from "@/hooks/use-seo";
 import { useBooks, type BookStore } from "@/lib/store/api";
@@ -189,6 +194,33 @@ function mixCourses(books: Book[], n: number): Book[] {
   return out;
 }
 
+/** The years and degrees that have a set of standard books, as cards. */
+function SetCards({ bs }: { bs: BookStore }) {
+  const sets = useMemo(() => setGroups(bs.books, BOOK_COURSES.flatMap((c) => c.groups.map((g) => g.id))), [bs]);
+  if (!sets.length) return null;
+  return (
+    <section className="ax-h-sec ax-bset-cards">
+      <div className="ax-wrap">
+        <div className="ax-h-title"><h2>Book sets by year</h2></div>
+        <p className="ax-bset-cards-sub">One standard textbook for every subject of the year, ready to order together. Switch any book, or leave out what you have.</p>
+        <div className="ax-bset-grid">
+          {sets.map((p) => {
+            const g = groupInfo(p.group)!;
+            const ready = p.subjects.filter((s) => buyable(s.options[0])).length;
+            return (
+              <Link key={p.group} href={`/books?course=${g.course.id}${g.course.groups.length > 1 ? `&group=${g.group.id}` : ""}#set`} className="ax-bset-card">
+                <span className="ic"><Layers size={18} /></span>
+                <span className="tx"><b>{p.label}</b><small>{p.subjects.length} subjects{ready ? ` · ${ready} ready to order` : ""}</small></span>
+                <ArrowRight size={16} />
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Landing({ bs, onAsk }: { bs: BookStore; onAsk: () => void }) {
   const counts = useMemo(() => courseCounts(bs.books), [bs]);
   const standard = useMemo(() => mixCourses(bs.books.filter((b) => b.standard && b.price !== null && b.cover), 16), [bs]);
@@ -214,6 +246,7 @@ function Landing({ bs, onAsk }: { bs: BookStore; onAsk: () => void }) {
           </div>
         </div>
       </section>
+      <SetCards bs={bs} />
       <Rail title="Textbooks you can order now" books={standard} bs={bs} more={{ href: "/books?priced=1", label: "All books with a price" }} />
       <Rail title="New editions" books={fresh} bs={bs} more={{ href: "/books?sort=newest", label: "All books, newest first" }} />
       <Rail title="The standard references" books={classics} bs={bs} />
@@ -269,6 +302,9 @@ export default function MedicalBooks() {
   }, [inSubject, v.pubs, v.priced, v.q, v.sort]);
 
   const title = v.q ? `Books for “${v.q}”` : v.subject ? `${v.subject} books` : group ? `${group.label} books` : course ? `${course.label} books` : "Medical books";
+  // The year's (or the one-degree course's) set of standard books, above its books.
+  const setGroup = v.group || (course && course.groups.length === 1 ? course.groups[0].id : "");
+  const plan = useMemo(() => (bs && setGroup && !v.q && !v.subject ? bookSet(bs.books, setGroup) : null), [bs, setGroup, v.q, v.subject]);
   useSeo({
     title: `${v.q ? title : course ? `${course.label} books: buy online` : "Medical books for every course"} | Aethex`,
     description: course
@@ -377,6 +413,7 @@ export default function MedicalBooks() {
               </div>
             ) : (
               <>
+                {plan && <BookSetPanel plan={plan} bs={bs} />}
                 <div className="ax-grid grid ax-bk-grid">
                   {results.slice(0, shown).map((b, i) => <BookCard key={b.id} book={b} publisher={bs.publisherName(b.publisher)} eager={i < 5} />)}
                 </div>

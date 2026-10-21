@@ -1,19 +1,23 @@
 /**
  * The cart (/cart): items with their size or colour and quantity, save for
  * later and remove, items that can't be bought right now, the way to free
- * delivery, and the order summary with checkout. Totals follow lib/store/rules.
+ * delivery, a coupon code, and the order summary with checkout. Totals follow
+ * lib/store/rules (and the Worker's quote when a coupon is on, lib/store/coupon).
  * Styles: src/shop.css (.ax-cart).
  */
 import { Link, useLocation } from "wouter";
 import { AlertTriangle, ArrowRight, Banknote, Heart, Minus, Plus, ShoppingBag, Trash2, Truck } from "lucide-react";
 import { ShopHead } from "@/components/shop/ShopHead";
 import { OrderSummary } from "@/components/shop/OrderSummary";
+import { CouponBox } from "@/components/shop/CouponBox";
 import { ProductImage } from "@/components/store/ProductImage";
 import { isBookId, itemHref } from "@/lib/store/bookdata";
 import { useToast } from "@/hooks/use-toast";
 import { useWishlist } from "@/hooks/use-wishlist";
 import { useSeo } from "@/hooks/use-seo";
-import { cart, useCart } from "@/lib/store/cart";
+import { cart } from "@/lib/store/cart";
+import { usePricedCart } from "@/lib/store/coupon";
+import { useStoreConfig } from "@/lib/store/api";
 import { discountPct, FREE_DELIVERY_FROM, MAX_QTY } from "@/lib/store/rules";
 import type { LineIssue } from "@/lib/store/types";
 import { formatINR } from "@/lib/utils";
@@ -27,11 +31,14 @@ const ISSUE_TEXT: Record<LineIssue["reason"], string> = {
 };
 
 export default function Cart() {
-  useSeo({ title: "Your cart | Aethex Store", description: "Review the items in your cart and check out with cash on delivery.", path: "/cart" });
+  useSeo({ title: "Your cart | Aethex Store", description: "Review the items in your cart and check out.", path: "/cart" });
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const wishlist = useWishlist();
-  const { lines, quote: t, store, isLoading } = useCart();
+  const priced = usePricedCart();
+  const { lines, quote: t, store, isLoading } = priced;
+  const { data: config } = useStoreConfig();
+  const toFree = Math.max(0, FREE_DELIVERY_FROM - (t.subtotal - (t.discount ?? 0)));
 
   const saveForLater = (productId: number, variantId: string | null) => {
     if (!wishlist.has(productId)) wishlist.toggle(productId);
@@ -78,8 +85,8 @@ export default function Cart() {
             {t.count > 0 && (
               <div className={`ax-freebar${t.delivery === 0 ? " done" : ""}`}>
                 <Truck size={18} />
-                <span>{t.delivery === 0 ? <>Your order gets <b>free delivery</b>.</> : <>Add <b>{formatINR(Math.max(0, FREE_DELIVERY_FROM - t.subtotal))}</b> more for free delivery.</>}</span>
-                <i aria-hidden="true"><em style={{ width: `${Math.min(100, (t.subtotal / FREE_DELIVERY_FROM) * 100)}%` }} /></i>
+                <span>{t.delivery === 0 ? <>Your order gets <b>free delivery</b>.</> : <>Add <b>{formatINR(toFree)}</b> more for free delivery.</>}</span>
+                <i aria-hidden="true"><em style={{ width: `${Math.min(100, ((FREE_DELIVERY_FROM - toFree) / FREE_DELIVERY_FROM) * 100)}%` }} /></i>
               </div>
             )}
 
@@ -136,9 +143,10 @@ export default function Cart() {
           </div>
 
           <aside className="ax-cart-side">
-            <OrderSummary quote={t}>
+            <OrderSummary quote={t} payLabel={config?.onlinePayments ? "Total" : "To pay on delivery"}>
+              {t.count > 0 && <CouponBox priced={priced} />}
               <button type="button" className="ax-btn teal lg ax-sum-go" onClick={() => setLocation("/checkout")} disabled={t.count === 0}>Checkout <ArrowRight size={18} /></button>
-              <p className="ax-sum-secure"><Banknote size={14} /> Cash on delivery · pay when it arrives</p>
+              <p className="ax-sum-secure"><Banknote size={14} /> {config?.onlinePayments ? "Pay online or cash on delivery" : "Cash on delivery · pay when it arrives"}</p>
             </OrderSummary>
           </aside>
         </div>

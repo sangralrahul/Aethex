@@ -6,7 +6,7 @@
  */
 import { useEffect, useState } from "react";
 import { Link, useRoute } from "wouter";
-import { CheckCircle2, Loader2, Package, PhoneCall, Truck, Banknote } from "lucide-react";
+import { CheckCircle2, Clock, CreditCard, Loader2, Package, PhoneCall, Truck, Banknote } from "lucide-react";
 import { OrderView } from "@/components/store/OrderView";
 import { useSeo } from "@/hooks/use-seo";
 import { getOrder, tokenFor, type CustomerOrder } from "@/lib/store/api";
@@ -50,19 +50,24 @@ export default function OrderPlaced() {
   const words = order.address.name.trim().split(/\s+/);
   const first = /^dr\.?$/i.test(words[0]) && words[1] ? `Dr ${words[1]}` : words[0];
   const fresh = Date.now() - order.createdAt < 30 * 60_000 && order.status === "placed";
+  const due = order.status === "pending";
+  const paidOnline = order.payment === "online" && order.paymentStatus === "paid";
 
   return (
     <div className="ax-cart-page">
       <div className="ax-wrap ax-co-done">
-        <span className="ok"><CheckCircle2 size={34} /></span>
-        <p className="ax-eyebrow c">{fresh ? "Order placed" : "Your order"}</p>
-        <h1>{fresh ? `Thank you, ${first}` : `Order ${order.id}`}</h1>
-        {fresh && <p className="lead">Your order <b>{order.id}</b> for {formatINR(order.total)} is placed. {order.address.email ? "We've emailed you the details." : "Save the order number to track it."}</p>}
+        <span className={due ? "ok wait" : "ok"}>{due ? <Clock size={34} /> : <CheckCircle2 size={34} />}</span>
+        <p className="ax-eyebrow c">{due ? "Payment due" : fresh ? "Order placed" : "Your order"}</p>
+        <h1>{due ? "Almost there" : fresh ? `Thank you, ${first}` : `Order ${order.id}`}</h1>
+        {due && <p className="lead">Your order <b>{order.id}</b> is waiting for its payment of {formatINR(order.total)}. Pay below, or choose cash on delivery.</p>}
+        {fresh && <p className="lead">Your order <b>{order.id}</b> for {formatINR(order.total)} is placed{paidOnline ? " and paid" : ""}. {order.address.email ? "We've emailed you the details." : "Save the order number to track it."}</p>}
         {fresh && (
           <ol className="ax-next">
             <li><PhoneCall size={18} /><span><b>We confirm it</b><small>We may call {order.address.phone.replace(/^(\d{2})\d{4}/, "$1••••")} to confirm the order and address.</small></span></li>
             <li><Truck size={18} /><span><b>It ships</b><small>{BUSINESS.dispatch[0].toUpperCase() + BUSINESS.dispatch.slice(1)}; delivery is {BUSINESS.delivery}.</small></span></li>
-            <li><Banknote size={18} /><span><b>Pay at your door</b><small>Keep {formatINR(order.total)} ready in cash.</small></span></li>
+            {paidOnline
+              ? <li><CreditCard size={18} /><span><b>Nothing to pay at your door</b><small>You've paid {formatINR(order.total)} online.</small></span></li>
+              : <li><Banknote size={18} /><span><b>Pay at your door</b><small>Keep {formatINR(order.total)} ready in cash.</small></span></li>}
           </ol>
         )}
         <OrderView order={order} token={token} onChange={setOrder} />

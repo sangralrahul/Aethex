@@ -5,22 +5,29 @@
  * the full description, specifications, size guide and related products.
  * Products for hospitals and medical colleges (categories with the
  * "institution" audience) are quoted: they say so, and can go on the bulk list.
+ * Also: stars and reviews from buyers, a sale running on it, the delivery check
+ * by PIN code, back-in-stock and price-drop emails, compare, and what buyers
+ * bought with it (from real orders).
  * Styles: src/shop.css (.ax-pdp).
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import {
-  ArrowLeft, BadgeCheck, Banknote, Building2, Check, ChevronLeft, ChevronRight, ClipboardList, Heart, MessageSquareText, Minus, Package, Plus, Ruler,
+  ArrowLeft, BadgeCheck, BadgePercent, Banknote, BellRing, Building2, Check, ChevronLeft, ChevronRight, ClipboardList, Heart, MessageSquareText, Minus, Package, Plus, Ruler,
   RotateCcw, Share2, ShieldCheck, ShoppingCart, Truck, Zap,
 } from "lucide-react";
 import { ProductCard } from "@/components/ProductCard";
+import { AlertDialog } from "@/components/store/AlertDialog";
+import { CompareTick, CompareTray } from "@/components/store/CompareTray";
+import { DeliveryCheck } from "@/components/store/DeliveryCheck";
+import { CustomerReviews, RatingLine } from "@/components/store/Reviews";
 import { ProductImage, imageInfo, cropOf } from "@/components/store/ProductImage";
 import { Dialog } from "@/components/store/Dialog";
 import { EnquiryDialog } from "@/components/store/EnquiryForm";
 import { useToast } from "@/hooks/use-toast";
 import { useWishlist } from "@/hooks/use-wishlist";
 import { useSeo } from "@/hooks/use-seo";
-import { useProduct, useStore } from "@/lib/store/api";
+import { useProduct, useStore, useStoreConfig, useTogether } from "@/lib/store/api";
 import { cart } from "@/lib/store/cart";
 import { isBookId } from "@/lib/store/bookdata";
 import { bulk, useBulkLines } from "@/lib/store/bulk";
@@ -53,6 +60,7 @@ function structured(p: Product, brandName: string, categoryName: string) {
   if (p.sku) product.sku = p.sku;
   if (p.model) product.mpn = p.model;
   if (p.countryOfOrigin) product.countryOfOrigin = p.countryOfOrigin;
+  if (p.rating?.count) product.aggregateRating = { "@type": "AggregateRating", ratingValue: p.rating.avg, reviewCount: p.rating.count, bestRating: 5, worstRating: 1 };
   if (!p.priceOnRequest && p.price !== null) {
     product.offers = priced.length > 1 && new Set(priced).size > 1
       ? { "@type": "AggregateOffer", priceCurrency: "INR", lowPrice: Math.min(...priced), highPrice: Math.max(...priced), offerCount: priced.length, availability, url, seller }
@@ -85,6 +93,9 @@ export default function ProductDetail() {
   const [zoom, setZoom] = useState<{ x: number; y: number } | null>(null);
   const [needChoice, setNeedChoice] = useState(false);
   const [ask, setAsk] = useState<null | "price" | "bulk">(null);
+  const [alertKind, setAlertKind] = useState<null | "stock" | "price">(null);
+  const { data: config } = useStoreConfig();
+  const { data: togetherIds } = useTogether(product?.id);
   const [sizes, setSizes] = useState(false);
   const thumbs = useRef<HTMLDivElement>(null);
   const bulkLines = useBulkLines();
@@ -133,6 +144,8 @@ export default function ProductDetail() {
     const rank = (p: (typeof same)[number]) => (p.subcategory === product.subcategory ? 2 : 0) + (p.brand === product.brand ? 1 : 0) + (p.inStock ? 0.5 : 0);
     return same.sort((a, b) => rank(b) - rank(a)).slice(0, 10); // 2 rows of 5 on wide screens, 2 rows of 4 otherwise (shop.css)
   }, [product, store]);
+  // What buyers ordered with it, from real orders (empty until there are some).
+  const together = useMemo(() => (store && togetherIds ? togetherIds.map((id) => store.byId.get(id)).filter((x): x is NonNullable<typeof x> => !!x && !x.priceOnRequest).slice(0, 5) : []), [store, togetherIds]);
 
   if (isLoading || (!product && !error)) {
     return (
@@ -261,6 +274,7 @@ export default function ProductDetail() {
               <Heart size={16} fill={saved ? "currentColor" : "none"} /> {saved ? "Saved" : "Save to wishlist"}
             </button>
             <button type="button" onClick={share}><Share2 size={16} /> Share</button>
+            {!inst && <CompareTick id={product.id} name={product.name} />}
           </div>
         </div>
 
@@ -274,6 +288,7 @@ export default function ProductDetail() {
           </div>
           <h1>{product.name}</h1>
           {(product.model || product.subcategory) && <p className="ax-pdp-model">{[product.model ? `Model ${product.model}` : "", product.subcategory].filter(Boolean).join(" · ")}</p>}
+          <RatingLine rating={product.rating} />
 
           <div className="ax-pdp-price">
             {product.priceOnRequest ? (
@@ -290,7 +305,9 @@ export default function ProductDetail() {
                   {priceShown !== null && off > 0 && <><s>MRP {formatINR(Number(mrpShown))}</s><em>{off}% off</em></>}
                 </div>
                 {priceShown !== null && off > 0 && <p className="save">You save {formatINR(Number(mrpShown) - priceShown)}</p>}
+                {product.offer && <p className="ax-offer"><BadgePercent size={15} /><span><b>{product.offer.title}</b>: {product.offer.percent}% off{product.offer.endsAt ? `, till ${new Date(product.offer.endsAt - 1000).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}` : ""}</span></p>}
                 <p className="tax">{priceShown !== null && !off && mrpShown ? `MRP ${formatINR(mrpShown)} · ` : ""}Inclusive of all taxes</p>
+                {product.inStock && !inst && <button type="button" className="ax-link ax-watch" onClick={() => setAlertKind("price")}><BellRing size={14} /> Email me if the price drops</button>}
               </>
             )}
           </div>
@@ -335,8 +352,9 @@ export default function ProductDetail() {
               <button type="button" className="ax-btn dark lg" onClick={() => add(() => setLocation("/checkout"))} disabled={!!variant && !variant.inStock}><Zap size={18} /> Buy now</button>
             </div>
           ) : (
-            <div className="ax-pdp-oos">This is out of stock right now. <button type="button" className="ax-link" onClick={() => setAsk("price")}>Tell me when it's back</button> or <Link href={`/category/${product.category}`}>see similar products</Link>.</div>
+            <div className="ax-pdp-oos">This is out of stock right now. <button type="button" className="ax-link" onClick={() => setAlertKind("stock")}><BellRing size={14} /> Email me when it's back</button> or <Link href={`/category/${product.category}`}>see similar products</Link>.</div>
           )}
+          {!inst && <DeliveryCheck price={priceShown ?? (typeof lowest === "number" ? lowest : null)} />}
           {inst ? (
             <p className="ax-pdp-bulk">
               Ordering for a hospital or college?{" "}
@@ -354,7 +372,7 @@ export default function ProductDetail() {
               </>
             ) : (
               <>
-                <li><Banknote size={20} /><span><b>Cash on delivery</b><small>Pay in cash when your order arrives</small></span></li>
+                <li><Banknote size={20} /><span><b>{config?.onlinePayments ? "Pay online or cash on delivery" : "Cash on delivery"}</b><small>{config?.onlinePayments ? "UPI, cards and netbanking, or cash at your door" : "Pay in cash when your order arrives"}</small></span></li>
                 <li><Truck size={20} /><span><b>{`Free delivery from ${formatINR(FREE_DELIVERY_FROM)}`}</b><small>{formatINR(DELIVERY_FEE)} below that · ships {BUSINESS.dispatch}</small></span></li>
               </>
             )}
@@ -404,7 +422,7 @@ export default function ProductDetail() {
               </>
             ) : (
               <>
-                <div><dt>Payment</dt><dd>Cash on delivery. Keep the exact amount ready if you can.</dd></div>
+                <div><dt>Payment</dt><dd>{config?.onlinePayments ? "Pay online (UPI, debit and credit cards, netbanking, wallets) or cash on delivery." : "Cash on delivery. Keep the exact amount ready if you can."}</dd></div>
                 <div><dt>Delivery</dt><dd>Free on orders from {formatINR(FREE_DELIVERY_FROM)}; {formatINR(DELIVERY_FEE)} below that. Ships {BUSINESS.dispatch}; delivery is {BUSINESS.delivery}.</dd></div>
               </>
             )}
@@ -415,6 +433,17 @@ export default function ProductDetail() {
           <p className="fine">Product details are from {brandName}. For medical devices, read the instructions for use, and ask your doctor about readings or symptoms.</p>
         </aside>
       </section>
+
+      <CustomerReviews productId={product.id} />
+
+      {together.length > 0 && store && (
+        <section className="ax-wrap ax-pdp-related ax-together">
+          <div className="ax-h-title"><h2>Bought together with this</h2></div>
+          <div className="ax-grid grid">
+            {together.map((p) => <ProductCard key={p.id} product={p} brandName={store.brandName(p.brand)} />)}
+          </div>
+        </section>
+      )}
 
       {related.length > 0 && store && (
         <section className="ax-wrap ax-pdp-related">
@@ -434,14 +463,14 @@ export default function ProductDetail() {
           </>
         ) : product.inStock ? (
           <>
-            <div><b>{formatINR((priceShown ?? Number(lowest)) * qty)}</b>{qty > 1 ? <small>{qty} × {formatINR(priceShown ?? Number(lowest))}</small> : <small>Cash on delivery</small>}</div>
+            <div><b>{formatINR((priceShown ?? Number(lowest)) * qty)}</b>{qty > 1 ? <small>{qty} × {formatINR(priceShown ?? Number(lowest))}</small> : <small>{config?.onlinePayments ? "Pay online or cash" : "Cash on delivery"}</small>}</div>
             <button type="button" className="ax-btn teal" onClick={() => add()}><ShoppingCart size={17} /> Add</button>
             <button type="button" className="ax-btn dark" onClick={() => add(() => setLocation("/checkout"))}>Buy now</button>
           </>
         ) : (
           <>
             <div><b>Out of stock</b><small>{brandName}</small></div>
-            <button type="button" className="ax-btn" onClick={() => setAsk("price")}>Notify me</button>
+            <button type="button" className="ax-btn" onClick={() => setAlertKind("stock")}><BellRing size={16} /> Notify me</button>
           </>
         )}
       </div>
@@ -456,6 +485,16 @@ export default function ProductDetail() {
         itemLabel={`${brandName} ${product.name}${variant ? ` · ${variant.label}` : ""}`}
         defaultQty={ask === "bulk" ? 10 : qty}
       />
+      <AlertDialog
+        open={!!alertKind}
+        onClose={() => setAlertKind(null)}
+        kind={alertKind ?? "stock"}
+        productId={product.id}
+        variantId={variant?.id ?? null}
+        itemLabel={`${brandName} ${product.name}${variant ? ` · ${variant.label}` : ""}`}
+        price={priceShown ?? (typeof lowest === "number" ? lowest : null)}
+      />
+      <CompareTray />
       {product.sizeGuide && (
         <Dialog open={sizes} onClose={() => setSizes(false)} title="Size guide" wide>
           <SizeTable guide={product.sizeGuide} />

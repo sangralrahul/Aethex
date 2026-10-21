@@ -10,6 +10,8 @@ export interface Business {
   email: string; phone: string; hours: string;
   grievance: { name: string; designation: string; email: string; phone: string };
   dispatch: string; delivery: string; replacementDays: number;
+  /** The same promises as numbers, for delivery dates: business days to dispatch, and in transit. */
+  dispatchDays: number; deliveryDays: [number, number];
 }
 
 export const BUSINESS: Business = {
@@ -34,6 +36,9 @@ export const BUSINESS: Business = {
   delivery: "usually 3 to 7 business days after dispatch, depending on your PIN code",
   /** Days after delivery to report a damaged, defective or wrong item. */
   replacementDays: 7,
+  /** Keep these in step with dispatch and delivery above. */
+  dispatchDays: 2,
+  deliveryDays: [3, 7],
 };
 
 export const SITE_URL = "https://aethex.in";
