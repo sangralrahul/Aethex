@@ -7,7 +7,7 @@
  */
 import { useEffect, useMemo } from "react";
 import { Link, useLocation, useSearch } from "wouter";
-import { GitCompareArrows, MessageSquareText, ShoppingCart, Star, X } from "lucide-react";
+import { BadgeCheck, GitCompareArrows, MessageSquareText, ShoppingCart, Star, X } from "lucide-react";
 import { ShopHead } from "@/components/shop/ShopHead";
 import { ProductImage } from "@/components/store/ProductImage";
 import { useToast } from "@/hooks/use-toast";
@@ -34,6 +34,10 @@ export default function Compare() {
   const q2 = useProduct(ids[2] ? String(ids[2]) : undefined);
   const products = [q0.data, q1.data, q2.data].filter((p): p is Product => !!p).filter((p) => ids.includes(p.id));
   const loading = [q0, q1, q2].some((q, i) => ids[i] && q.isLoading);
+  // The lowest price, when at least two have a price and they differ.
+  const priced = products.filter((p) => !p.priceOnRequest && p.price !== null);
+  const low = priced.length >= 2 ? priced.reduce((a, b) => (Number(b.price) < Number(a.price) ? b : a)) : null;
+  const lowest = low && priced.some((p) => Number(p.price) !== Number(low.price)) && priced.filter((p) => Number(p.price) === Number(low.price)).length === 1 ? low.id : null;
   const { toast } = useToast();
 
   const remove = (id: number) => {
@@ -103,7 +107,12 @@ export default function Compare() {
                           <Link href={`/products/${p.slug}`} className="pic"><ProductImage src={p.images[0]} width={320} /></Link>
                           <Link href={`/products/${p.slug}`} className="nm">{p.name}</Link>
                           <span className="pr">{p.priceOnRequest ? <b className="por">Price on request</b> : <><b>{(p.variants?.length ?? 0) > 1 && new Set(p.variants!.map((v) => v.price ?? p.price)).size > 1 ? "From " : ""}{formatINR(Number(p.price))}</b>{off >= 5 && <><s>{formatINR(Number(p.mrp))}</s><em>{off}% off</em></>}</>}</span>
-                          {p.offer && <span className="sale">{p.offer.title}</span>}
+                          {(p.offer || lowest === p.id) && (
+                            <span className="tags">
+                              {lowest === p.id && <span className="best"><BadgeCheck size={13} /> Lowest price</span>}
+                              {p.offer && <span className="sale">{p.offer.title}</span>}
+                            </span>
+                          )}
                           {p.priceOnRequest
                             ? <Link href={`/products/${p.slug}#ask`} className="ax-btn sm"><MessageSquareText size={15} /> Ask price</Link>
                             : p.inStock

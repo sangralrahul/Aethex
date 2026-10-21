@@ -349,6 +349,17 @@ function Router() {
         }}
       </Route>
 
+      {/* Checkout: a quiet page of its own (its own header and footer, no shop menus) */}
+      <Route path="/checkout">
+        {() => (
+          <div className="ax-site ax-co-site">
+            <Suspense fallback={<PageLoading />}>
+              <Checkout />
+            </Suspense>
+          </div>
+        )}
+      </Route>
+
       {/* All inner pages: the site header (sticky) and footer */}
       <Route>
         {() => (
@@ -378,7 +389,6 @@ function Router() {
                 <Route path="/alerts/stop" component={AlertsStop} />
                 <Route path="/flashcards" component={Flashcards} />
                 <Route path="/flashcards/:deckId" component={Flashcards} />
-                <Route path="/checkout" component={Checkout} />
 
                 {/* Orders */}
                 <Route path="/orders" component={Orders} />

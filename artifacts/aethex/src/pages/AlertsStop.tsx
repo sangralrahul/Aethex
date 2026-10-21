@@ -6,7 +6,7 @@
  */
 import { useState } from "react";
 import { Link, useSearch } from "wouter";
-import { BellOff, CheckCircle2, Loader2 } from "lucide-react";
+import { BellOff, Loader2 } from "lucide-react";
 import { useSeo } from "@/hooks/use-seo";
 import { stopAlerts } from "@/lib/store/api";
 
@@ -22,8 +22,9 @@ export default function AlertsStop() {
   };
   return (
     <div className="ax-cart-page">
-      <div className="ax-wrap ax-co-done">
-        <span className="ok">{state === "done" ? <CheckCircle2 size={34} /> : <BellOff size={32} />}</span>
+      <div className="ax-wrap">
+      <div className="ax-co-done ax-solo">
+        <span className={state === "done" ? "ok" : "ok plain"}>{state === "done" ? <svg className="draw" viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg> : <BellOff size={32} />}</span>
         <h1>{state === "done" ? "Alerts stopped" : "Stop alert emails"}</h1>
         {state === "done" ? (
           <p className="lead">We won't send any more back-in-stock or price-drop emails to {msg}.</p>
@@ -39,6 +40,7 @@ export default function AlertsStop() {
           </>
         )}
         <div className="ax-co-next"><Link href="/shop" className="ax-btn lg">Back to the store</Link></div>
+      </div>
       </div>
     </div>
   );

@@ -3,13 +3,14 @@
  * later and remove, items that can't be bought right now, the way to free
  * delivery, a coupon code, and the order summary with checkout. Totals follow
  * lib/store/rules (and the Worker's quote when a coupon is on, lib/store/coupon).
- * Styles: src/shop.css (.ax-cart).
+ * Styles: src/buy.css (.ax-cart).
  */
 import { Link, useLocation } from "wouter";
-import { AlertTriangle, ArrowRight, Banknote, Heart, Minus, Plus, ShoppingBag, Trash2, Truck } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, Banknote, Heart, Lock, Minus, Plus, ShoppingBag, Trash2, Truck } from "lucide-react";
 import { ShopHead } from "@/components/shop/ShopHead";
 import { OrderSummary } from "@/components/shop/OrderSummary";
 import { CouponBox } from "@/components/shop/CouponBox";
+import { BuySteps, PayWays, TrustList } from "@/components/shop/BuyKit";
 import { ProductImage } from "@/components/store/ProductImage";
 import { isBookId, itemHref } from "@/lib/store/bookdata";
 import { useToast } from "@/hooks/use-toast";
@@ -65,6 +66,7 @@ export default function Cart() {
         crumbs={[{ label: "Home", href: "/" }, { label: "Shop", href: "/shop" }, { label: "Cart" }]}
         title="Your cart"
         sub={t.count ? `${t.count} item${t.count === 1 ? "" : "s"}` : lines.length ? "Nothing in your cart can be bought right now" : "Nothing here yet"}
+        right={lines.length > 0 ? <BuySteps at={0} className="ax-cart-steps" /> : undefined}
       />
 
       {lines.length === 0 ? (
@@ -84,18 +86,18 @@ export default function Cart() {
           <div className="ax-cart-main">
             {t.count > 0 && (
               <div className={`ax-freebar${t.delivery === 0 ? " done" : ""}`}>
-                <Truck size={18} />
+                <span className="ic"><Truck size={19} /></span>
                 <span>{t.delivery === 0 ? <>Your order gets <b>free delivery</b>.</> : <>Add <b>{formatINR(toFree)}</b> more for free delivery.</>}</span>
                 <i aria-hidden="true"><em style={{ width: `${Math.min(100, ((FREE_DELIVERY_FROM - toFree) / FREE_DELIVERY_FROM) * 100)}%` }} /></i>
               </div>
             )}
 
             <ul className="ax-lines">
-              {t.lines.map((l) => {
+              {t.lines.map((l, i) => {
                 const off = discountPct(l.price, l.mrp);
                 const href = itemHref(l.productId, l.slug);
                 return (
-                  <li key={`${l.productId}:${l.variantId ?? ""}`} className="ax-line" data-line={l.productId}>
+                  <li key={`${l.productId}:${l.variantId ?? ""}`} className="ax-line" data-line={l.productId} style={{ ["--d" as string]: `${Math.min(i, 6) * 60}ms` }}>
                     <Link href={href} className="img"><ProductImage src={l.image} width={240} book={isBookId(l.productId)} /></Link>
                     <div className="info">
                       <small>{store?.brandName(l.brand) ?? l.brand}</small>
@@ -139,15 +141,18 @@ export default function Cart() {
                 </ul>
               </div>
             )}
-            <Link href="/shop" className="ax-link ax-keep">← Continue shopping</Link>
+            <Link href="/shop" className="ax-link ax-keep"><ArrowLeft size={16} /> Continue shopping</Link>
           </div>
 
           <aside className="ax-cart-side">
-            <OrderSummary quote={t} payLabel={config?.onlinePayments ? "Total" : "To pay on delivery"}>
-              {t.count > 0 && <CouponBox priced={priced} />}
-              <button type="button" className="ax-btn teal lg ax-sum-go" onClick={() => setLocation("/checkout")} disabled={t.count === 0}>Checkout <ArrowRight size={18} /></button>
-              <p className="ax-sum-secure"><Banknote size={14} /> {config?.onlinePayments ? "Pay online or cash on delivery" : "Cash on delivery · pay when it arrives"}</p>
+            <OrderSummary quote={t} payLabel={config?.onlinePayments ? "Total" : "To pay on delivery"} coupon={t.count > 0 ? <CouponBox priced={priced} /> : undefined}>
+              <button type="button" className="ax-btn teal lg ax-sum-go ax-shine" onClick={() => setLocation("/checkout")} disabled={t.count === 0}><Lock size={16} /> Checkout securely <ArrowRight size={18} /></button>
+              <div className="ax-cart-pay">
+                <p className="ax-sum-secure"><Banknote size={14} /> {config?.onlinePayments ? "Pay online or cash on delivery" : "Cash on delivery · pay when it arrives"}</p>
+                {config?.onlinePayments && <PayWays />}
+              </div>
             </OrderSummary>
+            {t.count > 0 && <TrustList online={!!config?.onlinePayments} />}
           </aside>
         </div>
       )}

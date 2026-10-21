@@ -5,7 +5,7 @@
  * Only buyers of delivered orders can review, and the store approves each
  * review before it shows (worker/store.ts). Styles: src/shop.css (.ax-crv).
  */
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Link } from "wouter";
 import { CheckCircle2, Loader2, MessageSquareQuote, ShieldCheck } from "lucide-react";
 import { Dialog } from "./Dialog";
@@ -119,6 +119,15 @@ export function StarPicker({ value, onChange }: { value: number; onChange: (n: n
 export type ReviewTarget = { orderId: string; productId: number; name: string; existing?: { rating: number; title?: string; body: string; name: string; city?: string } };
 
 /** Writing (or changing) a review of one item of a delivered order. */
+/** "Meera I." (or "Dr Meera I.") from a full name: a first name and an initial, which the buyer can change. */
+function shortName(full: string): string {
+  const words = full.replace(/^dr\.?\s+/i, "Dr ").trim().split(/\s+/).filter(Boolean);
+  const dr = words[0] === "Dr" && words.length > 1;
+  const first = dr ? `Dr ${words[1]}` : words[0] ?? "";
+  const rest = words.slice(dr ? 2 : 1);
+  return rest.length ? `${first} ${rest[rest.length - 1][0].toUpperCase()}.` : first;
+}
+
 export function ReviewDialog({ target, access, onClose, onDone }: {
   target: ReviewTarget | null; access: { token?: string; phone?: string }; onClose: () => void; onDone: (productId: number, status: ReviewStatus, review: ReviewBody) => void;
 }) {
@@ -127,21 +136,22 @@ export function ReviewDialog({ target, access, onClose, onDone }: {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [sent, setSent] = useState(false);
+  const edited = useRef(false);
   useEffect(() => {
     if (!target) return;
     const e = target.existing;
     const c = readContact();
-    // "Meera I." (or "Dr Meera I.") by default: a first name and an initial, which the buyer can change.
-    const words = (user?.name || c.name || "").replace(/^dr\.?\s+/i, "Dr ").trim().split(/\s+/).filter(Boolean);
-    const dr = words[0] === "Dr" && words.length > 1;
-    const first = dr ? `Dr ${words[1]}` : words[0] ?? "";
-    const rest = words.slice(dr ? 2 : 1);
-    const shortName = rest.length ? `${first} ${rest[rest.length - 1][0].toUpperCase()}.` : first;
-    setF({ rating: e?.rating ?? 0, title: e?.title ?? "", body: e?.body ?? "", name: e?.name ?? shortName, city: e?.city ?? c.city ?? "" });
+    setF({ rating: e?.rating ?? 0, title: e?.title ?? "", body: e?.body ?? "", name: e?.name ?? shortName(user?.name || c.name || ""), city: e?.city ?? c.city ?? "" });
+    edited.current = false;
     setErr(""); setSent(false); setBusy(false);
   }, [target]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The account can finish loading after the form opens: its name goes in until the buyer types their own.
+  useEffect(() => {
+    if (!target || target.existing || edited.current || !user?.name) return;
+    setF((x) => ({ ...x, name: shortName(user.name) }));
+  }, [user?.name]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!target) return null;
-  const set = (k: "title" | "body" | "name" | "city") => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF((x) => ({ ...x, [k]: e.target.value }));
+  const set = (k: "title" | "body" | "name" | "city") => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => { if (k === "name") edited.current = true; setF((x) => ({ ...x, [k]: e.target.value })); };
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr("");

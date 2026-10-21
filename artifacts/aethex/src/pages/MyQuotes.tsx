@@ -9,7 +9,7 @@
  */
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Building2, ChevronDown, ClipboardList, GraduationCap, Loader2, Package, RotateCcw } from "lucide-react";
+import { Building2, ChevronDown, ClipboardList, FileText, GraduationCap, Inbox, Loader2, Package, PackageCheck, RotateCcw } from "lucide-react";
 import { ShopHead } from "@/components/shop/ShopHead";
 import { useSeo } from "@/hooks/use-seo";
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +28,13 @@ const STAGE: Record<BulkStatus, { label: string; text: string }> = {
   ordered: { label: "Ordered", text: "This quotation became an order." },
   closed: { label: "Closed", text: "This request is closed." },
 };
+
+/** Where a request is, as steps (a closed request shows its words only). */
+const QSTEPS = [
+  { key: "new", label: "Received", icon: Inbox },
+  { key: "quoted", label: "Quotation sent", icon: FileText },
+  { key: "ordered", label: "Ordered", icon: PackageCheck },
+] as const;
 
 export default function MyQuotes() {
   useSeo({ title: "Quotation requests | Aethex", description: "Your hospital or college quotation requests.", path: "/account/quotations" });
@@ -94,6 +101,18 @@ export default function MyQuotes() {
                   </button>
                   {isOpen && (
                     <div className="ax-myq-body">
+                      {r.status !== "closed" && (
+                        <ol className="ax-ov-steps three ax-myq-steps" aria-label="Where the request is">
+                          {QSTEPS.map((s, i) => {
+                            const at = QSTEPS.findIndex((x) => x.key === r.status);
+                            return (
+                              <li key={s.key} className={`${i <= at ? "done" : ""}${i === at ? " now" : ""}`} aria-current={i === at ? "step" : undefined} style={{ ["--i" as string]: i }}>
+                                <span className="ic"><s.icon size={16} /></span><b>{s.label}</b>
+                              </li>
+                            );
+                          })}
+                        </ol>
+                      )}
                       <p className="stage">{st.text}</p>
                       {r.customerNote && <p className="note"><b>From Aethex</b>{r.customerNote}</p>}
                       {r.items.length > 0 ? (

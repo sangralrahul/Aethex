@@ -1,22 +1,27 @@
 /**
- * Checkout (/checkout): delivery details, then review, choose how to pay and
- * place the order: cash on delivery, or online through Razorpay (UPI, cards,
- * netbanking, wallets) once the store has added its Razorpay keys. A coupon
- * from the cart carries over. The Worker prices the order again
- * (worker/store.ts); if a price changed meanwhile, the customer sees the new
- * total before placing it. An online order waits for its payment: closing the
- * payment window keeps it, so paying again (or switching to cash) doesn't make
- * a second order; changing the cart, address, note or coupon drops it for a new
- * one. Each try carries a random key, so a retry after a lost answer gets back
- * the order the first try made. Styles: src/shop.css (.ax-co).
+ * Checkout (/checkout): a quiet page of its own (no shop menus), in three
+ * steps: the delivery address, how to pay (cash on delivery, or online through
+ * Razorpay: UPI, cards, netbanking, wallets, once the store has added its
+ * Razorpay keys), and the items, to place the order. A coupon from the cart
+ * carries over. The Worker prices the order again (worker/store.ts); if a price
+ * changed meanwhile, the customer sees the new total before placing it. An
+ * online order waits for its payment: closing the payment window keeps it, so
+ * paying again (or switching to cash) doesn't make a second order; changing the
+ * cart, address, note or coupon drops it for a new one. Each try carries a
+ * random key, so a retry after a lost answer gets back the order the first try
+ * made. On phones the summary folds up at the top and a pay bar stays at the
+ * bottom. Styles: src/buy.css (.ax-co-*).
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Banknote, Check, CreditCard, Loader2, Lock, MapPin, PackageCheck, Pencil, ShieldCheck } from "lucide-react";
-import { ShopHead } from "@/components/shop/ShopHead";
+import {
+  AlertTriangle, ArrowRight, BadgeCheck, Banknote, ChevronDown, CreditCard, Loader2, Lock, MapPin, NotebookPen, PackageCheck, Pencil, RotateCcw, ShieldCheck, ShoppingBag, UserRound,
+} from "lucide-react";
 import { OrderSummary } from "@/components/shop/OrderSummary";
 import { CouponBox } from "@/components/shop/CouponBox";
+import { BuySteps, PayWays, Roll, StepMark, TrustList } from "@/components/shop/BuyKit";
+import { Logo } from "@/components/layout/Navbar";
 import { ProductImage } from "@/components/store/ProductImage";
 import { isBookId } from "@/lib/store/bookdata";
 import { readContact, rememberContact } from "@/components/store/EnquiryForm";
@@ -86,6 +91,8 @@ export default function Checkout() {
   });
   const [pay, setPay] = useState<PaymentMethod>(() => { try { return localStorage.getItem(PAY_KEY) === "cod" ? "cod" : "online"; } catch { return "online"; } });
   const [place, setPlace] = useState("");
+  const [sumOpen, setSumOpen] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
   const pending = useRef<Pending | null>(readPending());
 
   const phone = step === "review" ? normPhone(addr.phone) || undefined : undefined;
@@ -248,142 +255,241 @@ export default function Checkout() {
     }
   };
 
+  const online = !!config?.onlinePayments;
+  const w = deliveryWindow();
+
   if (!isLoading && t.count === 0) {
     return (
-      <div className="ax-cart-page">
-        <ShopHead compact crumbs={[{ label: "Home", href: "/" }, { label: "Cart", href: "/cart" }, { label: "Checkout" }]} title="Checkout" />
-        <div className="ax-wrap"><div className="ax-empty ax-cart-empty">
-          <span className="ic"><PackageCheck size={26} /></span>
-          <h2>Nothing to check out</h2>
-          <p>{t.issues.length ? "The items in your cart can't be ordered right now. Check your cart for details." : "Add a few products first, then come back to check out."}</p>
-          <div className="acts"><Link href={t.issues.length ? "/cart" : "/shop"} className="ax-btn teal">{t.issues.length ? "Go to your cart" : "Browse the store"}</Link></div>
-        </div></div>
+      <div className="ax-buy ax-co-page">
+        <CheckoutHead at={1} />
+        <main className="ax-buy-main">
+          <div className="ax-buy-wrap">
+            <div className="ax-empty ax-cart-empty ax-co-empty">
+              <span className="ic"><PackageCheck size={26} /></span>
+              <h2>Nothing to check out</h2>
+              <p>{t.issues.length ? "The items in your cart can't be ordered right now. Check your cart for details." : "Add a few products first, then come back to check out."}</p>
+              <div className="acts"><Link href={t.issues.length ? "/cart" : "/shop"} className="ax-btn teal">{t.issues.length ? "Go to your cart" : "Browse the store"}</Link></div>
+            </div>
+          </div>
+        </main>
+        <CheckoutFoot />
       </div>
     );
   }
 
-  const steps: [Step, string][] = [["address", "Delivery"], ["review", "Review & pay"]];
-  const idx = steps.findIndex(([s]) => s === step);
-  const w = deliveryWindow();
   const button = !method
     ? `Orders over ${formatINR(COD_LIMIT)} can't be paid in cash`
     : method === "online" ? `Pay ${formatINR(t.total)} securely` : `Place order · ${formatINR(t.total)} cash on delivery`;
+  const reviewing = step === "review";
+  const payLabel = reviewing && method === "online" ? "To pay now" : reviewing ? "To pay on delivery" : "Total";
+  const masked = normPhone(addr.phone).replace(/^(\d{2})\d{4}/, "$1••••");
 
   return (
-    <div className="ax-cart-page">
-      <ShopHead
-        compact
-        crumbs={[{ label: "Home", href: "/" }, { label: "Cart", href: "/cart" }, { label: "Checkout" }]}
-        title="Checkout"
-        right={
-          <ol className="ax-steps" aria-label="Checkout steps">
-            {steps.map(([s, label], i) => (
-              <li key={s} className={i < idx ? "done" : i === idx ? "on" : ""} aria-current={i === idx ? "step" : undefined}>
-                <span>{i < idx ? <Check size={13} /> : i + 1}</span>{label}
-              </li>
-            ))}
-          </ol>
-        }
-      />
+    <div className="ax-buy ax-co-page">
+      <CheckoutHead at={reviewing ? 2 : 1} />
+      <main className="ax-buy-main">
+        <div className="ax-buy-wrap ax-co-grid">
+          <div className="ax-co-flow">
+            {t.issues.length > 0 && (
+              <div className="ax-co-warn"><AlertTriangle size={17} /><span>{t.issues.length} item{t.issues.length === 1 ? "" : "s"} in your cart can't be ordered right now and won't be included. <Link href="/cart">Review your cart</Link></span></div>
+            )}
 
-      <div className="ax-wrap ax-cart">
-        <div className="ax-cart-main">
-          {t.issues.length > 0 && (
-            <div className="ax-co-warn"><AlertTriangle size={17} /><span>{t.issues.length} item{t.issues.length === 1 ? "" : "s"} in your cart can't be ordered right now and won't be included. <Link href="/cart">Review your cart</Link></span></div>
-          )}
-
-          {step === "address" && (
-            <form className="ax-co-card" onSubmit={toReview} noValidate>
-              <h2><MapPin size={19} /> Delivery details</h2>
-              <div className="ax-form">
-                <label className="f"><span>Full name</span><input value={addr.name} onChange={set("name")} required autoComplete="name" maxLength={80} /></label>
-                <label className="f"><span>Mobile number</span><input value={addr.phone} onChange={set("phone")} required type="tel" inputMode="tel" autoComplete="tel" maxLength={16} placeholder="10-digit mobile" /></label>
-                <label className="f wide"><span>Email <em>(optional, for order updates)</em></span><input value={addr.email} onChange={set("email")} type="email" autoComplete="email" maxLength={254} /></label>
-                <label className="f wide"><span>Flat, house, building and street</span><input value={addr.line1} onChange={set("line1")} required autoComplete="address-line1" maxLength={160} /></label>
-                <label className="f wide"><span>Area or locality <em>(optional)</em></span><input value={addr.line2} onChange={set("line2")} autoComplete="address-line2" maxLength={160} /></label>
-                <label className="f"><span>Landmark <em>(optional)</em></span><input value={addr.landmark} onChange={set("landmark")} maxLength={100} /></label>
-                <label className="f"><span>PIN code</span><input value={addr.pincode} onChange={(e) => setAddr((a) => ({ ...a, pincode: e.target.value.replace(/\D/g, "").slice(0, 6) }))} required inputMode="numeric" autoComplete="postal-code" maxLength={6} />
-                  {place && place !== "unknown" && <small className="ax-pin-ok"><Check size={12} /> {place}</small>}
-                  {place === "unknown" && <small className="ax-pin-bad">India Post doesn't list this PIN code: please check it.</small>}
-                </label>
-                <label className="f"><span>Town or city</span><input value={addr.city} onChange={set("city")} required autoComplete="address-level2" maxLength={60} /></label>
-                <label className="f"><span>State</span>
-                  <select value={addr.state} onChange={set("state")} required autoComplete="address-level1">
-                    <option value="">Choose the state</option>
-                    {INDIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </label>
-              </div>
-              {err && <p className="ax-form-err" role="alert">{err}</p>}
-              <button type="submit" className="ax-btn teal lg ax-co-next-btn">Continue</button>
-              <p className="ax-sum-secure"><Lock size={13} /> We use these details only to deliver your order.</p>
-            </form>
-          )}
-
-          {step === "review" && (
-            <div className="ax-co-card">
-              <h2><PackageCheck size={19} /> Review and pay</h2>
-              <div className="ax-co-review">
-                <div>
-                  <span className="k">Deliver to</span>
-                  <p><b>{addr.name}</b><br />{addr.line1}{addr.line2 ? `, ${addr.line2}` : ""}{addr.landmark ? <><br />Near {addr.landmark}</> : null}<br />{addr.city}, {addr.state} {addr.pincode}<br />{normPhone(addr.phone)}{addr.email ? ` · ${addr.email}` : ""}</p>
-                  <button type="button" className="ax-link" onClick={() => setStep("address")}><Pencil size={13} /> Change</button>
+            {/* 1. Where it goes */}
+            <section className={`ax-co-sec ${reviewing ? "done ax-co-review" : "open"}`} style={{ ["--d" as string]: "0ms" }} aria-labelledby="co-s1">
+              <header className="ax-co-sh">
+                <StepMark n={1} state={reviewing ? "done" : "open"} />
+                <div className="t"><h2 id="co-s1">Delivery address</h2><p>{reviewing ? "Your order goes here" : "Where should we deliver your order?"}</p></div>
+                {reviewing && <button type="button" className="ax-link ax-co-change" onClick={() => setStep("address")}><Pencil size={13} /> Change</button>}
+              </header>
+              {!reviewing ? (
+                <form id="ax-co-addr" className="ax-co-card ax-co-addr" onSubmit={toReview} noValidate>
+                  <div className="ax-co-group">
+                    <p className="gl"><UserRound size={15} /> Contact details</p>
+                    <div className="ax-form">
+                      <label className="f"><span>Full name</span><input value={addr.name} onChange={set("name")} required autoComplete="name" maxLength={80} placeholder="Who receives the order" /></label>
+                      <label className="f"><span>Mobile number</span><span className="ax-inp pre"><i>+91</i><input value={addr.phone} onChange={set("phone")} required type="tel" inputMode="tel" autoComplete="tel" maxLength={16} placeholder="10-digit mobile" /></span></label>
+                      <label className="f wide"><span>Email <em>(optional, for order updates)</em></span><input value={addr.email} onChange={set("email")} type="email" autoComplete="email" maxLength={254} placeholder="you@example.com" /></label>
+                    </div>
+                  </div>
+                  <div className="ax-co-group">
+                    <p className="gl"><MapPin size={15} /> Address</p>
+                    <div className="ax-form">
+                      <label className="f wide"><span>Flat, house, building and street</span><input value={addr.line1} onChange={set("line1")} required autoComplete="address-line1" maxLength={160} /></label>
+                      <label className="f wide"><span>Area or locality <em>(optional)</em></span><input value={addr.line2} onChange={set("line2")} autoComplete="address-line2" maxLength={160} /></label>
+                      <label className="f"><span>PIN code</span><input value={addr.pincode} onChange={(e) => setAddr((a) => ({ ...a, pincode: e.target.value.replace(/\D/g, "").slice(0, 6) }))} required inputMode="numeric" autoComplete="postal-code" maxLength={6} placeholder="6 digits" />
+                        {place && place !== "unknown" && <small className="ax-pin-ok" key={place}><MapPin size={12} /> {place}</small>}
+                        {place === "unknown" && <small className="ax-pin-bad">India Post doesn't list this PIN code: please check it.</small>}
+                      </label>
+                      <label className="f"><span>Landmark <em>(optional)</em></span><input value={addr.landmark} onChange={set("landmark")} maxLength={100} placeholder="Near…" /></label>
+                      <label className="f"><span>Town or city</span><input value={addr.city} onChange={set("city")} required autoComplete="address-level2" maxLength={60} /></label>
+                      <label className="f"><span>State</span>
+                        <select value={addr.state} onChange={set("state")} required autoComplete="address-level1">
+                          <option value="">Choose the state</option>
+                          {INDIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </label>
+                    </div>
+                  </div>
+                  {err && <p className="ax-form-err" role="alert" key={err}>{err}</p>}
+                  <div className="ax-co-actions">
+                    <p className="ax-sum-secure"><Lock size={13} /> We use these details only to deliver your order.</p>
+                    <button type="submit" className="ax-btn teal lg ax-co-next-btn ax-shine">Deliver to this address <ArrowRight size={18} /></button>
+                  </div>
+                </form>
+              ) : (
+                <div className="ax-co-card ax-co-where">
+                  <div className="who">
+                    <span className="k">Deliver to</span>
+                    <p><b>{addr.name}</b><br />{addr.line1}{addr.line2 ? `, ${addr.line2}` : ""}{addr.landmark ? <><br />Near {addr.landmark}</> : null}<br />{addr.city}, {addr.state} {addr.pincode}<br /><span className="ph">{normPhone(addr.phone)}{addr.email ? ` · ${addr.email}` : ""}</span></p>
+                  </div>
+                  <div className="when">
+                    <span className="k">Delivery</span>
+                    <p>Usually arrives between <b>{dayText(w.from)}</b> and <b>{dayText(w.to)}</b>.<br /><small>Ships {BUSINESS.dispatch}.</small></p>
+                  </div>
                 </div>
-                <div>
-                  <span className="k">Delivery</span>
-                  <p>Usually arrives between <b>{dayText(w.from)}</b> and <b>{dayText(w.to)}</b>.<br /><small>Ships {BUSINESS.dispatch}.</small></p>
+              )}
+            </section>
+
+            {/* 2. How to pay */}
+            <section className={`ax-co-sec ${reviewing ? "open" : "locked"}`} style={{ ["--d" as string]: "70ms" }} aria-labelledby="co-s2">
+              <header className="ax-co-sh">
+                <StepMark n={2} state={reviewing ? "open" : "locked"} />
+                <div className="t"><h2 id="co-s2">Payment method</h2><p>{!reviewing ? "Choose once your address is in" : online ? "Pay online now, or in cash when it arrives" : "Pay in cash when your order arrives"}</p></div>
+                {!reviewing && <Lock size={15} className="lk" aria-hidden="true" />}
+              </header>
+              {reviewing && (
+                <div className="ax-co-card ax-co-paybody">
+                  <fieldset className="ax-pay">
+                    <legend className="sr-only">How would you like to pay?</legend>
+                    {online && (
+                      <label className={`opt online${method === "online" ? " on" : ""}${onlineOpen ? "" : " off"}`}>
+                        <input type="radio" name="pay" checked={method === "online"} disabled={!onlineOpen} onChange={() => choose("online")} />
+                        <span className="ic"><CreditCard size={20} /></span>
+                        <span className="tx">
+                          <b>Pay online</b>
+                          <small>{onlineOpen ? "UPI, debit and credit cards, netbanking and wallets, through Razorpay" : `Online payments are for orders up to ${formatINR(config!.onlineLimit)}`}</small>
+                          {onlineOpen && <PayWays />}
+                        </span>
+                        <span className="dot" aria-hidden="true" />
+                      </label>
+                    )}
+                    <label className={`opt cod${method === "cod" ? " on" : ""}${codOpen ? "" : " off"}`}>
+                      <input type="radio" name="pay" checked={method === "cod"} disabled={!codOpen} onChange={() => choose("cod")} />
+                      <span className="ic"><Banknote size={20} /></span>
+                      <span className="tx"><b>Cash on delivery</b><small>{codOpen ? `Pay ${formatINR(t.total)} in cash when your order arrives` : `Cash on delivery is for orders up to ${formatINR(COD_LIMIT)}`}</small></span>
+                      <span className="dot" aria-hidden="true" />
+                    </label>
+                  </fieldset>
+                  {method && (
+                    <p className={`ax-pay-note ${method}`} key={method}>
+                      {method === "online"
+                        ? <><ShieldCheck size={16} /> <span>You pay in Razorpay&apos;s secure window. We never see or keep your card or UPI details.</span></>
+                        : <><Banknote size={16} /> <span>Keep {formatINR(t.total)} ready when it arrives.{masked ? ` We may call ${masked} to confirm the order.` : ""}</span></>}
+                    </p>
+                  )}
                 </div>
+              )}
+            </section>
+
+            {/* 3. What's in it, and placing it */}
+            <section className={`ax-co-sec ${reviewing ? "open" : "locked"}`} style={{ ["--d" as string]: "140ms" }} aria-labelledby="co-s3">
+              <header className="ax-co-sh">
+                <StepMark n={3} state={reviewing ? "open" : "locked"} />
+                <div className="t"><h2 id="co-s3">Review and place your order</h2><p>{reviewing ? `${t.count} item${t.count === 1 ? "" : "s"} · arrives by ${dayText(w.to)}` : "Check your items before you pay"}</p></div>
+                {!reviewing && <Lock size={15} className="lk" aria-hidden="true" />}
+              </header>
+              {reviewing && (
+                <div className="ax-co-card ax-co-place">
+                  <ul className="ax-co-items">
+                    {t.lines.map((l, i) => (
+                      <li key={`${l.productId}:${l.variantId ?? ""}`} style={{ ["--d" as string]: `${i * 50}ms` }}>
+                        <span className="pic"><ProductImage src={l.image} width={120} book={isBookId(l.productId)} /></span>
+                        <span>{l.name}{l.variantLabel ? <em>{l.variantLabel} · Qty {l.qty}</em> : <em>Qty {l.qty}</em>}<small>{store?.brandName(l.brand) ?? l.brand}</small></span>
+                        <b>{formatINR(l.lineTotal)}</b>
+                      </li>
+                    ))}
+                  </ul>
+                  {noteOpen || note ? (
+                    <label className="f ax-co-note"><span>Note for the delivery <em>(optional)</em></span><input value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} placeholder="For example, call before delivering" autoFocus={noteOpen && !note} /></label>
+                  ) : (
+                    <button type="button" className="ax-link ax-co-addnote" onClick={() => setNoteOpen(true)}><NotebookPen size={15} /> Add a note for the delivery</button>
+                  )}
+                  {!method && <p className="ax-form-err">Cash on delivery is available on orders up to {formatINR(COD_LIMIT)}. Please split the order, or write to {BUSINESS.email}.</p>}
+                  {priced.code && !priced.applied && !priced.checking && priced.couponError && <p className="ax-co-coupon-note">Coupon {priced.code} isn&apos;t applied: {priced.couponError}</p>}
+                  {err && <p className="ax-form-err" role="alert" key={err}>{err}</p>}
+                  <button type="button" className="ax-btn teal lg ax-co-next-btn ax-shine" onClick={placeIt} disabled={placing || !method || t.count === 0 || priced.checking}>
+                    {placing ? <><Loader2 size={18} className="spin" /> {method === "online" ? "Opening the payment…" : "Placing your order…"}</> : <>{method === "online" && <Lock size={16} />} {button}</>}
+                  </button>
+                  <p className="ax-co-terms">By placing the order you agree to our <Link href="/terms-of-service">terms</Link>, <Link href="/shipping-policy">shipping</Link> and <Link href="/returns-policy">returns</Link> policies.</p>
+                  <ul className="ax-trust-mini" aria-label="Buying here">
+                    <li><ShieldCheck size={14} /> Secure checkout</li>
+                    <li><BadgeCheck size={14} /> Genuine products</li>
+                    <li><RotateCcw size={14} /> {BUSINESS.replacementDays}-day replacement</li>
+                  </ul>
+                </div>
+              )}
+            </section>
+          </div>
+
+          <aside className={`ax-co-aside${sumOpen ? " open" : ""}`}>
+            <button type="button" className="ax-co-sumtoggle" onClick={() => setSumOpen((o) => !o)} aria-expanded={sumOpen}>
+              <ShoppingBag size={17} /><span>{sumOpen ? "Hide" : "Show"} order summary</span><ChevronDown size={16} className="ch" /><b><Roll value={t.total} /></b>
+            </button>
+            <div className="ax-co-sumbody">
+              <div>
+                <OrderSummary quote={t} items={t.lines} brandName={store?.brandName} payLabel={payLabel} coupon={<CouponBox priced={priced} phone={phone} />} />
+                <TrustList online={online} />
               </div>
-
-              <fieldset className="ax-pay">
-                <legend>How would you like to pay?</legend>
-                {config?.onlinePayments && (
-                  <label className={`opt${method === "online" ? " on" : ""}${onlineOpen ? "" : " off"}`}>
-                    <input type="radio" name="pay" checked={method === "online"} disabled={!onlineOpen} onChange={() => choose("online")} />
-                    <span className="ic"><CreditCard size={19} /></span>
-                    <span className="tx"><b>Pay online</b><small>{onlineOpen ? "UPI, debit and credit cards, netbanking and wallets, through Razorpay" : `Online payments are for orders up to ${formatINR(config.onlineLimit)}`}</small></span>
-                    <span className="dot" aria-hidden="true" />
-                  </label>
-                )}
-                <label className={`opt${method === "cod" ? " on" : ""}${codOpen ? "" : " off"}`}>
-                  <input type="radio" name="pay" checked={method === "cod"} disabled={!codOpen} onChange={() => choose("cod")} />
-                  <span className="ic"><Banknote size={19} /></span>
-                  <span className="tx"><b>Cash on delivery</b><small>{codOpen ? `Pay ${formatINR(t.total)} in cash when your order arrives` : `Cash on delivery is for orders up to ${formatINR(COD_LIMIT)}`}</small></span>
-                    <span className="dot" aria-hidden="true" />
-                </label>
-              </fieldset>
-
-              <ul className="ax-co-items">
-                {t.lines.map((l) => (
-                  <li key={`${l.productId}:${l.variantId ?? ""}`}>
-                    <ProductImage src={l.image} width={120} book={isBookId(l.productId)} />
-                    <span>{l.name}{l.variantLabel ? <em>{l.variantLabel} · Qty {l.qty}</em> : <em>Qty {l.qty}</em>}<small>{store?.brandName(l.brand) ?? l.brand}</small></span>
-                    <b>{formatINR(l.lineTotal)}</b>
-                  </li>
-                ))}
-              </ul>
-              <label className="f ax-co-note"><span>Note for the delivery <em>(optional)</em></span><input value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} placeholder="For example, call before delivering" /></label>
-              {!method && <p className="ax-form-err">Cash on delivery is available on orders up to {formatINR(COD_LIMIT)}. Please split the order, or write to {BUSINESS.email}.</p>}
-              {priced.code && !priced.applied && !priced.checking && priced.couponError && <p className="ax-co-coupon-note">Coupon {priced.code} isn't applied: {priced.couponError}</p>}
-              {err && <p className="ax-form-err" role="alert">{err}</p>}
-              <button type="button" className="ax-btn teal lg ax-co-next-btn" onClick={placeIt} disabled={placing || !method || t.count === 0 || priced.checking}>
-                {placing ? <><Loader2 size={18} className="spin" /> {method === "online" ? "Opening the payment…" : "Placing your order…"}</> : <>{method === "online" && <Lock size={16} />} {button}</>}
-              </button>
-              {method === "online" && <p className="ax-sum-secure"><ShieldCheck size={13} /> Payments are processed by Razorpay. We never see or keep your card or UPI details.</p>}
-              <p className="ax-co-terms">By placing the order you agree to our <Link href="/terms-of-service">terms</Link>, <Link href="/shipping-policy">shipping</Link> and <Link href="/returns-policy">returns</Link> policies.</p>
             </div>
-          )}
+          </aside>
         </div>
+      </main>
+      <CheckoutFoot />
 
-        <aside className="ax-cart-side">
-          <OrderSummary quote={t} payLabel={step === "review" && method === "online" ? "To pay now" : step === "review" ? "To pay on delivery" : "Total"}>
-            <CouponBox priced={priced} phone={phone} />
-            <ul className="ax-sum-items">
-              {t.lines.map((l) => <li key={`${l.productId}:${l.variantId ?? ""}`}><span>{l.name}{l.variantLabel ? ` (${l.variantLabel})` : ""}</span><em>× {l.qty}</em></li>)}
-            </ul>
-          </OrderSummary>
-        </aside>
+      <div className="ax-co-bar">
+        <div className="amt"><small>{payLabel}</small><b><Roll value={t.total} /></b></div>
+        {!reviewing ? (
+          <button type="submit" form="ax-co-addr" className="ax-btn teal go">Continue <ArrowRight size={17} /></button>
+        ) : (
+          <button type="button" className="ax-btn teal go" onClick={placeIt} disabled={placing || !method || t.count === 0 || priced.checking}>
+            {placing ? <Loader2 size={17} className="spin" /> : method === "online" ? <><Lock size={15} /> Pay {formatINR(t.total)}</> : "Place order"}
+          </button>
+        )}
       </div>
     </div>
+  );
+}
+
+/** The checkout's own header: the logo, where the buyer is, and that it's secure. */
+function CheckoutHead({ at }: { at: 1 | 2 }) {
+  return (
+    <header className="ax-co-head">
+      <div className="ax-buy-wrap in">
+        <Logo />
+        <BuySteps at={at} className="top" />
+        <div className="sec">
+          <span className="lock"><Lock size={14} /> Secure checkout</span>
+          <a className="help" href={`mailto:${BUSINESS.email}?subject=${encodeURIComponent("Help with my order")}`}>Need help?</a>
+        </div>
+      </div>
+      <div className="ax-buy-wrap low"><BuySteps at={at} /></div>
+    </header>
+  );
+}
+
+function CheckoutFoot() {
+  return (
+    <footer className="ax-co-foot">
+      <div className="ax-buy-wrap">
+        <span>© {new Date().getFullYear()} {BUSINESS.legalName}</span>
+        <nav aria-label="Policies">
+          <Link href="/shipping-policy">Shipping</Link>
+          <Link href="/returns-policy">Returns</Link>
+          <Link href="/terms-of-service">Terms</Link>
+          <Link href="/privacy-policy">Privacy</Link>
+          <a href={`mailto:${BUSINESS.email}`}>{BUSINESS.email}</a>
+        </nav>
+      </div>
+    </footer>
   );
 }

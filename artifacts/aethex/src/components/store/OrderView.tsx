@@ -3,8 +3,9 @@
  * address, how it's paid (cash on delivery, or online: paying again or
  * switching to cash while the payment is due, and refunds), courier details,
  * cancelling (until it ships) and, once delivered, reviewing what was bought.
- * Used by the order confirmation, order tracking and my orders.
- * Styles: src/shop.css (.ax-ov).
+ * Used by the order confirmation, order tracking and my orders. The progress
+ * line fills up step by step when the order opens.
+ * Styles: src/buy.css (.ax-ov).
  */
 import { useState } from "react";
 import { Link } from "wouter";
@@ -118,7 +119,7 @@ export function OrderView({ order, token, phone, onChange, compact = false }: {
             <b>Waiting for your payment of {formatINR(order.total)}</b>
             <p>Your order is kept for a day. If you've paid already, it shows here within a few minutes.</p>
             <div className="row">
-              <button type="button" className="ax-btn teal" onClick={payNow} disabled={!!busy}>{busy === "pay" ? <Loader2 size={16} className="spin" /> : <CreditCard size={16} />} Pay {formatINR(order.total)} now</button>
+              <button type="button" className="ax-btn teal ax-shine" onClick={payNow} disabled={!!busy}>{busy === "pay" ? <Loader2 size={16} className="spin" /> : <CreditCard size={16} />} Pay {formatINR(order.total)} now</button>
               {order.total <= COD_LIMIT && <button type="button" className="ax-btn" onClick={toCod} disabled={!!busy}>{busy === "cod" ? <Loader2 size={16} className="spin" /> : <Banknote size={16} />} Pay cash on delivery instead</button>}
             </div>
             {payErr && <p className="ax-form-err" role="alert">{payErr}</p>}
@@ -127,7 +128,7 @@ export function OrderView({ order, token, phone, onChange, compact = false }: {
       ) : (
         <ol className="ax-ov-steps" aria-label="Order progress">
           {STEPS.map((s, i) => (
-            <li key={s.key} className={i <= reached ? "done" : ""} aria-current={i === reached ? "step" : undefined}>
+            <li key={s.key} className={`${i <= reached ? "done" : ""}${i === reached ? " now" : ""}`} aria-current={i === reached ? "step" : undefined} style={{ ["--i" as string]: i }}>
               <span className="ic"><s.icon size={16} /></span>
               <b>{s.label}</b>
               {at(s.key) ? <small>{when(at(s.key)!)}</small> : <small>&nbsp;</small>}
