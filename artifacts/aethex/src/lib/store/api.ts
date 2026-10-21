@@ -8,10 +8,10 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type {
-  Address, Book, BookCatalog, Brand, BulkLine, BulkRequest, CartLine, Catalog, CatalogSummary, Category, DeliverySchedule, EnquiryKind, Order, PaymentMethod, Product,
-  ProductSummary, Publisher, Quote, RatingSummary, Review, ReviewStatus, Segment,
+  Address, BankDetails, Book, BookCatalog, Brand, BulkLine, BulkRequest, CartLine, Catalog, CatalogSummary, Category, DeliverySchedule, EnquiryKind, Order, PaymentMethod, Product,
+  ProductSummary, Publisher, Quote, RatingSummary, Review, ReviewStatus, SavedAddress, Segment,
 } from "./types";
-import { COD_LIMIT, ONLINE_LIMIT, summarize } from "./rules";
+import { BANK_DAYS, BANK_LIMIT, BANK_MIN, COD_LIMIT, ONLINE_LIMIT, summarize } from "./rules";
 import { bookSummary } from "./bookdata";
 
 const API = "/api/store";
@@ -163,8 +163,16 @@ export function useProduct(key: string | undefined) {
 /* ------------------------------------------------------------------ orders and payments */
 
 /** Which ways to pay are open: online payments are on once the store has added its Razorpay keys. */
-export type StoreConfig = { onlinePayments: boolean; codLimit: number; onlineLimit: number };
-const OFFLINE_CONFIG: StoreConfig = { onlinePayments: false, codLimit: COD_LIMIT, onlineLimit: ONLINE_LIMIT };
+export type StoreConfig = {
+  onlinePayments: boolean; codLimit: number; onlineLimit: number;
+  /** Bank transfer: on once the store's account is set (STORE_BANK_*), for orders from bankMin to bankLimit. */
+  bankTransfer?: boolean; bankMin?: number; bankLimit?: number; bankDays?: number;
+  /** The store's WhatsApp number with 91 ("" until STORE_WHATSAPP is set). */
+  whatsapp?: string;
+  /** The store has a GSTIN, so a business buyer's GSTIN goes on the invoice. */
+  gstInvoice?: boolean;
+};
+const OFFLINE_CONFIG: StoreConfig = { onlinePayments: false, codLimit: COD_LIMIT, onlineLimit: ONLINE_LIMIT, bankTransfer: false, bankMin: BANK_MIN, bankLimit: BANK_LIMIT, bankDays: BANK_DAYS, whatsapp: "", gstInvoice: false };
 export function useStoreConfig() {
   return useQuery({ queryKey: ["store", "config"], queryFn: () => storeFetch<StoreConfig>("/config").catch(() => OFFLINE_CONFIG), staleTime: 5 * 60_000 });
 }
@@ -180,7 +188,7 @@ export type RazorpayCheckout = { key: string; orderId: string; amount: number; c
 export type RazorpayPaid = { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string };
 /** The buyer's reviews of the items of a delivered order, by product number. */
 export type ReviewMarks = Record<number, { status: ReviewStatus; rating: number; title?: string; body: string; name: string; city?: string }>;
-export type CustomerOrder = Order & { canCancel: boolean; reviews?: ReviewMarks };
+export type CustomerOrder = Order & { canCancel: boolean; reviews?: ReviewMarks; bank?: BankDetails };
 
 type Access = { token?: string; phone?: string };
 const tokenHeader = (token?: string): Record<string, string> => (token ? { "x-order-token": token } : {});
@@ -188,7 +196,12 @@ const orderPath = (id: string, act = "") => `/orders/${encodeURIComponent(id)}${
 
 /** Places an order. `key`: the checkout's own random key for this order (24 to 100 letters, digits, - and _): sent again
  * after an answer was lost, it gets back the order the first try made instead of a second one. */
-export const placeOrder = (body: { lines: CartLine[]; address: Address; notes?: string; expectTotal?: number; payment?: PaymentMethod; coupon?: string; key?: string }) =>
+export const placeOrder = (body: {
+  lines: CartLine[]; address: Address; notes?: string; expectTotal?: number; payment?: PaymentMethod; coupon?: string; key?: string;
+  gift?: { message?: string; from?: string }; business?: { name: string; gstin?: string };
+  /** Keep this address in the signed-in account (with this label when it's new). */
+  saveAddress?: boolean; addressLabel?: string;
+}) =>
   storeFetch<{ order: CustomerOrder; token: string; emailed: boolean; checkout?: RazorpayCheckout }>("/orders", { json: body });
 export const getOrder = (id: string, token?: string) =>
   storeFetch<{ order: CustomerOrder }>(orderPath(id), { headers: tokenHeader(token) });
@@ -239,8 +252,28 @@ export function useTogether(id: number | undefined) {
 export type MyQuote = BulkRequest & { updatedAt: number };
 export const myQuotes = () => storeFetch<{ requests: MyQuote[] }>("/my-quotes");
 
-export const sendEnquiry = (body: { kind: EnquiryKind; productId?: number; variantId?: string | null; item?: string; name: string; phone: string; email?: string; city?: string; qty?: number; message?: string; website?: string }) =>
-  storeFetch<{ ok: true; id: string }>("/enquiries", { json: body });
+export const sendEnquiry = (body: {
+  kind: EnquiryKind; productId?: number; variantId?: string | null; item?: string; name: string; phone: string; email?: string; city?: string; qty?: number; message?: string; website?: string;
+  /** "Call me to order": the cart to order, and when to call (any, morning, afternoon, evening). */
+  lines?: CartLine[]; when?: string;
+}) => storeFetch<{ ok: true; id: string }>("/enquiries", { json: body });
+
+/* ------------------------------------------------------------------ addresses kept in the account */
+
+export const myAddresses = () => storeFetch<{ addresses: SavedAddress[] }>("/addresses");
+export const addAddress = (body: { address: Address; label?: string; isDefault?: boolean }) =>
+  storeFetch<{ addresses: SavedAddress[]; id: string }>("/addresses", { json: body });
+export const updateAddress = (id: string, body: { address?: Address; label?: string; isDefault?: boolean }) =>
+  storeFetch<{ addresses: SavedAddress[]; id: string }>(`/addresses/${encodeURIComponent(id)}`, { method: "PUT", json: body });
+export const removeAddress = (id: string) =>
+  storeFetch<{ addresses: SavedAddress[] }>(`/addresses/${encodeURIComponent(id)}`, { method: "DELETE" });
+/** The signed-in account's addresses (none when signed out). */
+export function useAddresses(enabled: boolean) {
+  return useQuery({
+    queryKey: ["store", "addresses"], enabled, staleTime: 60_000, retry: 0,
+    queryFn: () => myAddresses().then((r) => r.addresses).catch((e: StoreError) => { if (e.status === 401) return [] as SavedAddress[]; throw e; }),
+  });
+}
 
 /** A bulk quotation request from a hospital or medical college (worker/store.ts, createBulkRequest). */
 export type BulkRequestBody = {

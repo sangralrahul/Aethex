@@ -49,6 +49,7 @@ function Shipping() {
       {online
         ? <p>You can pay online when you place the order (UPI, debit and credit cards, netbanking and wallets, processed securely by Razorpay; we never see or keep your card or UPI details), or pay cash on delivery: you pay the courier when the order arrives. Cash on delivery is available on orders up to {formatINR(COD_LIMIT)}, and paying online on orders up to {formatINR(config?.onlineLimit ?? ONLINE_LIMIT)}. Prices are inclusive of all taxes.</p>
         : <p>Orders are paid by cash on delivery: you pay the courier when the order arrives. Cash on delivery is available on orders up to {formatINR(COD_LIMIT)}. Prices are inclusive of all taxes.</p>}
+      {config?.bankTransfer && <p>Orders from {formatINR(config.bankMin ?? 2000)} can also be paid by bank transfer (NEFT, RTGS or IMPS). The account details are shown after you place the order and emailed to you; use your order number as the reference. The order is confirmed once the money reaches us, and cancelled if it hasn&apos;t arrived within {config.bankDays ?? 3} days. If a paid order is cancelled, we send the money back to the account it came from.</p>}
       <h2>Tracking</h2>
       <p>When your order ships we send the courier's name and tracking number by email (if you gave one). You can also follow it any time on <Link href="/orders/track">Track your order</Link> with your order number and mobile number.</p>
       <h2>At delivery</h2>

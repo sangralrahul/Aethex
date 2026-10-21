@@ -62,6 +62,21 @@ export const cart = {
     write(lines.filter((l) => lineKey(l.productId, l.variantId) !== k));
   },
   clear() { write([]); },
+  /** Adds several lines at once (buy again, add all), each capped at MAX_QTY; returns how many items went in. */
+  addMany(add: CartLine[]): number {
+    let next = [...lines], added = 0;
+    for (const l of clean(add)) {
+      const k = lineKey(l.productId, l.variantId);
+      const cur = next.find((x) => lineKey(x.productId, x.variantId) === k);
+      const n = Math.min(MAX_QTY, (cur?.qty ?? 0) + l.qty);
+      added += n - (cur?.qty ?? 0);
+      next = cur ? next.map((x) => (x === cur ? { ...x, qty: n } : x)) : [...next, { ...l, qty: n }];
+    }
+    write(next.slice(-MAX_LINES));
+    return added;
+  },
+  /** Puts these lines in place of the cart (a cart someone shared). */
+  replace(next: CartLine[]) { write(clean(next)); },
 };
 
 const subscribe = (f: () => void) => { listeners.add(f); return () => { listeners.delete(f); }; };

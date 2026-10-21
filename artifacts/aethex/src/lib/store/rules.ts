@@ -15,6 +15,13 @@ export const MAX_LINES = 30;
 export const COD_LIMIT = 50000;
 /** Orders paid online (Razorpay) can go up to this total. */
 export const ONLINE_LIMIT = 200000;
+/** Bank transfer (once the store has added its bank account) is offered from BANK_MIN up to BANK_LIMIT. */
+export const BANK_MIN = 2000;
+export const BANK_LIMIT = 1000000;
+/** Days an order paid by bank transfer is kept waiting for the money. */
+export const BANK_DAYS = 3;
+/** Most addresses an account can keep. */
+export const MAX_ADDRESSES = 10;
 
 export const round2 = (n: number) => Math.round(n * 100) / 100;
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? round2(v) : null);

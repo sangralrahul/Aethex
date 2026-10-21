@@ -14,7 +14,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import {
   ArrowLeft, BadgeCheck, BadgePercent, Banknote, BellRing, Building2, Check, ChevronLeft, ChevronRight, ClipboardList, Heart, MessageSquareText, Minus, Package, Plus, Ruler,
-  RotateCcw, Share2, ShieldCheck, ShoppingCart, Truck, Zap,
+  PhoneCall, RotateCcw, Share2, ShieldCheck, ShoppingCart, Truck, Zap,
 } from "lucide-react";
 import { ProductCard } from "@/components/ProductCard";
 import { AlertDialog } from "@/components/store/AlertDialog";
@@ -24,6 +24,8 @@ import { CustomerReviews, RatingLine } from "@/components/store/Reviews";
 import { ProductImage, imageInfo, cropOf } from "@/components/store/ProductImage";
 import { Dialog } from "@/components/store/Dialog";
 import { EnquiryDialog } from "@/components/store/EnquiryForm";
+import { CallbackDialog, WhatsAppButton } from "@/components/shop/MoreWays";
+import { AddAllButton } from "@/components/shop/BuyAgain";
 import { useToast } from "@/hooks/use-toast";
 import { useWishlist } from "@/hooks/use-wishlist";
 import { useSeo } from "@/hooks/use-seo";
@@ -97,6 +99,7 @@ export default function ProductDetail() {
   const { data: config } = useStoreConfig();
   const { data: togetherIds } = useTogether(product?.id);
   const [sizes, setSizes] = useState(false);
+  const [callMe, setCallMe] = useState(false);
   const thumbs = useRef<HTMLDivElement>(null);
   const bulkLines = useBulkLines();
 
@@ -354,6 +357,12 @@ export default function ProductDetail() {
           ) : (
             <div className="ax-pdp-oos">This is out of stock right now. <button type="button" className="ax-link" onClick={() => setAlertKind("stock")}><BellRing size={14} /> Email me when it's back</button> or <Link href={`/category/${product.category}`}>see similar products</Link>.</div>
           )}
+          {!product.priceOnRequest && product.inStock && (
+            <div className="ax-pdp-alt">
+              <WhatsAppButton className="ax-link ax-wa-link" text={`Hello ${BUSINESS.brand}, I'd like to order ${brandName} ${product.name}${variant ? ` (${variant.label})` : ""} × ${qty}.\n${SITE_URL}/products/${product.slug}`} />
+              <button type="button" className="ax-link" onClick={() => setCallMe(true)}><PhoneCall size={14} /> Call me to order</button>
+            </div>
+          )}
           {!inst && <DeliveryCheck price={priceShown ?? (typeof lowest === "number" ? lowest : null)} />}
           {inst ? (
             <p className="ax-pdp-bulk">
@@ -438,7 +447,7 @@ export default function ProductDetail() {
 
       {together.length > 0 && store && (
         <section className="ax-wrap ax-pdp-related ax-together">
-          <div className="ax-h-title"><h2>Bought together with this</h2></div>
+          <div className="ax-h-title"><h2>Bought together with this</h2><AddAllButton items={[...(store.byId.get(product.id) ? [store.byId.get(product.id)!] : []), ...together]} label="Add all to cart" className="ax-btn" /></div>
           <div className="ax-grid grid">
             {together.map((p) => <ProductCard key={p.id} product={p} brandName={store.brandName(p.brand)} />)}
           </div>
@@ -494,6 +503,7 @@ export default function ProductDetail() {
         itemLabel={`${brandName} ${product.name}${variant ? ` · ${variant.label}` : ""}`}
         price={priceShown ?? (typeof lowest === "number" ? lowest : null)}
       />
+      <CallbackDialog open={callMe} onClose={() => setCallMe(false)} productId={product.id} variantId={variant?.id ?? null} qty={qty} itemLabel={`${brandName} ${product.name}${variant ? ` · ${variant.label}` : ""} × ${qty}`} />
       <CompareTray />
       {product.sizeGuide && (
         <Dialog open={sizes} onClose={() => setSizes(false)} title="Size guide" wide>

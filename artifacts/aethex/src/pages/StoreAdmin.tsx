@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   AlertTriangle, BadgePercent, Building2, Check, ClipboardList, Copy, CreditCard, Download, ExternalLink, Inbox, Loader2, LogIn, Mail, Package, RefreshCw, RotateCcw, Search,
-  ShieldCheck, Star, Store, Truck,
+  Gift, PhoneCall, ShieldCheck, Star, Store, Truck,
 } from "lucide-react";
 import { Stars } from "@/components/store/Reviews";
 import { couponText, offerLive } from "@/lib/store/promo";
@@ -30,9 +30,9 @@ type AdminOrder = Order & { adminNote: string; updatedAt: number; userId: string
 type AdminBulk = BulkRequest & { adminNote: string; updatedAt: number };
 type Enquiry = { id: string; created_at: number; kind: string; item: string | null; name: string; phone: string; email: string | null; city: string | null; qty: number; message: string | null; status: string; note: string | null; product: { id: number; slug: string; name: string; brand: string } | null };
 type Summary = {
-  orders: Record<string, { count: number; total: number }>; last24h: { count: number; total: number }; openEnquiries: number; openBulk: number; pendingReviews?: number;
+  orders: Record<string, { count: number; total: number }>; last24h: { count: number; total: number }; openEnquiries: number; openBulk: number; pendingReviews?: number; bankWaiting?: number; callbacks?: number;
   catalog: { products: number; priceOnRequest: number; noOrigin: number; hidden: number; outOfStock: number };
-  setup: { email: boolean; storeEmail: string; admins: number; gaps: string[]; onlinePayments?: boolean; razorpayMode?: string; webhook?: boolean; webhookUrl?: string };
+  setup: { email: boolean; storeEmail: string; admins: number; gaps: string[]; onlinePayments?: boolean; razorpayMode?: string; webhook?: boolean; webhookUrl?: string; bankTransfer?: boolean; whatsapp?: boolean };
 };
 type Tab = "overview" | "orders" | "requests" | "bulk" | "products" | "promos" | "reviews";
 
@@ -113,6 +113,10 @@ function Overview({ go }: { go: (t: Tab) => void }) {
     ...(pay.onlinePayments ? [[!!pay.webhook, pay.webhook
       ? "Razorpay's webhook is set, so payments count even if the customer closes the page."
       : `Optional: in Razorpay, add a webhook to ${pay.webhookUrl ?? "https://aethex.in/api/store/razorpay/webhook"} (payment.authorized, payment.captured, order.paid, refund.processed, refund.failed) and set its secret as RAZORPAY_WEBHOOK_SECRET. Until then the hourly check finds such payments.`] as [boolean, string]] : []),
+    [!!pay.bankTransfer, pay.bankTransfer
+      ? "Bank transfer is on at checkout (orders from ₹2,000): mark each one paid here when the money arrives."
+      : "Optional: bank transfer for large orders. Set STORE_BANK_ACCOUNT_NAME, STORE_BANK_ACCOUNT_NUMBER and STORE_BANK_IFSC (npx wrangler secret put STORE_BANK_IFSC)."],
+    [!!pay.whatsapp, pay.whatsapp ? "\"Order on WhatsApp\" shows on product pages and the cart." : "Optional: set STORE_WHATSAPP (the store's 10-digit WhatsApp number) to show \"Order on WhatsApp\"."],
     [true, `New orders and requests are emailed to ${s.setup.storeEmail}.`],
     [s.catalog.priceOnRequest === 0, s.catalog.priceOnRequest ? `${s.catalog.priceOnRequest} products are price on request: set prices under Products to sell them directly.` : "Every product has a price."],
     [s.catalog.noOrigin === 0, s.catalog.noOrigin ? `${s.catalog.noOrigin} products don't show a country of origin yet: add it under Products (it's on the pack).` : "Every product shows its country of origin."],
@@ -122,7 +126,8 @@ function Overview({ go }: { go: (t: Tab) => void }) {
     <div className="ax-adm-over">
       <div className="ax-adm-stats">
         <button type="button" onClick={() => go("orders")}><small>New orders</small><b>{o("placed")}</b><span>to confirm</span></button>
-        {o("pending") > 0 && <button type="button" onClick={() => go("orders")}><small>Awaiting payment</small><b>{o("pending")}</b><span>online, not paid yet</span></button>}
+        {o("pending") > 0 && <button type="button" onClick={() => go("orders")}><small>Awaiting payment</small><b>{o("pending")}</b><span>{s.bankWaiting ? `${s.bankWaiting} by bank transfer` : "online, not paid yet"}</span></button>}
+        {(s.callbacks ?? 0) > 0 && <button type="button" onClick={() => go("requests")}><small>Calls to make</small><b>{s.callbacks}</b><span>to take an order</span></button>}
         <button type="button" onClick={() => go("orders")}><small>To ship</small><b>{o("confirmed")}</b><span>confirmed</span></button>
         <button type="button" onClick={() => go("orders")}><small>On the way</small><b>{o("shipped")}</b><span>shipped</span></button>
         <button type="button" onClick={() => go("requests")}><small>Requests</small><b>{s.openEnquiries}</b><span>waiting for a reply</span></button>
@@ -144,6 +149,7 @@ function Overview({ go }: { go: (t: Tab) => void }) {
 
 const NEXT: Partial<Record<OrderStatus, OrderStatus[]>> = { pending: ["cancelled"], placed: ["confirmed", "cancelled"], confirmed: ["shipped", "cancelled"], shipped: ["delivered", "cancelled"] };
 const paidOnline = (o: Order) => o.payment === "online" && (o.paymentStatus === "paid" || o.paymentStatus === "refunded");
+const PAY_TAG = (o: Order) => o.payment === "bank" ? (o.paymentStatus === "paid" ? "Bank, paid" : o.status === "pending" ? "Bank, waiting" : "Bank") : o.payment === "online" ? (paidOnline(o) ? "Online, paid" : "Online") : "COD";
 
 function Orders() {
   const [status, setStatus] = useState<string>("");
@@ -181,6 +187,7 @@ function Orders() {
                 <span>{o.address.name} · {o.address.city} {o.address.pincode}</span>
                 <span className="muted">{when(o.createdAt)}</span>
                 <span className={`ax-ov-status s-${o.status}`}>{STATUS_LABEL[o.status]}</span>
+                <span className={`ax-adm-pay p-${o.payment}`}>{PAY_TAG(o)}{o.gift ? <> · <Gift size={12} /></> : null}</span>
                 <b className="tot">{formatINR(o.total)}</b>
               </button>
               {open === o.id && <OrderEditor order={o} onSaved={(n) => setList((l) => (l ?? []).map((x) => (x.id === n.id ? { ...x, ...n } : x)))} />}
@@ -202,21 +209,37 @@ function OrderEditor({ order, onSaved }: { order: AdminOrder; onSaved: (o: Admin
   const [msg, setMsg] = useState("");
   const [refundAmt, setRefundAmt] = useState("");
   const [refundWhy, setRefundWhy] = useState("");
+  const [bankRef, setBankRef] = useState("");
   const a = order.address;
+  const bankDue = order.payment === "bank" && order.status === "pending";
   const paid = paidOnline(order);
   const refundLeft = Math.round((order.total - (order.refund?.amount ?? 0)) * 100) / 100;
 
   const save = async (status?: OrderStatus) => {
     if (status === "cancelled" && !window.confirm(paid && refundLeft > 0
       ? `Cancel order ${order.id}? ${formatINR(refundLeft)} paid online is refunded to the customer through Razorpay, and they're told by email.`
-      : `Cancel order ${order.id}?${order.status === "pending" ? "" : " The customer is told by email."}`)) return;
+      : `Cancel order ${order.id}?${order.status === "pending" && order.payment !== "bank" ? "" : " The customer is told by email."}`)) return;
     setBusy(true); setMsg("");
     try {
       const r = await admin<{ order: AdminOrder; emailed?: boolean; refundError?: string }>(`orders/${order.id}`, { method: "PATCH", json: { ...(status ? { status } : {}), note: note.trim() || undefined, adminNote, tracking: { courier, number, url } } });
       onSaved({ ...order, ...r.order });
       setNote("");
-      setMsg(r.refundError ? `Cancelled, but the refund didn't go through: ${r.refundError} Refund it below or in Razorpay.`
+      setMsg(r.refundError ? (order.payment === "bank" ? `Cancelled. ${r.refundError}` : `Cancelled, but the refund didn't go through: ${r.refundError} Refund it below or in Razorpay.`)
         : status ? `Marked ${STATUS_LABEL[status].toLowerCase()}${order.status === "pending" ? "" : r.emailed ? "; the customer was emailed" : a.email ? "; the email didn't go out" : " (no email on this order: call or message the customer)"}.` : "Saved.");
+    } catch (e) {
+      setMsg((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  /** The bank transfer has reached the account: the order is placed and the customer told. */
+  const markPaid = async () => {
+    if (!window.confirm(`Has ${formatINR(order.total)} for ${order.id} reached the store's account? The order is placed and the customer told by email.`)) return;
+    setBusy(true); setMsg("");
+    try {
+      const r = await admin<{ order: AdminOrder; emailed: boolean }>(`orders/${order.id}/paid`, { method: "POST", json: { reference: bankRef.trim() || undefined } });
+      onSaved({ ...order, ...r.order });
+      setMsg(`Marked paid and placed${r.emailed ? "; the customer was emailed" : ""}. Confirm it when you're ready to pack.`);
     } catch (e) {
       setMsg((e as Error).message);
     } finally {
@@ -248,6 +271,8 @@ function OrderEditor({ order, onSaved }: { order: AdminOrder; onSaved: (o: Admin
           <p><b>{a.name}</b><br />{a.line1}{a.line2 ? `, ${a.line2}` : ""}{a.landmark ? `, near ${a.landmark}` : ""}<br />{a.city}, {a.state} {a.pincode}</p>
           <p><a href={`tel:+91${a.phone}`}>+91 {a.phone}</a>{a.email ? <> · <a href={`mailto:${a.email}`}>{a.email}</a></> : null}</p>
           {order.notes && <p className="note">Customer note: {order.notes}</p>}
+          {order.gift && <p className="note gift"><Gift size={13} /> <b>Gift: pack it without prices.</b>{order.gift.message ? <> Message: &ldquo;{order.gift.message}&rdquo;</> : null}{order.gift.from ? <> From {order.gift.from}</> : null}</p>}
+          {order.business && <p className="note"><Building2 size={13} /> For <b>{order.business.name}</b>{order.business.gstin ? <> · GSTIN {order.business.gstin}</> : null}</p>}
         </div>
         <div>
           <h3>Items</h3>
@@ -258,7 +283,13 @@ function OrderEditor({ order, onSaved }: { order: AdminOrder; onSaved: (o: Admin
           <p>Delivery {order.delivery ? formatINR(order.delivery) : "free"} · {order.payment === "cod"
             ? <b>Collect {formatINR(order.total)} cash</b>
             : paid ? <b className="paid">Paid online {formatINR(order.total)}: don't collect cash</b>
-              : <b className="due">Online payment of {formatINR(order.total)} not received</b>}</p>
+              : order.payment === "bank" ? (order.paymentStatus === "paid"
+                ? <b className="paid">Paid by bank transfer {formatINR(order.total)}: don't collect cash</b>
+                : <b className="due">Bank transfer of {formatINR(order.total)} not received yet</b>)
+                : <b className="due">Online payment of {formatINR(order.total)} not received</b>}</p>
+          {order.payment === "bank" && order.paymentStatus === "paid" && (
+            <p className="muted"><Building2 size={13} /> Received {order.paidAt ? when(order.paidAt) : ""}{order.bankRef ? ` · reference ${order.bankRef}` : ""}</p>
+          )}
           {order.payment === "online" && (
             <p className="muted"><CreditCard size={13} /> {paid ? `Paid ${order.paidAt ? when(order.paidAt) : ""}` : "Not paid"}{order.paymentId ? ` · Razorpay ${order.paymentId}` : ""}{order.refund ? ` · refunded ${formatINR(order.refund.amount)} (${order.refund.status})` : ""}</p>
           )}
@@ -268,6 +299,14 @@ function OrderEditor({ order, onSaved }: { order: AdminOrder; onSaved: (o: Admin
           <ul className="hist">{order.history.map((h, i) => <li key={i}><b>{STATUS_LABEL[h.status]}</b> {when(h.at)}{h.note ? ` · ${h.note}` : ""}</li>)}</ul>
         </div>
       </div>
+      {bankDue && (
+        <div className="ax-adm-bank">
+          <h3><Building2 size={15} /> Waiting for a bank transfer of {formatINR(order.total)}</h3>
+          <p className="muted">Look for {order.id} as the reference in the account. Unpaid after 3 days, it&apos;s cancelled on its own.</p>
+          <div className="ax-form"><label className="f"><span>Transfer reference (UTR) <em>(optional)</em></span><input value={bankRef} onChange={(e) => setBankRef(e.target.value)} maxLength={40} /></label></div>
+          <button type="button" className="ax-btn teal" disabled={busy} onClick={markPaid}><Check size={15} /> Mark paid</button>
+        </div>
+      )}
       <div className="ax-form">
         <label className="f"><span>Courier</span><input value={courier} onChange={(e) => setCourier(e.target.value)} placeholder="Delhivery, Blue Dart, India Post…" /></label>
         <label className="f"><span>Tracking number</span><input value={number} onChange={(e) => setNumber(e.target.value)} /></label>
@@ -322,7 +361,7 @@ function Requests() {
         <ul className="ax-adm-req">
           {list.map((e) => (
             <li key={e.id}>
-              <div className="h"><span className={`kind k-${e.kind}`}>{({ price: "Price", book: "Book", bulk: "Bulk", general: "Question" } as Record<string, string>)[e.kind] ?? e.kind}</span><b>{e.item || "General question"}</b>{e.kind !== "general" && <span>× {e.qty}</span>}<span className="muted">{when(e.created_at)}</span></div>
+              <div className="h"><span className={`kind k-${e.kind}`}>{e.kind === "callback" ? <><PhoneCall size={11} /> Call back</> : ({ price: "Price", book: "Book", bulk: "Bulk", general: "Question" } as Record<string, string>)[e.kind] ?? e.kind}</span><b>{e.item || (e.kind === "callback" ? "Call to take an order" : "General question")}</b>{e.kind !== "general" && <span>× {e.qty}</span>}<span className="muted">{when(e.created_at)}</span></div>
               <p>{e.name} · <a href={`tel:+91${e.phone}`}>+91 {e.phone}</a>{e.email ? <> · <a href={`mailto:${e.email}`}>{e.email}</a></> : null}{e.city ? ` · ${e.city}` : ""}</p>
               {e.message && <p className="msg">{e.message}</p>}
               <div className="acts">

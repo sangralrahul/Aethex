@@ -28,6 +28,7 @@ const INTRO: Record<EnquiryKind, string> = {
   bulk: "Buying for a clinic, hospital, pharmacy or institution? Tell us the quantity and we'll send a bulk price.",
   book: "We'll confirm the latest edition, price and availability, usually within one business day.",
   general: "Ask us anything about a product or an order.",
+  callback: "Leave your number and we'll call you to take your order.",
 };
 
 export function EnquiryForm({ kind, productId, variantId, item, itemLabel, defaultQty = 1, defaultMessage = "", onDone }: {

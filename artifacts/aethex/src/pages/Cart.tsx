@@ -3,6 +3,8 @@
  * later and remove, items that can't be bought right now, the way to free
  * delivery, a coupon code, and the order summary with checkout. Totals follow
  * lib/store/rules (and the Worker's quote when a coupon is on, lib/store/coupon).
+ * Also the other ways to buy (ask someone to pay, WhatsApp, call me to order),
+ * and a pay-for-me link opened here (components/shop/MoreWays).
  * Styles: src/buy.css (.ax-cart).
  */
 import { Link, useLocation } from "wouter";
@@ -11,6 +13,7 @@ import { ShopHead } from "@/components/shop/ShopHead";
 import { OrderSummary } from "@/components/shop/OrderSummary";
 import { CouponBox } from "@/components/shop/CouponBox";
 import { BuySteps, PayWays, TrustList } from "@/components/shop/BuyKit";
+import { MoreWays, SharedCartBanner } from "@/components/shop/MoreWays";
 import { ProductImage } from "@/components/store/ProductImage";
 import { isBookId, itemHref } from "@/lib/store/bookdata";
 import { useToast } from "@/hooks/use-toast";
@@ -52,6 +55,7 @@ export default function Cart() {
     return (
       <div className="ax-cart-page">
         <ShopHead compact crumbs={[{ label: "Home", href: "/" }, { label: "Cart" }]} title="Your cart" />
+        <div className="ax-wrap"><SharedCartBanner /></div>
         <div className="ax-wrap ax-cart"><div className="ax-cart-main"><div className="sk" style={{ height: 140 }} /><div className="sk" style={{ height: 140, marginTop: 12 }} /></div><div className="sk" style={{ height: 300 }} /></div>
       </div>
     );
@@ -69,6 +73,7 @@ export default function Cart() {
         right={lines.length > 0 ? <BuySteps at={0} className="ax-cart-steps" /> : undefined}
       />
 
+      <div className="ax-wrap"><SharedCartBanner /></div>
       {lines.length === 0 ? (
         <div className="ax-wrap">
           <div className="ax-empty ax-cart-empty">
@@ -148,10 +153,11 @@ export default function Cart() {
             <OrderSummary quote={t} payLabel={config?.onlinePayments ? "Total" : "To pay on delivery"} coupon={t.count > 0 ? <CouponBox priced={priced} /> : undefined}>
               <button type="button" className="ax-btn teal lg ax-sum-go ax-shine" onClick={() => setLocation("/checkout")} disabled={t.count === 0}><Lock size={16} /> Checkout securely <ArrowRight size={18} /></button>
               <div className="ax-cart-pay">
-                <p className="ax-sum-secure"><Banknote size={14} /> {config?.onlinePayments ? "Pay online or cash on delivery" : "Cash on delivery · pay when it arrives"}</p>
+                <p className="ax-sum-secure"><Banknote size={14} /> {config?.onlinePayments ? "Pay online or cash on delivery" : "Cash on delivery · pay when it arrives"}{config?.bankTransfer ? ", or by bank transfer" : ""}</p>
                 {config?.onlinePayments && <PayWays />}
               </div>
             </OrderSummary>
+            {t.count > 0 && <MoreWays lines={lines} priced={t.lines} total={t.total} code={priced.applied ? priced.code : undefined} />}
             {t.count > 0 && <TrustList online={!!config?.onlinePayments} />}
           </aside>
         </div>

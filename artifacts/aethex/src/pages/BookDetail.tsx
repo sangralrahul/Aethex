@@ -15,11 +15,13 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import {
   ArrowLeft, BadgeCheck, BadgePercent, Banknote, BellRing, BookOpen, Building2, Check, Heart, Library, MessageSquareText, Minus, Plus, RotateCcw,
-  Search as SearchIcon, Share2, ShieldCheck, ShoppingCart, Truck, Zap,
+  PhoneCall, Search as SearchIcon, Share2, ShieldCheck, ShoppingCart, Truck, Zap,
 } from "lucide-react";
 import { BookCard, BookCover } from "@/components/store/BookCard";
 import { EnquiryDialog } from "@/components/store/EnquiryForm";
 import { AlertDialog } from "@/components/store/AlertDialog";
+import { CallbackDialog, WhatsAppButton } from "@/components/shop/MoreWays";
+import { AddAllButton } from "@/components/shop/BuyAgain";
 import { DeliveryCheck } from "@/components/store/DeliveryCheck";
 import { CustomerReviews, RatingLine } from "@/components/store/Reviews";
 import { useToast } from "@/hooks/use-toast";
@@ -28,7 +30,7 @@ import { useSeo } from "@/hooks/use-seo";
 import { useBooks, useStoreConfig, useTogether, type BookStore } from "@/lib/store/api";
 import { bookSet } from "@/lib/store/booksets";
 import type { Book } from "@/lib/store/types";
-import { bookName } from "@/lib/store/bookdata";
+import { bookName, bookSummary } from "@/lib/store/bookdata";
 import { findBook, indexBooks, recommendRank, searchBooks, slugQuery } from "@/lib/store/books";
 import { bulk, useBulkLines } from "@/lib/store/bulk";
 import { cart } from "@/lib/store/cart";
@@ -142,6 +144,7 @@ export default function BookDetail() {
   const [qty, setQty] = useState(1);
   const [ask, setAsk] = useState<null | "price" | "bulk">(null);
   const [alertKind, setAlertKind] = useState<null | "stock" | "price">(null);
+  const [callMe, setCallMe] = useState(false);
   const { data: config } = useStoreConfig();
   const { data: togetherIds } = useTogether(book?.id);
 
@@ -369,6 +372,12 @@ export default function BookDetail() {
           ) : (
             <div className="ax-pdp-oos">This book is out of stock right now. <button type="button" className="ax-link" onClick={() => setAlertKind("stock")}><BellRing size={14} /> Email me when it's back</button> or <Link href={moreHref}>see more {subject ? `${subject.toLowerCase()} ` : ""}books</Link>.</div>
           )}
+          {priced && book.inStock !== false && (
+            <div className="ax-pdp-alt">
+              <WhatsAppButton className="ax-link ax-wa-link" text={`Hello ${BUSINESS.brand}, I'd like to order the book ${book.title} × ${qty}.\n${SITE_URL}/books/${book.slug}`} />
+              <button type="button" className="ax-link" onClick={() => setCallMe(true)}><PhoneCall size={14} /> Call me to order</button>
+            </div>
+          )}
           <DeliveryCheck price={price} />
           <p className="ax-pdp-bulk">
             Buying for a library or a batch?{" "}
@@ -429,7 +438,7 @@ export default function BookDetail() {
 
       {together.length > 0 ? (
         <section className="ax-wrap ax-pdp-related ax-bkd-related ax-together">
-          <div className="ax-h-title"><h2>Bought together with this</h2></div>
+          <div className="ax-h-title"><h2>Bought together with this</h2><AddAllButton items={[book, ...together].map(bookSummary)} className="ax-btn" /></div>
           <div className="ax-grid grid ax-bk-grid">
             {together.map((b) => <BookCard key={b.id} book={b} publisher={bs.publisherName(b.publisher)} />)}
           </div>
@@ -482,6 +491,7 @@ export default function BookDetail() {
         itemLabel={`${bookName(book)} · ${publisher}`}
         defaultQty={enquiry.qty}
       />
+      <CallbackDialog open={callMe} onClose={() => setCallMe(false)} productId={book.id} qty={qty} itemLabel={`${book.title} × ${qty}`} />
       <AlertDialog
         open={!!alertKind}
         onClose={() => setAlertKind(null)}

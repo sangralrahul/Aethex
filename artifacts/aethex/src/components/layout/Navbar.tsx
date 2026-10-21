@@ -3,6 +3,7 @@
  * More) with tidy drop-downs, search, wishlist, cart and account. On phones
  * the sections open in a full-screen menu. Styles: src/site.css (ax-*).
  */
+import { SearchResults } from "@/components/shop/SearchResults";
 import { useEffect, useLayoutEffect, useRef, useState, type ComponentType } from "react";
 import { Link, useLocation } from "wouter";
 import {
@@ -259,6 +260,7 @@ export function Navbar({ inner = false }: { inner?: boolean }) {
               <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search products, books and equipment" aria-label="Search" />
               <button type="button" className="ax-icon" onClick={() => setSearching(false)} aria-label="Close search"><X size={18} /></button>
             </form>
+            {query.trim().length >= 2 ? <SearchResults q={query.trim()} onGo={() => setSearching(false)} onAll={() => search(query)} /> : (
             <div className="sugg">
               <p>Popular</p>
               <div>{SEARCH_SUGGESTIONS.map((s) => <button key={s} type="button" onClick={() => search(s)}>{s}</button>)}</div>
@@ -268,6 +270,7 @@ export function Navbar({ inner = false }: { inner?: boolean }) {
                 <a href={cadusUrl("/")}>Ask Cadus AI</a>
               </div>
             </div>
+            )}
           </div>
         </div>
       )}

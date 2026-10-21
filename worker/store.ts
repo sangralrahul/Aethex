@@ -1,28 +1,33 @@
 // The store on Cloudflare (/api/store/*): the catalogue with the store's own
-// prices, stock and offers, orders paid by cash on delivery or online
-// (Razorpay, worker/razorpay.ts), coupons, order tracking and cancelling,
-// reviews from buyers, back-in-stock and price-drop alerts, price and book
-// requests, bulk quotation requests from hospitals and medical colleges (and
-// their accounts' list of them), and the store admin. Orders, requests,
-// reviews, coupons, offers, alerts and the store's changes to products live in
-// D1 (tables below; the same SQL is in migrations/0002 to 0004, and the tables
-// are also created on first use).
+// prices, stock and offers, orders paid by cash on delivery, online
+// (Razorpay, worker/razorpay.ts) or by bank transfer, gift and business
+// orders, coupons, order tracking and cancelling, reviews from buyers,
+// back-in-stock and price-drop alerts, price and book requests, call-back
+// requests to order by phone, saved addresses, bulk quotation requests from
+// hospitals and medical colleges (and their accounts' list of them), and the
+// store admin. Orders, requests, reviews, coupons, offers, alerts, addresses
+// and the store's changes to products live in D1 (tables below; the same SQL
+// is in migrations/0002 to 0005, and the tables are also created on first use).
 //
 // Variables (Workers & Pages > aethex > Settings > Variables and Secrets):
 //   ADMIN_EMAILS  accounts that may open aethex.in/admin, comma-separated
 //   STORE_EMAIL   where new orders and requests are emailed
 //                 (default: the first ADMIN_EMAILS address, else the support address)
 //   RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET   online payments (worker/razorpay.ts)
+//   STORE_WHATSAPP  the store's WhatsApp number (10 digits, or with 91): "Order on WhatsApp" shows once it's set
+//   STORE_BANK_ACCOUNT_NAME, STORE_BANK_ACCOUNT_NUMBER, STORE_BANK_IFSC, STORE_BANK_NAME (optional)
+//                 the account for bank transfers: "Bank transfer" shows at checkout once the first three are set
 // Order and request emails go out through Brevo, like the sign-in codes.
 import catalogJson from "../artifacts/aethex/src/data/store/catalog.json";
 import booksJson from "../artifacts/aethex/src/data/store/books.json";
 import type {
-  Address, BookCatalog, BulkItem, BulkRequest, BulkStatus, CartLine, Catalog, Coupon, EnquiryKind, Offer, Order, OrderStatus, Override, PaymentMethod, PricedLine, Product, ProductSummary, Quote,
-  Rating, RatingSummary, Review, ReviewStatus, Segment,
+  Address, BankDetails, BookCatalog, BulkItem, BulkRequest, BulkStatus, CartLine, Catalog, Coupon, EnquiryKind, Offer, Order, OrderStatus, Override, PaymentMethod, PricedLine, Product,
+  ProductSummary, Quote, Rating, RatingSummary, Review, ReviewStatus, SavedAddress, Segment,
 } from "../artifacts/aethex/src/lib/store/types";
 import { bookAsProduct, isBookId, itemHref } from "../artifacts/aethex/src/lib/store/bookdata";
 import {
-  applyOverride, BULK_STATUSES, cancellable, cleanSchedule, COD_LIMIT, everyText, formatDay, INDIAN_STATES, INSTITUTION_TYPES, normPhone, ONLINE_LIMIT, ORDER_STATUSES, priceBulk, quoteLines, round2,
+  applyOverride, BANK_DAYS, BANK_LIMIT, BANK_MIN, BULK_STATUSES, cancellable, cleanSchedule, COD_LIMIT, everyText, formatDay, INDIAN_STATES, INSTITUTION_TYPES, MAX_ADDRESSES, normPhone, ONLINE_LIMIT,
+  ORDER_STATUSES, priceBulk, quoteLines, round2,
   STATUS_LABEL, scheduleText, summarize, validEmail, validGstin, validPincode,
 } from "../artifacts/aethex/src/lib/store/rules";
 import { applyCoupon, applyOffers, cleanCouponCode, couponLive, liveOfferKey, publicCoupon } from "../artifacts/aethex/src/lib/store/promo";
@@ -36,8 +41,30 @@ import { allow, clientIp, currentUser, escapeHtml, normEmail, sendEmail, sha256,
 export interface StoreEnv extends AuthEnv, RazorpayEnv {
   ADMIN_EMAILS?: string;
   STORE_EMAIL?: string;
+  STORE_WHATSAPP?: string;
+  STORE_BANK_ACCOUNT_NAME?: string;
+  STORE_BANK_ACCOUNT_NUMBER?: string;
+  STORE_BANK_IFSC?: string;
+  STORE_BANK_NAME?: string;
 }
 type DBEnv = StoreEnv & { DB: D1Like };
+
+/** The store's WhatsApp number with the country code (91...), or "" when it isn't set or doesn't look right. */
+function whatsappNumber(env: StoreEnv): string {
+  const d = String(env.STORE_WHATSAPP ?? "").replace(/\D/g, "");
+  if (/^[6-9]\d{9}$/.test(d)) return `91${d}`;
+  if (/^91[6-9]\d{9}$/.test(d)) return d;
+  return "";
+}
+/** The account for bank transfers, once its name, number and IFSC are set (and look right). */
+function bankDetails(env: StoreEnv): BankDetails | null {
+  const accountName = String(env.STORE_BANK_ACCOUNT_NAME ?? "").replace(/\s+/g, " ").trim().slice(0, 120);
+  const accountNumber = String(env.STORE_BANK_ACCOUNT_NUMBER ?? "").replace(/\s+/g, "");
+  const ifsc = String(env.STORE_BANK_IFSC ?? "").trim().toUpperCase();
+  const bankName = String(env.STORE_BANK_NAME ?? "").replace(/\s+/g, " ").trim().slice(0, 80);
+  if (accountName.length < 2 || !/^\d{9,18}$/.test(accountNumber) || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)) return null;
+  return { accountName, accountNumber, ifsc, ...(bankName ? { bankName } : {}) };
+}
 
 const catalog = catalogJson as unknown as Catalog;
 const byId = new Map<number, Product>(catalog.products.map((p) => [p.id, p]));
@@ -104,6 +131,10 @@ export const STORE_TABLES = [
   "CREATE UNIQUE INDEX IF NOT EXISTS store_alerts_unique ON store_alerts(product_id, variant_id, kind, email)",
   "CREATE INDEX IF NOT EXISTS store_alerts_open ON store_alerts(notified_at, product_id)",
   "CREATE INDEX IF NOT EXISTS store_alerts_token ON store_alerts(token)",
+  `CREATE TABLE IF NOT EXISTS store_addresses (
+    id TEXT PRIMARY KEY, user_id TEXT NOT NULL, label TEXT NOT NULL, data TEXT NOT NULL, is_default INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
+  "CREATE INDEX IF NOT EXISTS store_addresses_user ON store_addresses(user_id)",
 ];
 /** Columns added after a table was first made: added where missing (an existing column is left alone). */
 export const STORE_COLUMNS: [table: string, column: string, type: string][] = [
@@ -119,6 +150,9 @@ export const STORE_COLUMNS: [table: string, column: string, type: string][] = [
   ["store_orders", "discount", "REAL"],
   ["store_orders", "payment_checked_at", "INTEGER"],
   ["store_alerts", "checked_at", "INTEGER"],
+  ["store_orders", "gift", "TEXT"],
+  ["store_orders", "business", "TEXT"],
+  ["store_orders", "bank_ref", "TEXT"],
 ];
 /** Indexes on those added columns (made once the columns are there). */
 const STORE_INDEXES = [
@@ -281,13 +315,13 @@ type OrderRow = {
   pincode: string; address: string; lines: string; item_count: number; subtotal: number; mrp_total: number; delivery: number; total: number;
   payment: string; history: string; tracking: string | null; notes: string | null; admin_note: string | null; token_hash: string; ip: string | null;
   payment_status?: string | null; payment_ref?: string | null; payment_id?: string | null; paid_at?: number | null; refund?: string | null;
-  coupon?: string | null; discount?: number | null;
+  coupon?: string | null; discount?: number | null; gift?: string | null; business?: string | null; bank_ref?: string | null;
 };
 const parse = <T>(s: string | null, fallback: T): T => { try { return s ? JSON.parse(s) : fallback; } catch { return fallback; } };
 
 function toOrder(r: OrderRow): Order {
   const o: Order = {
-    id: r.id, createdAt: r.created_at, status: r.status as OrderStatus, payment: r.payment === "online" ? "online" : "cod",
+    id: r.id, createdAt: r.created_at, status: r.status as OrderStatus, payment: r.payment === "online" ? "online" : r.payment === "bank" ? "bank" : "cod",
     address: parse<Address>(r.address, { name: r.name, phone: r.phone, line1: "", city: "", state: "", pincode: r.pincode }),
     lines: parse<PricedLine[]>(r.lines, []), subtotal: r.subtotal, mrpTotal: r.mrp_total, delivery: r.delivery, total: r.total,
     history: parse(r.history, []),
@@ -301,9 +335,20 @@ function toOrder(r: OrderRow): Order {
     const refund = parse<Order["refund"] | null>(r.refund ?? null, null);
     if (refund) o.refund = refund;
   }
+  if (o.payment === "bank") {
+    o.paymentStatus = r.payment_status === "paid" ? "paid" : "pending";
+    if (r.paid_at) o.paidAt = r.paid_at;
+    if (r.bank_ref) o.bankRef = r.bank_ref;
+  }
   if (r.discount) { o.discount = r.discount; if (r.coupon) o.coupon = r.coupon; }
+  const gift = parse<Order["gift"] | null>(r.gift ?? null, null);
+  if (gift) o.gift = gift;
+  const business = parse<Order["business"] | null>(r.business ?? null, null);
+  if (business) o.business = business;
   return o;
 }
+/** Paid, online or by bank transfer (and not refunded in full). */
+const isPaid = (o: Order) => o.payment !== "cod" && o.paymentStatus === "paid";
 
 /** What the customer sees. Looked up with the order number and phone alone, the address is shortened. */
 function customerView(r: OrderRow, full: boolean) {
@@ -311,9 +356,16 @@ function customerView(r: OrderRow, full: boolean) {
   if (!full) {
     const a = o.address;
     o.address = { name: a.name, phone: `••••••${a.phone.slice(-4)}`, line1: "", city: a.city, state: a.state, pincode: a.pincode };
+    delete o.gift;
+    delete o.business;
   }
   return { ...o, canCancel: cancellable(o.status) };
 }
+/** An order waiting for its bank transfer carries the account to pay into. */
+const withBank = <T extends Order>(env: StoreEnv, o: T): T & { bank?: BankDetails } => {
+  const bank = o.payment === "bank" && o.status === "pending" ? bankDetails(env) : null;
+  return bank ? { ...o, bank } : o;
+};
 
 function cleanAddress(raw: unknown): { address: Address } | { error: string } {
   const a = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
@@ -345,7 +397,8 @@ const addressHtml = (a: Address) =>
 
 function linesHtml(o: Order) {
   const rows = o.lines.map((l) => `<tr><td style="padding:9px 0;border-bottom:1px solid #EDF0F4;font-size:14px;">${escapeHtml(l.name)}${l.variantLabel ? `<br><span style="color:#718096;font-size:12px;">${escapeHtml(l.variantLabel)}</span>` : ""}</td><td style="padding:9px 0;border-bottom:1px solid #EDF0F4;font-size:14px;color:#718096;text-align:center;">&times;${l.qty}</td><td style="padding:9px 0;border-bottom:1px solid #EDF0F4;font-size:14px;text-align:right;">${money(l.lineTotal)}</td></tr>`).join("");
-  const how = o.payment === "online" ? (o.paymentStatus === "paid" || o.paymentStatus === "refunded" ? "paid online" : "to pay online") : "cash on delivery";
+  const how = o.payment === "online" ? (o.paymentStatus === "paid" || o.paymentStatus === "refunded" ? "paid online" : "to pay online")
+    : o.payment === "bank" ? (o.paymentStatus === "paid" ? "paid by bank transfer" : "to pay by bank transfer") : "cash on delivery";
   return `<table style="width:100%;border-collapse:collapse;margin:6px 0 10px;">${rows}</table>
 <table style="width:100%;border-collapse:collapse;font-size:14px;"><tr><td style="padding:3px 0;color:#4A5568;">Items</td><td style="text-align:right;">${money(o.subtotal)}</td></tr>
 ${o.discount ? `<tr><td style="padding:3px 0;color:#4A5568;">Coupon${o.coupon ? ` ${escapeHtml(o.coupon)}` : ""}</td><td style="text-align:right;color:#0F7A43;">&minus;${money(o.discount)}</td></tr>` : ""}
@@ -353,22 +406,43 @@ ${o.discount ? `<tr><td style="padding:3px 0;color:#4A5568;">Coupon${o.coupon ? 
 <tr><td style="padding:6px 0;font-weight:700;">Total (${how})</td><td style="text-align:right;font-weight:700;">${money(o.total)}</td></tr></table>`;
 }
 
+/** A gift's message, and a business buyer's name and GSTIN, for the emails. */
+function extrasHtml(o: Order, forStore = false): string {
+  const out: string[] = [];
+  if (o.gift) {
+    const msg = o.gift.message ? `<br><i>"${escapeHtml(o.gift.message)}"</i>${o.gift.from ? `<br>From ${escapeHtml(o.gift.from)}` : ""}` : o.gift.from ? `<br>From ${escapeHtml(o.gift.from)}` : "";
+    out.push(`<p style="margin:12px 0 0;padding:10px 12px;border-radius:8px;background:#FFF7E8;font-size:14px;line-height:1.55;"><b>${forStore ? "Gift order: put this message in the box, and leave out anything showing prices" : "Gift"}</b>${msg}</p>`);
+  }
+  if (o.business) out.push(`<p style="margin:12px 0 0;font-size:14px;line-height:1.55;"><b>Business purchase:</b> ${escapeHtml(o.business.name)}${o.business.gstin ? ` · GSTIN ${escapeHtml(o.business.gstin)}` : ""}</p>`);
+  return out.join("");
+}
+
 const button = (href: string, label: string) => `<p style="text-align:center;margin:22px 0 0;"><a href="${href}" style="display:inline-block;background:#1F3F7A;color:#fff;text-decoration:none;padding:12px 26px;border-radius:8px;font-weight:700;">${label}</a></p>`;
 const signoff = () => `<p style="color:#718096;font-size:12px;margin-top:22px;line-height:1.5;">${escapeHtml(BUSINESS.legalName)}${BUSINESS.gstin ? ` · GSTIN ${escapeHtml(BUSINESS.gstin)}` : ""}<br>Questions? Reply to this email or write to ${escapeHtml(BUSINESS.email)}${BUSINESS.phone ? ` · ${escapeHtml(BUSINESS.phone)}` : ""}.</p>`;
 const trackUrl = (id: string) => `${SITE_URL}/orders/track?order=${encodeURIComponent(id)}`;
 
+/** The buyer's first name for a greeting: on a gift, the address is the recipient's, so the name it's from (or none). */
+function greetName(o: Order): string {
+  const n = o.gift ? o.gift.from ?? "" : o.address.name;
+  return escapeHtml(n.split(" ")[0] || n);
+}
+
 function customerEmail(o: Order, kind: "placed" | OrderStatus, note?: string) {
-  const first = escapeHtml(o.address.name.split(" ")[0] || o.address.name);
-  const paid = o.payment === "online" && (o.paymentStatus === "paid" || o.paymentStatus === "refunded");
+  const first = greetName(o);
+  // A gift paid in cash: whoever receives it pays.
+  const cash = o.gift ? `Whoever receives it pays ${money(o.total)} in cash at delivery, so do let them know.` : `Please keep ${money(o.total)} ready to pay in cash when it arrives.`;
+  const paid = o.payment !== "cod" && (o.paymentStatus === "paid" || o.paymentStatus === "refunded");
   const cancelText = o.refund
     ? `We've refunded ${money(o.refund.amount)} to the account or card you paid with. Refunds usually reach you in 5 to 7 business days.`
-    : paid ? "Your online payment will be refunded to the account or card you paid with; we'll email you when it's on its way." : "No payment is due.";
+    : paid && o.payment === "bank" ? "We'll send your bank transfer back to the account it came from, and email you when it's on its way."
+      : paid ? "Your online payment will be refunded to the account or card you paid with; we'll email you when it's on its way."
+        : o.payment === "bank" ? "No payment is due. If you'd already sent the bank transfer, reply to this email with its reference and we'll send the money back." : "No payment is due.";
   const heads: Record<string, [string, string]> = {
-    placed: [`Thank you, ${first}. Your order is placed`, paid
+    placed: [`Thank you${first ? `, ${first}` : ""}. Your ${o.gift ? "gift" : "order"} is placed`, paid
       ? `We've received your payment of ${money(o.total)}. We'll confirm the order shortly and ship it ${escapeHtml(BUSINESS.dispatch)}.`
-      : `We'll confirm it shortly and ship it ${escapeHtml(BUSINESS.dispatch)}. Please keep ${money(o.total)} ready to pay in cash when it arrives.`],
+      : `We'll confirm it shortly and ship it ${escapeHtml(BUSINESS.dispatch)}. ${cash}`],
     confirmed: ["Your order is confirmed", `We're packing it now. It ships ${escapeHtml(BUSINESS.dispatch)}.`],
-    shipped: ["Your order is on its way", `Delivery is ${escapeHtml(BUSINESS.delivery)}.${paid ? "" : ` Please keep ${money(o.total)} ready to pay in cash.`}`],
+    shipped: [o.gift ? "Your gift is on its way" : "Your order is on its way", `Delivery is ${escapeHtml(BUSINESS.delivery)}.${paid ? "" : ` ${cash}`}`],
     delivered: ["Your order has been delivered", `Thank you for shopping with ${escapeHtml(BUSINESS.brand)}. If anything arrived damaged, defective or wrong, tell us within ${BUSINESS.replacementDays} days and we'll replace it. You can rate what you bought from your order page.`],
     cancelled: ["Your order has been cancelled", `${cancelText} If you didn't ask for this, reply to this email and we'll help.`],
   };
@@ -380,7 +454,7 @@ function customerEmail(o: Order, kind: "placed" | OrderStatus, note?: string) {
 <p style="color:#4A5568;margin:0 0 6px;line-height:1.55;">${p}</p>
 ${note ? `<p style="color:#4A5568;margin:0 0 6px;line-height:1.55;">${escapeHtml(note)}</p>` : ""}
 <p style="margin:14px 0 4px;font-size:13px;color:#718096;">Order <b style="color:#14213D;">${escapeHtml(o.id)}</b></p>
-${tracking}${linesHtml(o)}
+${tracking}${linesHtml(o)}${extrasHtml(o)}
 <p style="margin:14px 0 0;font-size:13px;color:#4A5568;line-height:1.5;"><b>Delivering to</b><br>${addressHtml(o.address)}</p>
 ${button(trackUrl(o.id), "Track your order")}${signoff()}`);
 }
@@ -436,7 +510,12 @@ function cleanOverride(raw: Record<string, any>, p: Product): Override | { error
   return o;
 }
 
-const csvCell = (v: unknown) => { const s = String(v ?? ""); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+// Text a customer typed (a name, a note, a gift message) can't run as a spreadsheet formula when the file is opened.
+const csvCell = (v: unknown) => {
+  let s = String(v ?? "");
+  if (typeof v === "string" && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
 
 async function handleAdmin(request: Request, env: DBEnv, path: string, ctx?: Ctx): Promise<Response> {
   const who = await requireAdmin(request, env);
@@ -453,6 +532,8 @@ async function handleAdmin(request: Request, env: DBEnv, path: string, ctx?: Ctx
     const openEnq = await env.DB.prepare("SELECT COUNT(*) AS n FROM store_enquiries WHERE status = 'new'").first<{ n: number }>();
     const openBulk = await env.DB.prepare("SELECT COUNT(*) AS n FROM store_bulk_requests WHERE status = 'new'").first<{ n: number }>();
     const newReviews = await env.DB.prepare("SELECT COUNT(*) AS n FROM store_reviews WHERE status = 'pending'").first<{ n: number }>();
+    const bankWaiting = await env.DB.prepare("SELECT COUNT(*) AS n FROM store_orders WHERE payment = 'bank' AND status = 'pending'").first<{ n: number }>();
+    const callbacks = await env.DB.prepare("SELECT COUNT(*) AS n FROM store_enquiries WHERE kind = 'callback' AND status = 'new'").first<{ n: number }>();
     const find = await finder(env);
     let priceOnRequest = 0, noOrigin = 0, hidden = 0, outOfStock = 0;
     for (const p of catalog.products) {
@@ -468,12 +549,16 @@ async function handleAdmin(request: Request, env: DBEnv, path: string, ctx?: Ctx
       openEnquiries: openEnq?.n || 0,
       openBulk: openBulk?.n || 0,
       pendingReviews: newReviews?.n || 0,
+      bankWaiting: bankWaiting?.n || 0,
+      callbacks: callbacks?.n || 0,
       catalog: { products: catalog.products.length, priceOnRequest, noOrigin, hidden, outOfStock },
       setup: {
         email: !!env.BREVO_API_KEY, storeEmail: storeInbox(env), admins: adminEmails(env).length, gaps: launchGaps(),
         // Online payments: on once both Razorpay keys are set ("test" keys take no real money). Never the keys themselves.
         onlinePayments: razorpayReady(env), razorpayMode: !env.RAZORPAY_KEY_ID ? "" : env.RAZORPAY_KEY_ID.startsWith("rzp_live_") ? "live" : "test",
         webhook: !!env.RAZORPAY_WEBHOOK_SECRET, webhookUrl: `${SITE_URL}/api/store/razorpay/webhook`,
+        // Bank transfer and WhatsApp: on once their variables are set (and look right).
+        bankTransfer: !!bankDetails(env), whatsapp: !!whatsappNumber(env),
       },
     });
   }
@@ -494,15 +579,19 @@ async function handleAdmin(request: Request, env: DBEnv, path: string, ctx?: Ctx
     const sql = `SELECT * FROM store_orders${where.length ? ` WHERE ${where.join(" AND ")}` : ""} ORDER BY created_at DESC LIMIT ? OFFSET ?`;
     const { results } = await env.DB.prepare(sql).bind(...args, path === "orders.csv" ? 5000 : limit, path === "orders.csv" ? 0 : offset).all<OrderRow>();
     if (path === "orders.csv") {
-      const head = ["Order", "Placed (IST)", "Status", "Name", "Phone", "Email", "Address", "City", "State", "PIN", "Items", "Item count", "Subtotal", "Coupon", "Discount", "Delivery", "Total", "Payment", "Paid (IST)", "Refunded", "Razorpay payment", "Courier", "Tracking number", "Customer note", "Admin note"];
+      const head = ["Order", "Placed (IST)", "Status", "Name", "Phone", "Email", "Address", "City", "State", "PIN", "Items", "Item count", "Subtotal", "Coupon", "Discount", "Delivery", "Total", "Payment", "Paid (IST)", "Refunded", "Razorpay payment", "Bank reference", "Courier", "Tracking number", "Customer note", "Gift", "Gift message", "Business", "GSTIN", "Admin note"];
       const ist = (t: number) => new Date(t + 5.5 * 3600_000).toISOString().replace("T", " ").slice(0, 16);
-      const payText = (o: Order) => o.payment === "cod" ? "Cash on delivery" : o.paymentStatus === "refunded" ? "Online, refunded" : o.paymentStatus === "paid" ? "Online, paid" : "Online, not paid";
+      const payText = (o: Order) => o.payment === "cod" ? "Cash on delivery"
+        : o.payment === "bank" ? (o.paymentStatus === "paid" ? "Bank transfer, paid" : "Bank transfer, not paid")
+          : o.paymentStatus === "refunded" ? "Online, refunded" : o.paymentStatus === "paid" ? "Online, paid" : "Online, not paid";
       const rows = results.map((r) => {
         const o = toOrder(r); const a = o.address;
         return [o.id, ist(r.created_at), o.status, a.name, a.phone, a.email || "", [a.line1, a.line2, a.landmark].filter(Boolean).join(", "), a.city, a.state, a.pincode,
           o.lines.map((l) => `${l.name}${l.variantLabel ? ` (${l.variantLabel})` : ""} x${l.qty}`).join("; "), r.item_count, o.subtotal, o.coupon || "", o.discount || "", o.delivery, o.total,
-          payText(o), o.paidAt ? ist(o.paidAt) : "", o.refund?.amount || "", r.payment_id || "",
-          o.tracking?.courier || "", o.tracking?.number || "", o.notes || "", r.admin_note || ""].map(csvCell).join(",");
+          payText(o), o.paidAt ? ist(o.paidAt) : "", o.refund?.amount || "", r.payment_id || "", o.bankRef || "",
+          o.tracking?.courier || "", o.tracking?.number || "", o.notes || "",
+          o.gift ? "Yes" : "", o.gift ? [o.gift.message, o.gift.from ? `From ${o.gift.from}` : ""].filter(Boolean).join(" · ") : "",
+          o.business?.name || "", o.business?.gstin || "", r.admin_note || ""].map(csvCell).join(",");
       });
       return new Response(`﻿${head.join(",")}\n${rows.join("\n")}\n`, { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="aethex-orders-${new Date().toISOString().slice(0, 10)}.csv"`, "cache-control": "no-store" } });
     }
@@ -527,6 +616,31 @@ async function handleAdmin(request: Request, env: DBEnv, path: string, ctx?: Ctx
     return json({ order: { ...toOrder(fresh), userId: fresh.user_id, adminNote: fresh.admin_note || "", updatedAt: fresh.updated_at, paymentId: fresh.payment_id || "" }, refunded: done.amount, emailed });
   }
 
+  // A bank transfer has come in: the order is placed and the customer told.
+  const pd = /^orders\/([A-Z0-9-]{6,20})\/paid$/.exec(path);
+  if (pd && method === "POST") {
+    const r = await rowById(env, pd[1]);
+    if (!r) return json({ error: "No such order." }, 404);
+    if (r.payment !== "bank") return json({ error: "Only orders paid by bank transfer are marked paid here." }, 409);
+    if (r.status !== "pending" || r.payment_status !== "pending") {
+      return json({ error: r.status === "cancelled" ? "This order was cancelled. Send the money back, or ask the customer to order again." : "This order is marked paid already." }, 409);
+    }
+    const b = (await readJson(request)) ?? {};
+    const reference = str(b.reference, 40);
+    const now = Date.now();
+    const res = await env.DB.prepare(`UPDATE store_orders SET status = 'placed', payment_status = 'paid', paid_at = ?, bank_ref = ?, updated_at = ?,
+        history = json_insert(history, '$[#]', json_object('status', 'placed', 'at', ?, 'note', 'Bank transfer received'))
+      WHERE id = ? AND payment = 'bank' AND status = 'pending' AND payment_status = 'pending'`).bind(now, reference || null, now, now, r.id).run();
+    if (!changes(res)) return json({ error: "This order has just changed (the customer may have cancelled it). Reload it and try again." }, 409);
+    const fresh = (await rowById(env, r.id)) ?? r;
+    const o = toOrder(fresh);
+    let emailed = false;
+    if (o.address.email && b.notify !== false) {
+      emailed = await sendEmail(env, o.address.email, `Order ${o.id} placed: ${rupees(o.total)} received`, customerEmail(o, "placed")).catch(() => false);
+    }
+    return json({ order: { ...o, userId: fresh.user_id, adminNote: fresh.admin_note || "", updatedAt: fresh.updated_at, paymentId: fresh.payment_id || "" }, emailed });
+  }
+
   const om = /^orders\/([A-Z0-9-]{6,20})$/.exec(path);
   if (om && method === "PATCH") {
     const r = await rowById(env, om[1]);
@@ -548,7 +662,11 @@ async function handleAdmin(request: Request, env: DBEnv, path: string, ctx?: Ctx
     if (status && status !== o.status) {
       if (!(ORDER_STATUSES as readonly string[]).includes(status) || status === "pending") return json({ error: "Unknown status." }, 400);
       if (o.status === "cancelled" || o.status === "delivered") return json({ error: `This order is already ${o.status}.` }, 409);
-      if (o.status === "pending" && status !== "cancelled") return json({ error: "This order is waiting for its online payment. You can cancel it, or wait: it's placed once the payment comes through." }, 409);
+      if (o.status === "pending" && status !== "cancelled") {
+        return json({ error: o.payment === "bank"
+          ? "This order is waiting for its bank transfer. Mark it paid once the money is in the account, or cancel it."
+          : "This order is waiting for its online payment. You can cancel it, or wait: it's placed once the payment comes through." }, 409);
+      }
       o.status = status;
       o.history.push({ status, at: now, ...(note ? { note } : {}) });
       notify = status;
@@ -566,8 +684,13 @@ async function handleAdmin(request: Request, env: DBEnv, path: string, ctx?: Ctx
       const done = await refundOrder(env, { ...r, status: "cancelled" }, o, o.total, note || "Cancelled by the store");
       if ("error" in done) refundError = done.error;
     }
+    // Paid by bank transfer: the money goes back from the store's bank, by hand.
+    if (notify === "cancelled" && o.payment === "bank" && o.paymentStatus === "paid") {
+      refundError = `It was paid by bank transfer${o.bankRef ? ` (reference ${o.bankRef})` : ""}: send ${rupees(o.total)} back to the customer from your bank.`;
+    }
     let emailed = false;
-    if (notify && was !== "pending" && o.address.email && b.notify !== false) {
+    // An order to be paid by bank transfer was emailed how to pay, so its cancelling is emailed too.
+    if (notify && (was !== "pending" || o.payment === "bank") && o.address.email && b.notify !== false) {
       emailed = await sendEmail(env, o.address.email, `${STATUS_LABEL[notify]}: order ${o.id}`, customerEmail(o, notify, note || undefined)).catch(() => false);
     }
     return json({ order: { ...o, adminNote: adminNote || "", paymentId: r.payment_id || "" }, emailed, ...(refundError ? { refundError } : {}) });
@@ -706,9 +829,11 @@ async function handleAdmin(request: Request, env: DBEnv, path: string, ctx?: Ctx
   return json({ error: "Not found" }, 404);
 }
 
-/* ------------------------------------------------------------------ requests (price, books, bulk) */
+/* ------------------------------------------------------------------ requests (price, books, bulk, call me back to order) */
 
-const KINDS: EnquiryKind[] = ["price", "book", "bulk", "general"];
+const KINDS: EnquiryKind[] = ["price", "book", "bulk", "general", "callback"];
+/** When a buyer who'd rather order by phone would like the call. */
+export const CALL_TIMES: Record<string, string> = { any: "Any time", morning: "Morning", afternoon: "Afternoon", evening: "Evening" };
 
 async function createEnquiry(request: Request, env: DBEnv): Promise<Response> {
   const b = await readJson(request);
@@ -719,15 +844,27 @@ async function createEnquiry(request: Request, env: DBEnv): Promise<Response> {
   const phone = normPhone(b.phone);
   const email = normEmail(b.email).slice(0, 254);
   const city = str(b.city, 60);
-  const qty = Math.max(1, Math.min(9999, Math.trunc(Number(b.qty)) || 1));
   const message = longStr(b.message, 1000);
   const p = Number.isFinite(Number(b.productId)) ? byId.get(Number(b.productId)) : undefined;
   const variant = p?.variants?.find((v) => v.id === b.variantId);
-  const item = p ? (isBookId(p.id) ? `${p.name}, ${brandName(p.brand)}` : `${brandName(p.brand)} ${p.name}${variant ? ` (${variant.label})` : ""}`) : str(b.item, 200);
+  let item = p ? (isBookId(p.id) ? `${p.name}, ${brandName(p.brand)}` : `${brandName(p.brand)} ${p.name}${variant ? ` (${variant.label})` : ""}`) : str(b.item, 200);
+  let qty = Math.max(1, Math.min(9999, Math.trunc(Number(b.qty)) || 1));
+  // Call me back to order: a cart (priced here, as at checkout), or one product, and when to call.
+  let cart: Quote | null = null;
+  const when = str(b.when, 20);
+  const callAt = kind === "callback" ? (Object.prototype.hasOwnProperty.call(CALL_TIMES, when) ? CALL_TIMES[when] : CALL_TIMES.any) : "";
+  if (kind === "callback" && Array.isArray(b.lines) && b.lines.length) {
+    cart = quoteLines(b.lines as CartLine[], await finder(env));
+    if (cart.lines.length) {
+      item = `${cart.lines.map((l) => `${l.name}${l.variantLabel ? ` (${l.variantLabel})` : ""} ×${l.qty}`).join(", ")}`.slice(0, 600);
+      qty = cart.count;
+    } else cart = null;
+  }
+  const notes = kind === "callback" ? [`Best time to call: ${callAt}`, message].filter(Boolean).join("\n") : message;
   if (name.length < 2) return json({ error: "Please enter your name." }, 400);
   if (!phone) return json({ error: "Please enter a 10-digit Indian mobile number." }, 400);
   if (email && !validEmail(email)) return json({ error: "That email address doesn't look right." }, 400);
-  if (!item && kind !== "general" && !message) return json({ error: "Tell us which product you need." }, 400);
+  if (!item && kind !== "general" && kind !== "callback" && !message) return json({ error: "Tell us which product you need." }, 400);
   const ip = clientIp(request);
   if (!(await allow(env, `store:enq:ip:${ip}`, 8, 3600_000)) || !(await allow(env, `store:enq:phone:${phone}`, 6, 86400_000))) {
     return json({ error: "We've received several requests from you already. We'll be in touch soon." }, 429);
@@ -735,16 +872,24 @@ async function createEnquiry(request: Request, env: DBEnv): Promise<Response> {
   const user = await currentUser(request, env).catch(() => null);
   const id = `AXQ-${orderId().slice(2)}`;
   await env.DB.prepare("INSERT INTO store_enquiries (id, created_at, kind, product_id, variant_id, item, name, phone, email, city, qty, message, status, user_id, ip) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?)")
-    .bind(id, Date.now(), kind, p?.id ?? null, variant?.id ?? null, item || null, name, phone, email || null, city || null, qty, message || null, user?.id ?? null, ip).run();
-  const what = { price: "Price request", book: "Book request", bulk: "Bulk order request", general: "Question" }[kind];
+    .bind(id, Date.now(), kind, p?.id ?? null, variant?.id ?? null, item || null, name, phone, email || null, city || null, qty, notes || null, user?.id ?? null, ip).run();
+  const what = { price: "Price request", book: "Book request", bulk: "Bulk order request", general: "Question", callback: "Call back to take an order" }[kind];
   const productUrl = p ? `${SITE_URL}${itemHref(p.id, p.slug)}` : "";
+  // The cart they'd like to order, priced as it is now (the prices are confirmed on the call).
+  const cartHtml = cart ? `<table style="width:100%;border-collapse:collapse;margin:6px 0 10px;">${cart.lines.map((l) => `<tr><td style="padding:7px 0;border-bottom:1px solid #EDF0F4;font-size:14px;">${escapeHtml(l.name)}${l.variantLabel ? ` <span style="color:#718096;">(${escapeHtml(l.variantLabel)})</span>` : ""}</td><td style="padding:7px 0;border-bottom:1px solid #EDF0F4;font-size:14px;color:#718096;text-align:center;">&times;${l.qty}</td><td style="padding:7px 0;border-bottom:1px solid #EDF0F4;font-size:14px;text-align:right;">${money(l.lineTotal)}</td></tr>`).join("")}<tr><td colspan="2" style="padding:7px 0;font-size:14px;font-weight:700;">Total with delivery</td><td style="padding:7px 0;font-size:14px;font-weight:700;text-align:right;">${money(cart.total)}</td></tr></table>` : "";
+  const itemLine = cart ? `${cart.count} item${cart.count === 1 ? "" : "s"}, ${rupees(cart.total)}` : item;
   await Promise.allSettled([
-    sendEmail(env, storeInbox(env), `${what}: ${item || name} (${id})`, shell(`<h2 style="margin:0 0 10px;font-size:19px;">${what}</h2>
-<p style="margin:0 0 6px;font-size:14px;line-height:1.6;"><b>${escapeHtml(item || "General question")}</b>${productUrl ? ` · <a href="${productUrl}">product page</a>` : ""}<br>Quantity: ${qty}</p>
+    sendEmail(env, storeInbox(env), `${what}: ${kind === "callback" ? `${name}, ${phone}` : item || name} (${id})`, shell(`<h2 style="margin:0 0 10px;font-size:19px;">${what}</h2>
+${kind === "callback" ? `<p style="margin:0 0 8px;font-size:15px;line-height:1.6;"><b>Call ${escapeHtml(name)} on <a href="tel:+91${phone}">+91 ${escapeHtml(phone)}</a></b> · ${escapeHtml(callAt)}</p>` : ""}
+${cartHtml || `<p style="margin:0 0 6px;font-size:14px;line-height:1.6;"><b>${escapeHtml(item || (kind === "callback" ? "They'd like to order by phone" : "General question"))}</b>${productUrl ? ` · <a href="${productUrl}">product page</a>` : ""}${item ? `<br>Quantity: ${qty}` : ""}</p>`}
 <p style="margin:0 0 6px;font-size:14px;line-height:1.6;">${escapeHtml(name)} · ${escapeHtml(phone)}${email ? ` · ${escapeHtml(email)}` : ""}${city ? ` · ${escapeHtml(city)}` : ""}</p>
 ${message ? `<p style="margin:10px 0 0;font-size:14px;line-height:1.6;white-space:pre-wrap;">${escapeHtml(message)}</p>` : ""}
 ${button(`${SITE_URL}/admin`, "Open the store admin")}`)),
-    email ? sendEmail(env, email, `We've got your request (${id})`, shell(`<h2 style="margin:0 0 8px;font-size:20px;">Thanks, ${escapeHtml(name.split(" ")[0])}. We've got your request</h2>
+    email ? sendEmail(env, email, kind === "callback" ? `We'll call you to take your order (${id})` : `We've got your request (${id})`, shell(kind === "callback"
+      ? `<h2 style="margin:0 0 8px;font-size:20px;">Thanks, ${escapeHtml(name.split(" ")[0])}. We'll call you</h2>
+<p style="color:#4A5568;margin:0 0 6px;line-height:1.55;">We'll call you on ${escapeHtml(phone)} to take your order${callAt && callAt !== CALL_TIMES.any ? ` (you asked for the ${escapeHtml(callAt.toLowerCase())})` : ""}, usually within one business day. We'll go through the items, the price and how you'd like to pay.</p>
+${itemLine ? `<p style="margin:12px 0 0;font-size:14px;"><b>${escapeHtml(itemLine)}</b></p>` : ""}${signoff()}`
+      : `<h2 style="margin:0 0 8px;font-size:20px;">Thanks, ${escapeHtml(name.split(" ")[0])}. We've got your request</h2>
 <p style="color:#4A5568;margin:0 0 6px;line-height:1.55;">${kind === "price" || kind === "bulk" ? "We'll send you the price and availability" : kind === "book" ? "We'll confirm the edition, price and availability" : "We'll get back to you"} on ${escapeHtml(phone)}${email ? " or by email" : ""}, usually within one business day.</p>
 <p style="margin:12px 0 0;font-size:14px;"><b>${escapeHtml(item || "Your question")}</b>${kind !== "general" ? ` · quantity ${qty}` : ""}</p>${signoff()}`)) : Promise.resolve(false),
   ]);
@@ -1051,13 +1196,14 @@ const itemCount = (o: Order) => o.lines.reduce((s, l) => s + l.qty, 0);
 /** The emails for a newly placed order, to the customer and the store. True when the customer's went out. */
 async function placedEmails(db: DBEnv, o: Order, paymentId?: string): Promise<boolean> {
   const a = o.address;
-  const paid = o.payment === "online" && o.paymentStatus === "paid";
+  const paid = isPaid(o);
+  const via = o.payment === "bank" ? "by bank transfer" : "online";
   const n = itemCount(o);
   const results = await Promise.allSettled([
     a.email ? sendEmail(db, a.email, `Order ${o.id} placed: ${rupees(o.total)} ${paid ? "paid" : "cash on delivery"}`, customerEmail(o, "placed")) : Promise.resolve(false),
-    sendEmail(db, storeInbox(db), `New order ${o.id}: ${rupees(o.total)} ${paid ? "paid online" : "COD"}, ${a.city} ${a.pincode}`, shell(`<h2 style="margin:0 0 8px;font-size:19px;">${paid ? "New order, paid online" : "New cash-on-delivery order"}</h2>
-<p style="margin:0 0 4px;font-size:14px;">Order <b>${o.id}</b> · ${n} item${n === 1 ? "" : "s"} · <b>${money(o.total)}</b>${o.coupon ? ` · coupon ${escapeHtml(o.coupon)}` : ""}${paymentId ? ` · Razorpay payment ${escapeHtml(paymentId)}` : ""}</p>
-${linesHtml(o)}<p style="margin:12px 0 0;font-size:14px;line-height:1.5;">${addressHtml(a)}${a.email ? `<br>${escapeHtml(a.email)}` : ""}</p>
+    sendEmail(db, storeInbox(db), `New order ${o.id}: ${rupees(o.total)} ${paid ? `paid ${via}` : "COD"}${o.gift ? ", gift" : ""}, ${a.city} ${a.pincode}`, shell(`<h2 style="margin:0 0 8px;font-size:19px;">${paid ? `New order, paid ${via}` : "New cash-on-delivery order"}</h2>
+<p style="margin:0 0 4px;font-size:14px;">Order <b>${o.id}</b> · ${n} item${n === 1 ? "" : "s"} · <b>${money(o.total)}</b>${o.coupon ? ` · coupon ${escapeHtml(o.coupon)}` : ""}${paymentId ? ` · Razorpay payment ${escapeHtml(paymentId)}` : ""}${o.bankRef ? ` · bank reference ${escapeHtml(o.bankRef)}` : ""}</p>
+${linesHtml(o)}${extrasHtml(o, true)}<p style="margin:12px 0 0;font-size:14px;line-height:1.5;">${addressHtml(a)}${a.email ? `<br>${escapeHtml(a.email)}` : ""}</p>
 ${o.notes ? `<p style="margin:10px 0 0;font-size:14px;"><b>Note:</b> ${escapeHtml(o.notes)}</p>` : ""}
 ${button(`${SITE_URL}/admin`, "Open the store admin")}`)),
   ]);
@@ -1068,6 +1214,30 @@ function refundEmail(o: Order, amount: number, why: string) {
   return shell(`<h2 style="margin:0 0 8px;font-size:20px;">We've refunded ${money(amount)}</h2>
 <p style="color:#4A5568;margin:0 0 6px;line-height:1.55;">${escapeHtml(why)}. The refund for order <b>${escapeHtml(o.id)}</b> goes back to the account, card or UPI app you paid with, and usually reaches you in 5 to 7 business days.</p>
 ${button(trackUrl(o.id), "View your order")}${signoff()}`);
+}
+
+/** The account to pay into and the reference to use, as an email table. */
+function bankHtml(o: Order, bank: BankDetails): string {
+  const row = (k: string, v: string) => `<tr><td style="padding:6px 10px;color:#4A5568;font-size:14px;">${k}</td><td style="padding:6px 10px;font-size:14px;font-weight:700;">${escapeHtml(v)}</td></tr>`;
+  return `<table style="width:100%;border-collapse:collapse;margin:10px 0;background:#F7F8FA;border-radius:8px;">${row("Amount", rupees(o.total))}${row("Account name", bank.accountName)}${row("Account number", bank.accountNumber)}${row("IFSC", bank.ifsc)}${bank.bankName ? row("Bank", bank.bankName) : ""}${row("Reference", o.id)}</table>`;
+}
+
+/** An order to be paid by bank transfer: how to pay, to the customer; what's coming, to the store. */
+async function bankOrderEmails(db: DBEnv, o: Order, bank: BankDetails): Promise<boolean> {
+  const a = o.address;
+  const first = greetName(o);
+  const results = await Promise.allSettled([
+    a.email ? sendEmail(db, a.email, `Order ${o.id}: pay ${rupees(o.total)} by bank transfer`, shell(`<h2 style="margin:0 0 8px;font-size:20px;">Thank you${first ? `, ${first}` : ""}. Here's how to pay</h2>
+<p style="color:#4A5568;margin:0 0 6px;line-height:1.55;">Send ${money(o.total)} by NEFT, RTGS or IMPS to the account below, with your order number <b>${escapeHtml(o.id)}</b> as the reference. We confirm your order once the money arrives, and ship it ${escapeHtml(BUSINESS.dispatch)}. If it hasn't arrived in ${BANK_DAYS} days, the order is cancelled.</p>
+${bankHtml(o, bank)}${linesHtml(o)}${extrasHtml(o)}
+<p style="margin:14px 0 0;font-size:13px;color:#4A5568;line-height:1.5;"><b>Delivering to</b><br>${addressHtml(a)}</p>
+${button(trackUrl(o.id), "View your order")}${signoff()}`)) : Promise.resolve(false),
+    sendEmail(db, storeInbox(db), `New order ${o.id}: ${rupees(o.total)} by bank transfer (not paid yet), ${a.city} ${a.pincode}`, shell(`<h2 style="margin:0 0 8px;font-size:19px;">New order, to be paid by bank transfer</h2>
+<p style="margin:0 0 4px;font-size:14px;">Order <b>${o.id}</b> · <b>${money(o.total)}</b>. When the transfer reaches the account (reference ${escapeHtml(o.id)}), mark it paid in the store admin: the customer is told and the order is placed. Unpaid after ${BANK_DAYS} days, it's cancelled.</p>
+${linesHtml(o)}${extrasHtml(o, true)}<p style="margin:12px 0 0;font-size:14px;line-height:1.5;">${addressHtml(a)}${a.email ? `<br>${escapeHtml(a.email)}` : ""}</p>
+${button(`${SITE_URL}/admin`, "Open the store admin")}`)),
+  ]);
+  return results[0].status === "fulfilled" && results[0].value === true;
 }
 
 /* ------------------------------------------------------------------ online payments (Razorpay) */
@@ -1183,15 +1353,34 @@ async function createOrder(request: Request, db: DBEnv): Promise<Response> {
   if (key) {
     const made = await db.DB.prepare("SELECT * FROM store_orders WHERE token_hash = ?").bind(await sha256(key)).first<OrderRow>();
     if (made) {
-      const checkout = made.status === "pending" && made.payment_ref ? checkoutFor(db, toOrder(made), made.payment_ref) : undefined;
-      return json({ order: customerView(made, true), token: key, emailed: false, ...(checkout ? { checkout } : {}) }, 200);
+      const checkout = made.status === "pending" && made.payment === "online" && made.payment_ref ? checkoutFor(db, toOrder(made), made.payment_ref) : undefined;
+      return json({ order: withBank(db, customerView(made, true)), token: key, emailed: false, ...(checkout ? { checkout } : {}) }, 200);
     }
   }
   const cleaned = cleanAddress(b.address);
   if ("error" in cleaned) return json({ error: cleaned.error, field: "address" }, 400);
   const address = cleaned.address;
-  const payment: PaymentMethod = b.payment === "online" ? "online" : "cod";
+  const payment: PaymentMethod = b.payment === "online" ? "online" : b.payment === "bank" ? "bank" : "cod";
   if (payment === "online" && !razorpayReady(db)) return json({ error: "Paying online isn't available yet. Please choose cash on delivery.", field: "payment" }, 400);
+  const bank = payment === "bank" ? bankDetails(db) : null;
+  if (payment === "bank" && !bank) return json({ error: "Bank transfer isn't available. Please choose another way to pay.", field: "payment" }, 400);
+  // A gift (with its message), and a clinic's or business's name and GSTIN for the invoice.
+  let gift: Order["gift"] | undefined;
+  if (b.gift && typeof b.gift === "object") {
+    const message = longStr(b.gift.message, 300), from = str(b.gift.from, 60);
+    gift = { ...(message ? { message } : {}), ...(from ? { from } : {}) };
+  }
+  let business: Order["business"] | undefined;
+  if (b.business && typeof b.business === "object") {
+    const name = str(b.business.name, 120);
+    if (name.length < 2) return json({ error: "Add the clinic or business name, or untick buying for a business.", field: "business" }, 400);
+    business = { name };
+    const gstin = str(b.business.gstin, 20).replace(/\s+/g, "").toUpperCase();
+    if (gstin && BUSINESS.gstin) {
+      if (!validGstin(gstin)) return json({ error: "Check the GSTIN: it's 15 letters and digits, like 27ABCDE1234F1Z5.", field: "gstin" }, 400);
+      business.gstin = gstin;
+    }
+  }
   const find = await finder(db);
   let quote: Quote = quoteLines(Array.isArray(b.lines) ? (b.lines as CartLine[]) : [], find);
   if (quote.issues.length) return json({ error: "Some items in your cart can't be ordered right now. Please review your cart.", quote }, 409);
@@ -1209,6 +1398,9 @@ async function createOrder(request: Request, db: DBEnv): Promise<Response> {
     return json({ error: `Cash on delivery is available on orders up to ₹${COD_LIMIT.toLocaleString("en-IN")}.${razorpayReady(db) ? " Please pay online, or split the order." : " Please split the order, or contact us."}`, field: "payment" }, 400);
   }
   if (payment === "online" && quote.total > ONLINE_LIMIT) return json({ error: `Orders paid online can be up to ₹${ONLINE_LIMIT.toLocaleString("en-IN")}. Please split the order, or contact us.`, field: "payment" }, 400);
+  if (payment === "bank" && (quote.total < BANK_MIN || quote.total > BANK_LIMIT)) {
+    return json({ error: `Bank transfer is for orders from ₹${BANK_MIN.toLocaleString("en-IN")} up to ₹${BANK_LIMIT.toLocaleString("en-IN")}. Please choose another way to pay.`, field: "payment" }, 400);
+  }
   const ip = clientIp(request);
   if (!(await allow(db, `store:order:ip:${ip}`, 8, 3600_000)) || !(await allow(db, `store:order:phone:${address.phone}`, 6, 86400_000))) {
     return json({ error: "Too many orders in a short time. Please try again later, or contact us." }, 429);
@@ -1222,30 +1414,42 @@ async function createOrder(request: Request, db: DBEnv): Promise<Response> {
     try { rzpId = (await createRzpOrder(db, paise(quote.total), id, { order: id })).id; }
     catch (e) { return json({ error: `${e instanceof RazorpayError ? e.message : "Couldn't start the payment."} Please try again, or choose cash on delivery.` }, 502); }
   }
-  const status: OrderStatus = payment === "online" ? "pending" : "placed";
+  // Paid online or by bank transfer, the order waits for its money before it's placed.
+  const status: OrderStatus = payment === "cod" ? "placed" : "pending";
   const order: Order = {
     id, createdAt: now, status, payment, address, lines: quote.lines,
     subtotal: quote.subtotal, mrpTotal: quote.mrpTotal, delivery: quote.delivery, total: quote.total,
     history: [{ status, at: now }],
   };
-  if (payment === "online") order.paymentStatus = "pending";
+  if (payment !== "cod") order.paymentStatus = "pending";
   if (quote.discount) { order.discount = quote.discount; order.coupon = couponCode; }
+  if (gift) order.gift = gift;
+  if (business) order.business = business;
   const notes = longStr(b.notes, 500);
   if (notes) order.notes = notes;
   const email = address.email || (user ? normEmail(user.email) : "");
   // Saved only while a limited code still has uses left (checked in the same statement, so orders
   // placed at the same moment can't go past the limit).
-  const saved = await db.DB.prepare(`INSERT INTO store_orders (id, created_at, updated_at, status, user_id, email, phone, name, pincode, address, lines, item_count, subtotal, mrp_total, delivery, total, payment, history, notes, token_hash, ip, payment_status, payment_ref, coupon, discount)
-    SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+  const saved = await db.DB.prepare(`INSERT INTO store_orders (id, created_at, updated_at, status, user_id, email, phone, name, pincode, address, lines, item_count, subtotal, mrp_total, delivery, total, payment, history, notes, token_hash, ip, payment_status, payment_ref, coupon, discount, gift, business)
+    SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
     WHERE (? = 0 OR (SELECT COUNT(*) FROM store_orders WHERE coupon = ? AND ${USED}) < ?)
       AND (? = 0 OR (SELECT COUNT(*) FROM store_orders WHERE coupon = ? AND phone = ? AND ${USED}) < ?)`)
     .bind(order.id, now, now, status, user?.id ?? null, email || null, address.phone, address.name, address.pincode, JSON.stringify(address), JSON.stringify(order.lines),
       quote.count, order.subtotal, order.mrpTotal, order.delivery, order.total, payment, JSON.stringify(order.history), notes || null, await sha256(token), ip,
-      payment === "online" ? "pending" : null, rzpId || null, couponCode || null, order.discount ?? null,
+      payment === "cod" ? null : "pending", rzpId || null, couponCode || null, order.discount ?? null, gift ? JSON.stringify(gift) : null, business ? JSON.stringify(business) : null,
       limits.all, couponCode, limits.all, limits.phone, couponCode, address.phone, limits.phone).run();
   if (!changes(saved)) return json({ error: `${couponCode} has just been used up. Remove it to order without it.`, field: "coupon" }, 409);
+  // Kept in the account for next time when asked (one kept already moves to the top of the list).
+  if (user && b.saveAddress === true) {
+    await keepAddress(db, user.id, address, str(b.addressLabel, 24), false).catch((e) => console.error("store: keeping an address", e));
+  }
   // Paying online, the emails go out once the payment comes through (markPaid).
   if (payment === "online") return json({ order: { ...order, canCancel: true }, token, emailed: false, checkout: checkoutFor(db, order, rzpId) }, 201);
+  // By bank transfer: how to pay, now; the order is placed when the store sees the money (admin: orders/:id/paid).
+  if (payment === "bank" && bank) {
+    const emailed = await bankOrderEmails(db, order, bank);
+    return json({ order: { ...order, canCancel: true, bank }, token, emailed }, 201);
+  }
   const emailed = await placedEmails(db, order);
   return json({ order: { ...order, canCancel: true }, token, emailed }, 201);
 }
@@ -1469,13 +1673,98 @@ async function boughtTogether(db: DBEnv, id: number): Promise<number[]> {
   return Array.from(m.entries()).filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k]) => k);
 }
 
+/* ------------------------------------------------------------------ saved addresses (a signed-in account's) */
+
+type AddressRow = { id: string; user_id: string; label: string; data: string; is_default: number; created_at: number; updated_at: number };
+function toSaved(r: AddressRow): SavedAddress | null {
+  const address = parse<Address | null>(r.data, null);
+  return address ? { id: r.id, label: r.label, isDefault: !!r.is_default, address, updatedAt: r.updated_at } : null;
+}
+async function savedAddresses(db: DBEnv, userId: string): Promise<SavedAddress[]> {
+  const { results } = await db.DB.prepare("SELECT * FROM store_addresses WHERE user_id = ? ORDER BY is_default DESC, updated_at DESC LIMIT 50").bind(userId).all<AddressRow>();
+  return results.map(toSaved).filter((x): x is SavedAddress => !!x);
+}
+/** The same person at the same place, whatever the spacing, case and punctuation. */
+function sameAddress(a: Address, b: Address): boolean {
+  const k = (x: Address) => [x.name, x.phone, x.line1, x.line2 ?? "", x.city, x.pincode].map((v) => v.toLowerCase().replace(/[^a-z0-9]/g, "")).join("|");
+  return k(a) === k(b);
+}
+const setDefaultAddress = (db: DBEnv, userId: string, id: string) =>
+  db.DB.prepare("UPDATE store_addresses SET is_default = CASE WHEN id = ? THEN 1 ELSE 0 END WHERE user_id = ?").bind(id, userId).run();
+
+/**
+ * Keeps an address in the account (an email in it is left out: order updates go to the buyer's own). The same
+ * address again just updates the one kept. The first address is the default.
+ */
+async function keepAddress(db: DBEnv, userId: string, address: Address, label: string, makeDefault: boolean): Promise<{ id: string; created: boolean } | { error: string }> {
+  const { email: _email, ...a } = address;
+  const existing = await savedAddresses(db, userId);
+  const now = Date.now();
+  const same = existing.find((x) => sameAddress(x.address, a));
+  if (same) {
+    await db.DB.prepare("UPDATE store_addresses SET label = ?, data = ?, updated_at = ? WHERE id = ? AND user_id = ?").bind(label || same.label, JSON.stringify(a), now, same.id, userId).run();
+    if (makeDefault) await setDefaultAddress(db, userId, same.id);
+    return { id: same.id, created: false };
+  }
+  if (existing.length >= MAX_ADDRESSES) return { error: `You can keep up to ${MAX_ADDRESSES} addresses. Remove one to add another.` };
+  const id = crypto.randomUUID();
+  await db.DB.prepare("INSERT INTO store_addresses (id, user_id, label, data, is_default, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, ?)")
+    .bind(id, userId, label || (existing.length ? "Other" : "Home"), JSON.stringify(a), now, now).run();
+  if (makeDefault || !existing.length) await setDefaultAddress(db, userId, id);
+  return { id, created: true };
+}
+
+/** GET and POST addresses, PUT and DELETE addresses/:id {label?, address?, isDefault?}: each answers with the whole list. */
+async function handleAddresses(request: Request, db: DBEnv, id: string | null): Promise<Response> {
+  const user = await currentUser(request, db);
+  if (!user) return json({ error: "Sign in to keep your addresses.", signIn: true }, 401);
+  const method = request.method;
+  const list = async () => json({ addresses: await savedAddresses(db, user.id) });
+  if (method === "GET" && !id) return list();
+  if (!["POST", "PUT", "DELETE"].includes(method) || (method === "POST") !== !id) return json({ error: "Not found" }, 404);
+  if (!(await allow(db, `store:addr:${user.id}`, 60, 3600_000))) return json({ error: "Too many changes in a short time. Please try again later." }, 429);
+  if (method === "POST") {
+    const b = await readJson(request);
+    const c = cleanAddress(b?.address);
+    if ("error" in c) return json({ error: c.error, field: "address" }, 400);
+    const kept = await keepAddress(db, user.id, c.address, str(b?.label, 24), b?.isDefault === true);
+    if ("error" in kept) return json(kept, 409);
+    return json({ addresses: await savedAddresses(db, user.id), id: kept.id }, kept.created ? 201 : 200);
+  }
+  const row = await db.DB.prepare("SELECT * FROM store_addresses WHERE id = ? AND user_id = ?").bind(id, user.id).first<AddressRow>();
+  if (!row) return json({ error: "That address isn't in your account any more.", addresses: await savedAddresses(db, user.id) }, 404);
+  if (method === "DELETE") {
+    await db.DB.prepare("DELETE FROM store_addresses WHERE id = ? AND user_id = ?").bind(row.id, user.id).run();
+    // The default gone, the most recently used one takes its place.
+    if (row.is_default) {
+      const next = await db.DB.prepare("SELECT id FROM store_addresses WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1").bind(user.id).first<{ id: string }>();
+      if (next) await setDefaultAddress(db, user.id, next.id);
+    }
+    return list();
+  }
+  const b = await readJson(request);
+  if (!b) return json({ error: "Send the address as JSON." }, 400);
+  let data = row.data;
+  if (b.address !== undefined) {
+    const c = cleanAddress(b.address);
+    if ("error" in c) return json({ error: c.error, field: "address" }, 400);
+    const { email: _email, ...a } = c.address;
+    data = JSON.stringify(a);
+  }
+  const label = b.label === undefined ? row.label : str(b.label, 24) || row.label;
+  await db.DB.prepare("UPDATE store_addresses SET label = ?, data = ?, updated_at = ? WHERE id = ? AND user_id = ?").bind(label, data, Date.now(), row.id, user.id).run();
+  if (b.isDefault === true) await setDefaultAddress(db, user.id, row.id);
+  return json({ addresses: await savedAddresses(db, user.id), id: row.id });
+}
+
 /* ------------------------------------------------------------------ the hourly job */
 
 /**
  * Online payments not recorded yet, for a week after the order (a page closed before it reported back, or a
  * payment that came in after the order was cancelled or switched to cash): unpaid orders are looked at every
- * hour, the others every six. An order left unpaid for a day is cancelled, so it doesn't linger. Then the
- * alerts that came true.
+ * hour, the others every six. An order left unpaid for a day is cancelled, so it doesn't linger. An order
+ * to be paid by bank transfer whose money hasn't come in BANK_DAYS days is cancelled too, and both sides
+ * told. Then the alerts that came true.
  */
 export async function runStoreScheduled(env: StoreEnv): Promise<{ alerts: number; paid: number; expired: number }> {
   if (!env.DB) return { alerts: 0, paid: 0, expired: 0 };
@@ -1500,6 +1789,23 @@ export async function runStoreScheduled(env: StoreEnv): Promise<{ alerts: number
         WHERE id = ? AND status = 'pending' AND (payment_status IS NULL OR payment_status = 'pending')`).bind(Date.now(), Date.now(), r.id).run();
       if (changes(res)) expired++;
     }
+  }
+  const late = await db.DB.prepare(`SELECT * FROM store_orders WHERE payment = 'bank' AND status = 'pending' AND payment_status = 'pending' AND created_at < ?
+      ORDER BY created_at LIMIT 10`).bind(now - BANK_DAYS * 86400_000).all<OrderRow>();
+  for (const r of late.results) {
+    const at = Date.now();
+    const res = await db.DB.prepare(`UPDATE store_orders SET status = 'cancelled', updated_at = ?,
+        history = json_insert(history, '$[#]', json_object('status', 'cancelled', 'at', ?, 'note', ?))
+      WHERE id = ? AND payment = 'bank' AND status = 'pending' AND payment_status = 'pending'`)
+      .bind(at, at, `The bank transfer didn't arrive within ${BANK_DAYS} days`, r.id).run();
+    if (!changes(res)) continue;
+    expired++;
+    const o = toOrder((await rowById(db, r.id)) ?? { ...r, status: "cancelled" });
+    await Promise.allSettled([
+      o.address.email ? sendEmail(db, o.address.email, `Order ${o.id} cancelled: payment not received`,
+        customerEmail(o, "cancelled", `We hadn't received your bank transfer of ${rupees(o.total)} within ${BANK_DAYS} days of the order, so it has been cancelled. You're welcome to order again.`)) : Promise.resolve(false),
+      sendEmail(db, storeInbox(db), `Cancelled, bank transfer not received: ${o.id}`, shell(`<p style="margin:0;font-size:14px;line-height:1.6;">Order <b>${o.id}</b> (${money(o.total)}, ${escapeHtml(o.address.city)}) waited ${BANK_DAYS} days for its bank transfer and has been cancelled. If the money still comes in, send it back, or ask the customer to order again.</p>`)),
+    ]);
   }
   // Alerts that never came true are dropped after six months, sent ones after a month.
   await db.DB.prepare("DELETE FROM store_alerts WHERE (notified_at IS NULL AND created_at < ?) OR (notified_at IS NOT NULL AND notified_at < ?)").bind(now - 182 * 86400_000, now - 30 * 86400_000).run();
@@ -1539,7 +1845,12 @@ export async function handleStore(request: Request, env: StoreEnv, ctx?: Ctx): P
     }
   }
   if (path === "config" && method === "GET") {
-    return json({ onlinePayments: razorpayReady(env), codLimit: COD_LIMIT, onlineLimit: ONLINE_LIMIT }, 200, { "cache-control": "public, max-age=60" });
+    // What checkout and the shop offer: never the bank account itself (that's sent with an order to be paid into it).
+    return json({
+      onlinePayments: razorpayReady(env), codLimit: COD_LIMIT, onlineLimit: ONLINE_LIMIT,
+      bankTransfer: !!bankDetails(env), bankMin: BANK_MIN, bankLimit: BANK_LIMIT, bankDays: BANK_DAYS,
+      whatsapp: whatsappNumber(env), gstInvoice: !!BUSINESS.gstin,
+    }, 200, { "cache-control": "public, max-age=60" });
   }
   const pp = /^products\/([a-z0-9-]{1,120})$/.exec(path);
   if (pp && method === "GET") {
@@ -1601,6 +1912,8 @@ export async function handleStore(request: Request, env: StoreEnv, ctx?: Ctx): P
   if (path === "orders" && method === "POST") return createOrder(request, db);
   if (path === "reviews" && method === "POST") return createReview(request, db);
   if (path === "alerts" && method === "POST") return createAlert(request, db);
+  const ad = /^addresses(?:\/([0-9a-f-]{36}))?$/.exec(path);
+  if (ad) return handleAddresses(request, db, ad[1] ?? null);
   if (path === "alerts/stop" && method === "POST") {
     const b = await readJson(request);
     const token = str(b?.token, 64);
@@ -1623,7 +1936,7 @@ export async function handleStore(request: Request, env: StoreEnv, ctx?: Ctx): P
     if (path === "orders") {
       const { results } = await db.DB.prepare("SELECT * FROM store_orders WHERE user_id = ? OR email = ? ORDER BY created_at DESC LIMIT 100").bind(user.id, email).all<OrderRow>();
       const reviews = await reviewsFor(db, results.filter((r) => r.status === "delivered").map((r) => r.id));
-      return json({ orders: results.map((r) => ({ ...customerView(r, true), ...(reviews.has(r.id) ? { reviews: reviews.get(r.id) } : {}) })) });
+      return json({ orders: results.map((r) => withBank(db, { ...customerView(r, true), ...(reviews.has(r.id) ? { reviews: reviews.get(r.id) } : {}) })) });
     }
     const { results } = await db.DB.prepare("SELECT * FROM store_orders WHERE (user_id = ? OR email = ?) AND status = 'delivered' ORDER BY created_at DESC LIMIT 60").bind(user.id, email).all<OrderRow>();
     const ids = results.map((r) => r.id);
@@ -1662,13 +1975,13 @@ export async function handleStore(request: Request, env: StoreEnv, ctx?: Ctx): P
     const act = om[2];
     const view = async (row: OrderRow) => {
       const reviews = row.status === "delivered" ? (await reviewsFor(db, [row.id])).get(row.id) : undefined;
-      return { ...customerView(row, full), ...(reviews ? { reviews } : {}) };
+      return withBank(db, { ...customerView(row, full), ...(reviews ? { reviews } : {}) });
     };
     const settle = async () => { try { r = await settleFromRazorpay(db, r); } catch (e) { console.error("store: checking a payment", r.id, e); } };
 
     if (!act || act === "lookup") {
       // A payment that never reported back (the page closed first) shows up when the order is opened.
-      if (r.status === "pending" && Date.now() - r.created_at > 60_000 && (await allow(db, `store:settle:${r.id}`, 6, 600_000))) await settle();
+      if (r.status === "pending" && r.payment === "online" && Date.now() - r.created_at > 60_000 && (await allow(db, `store:settle:${r.id}`, 6, 600_000))) await settle();
       return json({ order: await view(r) });
     }
 
@@ -1678,6 +1991,7 @@ export async function handleStore(request: Request, env: StoreEnv, ctx?: Ctx): P
     }
 
     if (act === "payment") {
+      if (r.payment === "bank" && r.status === "pending") return json({ error: "This order is paid by bank transfer: the account details are on this page.", order: await view(r) }, 409);
       if (r.payment !== "online" || r.status !== "pending") return json({ error: r.status === "cancelled" ? "This order has been cancelled." : "This order doesn't need paying.", order: await view(r) }, 409);
       if (!razorpayReady(db) || !r.payment_ref) return json({ error: "Paying online isn't available right now. You can pay cash on delivery instead." }, 409);
       await settle();
@@ -1686,9 +2000,9 @@ export async function handleStore(request: Request, env: StoreEnv, ctx?: Ctx): P
     }
 
     if (act === "cod") {
-      if (r.payment !== "online" || r.status !== "pending") return json({ error: "This order isn't waiting for a payment.", order: await view(r) }, 409);
+      if ((r.payment !== "online" && r.payment !== "bank") || r.status !== "pending") return json({ error: "This order isn't waiting for a payment.", order: await view(r) }, 409);
       if (r.total > COD_LIMIT) return json({ error: `Cash on delivery is available on orders up to ₹${COD_LIMIT.toLocaleString("en-IN")}.` }, 409);
-      await settle();
+      if (r.payment === "online") await settle();
       if (r.status !== "pending") return json({ order: await view(r) }); // it was paid after all
       const o = toOrder(r);
       const now = Date.now();
@@ -1703,7 +2017,7 @@ export async function handleStore(request: Request, env: StoreEnv, ctx?: Ctx): P
 
     if (act === "cancel") {
       if (!cancellable(r.status)) return json({ error: r.status === "cancelled" ? "This order is already cancelled." : "This order has shipped, so it can't be cancelled now. You can refuse it at delivery, or contact us." }, 409);
-      if (r.status === "pending") {
+      if (r.status === "pending" && r.payment === "online") {
         await settle(); // paid after all: cancelled and refunded below
         // The checkout dropping an unpaid order it's replacing: one that turns out to be paid is kept.
         if (b?.ifUnpaid === true && r.status !== "pending") return json({ error: "This order has been paid.", order: await view(r) }, 409);
@@ -1721,8 +2035,11 @@ export async function handleStore(request: Request, env: StoreEnv, ctx?: Ctx): P
         const done = await refundOrder(db, { ...r, status: "cancelled", history: JSON.stringify(o.history) }, o, o.total, "Cancelled by the customer");
         refundNote = "error" in done ? `<br><b>Refund it from the admin:</b> ${escapeHtml(done.error)}` : `<br>The online payment (${money(done.amount)}) has been refunded.`;
       }
-      // An order cancelled before its online payment was never placed: there's nothing to tell anyone.
-      if (was !== "pending") {
+      if (o.payment === "bank" && o.paymentStatus === "paid") refundNote = `<br><b>It was paid by bank transfer${o.bankRef ? ` (reference ${escapeHtml(o.bankRef)})` : ""}: send ${money(o.total)} back to the customer's account.</b>`;
+      if (o.payment === "bank" && was === "pending") refundNote = "<br>It was waiting for its bank transfer: if the money still comes in, send it back.";
+      // An order cancelled before its online payment was never placed: there's nothing to tell anyone. One to be paid by
+      // bank transfer was emailed to both sides, so both hear it's off.
+      if (was !== "pending" || o.payment === "bank") {
         await Promise.allSettled([
           o.address.email ? sendEmail(db, o.address.email, `Order ${o.id} cancelled`, customerEmail(o, "cancelled")) : Promise.resolve(false),
           sendEmail(db, storeInbox(db), `Cancelled by the customer: ${o.id}`, shell(`<p style="margin:0;font-size:14px;line-height:1.6;">Order <b>${o.id}</b> (${money(o.total)}, ${escapeHtml(o.address.city)}) was cancelled by the customer.${reason ? `<br>Reason: ${escapeHtml(reason)}` : ""}${refundNote}</p>`)),

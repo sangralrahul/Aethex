@@ -2,7 +2,10 @@
  * Checkout (/checkout): a quiet page of its own (no shop menus), in three
  * steps: the delivery address, how to pay (cash on delivery, or online through
  * Razorpay: UPI, cards, netbanking, wallets, once the store has added its
- * Razorpay keys), and the items, to place the order. A coupon from the cart
+ * Razorpay keys, or by bank transfer once the store has added its account),
+ * and the items, to place the order, as a gift if wanted, or for a clinic or
+ * business. A signed-in buyer picks from the addresses kept in the account (and
+ * can keep a new one); an address from a pay-for-me link fills in the form. A coupon from the cart
  * carries over. The Worker prices the order again (worker/store.ts); if a price
  * changed meanwhile, the customer sees the new total before placing it. An
  * online order waits for its payment: closing the payment window keeps it, so
@@ -16,7 +19,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  AlertTriangle, ArrowRight, BadgeCheck, Banknote, ChevronDown, CreditCard, Loader2, Lock, MapPin, NotebookPen, PackageCheck, Pencil, RotateCcw, ShieldCheck, ShoppingBag, UserRound,
+  AlertTriangle, ArrowRight, BadgeCheck, Banknote, Briefcase, Building2, ChevronDown, CreditCard, Gift, HandCoins, Loader2, Lock, MapPin, NotebookPen, PackageCheck, Pencil, Plus, RotateCcw, ShieldCheck, ShoppingBag, UserRound,
 } from "lucide-react";
 import { OrderSummary } from "@/components/shop/OrderSummary";
 import { CouponBox } from "@/components/shop/CouponBox";
@@ -27,13 +30,14 @@ import { isBookId } from "@/lib/store/bookdata";
 import { readContact, rememberContact } from "@/components/store/EnquiryForm";
 import { useUserAuth } from "@/hooks/use-user-auth";
 import { useSeo } from "@/hooks/use-seo";
-import { cancelOrder, payOrder, placeOrder, retryPayment, saveOrder, StoreError, switchToCod, useStoreConfig, type CustomerOrder, type RazorpayCheckout } from "@/lib/store/api";
+import { cancelOrder, payOrder, placeOrder, retryPayment, saveOrder, StoreError, switchToCod, useAddresses, useStoreConfig, type CustomerOrder, type RazorpayCheckout } from "@/lib/store/api";
+import { readPayFor } from "@/lib/store/share";
 import { cart } from "@/lib/store/cart";
 import { coupon, usePricedCart } from "@/lib/store/coupon";
 import { dayText, deliveryWindow, lookupPin, savePin, savedPin } from "@/lib/store/delivery";
 import { payWithRazorpay } from "@/lib/store/razorpay";
-import { COD_LIMIT, INDIAN_STATES, ONLINE_LIMIT, normPhone, validEmail, validPincode } from "@/lib/store/rules";
-import type { Address, PaymentMethod } from "@/lib/store/types";
+import { BANK_DAYS, BANK_LIMIT, BANK_MIN, COD_LIMIT, INDIAN_STATES, ONLINE_LIMIT, normPhone, validEmail, validGstin, validPincode } from "@/lib/store/rules";
+import type { Address, PaymentMethod, SavedAddress } from "@/lib/store/types";
 import { BUSINESS } from "@/config/business";
 import { formatINR } from "@/lib/utils";
 
@@ -42,6 +46,12 @@ const ADDR_KEY = "aethex:checkout:v2";
 const PAY_KEY = "aethex:pay:v1";
 const EMPTY = { name: "", phone: "", email: "", line1: "", line2: "", landmark: "", city: "", state: "", pincode: "" };
 type Form = typeof EMPTY;
+const LABELS = ["Home", "Hostel", "Clinic", "Work", "Other"];
+/** A kept address as the form holds it (the email stays the buyer's own). */
+const fromSaved = (a: Address, email: string): Form => ({ ...EMPTY, ...a, email, line2: a.line2 ?? "", landmark: a.landmark ?? "" });
+/** The same person at the same place, as the Worker compares them. */
+const addrKey = (a: { name: string; phone: string; line1: string; line2?: string; city: string; pincode: string }) =>
+  [a.name, normPhone(a.phone) || a.phone, a.line1, a.line2 ?? "", a.city, a.pincode].map((v) => v.toLowerCase().replace(/[^a-z0-9]/g, "")).join("|");
 /** An online order made at this checkout and not paid yet: paying again reuses it while the order is the same (sig). */
 type Pending = { id: string; token: string; total: number; sig: string; checkout?: RazorpayCheckout };
 /** The last try at placing an order: its key, for the same order (method and sig), until the Worker answers with it. */
@@ -86,10 +96,25 @@ export default function Checkout() {
       const saved = JSON.parse(localStorage.getItem(ADDR_KEY) || "{}");
       const c = readContact();
       const pin = savedPin();
+      const pf = readPayFor();
+      if (pf) return fromSaved(pf.address, c.email || "");
       return { ...EMPTY, name: c.name, phone: c.phone, email: c.email, city: c.city, ...(pin ? { pincode: pin } : {}), ...saved };
     } catch { return EMPTY; }
   });
-  const [pay, setPay] = useState<PaymentMethod>(() => { try { return localStorage.getItem(PAY_KEY) === "cod" ? "cod" : "online"; } catch { return "online"; } });
+  const [pay, setPay] = useState<PaymentMethod>(() => { try { const v = localStorage.getItem(PAY_KEY); return v === "cod" || v === "bank" ? v : "online"; } catch { return "online"; } });
+  const [payFor] = useState(readPayFor);
+  // Addresses kept in the account: picked here, and a new one kept when asked.
+  const saved = useAddresses(!!user);
+  const kept: SavedAddress[] = saved.data ?? [];
+  const [keepIt, setKeepIt] = useState(true);
+  const [keepLabel, setKeepLabel] = useState("");
+  const [newAddr, setNewAddr] = useState(false);
+  const picked = kept.find((k) => addrKey(k.address) === addrKey(addr));
+  // A gift (message and who it's from), and buying for a clinic or business.
+  const [isGift, setIsGift] = useState(false);
+  const [gift, setGift] = useState({ message: "", from: "" });
+  const [isBiz, setIsBiz] = useState(false);
+  const [biz, setBiz] = useState({ name: "", gstin: "" });
   const [place, setPlace] = useState("");
   const [sumOpen, setSumOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
@@ -104,6 +129,17 @@ export default function Checkout() {
     setAddr((a) => ({ ...a, name: a.name || user?.name || "", email: a.email || user?.email || "", phone: a.phone || user?.phone || "" }));
   }, [user?.name, user?.email, user?.phone]);
   useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); setErr(""); }, [step]);
+  // With nothing typed yet (and no address from a pay-for-me link), the default kept address fills the form.
+  const filled = useRef(false);
+  useEffect(() => {
+    if (filled.current || !kept.length) return;
+    filled.current = true;
+    if (payFor || addr.line1.trim()) return;
+    const d = kept.find((k) => k.isDefault) ?? kept[0];
+    setAddr((a) => fromSaved(d.address, a.email));
+  }, [kept, payFor, addr.line1]);
+  const usePicked = (k: SavedAddress) => { setNewAddr(false); setErr(""); setAddr((a) => fromSaved(k.address, a.email)); };
+  const startNew = () => { setNewAddr(true); setErr(""); setAddr((a) => ({ ...EMPTY, name: user?.name ?? "", phone: a.phone, email: a.email })); };
 
   // The PIN code fills in the town and state (from India Post's records) when they're empty, or were filled in from an earlier PIN.
   const auto = useRef({ city: "", state: "" });
@@ -140,7 +176,11 @@ export default function Checkout() {
 
   const onlineOpen = !!config?.onlinePayments && t.total <= (config?.onlineLimit ?? ONLINE_LIMIT);
   const codOpen = t.total <= COD_LIMIT;
-  const method: PaymentMethod | null = pay === "online" && onlineOpen ? "online" : codOpen ? "cod" : onlineOpen ? "online" : null;
+  const bankMin = config?.bankMin ?? BANK_MIN, bankMax = config?.bankLimit ?? BANK_LIMIT, bankDays = config?.bankDays ?? BANK_DAYS;
+  const bankShown = !!config?.bankTransfer;
+  const bankOpen = bankShown && t.total >= bankMin && t.total <= bankMax;
+  const method: PaymentMethod | null = pay === "online" && onlineOpen ? "online" : pay === "bank" && bankOpen ? "bank"
+    : codOpen ? "cod" : onlineOpen ? "online" : bankOpen ? "bank" : null;
   const choose = (m: PaymentMethod) => { setPay(m); try { localStorage.setItem(PAY_KEY, m); } catch { /* fine */ } };
 
   const done = (o: CustomerOrder) => {
@@ -181,11 +221,17 @@ export default function Checkout() {
     };
     const notes = note.trim();
     const code = priced.applied && priced.code ? priced.code : "";
+    const giftBody = isGift ? { ...(gift.message.trim() ? { message: gift.message.trim() } : {}), ...(gift.from.trim() ? { from: gift.from.trim() } : {}) } : undefined;
+    const gstin = biz.gstin.replace(/\s+/g, "").toUpperCase();
+    if (isBiz && biz.name.trim().length < 2) { setErr("Add the clinic or business name, or untick buying for a business."); setPlacing(false); return; }
+    if (isBiz && config?.gstInvoice && gstin && !validGstin(gstin)) { setErr("Check the GSTIN: it's 15 letters and digits, like 27ABCDE1234F1Z5."); setPlacing(false); return; }
+    const bizBody = isBiz ? { name: biz.name.trim(), ...(config?.gstInvoice && gstin ? { gstin } : {}) } : undefined;
     // What makes this order: an unpaid order or an unanswered try for anything else was a different order.
-    const sig = JSON.stringify([linesKey, address, notes, code, t.total]);
+    const sig = JSON.stringify([linesKey, address, notes, code, t.total, giftBody ?? null, bizBody ?? null]);
     try {
       const prev = pending.current;
-      if (prev && prev.sig !== sig) {
+      // A bank transfer is a new order too: the unpaid online one is dropped.
+      if (prev && (prev.sig !== sig || method === "bank")) {
         // The unpaid online order from a moment ago had another cart, address, note or coupon: it's dropped, unless it was paid meanwhile.
         try {
           await cancelOrder(prev.id, { token: prev.token, reason: "Changed at checkout", ifUnpaid: true });
@@ -224,6 +270,9 @@ export default function Checkout() {
       const body = {
         lines: lines.map((l) => ({ productId: l.productId, variantId: l.variantId, qty: l.qty })), address, notes: notes || undefined, expectTotal: t.total,
         payment: method, ...(code ? { coupon: code } : {}),
+        ...(giftBody ? { gift: giftBody } : {}), ...(bizBody ? { business: bizBody } : {}),
+        // Kept in the account: a new address when ticked, or the kept one used (it moves to the top).
+        ...(user && (picked || keepIt) ? { saveAddress: true, ...(!picked && keepLabel ? { addressLabel: keepLabel } : {}) } : {}),
       };
       // The same order tried again (its answer lost) keeps its key, and so gets back the order the first try made.
       const want = `${method}|${sig}`;
@@ -238,7 +287,8 @@ export default function Checkout() {
       }
       writeAttempt(null);
       saveOrder({ id: r.order.id, token: r.token, at: r.order.createdAt, total: r.order.total });
-      if (method === "cod" || !r.checkout) { done(r.order); return; }
+      if (user && (picked || keepIt)) queryClient.invalidateQueries({ queryKey: ["store", "addresses"] });
+      if (method !== "online" || !r.checkout) { done(r.order); return; }
       const p: Pending = { id: r.order.id, token: r.token, total: r.order.total, sig };
       pending.current = p;
       writePending(p);
@@ -279,9 +329,9 @@ export default function Checkout() {
 
   const button = !method
     ? `Orders over ${formatINR(COD_LIMIT)} can't be paid in cash`
-    : method === "online" ? `Pay ${formatINR(t.total)} securely` : `Place order · ${formatINR(t.total)} cash on delivery`;
+    : method === "online" ? `Pay ${formatINR(t.total)} securely` : method === "bank" ? `Place order · pay ${formatINR(t.total)} by bank transfer` : `Place order · ${formatINR(t.total)} cash on delivery`;
   const reviewing = step === "review";
-  const payLabel = reviewing && method === "online" ? "To pay now" : reviewing ? "To pay on delivery" : "Total";
+  const payLabel = reviewing && method === "online" ? "To pay now" : reviewing && method === "bank" ? "To pay by bank transfer" : reviewing ? "To pay on delivery" : "Total";
   const masked = normPhone(addr.phone).replace(/^(\d{2})\d{4}/, "$1••••");
 
   return (
@@ -303,6 +353,26 @@ export default function Checkout() {
               </header>
               {!reviewing ? (
                 <form id="ax-co-addr" className="ax-co-card ax-co-addr" onSubmit={toReview} noValidate>
+                  {payFor && addrKey(payFor.address) === addrKey(addr) && (
+                    <p className="ax-co-payfor"><HandCoins size={16} /> <span>Delivering to {payFor.from ? <b>{payFor.from}</b> : "the address"} from the pay-for-me link. Add your email below for the receipt.</span></p>
+                  )}
+                  {kept.length > 0 && (
+                    <div className="ax-co-group ax-co-kept">
+                      <p className="gl"><MapPin size={15} /> Your addresses</p>
+                      <div className="ax-kept-list" role="radiogroup" aria-label="Your addresses">
+                        {kept.map((k, i) => {
+                          const on = !newAddr && picked?.id === k.id;
+                          return (
+                            <button key={k.id} type="button" role="radio" aria-checked={on} className={`ax-kept${on ? " on" : ""}`} style={{ ["--d" as string]: `${i * 40}ms` }} onClick={() => usePicked(k)}>
+                              <span className="dot" aria-hidden="true" />
+                              <span className="tx"><b>{k.label}{k.isDefault && <em>Default</em>}</b><span>{k.address.name} · {k.address.line1}, {k.address.city} {k.address.pincode}</span></span>
+                            </button>
+                          );
+                        })}
+                        <button type="button" className={`ax-kept add${newAddr || !picked ? " on" : ""}`} onClick={startNew} aria-pressed={newAddr || !picked}><Plus size={16} /> <span className="tx"><b>{picked ? "A new address" : "A new address (fill in below)"}</b></span></button>
+                      </div>
+                    </div>
+                  )}
                   <div className="ax-co-group">
                     <p className="gl"><UserRound size={15} /> Contact details</p>
                     <div className="ax-form">
@@ -330,6 +400,16 @@ export default function Checkout() {
                       </label>
                     </div>
                   </div>
+                  {user && !picked && (
+                    <div className="ax-co-keep">
+                      <label className="ax-check"><input type="checkbox" checked={keepIt} onChange={(e) => setKeepIt(e.target.checked)} /><span className="box" /> <span>Keep this address in my account for next time</span></label>
+                      {keepIt && (
+                        <div className="ax-chips" role="group" aria-label="Call it">
+                          {LABELS.map((l) => <button key={l} type="button" className={(keepLabel || (kept.length ? "Other" : "Home")) === l ? "on" : ""} onClick={() => setKeepLabel(l)}>{l}</button>)}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {err && <p className="ax-form-err" role="alert" key={err}>{err}</p>}
                   <div className="ax-co-actions">
                     <p className="ax-sum-secure"><Lock size={13} /> We use these details only to deliver your order.</p>
@@ -339,7 +419,7 @@ export default function Checkout() {
               ) : (
                 <div className="ax-co-card ax-co-where">
                   <div className="who">
-                    <span className="k">Deliver to</span>
+                    <span className="k">{isGift ? "Gift for" : "Deliver to"}</span>
                     <p><b>{addr.name}</b><br />{addr.line1}{addr.line2 ? `, ${addr.line2}` : ""}{addr.landmark ? <><br />Near {addr.landmark}</> : null}<br />{addr.city}, {addr.state} {addr.pincode}<br /><span className="ph">{normPhone(addr.phone)}{addr.email ? ` · ${addr.email}` : ""}</span></p>
                   </div>
                   <div className="when">
@@ -354,7 +434,7 @@ export default function Checkout() {
             <section className={`ax-co-sec ${reviewing ? "open" : "locked"}`} style={{ ["--d" as string]: "70ms" }} aria-labelledby="co-s2">
               <header className="ax-co-sh">
                 <StepMark n={2} state={reviewing ? "open" : "locked"} />
-                <div className="t"><h2 id="co-s2">Payment method</h2><p>{!reviewing ? "Choose once your address is in" : online ? "Pay online now, or in cash when it arrives" : "Pay in cash when your order arrives"}</p></div>
+                <div className="t"><h2 id="co-s2">Payment method</h2><p>{!reviewing ? "Choose once your address is in" : online ? "Pay online now, or in cash when it arrives" : bankShown ? "Pay in cash when it arrives, or by bank transfer" : "Pay in cash when your order arrives"}</p></div>
                 {!reviewing && <Lock size={15} className="lk" aria-hidden="true" />}
               </header>
               {reviewing && (
@@ -379,12 +459,22 @@ export default function Checkout() {
                       <span className="tx"><b>Cash on delivery</b><small>{codOpen ? `Pay ${formatINR(t.total)} in cash when your order arrives` : `Cash on delivery is for orders up to ${formatINR(COD_LIMIT)}`}</small></span>
                       <span className="dot" aria-hidden="true" />
                     </label>
+                    {bankShown && (
+                      <label className={`opt bank${method === "bank" ? " on" : ""}${bankOpen ? "" : " off"}`}>
+                        <input type="radio" name="pay" checked={method === "bank"} disabled={!bankOpen} onChange={() => choose("bank")} />
+                        <span className="ic"><Building2 size={20} /></span>
+                        <span className="tx"><b>Bank transfer</b><small>{bankOpen ? "NEFT, RTGS or IMPS from your bank or your institution's: good for large orders" : t.total < bankMin ? `Bank transfer is for orders from ${formatINR(bankMin)}` : `Bank transfer is for orders up to ${formatINR(bankMax)}`}</small></span>
+                        <span className="dot" aria-hidden="true" />
+                      </label>
+                    )}
                   </fieldset>
                   {method && (
                     <p className={`ax-pay-note ${method}`} key={method}>
                       {method === "online"
                         ? <><ShieldCheck size={16} /> <span>You pay in Razorpay&apos;s secure window. We never see or keep your card or UPI details.</span></>
-                        : <><Banknote size={16} /> <span>Keep {formatINR(t.total)} ready when it arrives.{masked ? ` We may call ${masked} to confirm the order.` : ""}</span></>}
+                        : method === "bank"
+                          ? <><Building2 size={16} /> <span>Next you&apos;ll see our account details (they&apos;re emailed too). Send {formatINR(t.total)} within {bankDays} days with your order number as the reference: we confirm the order once it arrives.</span></>
+                          : <><Banknote size={16} /> <span>{isGift ? `Whoever receives it pays ${formatINR(t.total)} in cash at the door, so let them know. For a surprise, pay online or by bank transfer.` : `Keep ${formatINR(t.total)} ready when it arrives.`}{masked ? ` We may call ${masked} to confirm the order.` : ""}</span></>}
                     </p>
                   )}
                 </div>
@@ -409,12 +499,38 @@ export default function Checkout() {
                       </li>
                     ))}
                   </ul>
+                  <div className="ax-co-extras">
+                    <label className={`ax-extra${isGift ? " on" : ""}`}>
+                      <input type="checkbox" checked={isGift} onChange={(e) => setIsGift(e.target.checked)} />
+                      <span className="ic"><Gift size={18} /></span>
+                      <span className="tx"><b>Send it as a gift</b><small>A message in the box, and no prices on the paperwork inside</small></span>
+                    </label>
+                    {isGift && (
+                      <div className="ax-extra-body ax-form">
+                        <label className="f wide"><span>Gift message <em>(optional)</em></span><textarea value={gift.message} onChange={(e) => setGift((g) => ({ ...g, message: e.target.value }))} rows={2} maxLength={300} placeholder="Congratulations on your first posting!" /></label>
+                        <label className="f"><span>From <em>(optional)</em></span><input value={gift.from} onChange={(e) => setGift((g) => ({ ...g, from: e.target.value }))} maxLength={60} placeholder="Your name" /></label>
+                        <p className="hint">{method === "cod" ? "With cash on delivery, the person receiving it pays at the door." : "It's paid for, so there's nothing for them to pay."}</p>
+                      </div>
+                    )}
+                    <label className={`ax-extra${isBiz ? " on" : ""}`}>
+                      <input type="checkbox" checked={isBiz} onChange={(e) => setIsBiz(e.target.checked)} />
+                      <span className="ic"><Briefcase size={18} /></span>
+                      <span className="tx"><b>Buying for a clinic or business</b><small>{config?.gstInvoice ? "Its name, and its GSTIN on the GST invoice" : "Its name on the order and invoice"}</small></span>
+                    </label>
+                    {isBiz && (
+                      <div className="ax-extra-body ax-form">
+                        <label className="f"><span>Clinic or business name</span><input value={biz.name} onChange={(e) => setBiz((b) => ({ ...b, name: e.target.value }))} maxLength={120} autoComplete="organization" placeholder="Iyer Family Clinic" /></label>
+                        {config?.gstInvoice && <label className="f"><span>GSTIN <em>(optional)</em></span><input value={biz.gstin} onChange={(e) => setBiz((b) => ({ ...b, gstin: e.target.value.toUpperCase() }))} maxLength={15} placeholder="27ABCDE1234F1Z5" /></label>}
+                        <p className="hint">Buying a lot? <Link href="/hospitals">Ask for a bulk quotation</Link>.</p>
+                      </div>
+                    )}
+                  </div>
                   {noteOpen || note ? (
                     <label className="f ax-co-note"><span>Note for the delivery <em>(optional)</em></span><input value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} placeholder="For example, call before delivering" autoFocus={noteOpen && !note} /></label>
                   ) : (
                     <button type="button" className="ax-link ax-co-addnote" onClick={() => setNoteOpen(true)}><NotebookPen size={15} /> Add a note for the delivery</button>
                   )}
-                  {!method && <p className="ax-form-err">Cash on delivery is available on orders up to {formatINR(COD_LIMIT)}. Please split the order, or write to {BUSINESS.email}.</p>}
+                  {!method && <p className="ax-form-err">Cash on delivery is available on orders up to {formatINR(COD_LIMIT)}. Please split the order, ask for a <Link href="/hospitals">bulk quotation</Link>, or write to {BUSINESS.email}.</p>}
                   {priced.code && !priced.applied && !priced.checking && priced.couponError && <p className="ax-co-coupon-note">Coupon {priced.code} isn&apos;t applied: {priced.couponError}</p>}
                   {err && <p className="ax-form-err" role="alert" key={err}>{err}</p>}
                   <button type="button" className="ax-btn teal lg ax-co-next-btn ax-shine" onClick={placeIt} disabled={placing || !method || t.count === 0 || priced.checking}>

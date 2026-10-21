@@ -100,8 +100,15 @@ orthopaedic supports, pain relief, pillows and cushions, rehab and mobility).
 - **Price on request:** brands that don't publish Indian prices (MDF, Littmann, HEINE, Rossmax)
   take price requests until a price is set in the admin.
 - **Orders:** cash on delivery, or paid online through Razorpay (UPI, cards, netbanking,
-  wallets) once its keys are set; priced again on the server; confirmation and status emails;
-  tracking with order number and mobile; cancelling until shipped (a paid order is refunded).
+  wallets) once its keys are set, or by bank transfer (NEFT, RTGS, IMPS) once the store's
+  account is set; priced again on the server; confirmation and status emails; tracking with
+  order number and mobile; cancelling until shipped (a paid order is refunded).
+- **Ways to buy:** buy again from past orders (and a "Buy it again" row in the shop), a
+  pay-for-me link to send a cart to someone who pays, addresses kept in the account and
+  picked at checkout, quick add from search, "add all" for bought-together items and the
+  wishlist, gift orders (a message, delivered to someone else), buying for a clinic or
+  business (with its GSTIN on the invoice once the store's GSTIN is set), order on WhatsApp,
+  and "call me to order" requests that show in the admin.
 - **Offers and coupons:** sales on brands or categories for a time, and coupon codes (percent
   with a cap, or an amount, from a minimum order), set in the admin.
 - **Reviews:** only buyers of delivered orders can review, and the admin approves each one;
@@ -122,6 +129,25 @@ npx wrangler d1 migrations apply aethex --remote   # creates the store tables (a
 npx wrangler secret put ADMIN_EMAILS               # e.g. you@aethex.in (comma-separated for several)
 npx wrangler secret put STORE_EMAIL                # optional: inbox for new orders and requests
 ```
+
+### Bank transfer and WhatsApp (optional)
+
+"Order on WhatsApp" shows on product pages and the cart once the store's WhatsApp number is
+set, and "Bank transfer" shows at checkout (for orders from ₹2,000) once the account's name,
+number and IFSC are set. Until then neither is shown.
+
+```bash
+npx wrangler secret put STORE_WHATSAPP             # 10-digit mobile, e.g. 98XXXXXXXX
+npx wrangler secret put STORE_BANK_ACCOUNT_NAME    # as on the account
+npx wrangler secret put STORE_BANK_ACCOUNT_NUMBER
+npx wrangler secret put STORE_BANK_IFSC            # e.g. HDFC0001234
+npx wrangler secret put STORE_BANK_NAME            # optional: the bank's name and branch
+```
+
+An order paid by bank transfer waits for its money: when it reaches the account, open the
+order in the admin and press "Mark paid" (with the transfer's reference, if you like). The
+customer is told and the order is placed. One unpaid after 3 days is cancelled, and both
+sides are emailed.
 
 ### Online payments (Razorpay, when you're ready)
 

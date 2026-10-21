@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useSearch } from "wouter";
 import { User, MapPin, Heart, Crown, Settings, LogOut, Plus, Trash2, CheckCircle2, Star, Bell, ShieldCheck, ChevronRight, Edit3, Package, Camera, BadgeCheck, Upload, X, FileText, Clock, XCircle, Users, Brain } from "lucide-react";
-import { useUserAuth, type Address } from "@/hooks/use-user-auth";
+import { useUserAuth } from "@/hooks/use-user-auth";
+import { SavedAddresses } from "@/components/shop/SavedAddresses";
 import { formatINR } from "@/lib/utils";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { ReferralProgram } from "@/components/ReferralProgram";
@@ -42,90 +43,6 @@ const COUNCILS = [
   "Uttar Pradesh Medical Council","Uttarakhand Medical Council",
   "West Bengal Medical Council",
 ];
-
-function AddressCard({ addr, onDelete, onSetDefault }: { addr: Address; onDelete: (id: string) => void; onSetDefault: (id: string) => void }) {
-  return (
-    <div className={`p-5 border rounded-2xl transition-all ${addr.isDefault ? "border-[#00C2A8]/40 bg-[#00C2A8]/5" : "border-black/[0.08] bg-white"}`}>
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <span className="px-2.5 py-0.5 rounded-lg bg-black/[0.08] text-[#3c3c43] text-xs font-medium">{addr.label}</span>
-          {addr.isDefault && <span className="px-2.5 py-0.5 rounded-lg bg-[#00C2A8]/20 text-[#00C2A8] text-xs font-bold">Default</span>}
-        </div>
-        <div className="flex items-center gap-2">
-          {!addr.isDefault && (
-            <button onClick={() => onSetDefault(addr.id)} className="text-xs text-[#6c6c70] hover:text-[#00C2A8] transition-colors">Set Default</button>
-          )}
-          <button onClick={() => onDelete(addr.id)} className="p-1.5 text-[#aeaeb2] hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all">
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
-      <p className="text-sm text-[#1c1c1e] font-medium">{addr.line1}</p>
-      {addr.line2 && <p className="text-sm text-[#3c3c43]">{addr.line2}</p>}
-      <p className="text-sm text-[#3c3c43]">{addr.city}, {addr.state} — {addr.pincode}</p>
-    </div>
-  );
-}
-
-function AddAddressForm({ onSave }: { onSave: (addr: Omit<Address, "id">) => void }) {
-  const [form, setForm] = useState({ label: "Home", line1: "", line2: "", city: "", state: "Maharashtra", pincode: "", isDefault: false });
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSave(form);
-  };
-  return (
-    <form onSubmit={handleSubmit} className="p-5 border border-[#00C2A8]/30 bg-[#00C2A8]/5 rounded-2xl space-y-4">
-      <h4 className="font-semibold text-[#1c1c1e] text-sm">Add New Address</h4>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs text-[#6c6c70] mb-1">Label</label>
-          <select value={form.label} onChange={e => setForm(f => ({...f, label: e.target.value}))}
-            className="w-full px-3 py-2.5 bg-black/5 border border-black/10 rounded-xl text-[#1c1c1e] text-sm focus:outline-none focus:border-[#00C2A8]/50">
-            {["Home", "Work", "Hospital", "Clinic", "Other"].map(l => <option key={l} value={l} className="bg-white">{l}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs text-[#6c6c70] mb-1">PIN Code *</label>
-          <input value={form.pincode} onChange={e => setForm(f => ({...f, pincode: e.target.value}))} required maxLength={6}
-            placeholder="400001"
-            className="w-full px-3 py-2.5 bg-black/5 border border-black/10 rounded-xl text-[#1c1c1e] text-sm placeholder-black/30 focus:outline-none focus:border-[#00C2A8]/50" />
-        </div>
-        <div className="col-span-2">
-          <label className="block text-xs text-[#6c6c70] mb-1">Address Line 1 *</label>
-          <input value={form.line1} onChange={e => setForm(f => ({...f, line1: e.target.value}))} required
-            placeholder="House/Flat No., Street"
-            className="w-full px-3 py-2.5 bg-black/5 border border-black/10 rounded-xl text-[#1c1c1e] text-sm placeholder-black/30 focus:outline-none focus:border-[#00C2A8]/50" />
-        </div>
-        <div className="col-span-2">
-          <label className="block text-xs text-[#6c6c70] mb-1">Address Line 2</label>
-          <input value={form.line2} onChange={e => setForm(f => ({...f, line2: e.target.value}))}
-            placeholder="Landmark, Area (optional)"
-            className="w-full px-3 py-2.5 bg-black/5 border border-black/10 rounded-xl text-[#1c1c1e] text-sm placeholder-black/30 focus:outline-none focus:border-[#00C2A8]/50" />
-        </div>
-        <div>
-          <label className="block text-xs text-[#6c6c70] mb-1">City *</label>
-          <input value={form.city} onChange={e => setForm(f => ({...f, city: e.target.value}))} required
-            placeholder="Mumbai"
-            className="w-full px-3 py-2.5 bg-black/5 border border-black/10 rounded-xl text-[#1c1c1e] text-sm placeholder-black/30 focus:outline-none focus:border-[#00C2A8]/50" />
-        </div>
-        <div>
-          <label className="block text-xs text-[#6c6c70] mb-1">State *</label>
-          <select value={form.state} onChange={e => setForm(f => ({...f, state: e.target.value}))}
-            className="w-full px-3 py-2.5 bg-black/5 border border-black/10 rounded-xl text-[#1c1c1e] text-sm focus:outline-none focus:border-[#00C2A8]/50">
-            {INDIA_STATES.map(s => <option key={s} value={s} className="bg-white">{s}</option>)}
-          </select>
-        </div>
-      </div>
-      <label className="flex items-center gap-2 cursor-pointer">
-        <input type="checkbox" checked={form.isDefault} onChange={e => setForm(f => ({...f, isDefault: e.target.checked}))} className="rounded" />
-        <span className="text-sm text-[#3c3c43]">Set as default address</span>
-      </label>
-      <div className="flex gap-3">
-        <button type="submit" className="px-5 py-2.5 bg-[#00C2A8] text-[#F5F3EE] font-bold rounded-xl text-sm hover:bg-[#00D4B8] transition-colors">Save Address</button>
-      </div>
-    </form>
-  );
-}
 
 export default function Account() {
   const { user, isLoggedIn, logout, updateProfile, getJwt, activatePro, activateProAnnual } = useUserAuth();
@@ -271,23 +188,6 @@ export default function Account() {
   const handleSaveProfile = () => {
     updateProfile({ name: nameInput, phone: phoneInput });
     setEditName(false);
-  };
-
-  const handleAddAddress = (addr: Omit<Address, "id">) => {
-    const newAddr: Address = { ...addr, id: Date.now().toString() };
-    const newAddresses = addr.isDefault
-      ? [newAddr, ...user.addresses.map(a => ({ ...a, isDefault: false }))]
-      : [...user.addresses, newAddr];
-    updateProfile({ addresses: newAddresses });
-    setShowAddAddress(false);
-  };
-
-  const handleDeleteAddress = (id: string) => {
-    updateProfile({ addresses: user.addresses.filter(a => a.id !== id) });
-  };
-
-  const handleSetDefault = (id: string) => {
-    updateProfile({ addresses: user.addresses.map(a => ({ ...a, isDefault: a.id === id })) });
   };
 
   const handleActivatePro = async (plan: "monthly" | "annual") => {
@@ -498,35 +398,7 @@ export default function Account() {
             )}
 
             {/* Addresses Tab */}
-            {tab === "addresses" && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-display font-bold text-[#1c1c1e] flex items-center gap-2">
-                    <MapPin className="w-5 h-5 text-[#00C2A8]" />
-                    Saved Addresses
-                  </h2>
-                  <button onClick={() => setShowAddAddress(!showAddAddress)}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#00C2A8]/15 border border-[#00C2A8]/30 text-[#00C2A8] text-sm font-semibold rounded-xl hover:bg-[#00C2A8]/25 transition-all">
-                    <Plus className="w-4 h-4" />
-                    Add Address
-                  </button>
-                </div>
-                {showAddAddress && <AddAddressForm onSave={handleAddAddress} />}
-                {user.addresses.length === 0 ? (
-                  <div className="text-center py-12 bg-white border border-black/[0.08] rounded-2xl">
-                    <MapPin className="w-10 h-10 text-[#aeaeb2] mx-auto mb-3" />
-                    <p className="text-[#6c6c70] text-sm">No saved addresses yet.</p>
-                    <button onClick={() => setShowAddAddress(true)} className="mt-3 text-sm text-[#00C2A8] hover:underline">Add your first address</button>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {user.addresses.map(addr => (
-                      <AddressCard key={addr.id} addr={addr} onDelete={handleDeleteAddress} onSetDefault={handleSetDefault} />
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+            {tab === "addresses" && <SavedAddresses />}
 
             {/* Wishlist Tab */}
             {tab === "wishlist" && (

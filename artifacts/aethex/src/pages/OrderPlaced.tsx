@@ -7,7 +7,7 @@
  */
 import { useEffect, useState } from "react";
 import { Link, useRoute } from "wouter";
-import { Banknote, Check, Clock, Copy, CreditCard, Hash, Loader2, Package, PhoneCall, Truck } from "lucide-react";
+import { Banknote, Building2, Check, Clock, Copy, CreditCard, Gift, Hash, Loader2, Package, PhoneCall, Truck } from "lucide-react";
 import { OrderView } from "@/components/store/OrderView";
 import { BuySteps } from "@/components/shop/BuyKit";
 import { dayText, deliveryWindow } from "@/lib/store/delivery";
@@ -50,11 +50,14 @@ export default function OrderPlaced() {
     );
   }
 
-  const words = order.address.name.trim().split(/\s+/);
+  // On a gift the address is the recipient's: the thanks uses the name it's from, if any.
+  const words = (order.gift ? order.gift.from ?? "" : order.address.name).trim().split(/\s+/);
   const first = /^dr\.?$/i.test(words[0]) && words[1] ? `Dr ${words[1]}` : words[0];
   const fresh = Date.now() - order.createdAt < 30 * 60_000 && order.status === "placed";
   const due = order.status === "pending";
   const paidOnline = order.payment === "online" && order.paymentStatus === "paid";
+  const paidBank = order.payment === "bank" && order.paymentStatus === "paid";
+  const bankDue = due && order.payment === "bank";
   const w = deliveryWindow(new Date(order.createdAt));
 
   return (
@@ -68,14 +71,16 @@ export default function OrderPlaced() {
               {due ? <Clock size={36} /> : <svg className="draw" viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>}
             </span>
             <p className="ax-eyebrow c">{due ? "Payment due" : fresh ? "Order placed" : "Your order"}</p>
-            <h1>{due ? "Almost there" : fresh ? `Thank you, ${first}` : `Order ${order.id}`}</h1>
-            {due && <p className="lead">Your order <b>{order.id}</b> is waiting for its payment of {formatINR(order.total)}. Pay below, or choose cash on delivery.</p>}
-            {fresh && <p className="lead">Your order <b>{order.id}</b> for {formatINR(order.total)} is placed{paidOnline ? " and paid" : ""}. {order.address.email ? "We've emailed you the details." : "Save the order number to track it."}</p>}
+            <h1>{bankDue ? (first ? `Thank you, ${first}` : "Thank you") : due ? "Almost there" : fresh ? (first ? `Thank you, ${first}` : "Thank you") : `Order ${order.id}`}</h1>
+            {bankDue && <p className="lead">Your order <b>{order.id}</b> is saved. Send {formatINR(order.total)} by bank transfer to the account below, with <b>{order.id}</b> as the reference: we confirm the order once it arrives.{order.address.email ? " The details are in your email too." : ""}</p>}
+            {due && !bankDue && <p className="lead">Your order <b>{order.id}</b> is waiting for its payment of {formatINR(order.total)}. Pay below, or choose cash on delivery.</p>}
+            {fresh && <p className="lead">Your {order.gift ? "gift" : "order"} <b>{order.id}</b> for {formatINR(order.total)} is placed{paidOnline || paidBank ? " and paid" : ""}. {order.address.email ? "We've emailed you the details." : "Save the order number to track it."}</p>}
             {(fresh || due) && (
               <div className="ax-done-chips">
                 <CopyChip id={order.id} />
                 {fresh && <span><Truck size={15} /> Arrives {dayText(w.from)} – {dayText(w.to)}</span>}
-                <span>{paidOnline ? <><CreditCard size={15} /> Paid online</> : due ? <><Clock size={15} /> {formatINR(order.total)} to pay</> : <><Banknote size={15} /> Cash on delivery</>}</span>
+                <span>{paidOnline ? <><CreditCard size={15} /> Paid online</> : paidBank ? <><Building2 size={15} /> Paid by bank transfer</> : bankDue ? <><Building2 size={15} /> {formatINR(order.total)} by bank transfer</> : due ? <><Clock size={15} /> {formatINR(order.total)} to pay</> : <><Banknote size={15} /> Cash on delivery</>}</span>
+                {order.gift && <span><Gift size={15} /> Gift</span>}
               </div>
             )}
           </div>
@@ -88,9 +93,11 @@ export default function OrderPlaced() {
             <ol className="ax-next" aria-label="What happens next">
               <li><PhoneCall size={18} /><span><b>We confirm it</b><small>We may call {order.address.phone.replace(/^(\d{2})\d{4}/, "$1••••")} to confirm the order and address.</small></span></li>
               <li><Truck size={18} /><span><b>It ships</b><small>{BUSINESS.dispatch[0].toUpperCase() + BUSINESS.dispatch.slice(1)}; delivery is {BUSINESS.delivery}.</small></span></li>
-              {paidOnline
-                ? <li><CreditCard size={18} /><span><b>Nothing to pay at your door</b><small>You've paid {formatINR(order.total)} online.</small></span></li>
-                : <li><Banknote size={18} /><span><b>Pay at your door</b><small>Keep {formatINR(order.total)} ready in cash.</small></span></li>}
+              {paidOnline || paidBank
+                ? <li><CreditCard size={18} /><span><b>Nothing to pay at {order.gift ? "the" : "your"} door</b><small>You&apos;ve paid {formatINR(order.total)} {paidBank ? "by bank transfer" : "online"}.</small></span></li>
+                : order.gift
+                  ? <li><Banknote size={18} /><span><b>Paid at the door</b><small>Whoever receives it pays {formatINR(order.total)} in cash.</small></span></li>
+                  : <li><Banknote size={18} /><span><b>Pay at your door</b><small>Keep {formatINR(order.total)} ready in cash.</small></span></li>}
             </ol>
           )}
           <OrderView order={order} token={token} onChange={setOrder} />

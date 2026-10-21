@@ -224,9 +224,10 @@ export interface Quote {
   total: number;
 }
 
-/** "pending": paying online and not paid yet. */
+/** "pending": paid online or by bank transfer, and not paid yet. */
 export type OrderStatus = "pending" | "placed" | "confirmed" | "shipped" | "delivered" | "cancelled";
-export type PaymentMethod = "cod" | "online";
+/** Cash on delivery, online through Razorpay, or a bank transfer (NEFT, RTGS or IMPS) the store confirms. */
+export type PaymentMethod = "cod" | "online" | "bank";
 export type PaymentStatus = "pending" | "paid" | "refunded";
 
 export interface Address {
@@ -246,9 +247,11 @@ export interface Order {
   createdAt: number;
   status: OrderStatus;
   payment: PaymentMethod;
-  /** Online payments only. */
+  /** Paid online or by bank transfer: whether it has been. */
   paymentStatus?: PaymentStatus;
   paidAt?: number;
+  /** A bank transfer's reference (UTR), as the store recorded it. */
+  bankRef?: string;
   /** A refund of an online payment (Razorpay). */
   refund?: { amount: number; at: number; status: string };
   address: Address;
@@ -263,9 +266,19 @@ export interface Order {
   history: { status: OrderStatus; at: number; note?: string }[];
   tracking?: { courier?: string; number?: string; url?: string };
   notes?: string;
+  /** A gift: the message that goes in with it, and who it's from. */
+  gift?: { message?: string; from?: string };
+  /** Bought for a clinic or business: its name, and its GSTIN for the invoice (when the store has a GSTIN). */
+  business?: { name: string; gstin?: string };
 }
 
-export type EnquiryKind = "price" | "book" | "bulk" | "general";
+/** The store's bank account, for orders paid by bank transfer. */
+export interface BankDetails { accountName: string; accountNumber: string; ifsc: string; bankName?: string }
+
+/** An address kept in the buyer's account, to pick at checkout. */
+export interface SavedAddress { id: string; label: string; isDefault: boolean; address: Address; updatedAt: number }
+
+export type EnquiryKind = "price" | "book" | "bulk" | "general" | "callback";
 
 /* ------------------------------------------------------------------ bulk buying (hospitals and medical colleges) */
 

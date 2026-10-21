@@ -10,6 +10,7 @@ import { ArrowRight, BadgeCheck, ExternalLink, LayoutGrid, List, Search as Searc
 import { ProductCard } from "@/components/ProductCard";
 import { BookCard } from "@/components/store/BookCard";
 import { CompareTray } from "@/components/store/CompareTray";
+import { BuyAgainRail } from "@/components/shop/BuyAgain";
 import { ShopHead, type Crumb } from "@/components/shop/ShopHead";
 import { TopLayer } from "@/components/shop/TopLayer";
 import { useSeo } from "@/hooks/use-seo";
@@ -370,6 +371,7 @@ export default function Products() {
             </div>
           </div>
 
+          {!active && !category && !brandPage && <BuyAgainRail />}
           {isLoading || !store ? (
             <div className={`ax-grid ${view}`}>{Array.from({ length: 8 }, (_, k) => <div key={k} className="ax-prod sk" />)}</div>
           ) : results.length === 0 ? (

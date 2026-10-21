@@ -1,7 +1,9 @@
 /**
  * One order as the customer sees it: progress, items, totals, delivery
- * address, how it's paid (cash on delivery, or online: paying again or
- * switching to cash while the payment is due, and refunds), courier details,
+ * address, how it's paid (cash on delivery, online: paying again or switching
+ * to cash while the payment is due, and refunds, or by bank transfer: the
+ * account to pay into while it's due), a gift's message, a business buyer,
+ * courier details, buying it all again,
  * cancelling (until it ships) and, once delivered, reviewing what was bought.
  * Used by the order confirmation, order tracking and my orders. The progress
  * line fills up step by step when the order opens.
@@ -10,7 +12,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import {
-  Banknote, Check, CheckCircle2, Clock, Copy, CreditCard, ExternalLink, Loader2, MapPin, Package, PackageCheck, PenLine, RotateCcw, Star, Truck, XCircle,
+  Banknote, Briefcase, Building2, Check, CheckCircle2, Clock, Copy, CreditCard, ExternalLink, Gift, Loader2, MapPin, Package, PackageCheck, PenLine, RotateCcw, Star, Truck, XCircle,
 } from "lucide-react";
 import { cancelOrder, payOrder, retryPayment, switchToCod, type CustomerOrder } from "@/lib/store/api";
 import { payWithRazorpay } from "@/lib/store/razorpay";
@@ -20,6 +22,7 @@ import { BUSINESS } from "@/config/business";
 import { ProductImage } from "./ProductImage";
 import { ReviewDialog, Stars, type ReviewTarget } from "./Reviews";
 import { isBookId, itemHref } from "@/lib/store/bookdata";
+import { BuyAgainButton } from "@/components/shop/BuyAgain";
 
 const STEPS = [
   { key: "placed", label: "Placed", icon: Package },
@@ -34,6 +37,10 @@ const day = (ms: number) => new Date(ms).toLocaleDateString("en-IN", { day: "num
 /** "Cash on delivery", "Paid online on 21 Oct 2026", "Refunded", "Online payment due". */
 export function paymentText(o: CustomerOrder): string {
   if (o.payment === "cod") return "Cash on delivery";
+  if (o.payment === "bank") {
+    if (o.paymentStatus === "paid") return `Paid by bank transfer${o.paidAt ? ` on ${day(o.paidAt)}` : ""}`;
+    return o.status === "cancelled" ? "Not paid" : "Bank transfer due";
+  }
   if (o.paymentStatus === "refunded") return `Paid online, refunded${o.refund ? ` on ${day(o.refund.at)}` : ""}`;
   if (o.paymentStatus === "paid") return `Paid online${o.paidAt ? ` on ${day(o.paidAt)}` : ""}${o.refund ? `, ${formatINR(o.refund.amount)} refunded` : ""}`;
   return o.status === "cancelled" ? "Not paid" : "Online payment due";
@@ -51,7 +58,8 @@ export function OrderView({ order, token, phone, onChange, compact = false }: {
   const [reviewing, setReviewing] = useState<ReviewTarget | null>(null);
   const cancelled = order.status === "cancelled";
   const due = order.status === "pending";
-  const paid = order.payment === "online" && (order.paymentStatus === "paid" || order.paymentStatus === "refunded");
+  const paid = order.payment !== "cod" && (order.paymentStatus === "paid" || order.paymentStatus === "refunded");
+  const bankDue = due && order.payment === "bank";
   const reached = STEPS.findIndex((s) => s.key === order.status);
   const at = (k: string) => [...order.history].reverse().find((h) => h.status === k)?.at;
   const a = order.address;
@@ -91,6 +99,7 @@ export function OrderView({ order, token, phone, onChange, compact = false }: {
   const cancelledText = (() => {
     const on = at("cancelled") ? ` on ${when(at("cancelled")!)}` : "";
     if (order.refund) return `This order was cancelled${on}. We've refunded ${formatINR(order.refund.amount)} to the account, card or UPI app you paid with; it usually reaches you in 5 to 7 business days.`;
+    if (paid && order.payment === "bank") return `This order was cancelled${on}. We'll send your bank transfer of ${formatINR(order.total)} back to the account it came from, and email you when it's on its way.`;
     if (paid) return `This order was cancelled${on}. Your payment of ${formatINR(order.total)} will be refunded; we'll email you when it's on its way.`;
     return `This order was cancelled${on}. Nothing is due.`;
   })();
@@ -112,6 +121,28 @@ export function OrderView({ order, token, phone, onChange, compact = false }: {
 
       {cancelled ? (
         <div className="ax-ov-cancelled"><XCircle size={18} /><span>{cancelledText}</span></div>
+      ) : bankDue ? (
+        <div className="ax-ov-due bank">
+          <Building2 size={19} />
+          <div>
+            <b>Send {formatINR(order.total)} by bank transfer</b>
+            <p>Pay by NEFT, RTGS or IMPS to this account, with your order number as the reference. We confirm the order once the money arrives; if it hasn&apos;t in 3 days, the order is cancelled.</p>
+            {order.bank ? (
+              <dl className="ax-bank">
+                <BankRow k="Amount" v={String(order.total)} show={formatINR(order.total)} />
+                <BankRow k="Account name" v={order.bank.accountName} />
+                <BankRow k="Account number" v={order.bank.accountNumber} />
+                <BankRow k="IFSC" v={order.bank.ifsc} />
+                {order.bank.bankName && <BankRow k="Bank" v={order.bank.bankName} copy={false} />}
+                <BankRow k="Reference" v={order.id} />
+              </dl>
+            ) : <p>The account details are in the email we sent you.</p>}
+            {order.total <= COD_LIMIT && (
+              <div className="row"><button type="button" className="ax-btn" onClick={toCod} disabled={!!busy}>{busy === "cod" ? <Loader2 size={16} className="spin" /> : <Banknote size={16} />} Pay cash on delivery instead</button></div>
+            )}
+            {payErr && <p className="ax-form-err" role="alert">{payErr}</p>}
+          </div>
+        </div>
       ) : due ? (
         <div className="ax-ov-due">
           <Clock size={19} />
@@ -172,12 +203,14 @@ export function OrderView({ order, token, phone, onChange, compact = false }: {
               <div><dt>Items</dt><dd>{formatINR(order.subtotal)}</dd></div>
               {!!order.discount && <div className="good"><dt>Coupon{order.coupon ? ` ${order.coupon}` : ""}</dt><dd>− {formatINR(order.discount)}</dd></div>}
               <div><dt>Delivery</dt><dd>{order.delivery ? formatINR(order.delivery) : "Free"}</dd></div>
-              <div className="total"><dt>{cancelled ? "Total" : paid ? "Paid online" : due ? "To pay now" : "To pay on delivery"}</dt><dd>{formatINR(order.total)}</dd></div>
+              <div className="total"><dt>{cancelled ? "Total" : paid ? (order.payment === "bank" ? "Paid by bank transfer" : "Paid online") : bankDue ? "To pay by bank transfer" : due ? "To pay now" : "To pay on delivery"}</dt><dd>{formatINR(order.total)}</dd></div>
               {order.refund && <div className="good"><dt>Refunded</dt><dd>{formatINR(order.refund.amount)}</dd></div>}
             </dl>
             <div className="ax-ov-addr">
               <p><MapPin size={15} /> <span><b>{a.name}</b>{a.line1 ? <><br />{a.line1}{a.line2 ? `, ${a.line2}` : ""}{a.landmark ? `, near ${a.landmark}` : ""}</> : null}<br />{a.city}, {a.state} {a.pincode}<br />{a.phone}</span></p>
-              <p>{order.refund ? <RotateCcw size={15} /> : order.payment === "online" ? <CreditCard size={15} /> : <Banknote size={15} />} <span>{paymentText(order)}</span></p>
+              <p>{order.refund ? <RotateCcw size={15} /> : order.payment === "online" ? <CreditCard size={15} /> : order.payment === "bank" ? <Building2 size={15} /> : <Banknote size={15} />} <span>{paymentText(order)}</span></p>
+              {order.gift && <p className="gift"><Gift size={15} /> <span><b>Gift</b>{order.gift.message ? <><br />&ldquo;{order.gift.message}&rdquo;</> : null}{order.gift.from ? <><br />From {order.gift.from}</> : null}</span></p>}
+              {order.business && <p><Briefcase size={15} /> <span><b>{order.business.name}</b>{order.business.gstin ? <><br />GSTIN {order.business.gstin}</> : null}</span></p>}
             </div>
           </div>
         </>
@@ -189,7 +222,7 @@ export function OrderView({ order, token, phone, onChange, compact = false }: {
             <button type="button" className="ax-link danger" onClick={() => setAsking(true)}>Cancel this order</button>
           ) : (
             <div className="ax-ov-cancel-box">
-              {paid && <p className="fine">Your payment of {formatINR(order.total)} is refunded to the account, card or UPI app you paid with.</p>}
+              {paid && <p className="fine">Your payment of {formatINR(order.total)} {order.payment === "bank" ? "is sent back to the bank account it came from" : "is refunded to the account, card or UPI app you paid with"}.</p>}
               <label className="f"><span>Why are you cancelling? <em>(optional)</em></span><input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} /></label>
               <div className="row">
                 <button type="button" className="ax-btn danger" onClick={doCancel} disabled={!!busy}>{busy === "cancel" ? <Loader2 size={16} className="spin" /> : null} Yes, cancel the order</button>
@@ -199,6 +232,9 @@ export function OrderView({ order, token, phone, onChange, compact = false }: {
             </div>
           )}
         </div>
+      )}
+      {!due && order.lines.length > 0 && (
+        <div className="ax-ov-again"><BuyAgainButton lines={order.lines} label={cancelled ? "Order these again" : "Buy it all again"} /></div>
       )}
       {!compact && <p className="ax-ov-help">Questions about this order? Write to <a href={`mailto:${BUSINESS.email}?subject=${encodeURIComponent(`Order ${order.id}`)}`}>{BUSINESS.email}</a>{BUSINESS.phone ? <> or call {BUSINESS.phone}</> : null} with your order number.</p>}
 
@@ -210,6 +246,21 @@ export function OrderView({ order, token, phone, onChange, compact = false }: {
           onChange?.({ ...order, reviews: { ...(order.reviews ?? {}), [productId]: { status, rating: r.rating, body: r.body, name: r.name, ...(r.title ? { title: r.title } : {}), ...(r.city ? { city: r.city } : {}) } } });
         }}
       />
+    </div>
+  );
+}
+
+/** One line of the bank account, with a button to copy it. */
+function BankRow({ k, v, show, copy = true }: { k: string; v: string; show?: string; copy?: boolean }) {
+  const [done, setDone] = useState(false);
+  return (
+    <div>
+      <dt>{k}</dt>
+      <dd><span>{show ?? v}</span>{copy && (
+        <button type="button" onClick={() => { navigator.clipboard?.writeText(v).then(() => { setDone(true); setTimeout(() => setDone(false), 1500); }).catch(() => {}); }} aria-label={`Copy the ${k.toLowerCase()}`}>
+          {done ? <Check size={13} /> : <Copy size={13} />}
+        </button>
+      )}</dd>
     </div>
   );
 }

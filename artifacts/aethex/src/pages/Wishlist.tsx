@@ -8,6 +8,7 @@ import { Link } from "wouter";
 import { Heart, ShoppingBag } from "lucide-react";
 import { ProductCard } from "@/components/ProductCard";
 import { ShopHead } from "@/components/shop/ShopHead";
+import { AddAllButton } from "@/components/shop/BuyAgain";
 import { useWishlist } from "@/hooks/use-wishlist";
 import { useToast } from "@/hooks/use-toast";
 import { useSeo } from "@/hooks/use-seo";
@@ -45,9 +46,12 @@ export default function Wishlist() {
         ) : isLoading || !store ? (
           <div className="ax-grid grid">{ids.slice(0, 4).map((id) => <div key={id} className="ax-prod sk" />)}</div>
         ) : (
-          <div className="ax-grid grid">
-            {items.map((p) => <ProductCard key={p.id} product={p} brandName={store.brandName(p.brand)} />)}
-          </div>
+          <>
+            {items.length > 1 && <div className="ax-wish-bar"><AddAllButton items={items} /></div>}
+            <div className="ax-grid grid">
+              {items.map((p) => <ProductCard key={p.id} product={p} brandName={store.brandName(p.brand)} />)}
+            </div>
+          </>
         )}
       </div>
     </div>
