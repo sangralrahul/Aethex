@@ -50,3 +50,7 @@ Thumbs.db
 
 # Cadus medical library build staging
 artifacts/aethex/public/library/*.building/
+
+# Wrangler local state and files saved from Claude
+.wrangler/
+Claude outputs/

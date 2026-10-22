@@ -1,7 +1,7 @@
 /**
  * A short guided tour: a spotlight on one part of the screen at a time with a
  * line about what it does. Steps whose target isn't on screen (the sidebar on
- * a phone, say) are skipped.
+ * a phone, say) are skipped; a target below the fold is scrolled into view.
  */
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, X } from "lucide-react";
@@ -12,10 +12,11 @@ export interface TourStep {
   text: string;
 }
 
+/** On screen across, with a size. Below the fold is fine: the step scrolls it into view. */
 const visible = (el: Element | null): el is HTMLElement => {
   if (!el) return false;
   const r = el.getBoundingClientRect();
-  return r.width > 4 && r.height > 4 && r.right > 0 && r.left < window.innerWidth && r.bottom > 0 && r.top < window.innerHeight;
+  return r.width > 4 && r.height > 4 && r.right > 0 && r.left < window.innerWidth;
 };
 
 export default function Tour({ steps, onClose }: { steps: TourStep[]; onClose: () => void }) {
@@ -29,7 +30,12 @@ export default function Tour({ steps, onClose }: { steps: TourStep[]; onClose: (
     setRect(el ? el.getBoundingClientRect() : null);
   }, [step]);
 
-  useLayoutEffect(() => { measure(); }, [measure]);
+  useLayoutEffect(() => {
+    // Bring a target that sits below the fold (a long sidebar, say) into view first.
+    const el = step ? document.querySelector(step.selector) : null;
+    if (el) { const r = el.getBoundingClientRect(); if (r.bottom > window.innerHeight || r.top < 0) el.scrollIntoView?.({ block: "nearest" }); }
+    measure();
+  }, [measure, step]);
   useEffect(() => {
     if (!list.length) { onClose(); return; }
     window.addEventListener("resize", measure);

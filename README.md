@@ -94,6 +94,10 @@ It provides an intelligent interface for medical and educational assistance.
 - Rx Safety Check: a typed, photographed or PDF prescription checked for one patient (doses, interactions, allergies, pregnancy, kidney, liver, age, duplicates), with generics, NLEM and Jan Aushadhi names, and Cadus's own interaction table as a second check
 - Guideline Watch: the newest guidelines, meta-analyses and trials on PubMed for the specialties you follow (last 7, 30 or 90 days), summarised only from those records, with papers new since your last check marked and digests saved to the Library
 - Report Explainer: a lab, imaging or pathology report (photo, PDF or text) as a summary for the doctor, with critical values first, and an explanation for the patient in their language to print or send on WhatsApp
+- Consult Translator: two-way doctor–patient interpreting in 13 Indian languages by voice or typing, with a translation back to check, medical words explained, red flags noted, translations read aloud, and the consultation written up as a note
+- Clinical Pathways: 16 guideline-based pathways (chest pain, sepsis, stroke, fever in India, DKA, child with diarrhoea, PPH and more) or your own, one question or action at a time, ending in a disposition and plan to print
+- Flashcards: decks from any answer ("Make flashcards"), your notes or a topic, reviewed with spaced repetition and exported to Anki
+- Compare over time: two X-rays, ECGs, scans, reports or wound photos from different dates, compared finding by finding with what needs attention
 
 > CADUS is intended as an educational and informational assistant and is not a replacement for qualified medical professionals.
 

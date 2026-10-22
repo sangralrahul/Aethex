@@ -29,6 +29,11 @@
 //   huddle-merge          Crew Huddle: combines 2 to 4 Crew assistants' answers to one question,
 //                         with what they agree on, where they differ and any corrections.
 //   extract-text          Reads a PDF or photo once as plain text, for a Crew assistant's knowledge.
+//   translate             Consult Translator: one doctor or patient turn translated (with a
+//                         back-translation to check), or step "note": the consultation as a note.
+//   pathway               Clinical Pathways: the next question, action or disposition.
+//   flashcards            Flashcards from an answer, notes or a topic.
+//   compare               Compare over time: two studies of the same kind, what changed.
 //   report-explain        Report Explainer: a lab, imaging or other report as a summary for
 //                         the doctor and an explanation for the patient in their language.
 import {
@@ -68,6 +73,21 @@ import {
   watchDigest,
   watchRecords,
 } from "../_shared/labs.ts";
+import {
+  COMPARE_KINDS,
+  COMPARE_SYSTEM,
+  compareKindLabel,
+  compareResult,
+  FLASHCARDS_SYSTEM,
+  flashcards,
+  PATHWAY_SYSTEM,
+  pathwayAnswers,
+  pathwayStep,
+  TRANSLATE_LANGUAGES,
+  TRANSLATE_NOTE_SYSTEM,
+  TRANSLATE_SYSTEM,
+  translateTurn,
+} from "../_shared/studio.ts";
 
 /* ------------------------------------------------------------------ prompts */
 
@@ -1614,6 +1634,129 @@ Deno.serve(async (req) => {
       const out = r.content.replace(/^\s*```[a-z]*\s*\n|\n```\s*$/g, "").trim().slice(0, 60000);
       if (!out) return jsonResponse({ error: "Couldn't read any text in that file." }, 502);
       return jsonResponse({ text: out });
+    }
+
+    // ---------------------------------------------------------------- Consult Translator
+    if (action === "translate") {
+      const language = (TRANSLATE_LANGUAGES as readonly string[]).includes(String(body.language)) ? String(body.language) : "Hindi";
+      if (body.step === "note") {
+        const turns = (Array.isArray(body.turns) ? body.turns : []).slice(-60)
+          .map((t: any) => ({ who: t?.who === "patient" ? "Patient" : "Doctor", text: String(t?.english ?? "").replace(/\r/g, "").trim().slice(0, 2000) }))
+          .filter((t: { text: string }) => t.text);
+        if (!turns.length) return jsonResponse({ error: "There is nothing to summarise yet" }, 400);
+        const r = await callAI({
+          model: answerModel(body.model),
+          messages: [
+            { role: "system", content: TRANSLATE_NOTE_SYSTEM },
+            { role: "user", content: `Consultation in ${language}, translated:\n${turns.map((t: { who: string; text: string }) => `${t.who}: ${t.text}`).join("\n")}` },
+          ],
+          effort: "low",
+          maxTokens: 3000,
+        });
+        if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+        const note = r.content.replace(/^\s*```(?:markdown|md)?\s*\n|\n```\s*$/g, "").trim();
+        if (!note) return jsonResponse({ error: "The note came back empty. Please try again." }, 502);
+        return jsonResponse({ note });
+      }
+      const said = String(body.text || "").replace(/\r/g, "").trim().slice(0, 3000);
+      if (!said) return jsonResponse({ error: "text is required" }, 400);
+      const from = body.from === "patient" ? "patient" : "doctor";
+      const recent = (Array.isArray(body.recent) ? body.recent : []).slice(-6)
+        .map((t: any) => `${t?.who === "patient" ? "Patient" : "Doctor"}: ${String(t?.english ?? "").replace(/\s+/g, " ").slice(0, 300)}`).join("\n");
+      const r = await callAI({
+        model: CLAUDE_DRAFT_MODEL,
+        messages: [
+          { role: "system", content: TRANSLATE_SYSTEM },
+          { role: "user", content: [`Patient's language: ${language}`, recent ? `Conversation so far (in English):\n${recent}` : "", `${from === "doctor" ? "DOCTOR → PATIENT" : "PATIENT → DOCTOR"}:\n${said}`].filter(Boolean).join("\n\n") },
+        ],
+        jsonMode: true,
+        effort: "low",
+        maxTokens: 2000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const turn = translateTurn(parseJsonLoose<any>(r.content));
+      if (!turn) return jsonResponse({ error: "The translation came back empty. Please try again." }, 502);
+      return jsonResponse({ turn, from, language });
+    }
+
+    // ---------------------------------------------------------------- Clinical Pathways
+    if (action === "pathway") {
+      const pathway = cleanLine(body.pathway, 120);
+      if (!pathway) return jsonResponse({ error: "pathway is required" }, 400);
+      const context = cleanLine(body.context, 800);
+      const answers = pathwayAnswers(body.answers);
+      const r = await callAI({
+        model: answerModel(body.model),
+        messages: [
+          { role: "system", content: [PATHWAY_SYSTEM, institutionLine(body.institution)].filter(Boolean).join("\n\n") },
+          { role: "user", content: [`PATHWAY: ${pathway}`, `PATIENT: ${context || "not given yet (ask for what you need)"}`, answers.length ? `STEPS SO FAR:\n${answers.map((a, i) => `${i + 1}. ${a.title} → ${a.answer}`).join("\n")}` : "STEPS SO FAR: none, this is the first step.", answers.length >= 14 ? "You have enough: give the end step now." : ""].filter(Boolean).join("\n\n") },
+        ],
+        jsonMode: true,
+        effort: "medium",
+        maxTokens: 2500,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const step = pathwayStep(parseJsonLoose<any>(r.content));
+      if (!step) return jsonResponse({ error: "Couldn't work out the next step. Please try again." }, 502);
+      return jsonResponse({ step });
+    }
+
+    // ---------------------------------------------------------------- Flashcards
+    if (action === "flashcards") {
+      const source = String(body.text || "").replace(/\r/g, "").trim().slice(0, 30000);
+      const topic = cleanLine(body.topic, 200);
+      if (!source && !topic) return jsonResponse({ error: "Give a topic or some text to make cards from" }, 400);
+      const count = Math.min(30, Math.max(5, Math.round(Number(body.count) || 12)));
+      const r = await callAI({
+        model: answerModel(body.model),
+        messages: [
+          { role: "system", content: FLASHCARDS_SYSTEM },
+          { role: "user", content: [`Number of cards: ${count}`, topic ? `Topic: ${topic}` : "", source ? `<material>\n${source}\n</material>` : "Use standard textbook knowledge for this topic."].filter(Boolean).join("\n\n") },
+        ],
+        jsonMode: true,
+        effort: "low",
+        maxTokens: 6000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const deck = flashcards(parseJsonLoose<any>(r.content), count);
+      if (!deck) return jsonResponse({ error: "Couldn't make cards this time. Please try again." }, 502);
+      return jsonResponse(deck);
+    }
+
+    // ---------------------------------------------------------------- Compare over time
+    if (action === "compare") {
+      const kind = (COMPARE_KINDS as readonly string[]).includes(String(body.kind)) ? String(body.kind) : "other";
+      const earlier = attachmentParts(body.earlier, "");
+      const later = attachmentParts(body.later, "");
+      const eText = String(body.earlierText || "").replace(/\r/g, "").trim().slice(0, 12000);
+      const lText = String(body.laterText || "").replace(/\r/g, "").trim().slice(0, 12000);
+      if ((!earlier.parts.length && !eText) || (!later.parts.length && !lText)) return jsonResponse({ error: "Add the earlier and the later study" }, 400);
+      const eDate = cleanLine(body.earlierDate, 30) || "date not given";
+      const lDate = cleanLine(body.laterDate, 30) || "date not given";
+      const context = cleanLine(body.context, 600);
+      const content = [
+        { type: "text", text: `Study type: ${compareKindLabel(kind)}.${context ? ` Clinical context: ${context}` : ""}\n\nEARLIER study (${eDate}):` },
+        ...earlier.parts,
+        ...(eText ? [{ type: "text", text: `<earlier_text>\n${eText}\n</earlier_text>` }] : []),
+        { type: "text", text: `LATER study (${lDate}):` },
+        ...later.parts,
+        ...(lText ? [{ type: "text", text: `<later_text>\n${lText}\n</later_text>` }] : []),
+        { type: "text", text: "Compare the later study with the earlier one." },
+      ];
+      const r = await callAI({
+        model: CLAUDE_REVIEW_MODEL,
+        messages: [
+          { role: "system", content: COMPARE_SYSTEM },
+          { role: "user", content },
+        ],
+        jsonMode: true,
+        effort: "medium",
+        maxTokens: 4000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = compareResult(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't compare these this time. Try clearer images, or paste the reports." }, 502);
+      return jsonResponse({ result });
     }
 
     // ---------------------------------------------------------------- Study Hub
