@@ -20,7 +20,7 @@ import {
   Sparkles, Square, SquarePen, Stethoscope, Sun, Syringe, Telescope, Trash2, Users, Volume2, VolumeX, X, Zap, Palette,
   BedDouble, BookMarked, BookOpenText, ChartLine, ClipboardPlus, FileBadge, FileSignature, Microscope, NotebookPen, NotepadText,
   Printer, Scissors, ScrollText, Sigma, PanelRight, EyeOff, Compass, Rows3, WifiOff, Building2, ScanSearch,
-  Bot, GitBranch, HeartPulse, MessageCircle, BellRing, FileScan, ShieldPlus, ScanLine, Shield, Bone, AtSign, Users2, GitFork, CalendarDays, FileOutput, ArrowRightLeft, Waypoints, CalendarCheck,
+  Bot, GitBranch, HeartPulse, MessageCircle, BellRing, FileScan, ShieldPlus, ScanLine, Shield, Bone, AtSign, Users2, GitFork, CalendarDays, FileOutput, ArrowRightLeft, Waypoints, CalendarCheck, Activity, Bug, ListChecks, FlaskRound, Wind, BookCheck, CalendarClock,
   type LucideIcon,
 } from "lucide-react";
 import { invokeAi } from "@/lib/ai-functions";
@@ -68,7 +68,7 @@ import TranslatorView from "@/components/cadus/TranslatorView";
 import PathwaysView from "@/components/cadus/PathwaysView";
 import FlashcardsView from "@/components/cadus/FlashcardsView";
 import CompareView from "@/components/cadus/CompareView";
-import { CADUS_STUDIO_CSS, CADUS_TODAY_CSS, CADUS_WARD_CSS } from "@/components/cadus/cadus-studio-styles";
+import { CADUS_STUDIO_CSS, CADUS_TODAY_CSS, CADUS_WARD_CSS, CADUS_BEDSIDE_CSS } from "@/components/cadus/cadus-studio-styles";
 import MedRecView from "@/components/cadus/MedRecView";
 import PresentCoachView from "@/components/cadus/PresentCoachView";
 import TodayView from "@/components/cadus/TodayView";
@@ -76,6 +76,17 @@ import DischargeView from "@/components/cadus/DischargeView";
 import HandoverView from "@/components/cadus/HandoverView";
 import DifferentialView from "@/components/cadus/DifferentialView";
 import StudyPlanView from "@/components/cadus/StudyPlanView";
+import EcgView from "@/components/cadus/EcgView";
+import AntibioticView from "@/components/cadus/AntibioticView";
+import ProcedureView from "@/components/cadus/ProcedureView";
+import PoisonView from "@/components/cadus/PoisonView";
+import InfusionView from "@/components/cadus/InfusionView";
+import ConvertView from "@/components/cadus/ConvertView";
+import AbgView from "@/components/cadus/AbgView";
+import LogbookView from "@/components/cadus/LogbookView";
+import FollowUpView from "@/components/cadus/FollowUpView";
+import { ABX_KEY, ECG_KEY, POISON_KEY, PROC_KEY } from "@/lib/cadus/clinicalAi";
+import { FOLLOWUP_KEY, LOG_KEY } from "@/lib/cadus/records";
 import { STUDYPLAN_KEY } from "@/lib/cadus/studyplan";
 import { installDesktopBridge, isOpenTarget, type OpenTarget } from "@/lib/cadus/desktop";
 import { cardStats } from "@/lib/cadus/learn";
@@ -150,9 +161,9 @@ type ModeId =
   | "admission" | "progress" | "opnote" | "death" | "certificate" | "rx" | "evidence";
 /** "groq" only appears in chats saved before Cadus became Claude-only. */
 type Provider = "claude" | "groq" | "library";
-type View = "chat" | "crew" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan";
+type View = "chat" | "crew" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan" | "ecg" | "abx" | "procedure" | "poison" | "infusions" | "convert" | "abg" | "logbook" | "followups";
 /** Views reached from the Tools hub, so the hub stays highlighted in the sidebar. */
-const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today", "discharge", "handover", "ddx", "studyplan"]);
+const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today", "discharge", "handover", "ddx", "studyplan", "ecg", "abx", "procedure", "poison", "infusions", "convert", "abg", "logbook", "followups"]);
 type ToolTab = "all" | "clinical" | "documentation" | "learning";
 type SettingsTab = "general" | "personal" | "letterhead" | "institution" | "data" | "shortcuts" | "about";
 type StyleId = "concise" | "balanced" | "detailed";
@@ -2151,6 +2162,12 @@ export default function CadusAI() {
     handovers: readJSON(HANDOVER_KEY, []),
     differentials: readJSON(DDX_KEY, []),
     studyPlan: readJSON(STUDYPLAN_KEY, null),
+    ecgReads: readJSON(ECG_KEY, []),
+    antibioticPlans: readJSON(ABX_KEY, []),
+    procedureGuides: readJSON(PROC_KEY, []),
+    poisoningPlans: readJSON(POISON_KEY, []),
+    logbook: readJSON(LOG_KEY, []),
+    followUps: readJSON(FOLLOWUP_KEY, []),
   });
   /** Removes everything Cadus keeps in this browser (Quick Consult too) and starts afresh. */
   const deleteEverything = () => {
@@ -2647,6 +2664,15 @@ export default function CadusAI() {
       { key: "a:handover", label: "Shift Handover: I-PASS for the next team", hint: "From your ward list, with if/then plans", icon: ArrowRightLeft, run: () => openView("handover") },
       { key: "a:ddx", label: "Differential Builder: ranked differential from findings", hint: "Can't-miss diagnoses and the next tests", icon: Waypoints, run: () => openView("ddx") },
       { key: "a:studyplan", label: "Exam Study Planner: a day-by-day plan to your exam", hint: "NEET-PG, INI-CET, FMGE or university", icon: CalendarCheck, run: () => openView("studyplan") },
+      { key: "a:ecg", label: "ECG Reader: read an ECG photo", hint: "Rate, rhythm, axis, intervals; STEMI and other urgent patterns flagged", icon: Activity, run: () => openView("ecg") },
+      { key: "a:abx", label: "Antibiotic Guide: empiric antibiotics", hint: "ICMR-based, adjusted for kidneys, allergy and your hospital policy", icon: Bug, run: () => openView("abx") },
+      { key: "a:procedure", label: "Procedure Guide and consent", hint: "LP, central line, chest drain, ascitic tap and more", icon: ListChecks, run: () => openView("procedure") },
+      { key: "a:poison", label: "Poisoning and snakebite", hint: "Antidotes, ASV, organophosphate, celphos, paracetamol", icon: FlaskRound, run: () => openView("poison") },
+      { key: "a:infusions", label: "Infusions: dose to mL/h", hint: "Noradrenaline, insulin, heparin, sedation; drip rates", icon: Syringe, run: () => openView("infusions") },
+      { key: "a:convert", label: "Dose Converter: steroids and opioids", hint: "Equivalent doses and opioid switches", icon: Scale, run: () => openView("convert") },
+      { key: "a:abg", label: "ABG Interpreter", hint: "Step by step: compensation, anion gap, delta ratio", icon: Wind, run: () => openView("abg") },
+      { key: "a:logbook", label: "PG Logbook", hint: "Log procedures, cases and duties; print or export", icon: BookCheck, run: () => openView("logbook") },
+      { key: "a:followups", label: "Follow-ups", hint: "Patients to review on a date", icon: CalendarClock, run: () => openView("followups") },
       { key: "a:present", label: "Presentation Coach: practise presenting a case", hint: "Ward round, long case, SBAR; scored with a model answer", icon: Presentation, run: () => openView("present") },
       { key: "a:compare", label: "Compare over time: what changed between two studies", hint: "X-rays, ECGs, scans, reports and wound photos", icon: History, run: () => openView("compare") },
       { key: "a:newcase", label: "New patient case", hint: "Start a de-identified case sheet", icon: ClipboardList, run: () => { const c = newCase(); setCases((l) => [c, ...l]); openCases(c.id); } },
@@ -3021,6 +3047,15 @@ export default function CadusAI() {
     { id: "handover", icon: ArrowRightLeft, tone: "amber", title: "Shift Handover", sub: "I-PASS from your ward list", go: () => openView("handover") },
     { id: "ddx", icon: Waypoints, tone: "rose", title: "Differential Builder", sub: "Ranked, with can't-miss flags", go: () => openView("ddx") },
     { id: "studyplan", icon: CalendarCheck, tone: "violet", title: "Study Planner", sub: "Day by day to your exam", go: () => openView("studyplan") },
+    { id: "ecg", icon: Activity, tone: "rose", title: "ECG Reader", sub: "Photo in, systematic read out", go: () => openView("ecg") },
+    { id: "abx", icon: Bug, tone: "sky", title: "Antibiotic Guide", sub: "Empiric, adjusted to the patient", go: () => openView("abx") },
+    { id: "procedure", icon: ListChecks, tone: "amber", title: "Procedure Guide", sub: "Steps, checklist and consent", go: () => openView("procedure") },
+    { id: "poison", icon: FlaskRound, tone: "rose", title: "Poisoning & Snakebite", sub: "Antidotes and doses", go: () => openView("poison") },
+    { id: "infusions", icon: Syringe, tone: "sky", title: "Infusions", sub: "Dose to mL/h and back", go: () => openView("infusions") },
+    { id: "convert", icon: Scale, tone: "violet", title: "Dose Converter", sub: "Steroids and opioids", go: () => openView("convert") },
+    { id: "abg", icon: Wind, tone: "sky", title: "ABG Interpreter", sub: "Step by step", go: () => openView("abg") },
+    { id: "logbook", icon: BookCheck, tone: "amber", title: "PG Logbook", sub: "Procedures, cases, duties", go: () => openView("logbook") },
+    { id: "followups", icon: CalendarClock, tone: "violet", title: "Follow-ups", sub: "Who to review and when", go: () => openView("followups") },
   ];
   const workspaceTiles = (compact = false) => (
     <div className={`cx-ws-grid ${compact ? "compact" : ""}`}>
@@ -4139,7 +4174,7 @@ export default function CadusAI() {
       style={{ ["--acc" as string]: dark ? accent.dark : accent.light, ["--fs" as string]: `${fontSize}px`, ["--fs-u" as string]: `${sansSize}px` }}
       {...dropHandlers}
     >
-      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS}</style>
+      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS}</style>
 
       {/* ============================================== sidebar */}
       <div className={`cx-scrim ${sidebarOpen ? "on" : ""}`} onClick={() => setSidebarOpen(false)} />
@@ -4208,6 +4243,15 @@ export default function CadusAI() {
               <button className={`cx-nav-i ${view === "handover" ? "on" : ""}`} onClick={() => openView("handover")} title="Shift Handover"><ArrowRightLeft size={16} /><span className="cx-nav-l">Shift Handover</span></button>
               <button className={`cx-nav-i ${view === "ddx" ? "on" : ""}`} onClick={() => openView("ddx")} title="Differential Builder"><Waypoints size={16} /><span className="cx-nav-l">Differential Builder</span></button>
               <button className={`cx-nav-i ${view === "studyplan" ? "on" : ""}`} onClick={() => openView("studyplan")} title="Study Planner"><CalendarCheck size={16} /><span className="cx-nav-l">Study Planner</span></button>
+              <button className={`cx-nav-i ${view === "ecg" ? "on" : ""}`} onClick={() => openView("ecg")} title="ECG Reader"><Activity size={16} /><span className="cx-nav-l">ECG Reader</span></button>
+              <button className={`cx-nav-i ${view === "abx" ? "on" : ""}`} onClick={() => openView("abx")} title="Antibiotic Guide"><Bug size={16} /><span className="cx-nav-l">Antibiotic Guide</span></button>
+              <button className={`cx-nav-i ${view === "procedure" ? "on" : ""}`} onClick={() => openView("procedure")} title="Procedure Guide"><ListChecks size={16} /><span className="cx-nav-l">Procedure Guide</span></button>
+              <button className={`cx-nav-i ${view === "poison" ? "on" : ""}`} onClick={() => openView("poison")} title="Poisoning & Snakebite"><FlaskRound size={16} /><span className="cx-nav-l">Poisoning &amp; Snakebite</span></button>
+              <button className={`cx-nav-i ${view === "infusions" ? "on" : ""}`} onClick={() => openView("infusions")} title="Infusions"><Syringe size={16} /><span className="cx-nav-l">Infusions</span></button>
+              <button className={`cx-nav-i ${view === "convert" ? "on" : ""}`} onClick={() => openView("convert")} title="Dose Converter"><Scale size={16} /><span className="cx-nav-l">Dose Converter</span></button>
+              <button className={`cx-nav-i ${view === "abg" ? "on" : ""}`} onClick={() => openView("abg")} title="ABG Interpreter"><Wind size={16} /><span className="cx-nav-l">ABG Interpreter</span></button>
+              <button className={`cx-nav-i ${view === "logbook" ? "on" : ""}`} onClick={() => openView("logbook")} title="PG Logbook"><BookCheck size={16} /><span className="cx-nav-l">PG Logbook</span></button>
+              <button className={`cx-nav-i ${view === "followups" ? "on" : ""}`} onClick={() => openView("followups")} title="Follow-ups"><CalendarClock size={16} /><span className="cx-nav-l">Follow-ups</span></button>
               <button data-tour="calculators" className={`cx-nav-i ${view === "calculators" ? "on" : ""}`} onClick={() => openCalculators()} title="Calculators"><Calculator size={16} /><span className="cx-nav-l">Calculators</span></button>
               <button className={`cx-nav-i ${view === "projects" || view === "project" ? "on" : ""}`} onClick={openProjects} title="Projects"><Folder size={16} /><span className="cx-nav-l">Projects</span>{projects.length > 0 && <em>{projects.length}</em>}</button>
               <button className={`cx-nav-i ${view === "decks" ? "on" : ""}`} onClick={() => { setView("decks"); setSidebarOpen(false); }} title="Decks"><Presentation size={16} /><span className="cx-nav-l">Decks</span>{decks.length > 0 && <em>{decks.length}</em>}</button>
@@ -4476,6 +4520,15 @@ export default function CadusAI() {
                 : view === "handover" ? [ArrowRightLeft, "Shift Handover"]
                 : view === "ddx" ? [Waypoints, "Differential Builder"]
                 : view === "studyplan" ? [CalendarCheck, "Study Planner"]
+                : view === "ecg" ? [Activity, "ECG Reader"]
+                : view === "abx" ? [Bug, "Antibiotic Guide"]
+                : view === "procedure" ? [ListChecks, "Procedure Guide"]
+                : view === "poison" ? [FlaskRound, "Poisoning & Snakebite"]
+                : view === "infusions" ? [Syringe, "Infusions"]
+                : view === "convert" ? [Scale, "Dose Converter"]
+                : view === "abg" ? [Wind, "ABG Interpreter"]
+                : view === "logbook" ? [BookCheck, "PG Logbook"]
+                : view === "followups" ? [CalendarClock, "Follow-ups"]
                 : view === "project" && project ? [Folder, project.name]
                 : [Folder, "Projects"];
               return <span className="cx-title-btn static"><Icon size={14} /> <span>{label}</span></span>;
@@ -4764,6 +4817,49 @@ export default function CadusAI() {
                 toast={toast}
               />
             )
+            : view === "ecg" ? (
+              <EcgView
+                generate={(body) => invokeCadus({ ...body, model: prefs.model })}
+                readFile={(f) => readAttachment(f, (img) => fileToDataUrl(img))}
+                friendlyError={friendlyError}
+                toast={toast}
+                onPrint={(title, md) => printDoc(title, md, { mode: "note" })}
+                onAsk={(q) => { if (pending) { toast("Wait for the current answer to finish"); return; } void send(q, "general"); }}
+              />
+            )
+            : view === "abx" ? (
+              <AntibioticView
+                generate={(body) => invokeCadus({ ...body, model: prefs.model, institution: institutionPayload(institution, `antibiotic ${String(body.infection ?? "")}`)?.payload })}
+                friendlyError={friendlyError}
+                toast={toast}
+                onPrint={(title, md) => printDoc(title, md, { mode: "note" })}
+                hasPolicy={institution.on && !!institution.antibiotic.trim()}
+              />
+            )
+            : view === "procedure" ? (
+              <ProcedureView
+                generate={(body) => invokeCadus({ ...body, model: prefs.model })}
+                friendlyError={friendlyError}
+                toast={toast}
+                onPrint={(title, md, large) => printDoc(title, md, { mode: large ? "leaflet" : "note", large: !!large })}
+                defaultLanguage={prefs.language}
+              />
+            )
+            : view === "poison" ? (
+              <PoisonView
+                generate={(body) => invokeCadus({ ...body, model: prefs.model })}
+                friendlyError={friendlyError}
+                toast={toast}
+                onPrint={(title, md) => printDoc(title, md, { mode: "note" })}
+              />
+            )
+            : view === "infusions" ? <InfusionView />
+            : view === "convert" ? <ConvertView />
+            : view === "abg" ? <AbgView onAsk={(q) => { if (pending) { toast("Wait for the current answer to finish"); return; } void send(q, "general"); }} />
+            : view === "logbook" ? (
+              <LogbookView toast={toast} onPrint={(title, md) => printDoc(title, md, { mode: "note" })} name={profile?.fullName ?? ""} department={institution.department || profile?.specialty || ""} />
+            )
+            : view === "followups" ? <FollowUpView toast={toast} />
             : view === "today" ? (
               <TodayView
                 name={firstName}

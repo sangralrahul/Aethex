@@ -43,6 +43,12 @@
 //   handover              Shift Handover: the ward list as an I-PASS handover for the next team.
 //   differential          Differential Builder: findings to a ranked differential with the
 //                         can't-miss diagnoses and the next tests.
+//   ecg                   ECG Reader: a 12-lead ECG photo read systematically, urgent patterns flagged.
+//   antibiotic            Antibiotic Guide: empiric antibiotics for an infection, adjusted to the patient
+//                         and the institution's antibiotic policy.
+//   procedure             Procedure Guide: a bedside procedure step by step, with a consent sheet in
+//                         the patient's language.
+//   poison                Poisoning & Snakebite: first actions, antidotes with doses, monitoring.
 //   report-explain        Report Explainer: a lab, imaging or other report as a summary for
 //                         the doctor and an explanation for the patient in their language.
 import {
@@ -108,6 +114,7 @@ import {
   TRANSLATE_SYSTEM,
   translateTurn,
 } from "../_shared/studio.ts";
+import { ABX_SYSTEM, abxPlan, ECG_SYSTEM, ecgRead, POISON_SYSTEM, poisonPlan, PROCEDURE_SYSTEM, procGuide } from "../_shared/bedside.ts";
 
 /* ------------------------------------------------------------------ prompts */
 
@@ -1914,6 +1921,102 @@ Deno.serve(async (req) => {
       if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
       const result = differential(parseJsonLoose<any>(r.content));
       if (!result) return jsonResponse({ error: "Couldn't build a differential this time. Please try again." }, 502);
+      return jsonResponse({ result });
+    }
+
+    // ---------------------------------------------------------------- ECG Reader
+    if (action === "ecg") {
+      const files = attachmentParts(body.files, "");
+      if (!files.images && !files.documents) return jsonResponse({ error: "Add a photo or scan of the ECG" }, 400);
+      const age = cleanLine(body.age, 10);
+      const sex = ["male", "female"].includes(String(body.sex)) ? String(body.sex) : "";
+      const context = String(body.context || "").replace(/\r/g, "").trim().slice(0, 2000);
+      const r = await callAI({
+        model: CLAUDE_REVIEW_MODEL,
+        messages: [
+          { role: "system", content: ECG_SYSTEM },
+          { role: "user", content: [
+            { type: "text", text: `PATIENT: ${age ? `${age} years` : "age not given"}, ${sex || "sex not given"}.${context ? `\nCLINICAL CONTEXT: ${context}` : ""}\nThe ECG:` },
+            ...files.parts,
+            { type: "text", text: "Read this ECG." },
+          ] },
+        ],
+        jsonMode: true,
+        effort: "high",
+        maxTokens: 6000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = ecgRead(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't read that ECG. Try a straighter, brighter photo with all 12 leads." }, 502);
+      return jsonResponse({ result });
+    }
+
+    // ---------------------------------------------------------------- Antibiotic Guide
+    if (action === "antibiotic") {
+      const infection = cleanLine(body.infection, 160);
+      if (infection.length < 3) return jsonResponse({ error: "Choose or type the infection" }, 400);
+      const patient = rxPatient(body.patient);
+      const setting = ["community", "ward", "icu"].includes(String(body.setting)) ? String(body.setting) : "ward";
+      const severity = ["mild", "moderate", "severe"].includes(String(body.severity)) ? String(body.severity) : "moderate";
+      const culture = String(body.culture || "").replace(/\r/g, "").trim().slice(0, 2000);
+      const risks = (Array.isArray(body.risks) ? body.risks : []).slice(0, 8).map((x: unknown) => cleanLine(x, 80)).filter(Boolean);
+      const r = await callAI({
+        model: CLAUDE_REVIEW_MODEL,
+        messages: [
+          { role: "system", content: [ABX_SYSTEM, institutionLine(body.institution)].filter(Boolean).join("\n\n") },
+          { role: "user", content: [`INFECTION: ${infection}`, `SETTING: ${setting === "community" ? "OPD / community-acquired" : setting === "icu" ? "ICU" : "ward"}; severity ${severity}`, `PATIENT: ${rxPatientLine(patient)}`, risks.length ? `RISK FACTORS: ${risks.join("; ")}` : "", culture ? `CULTURE / SENSITIVITY: ${culture}` : "No culture result yet."].filter(Boolean).join("\n") },
+        ],
+        jsonMode: true,
+        effort: "high",
+        maxTokens: 6000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = abxPlan(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't suggest antibiotics this time. Please try again." }, 502);
+      return jsonResponse({ result });
+    }
+
+    // ---------------------------------------------------------------- Procedure Guide
+    if (action === "procedure") {
+      const procedure = cleanLine(body.procedure, 120);
+      if (procedure.length < 3) return jsonResponse({ error: "Choose or type the procedure" }, 400);
+      const language = cleanLine(body.language, 40) || "English";
+      const level = ["intern", "resident", "senior"].includes(String(body.level)) ? String(body.level) : "resident";
+      const r = await callAI({
+        model: answerModel(body.model),
+        messages: [
+          { role: "system", content: PROCEDURE_SYSTEM },
+          { role: "user", content: `PROCEDURE: ${procedure}\nFOR: ${level === "intern" ? "an intern doing it for the first times, under supervision" : level === "senior" ? "a senior resident" : "a resident"}${cleanLine(body.patient, 200) ? `\nPATIENT: ${cleanLine(body.patient, 200)}` : ""}\nConsent sheet language: ${language}${language !== "English" ? " (its own script)" : ""}.` },
+        ],
+        jsonMode: true,
+        effort: "medium",
+        maxTokens: 9000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = procGuide(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't write that guide this time. Please try again." }, 502);
+      return jsonResponse({ result });
+    }
+
+    // ---------------------------------------------------------------- Poisoning & Snakebite
+    if (action === "poison") {
+      const agent = cleanLine(body.agent, 160);
+      const findings = String(body.findings || "").replace(/\r/g, "").trim().slice(0, 3000);
+      if (agent.length < 3 && findings.split(/\s+/).length < 4) return jsonResponse({ error: "Choose the poison, or describe the findings" }, 400);
+      const patient = rxPatient(body.patient);
+      const r = await callAI({
+        model: CLAUDE_REVIEW_MODEL,
+        messages: [
+          { role: "system", content: POISON_SYSTEM },
+          { role: "user", content: [`AGENT: ${agent || "unknown"}`, cleanLine(body.since, 60) ? `TIME SINCE EXPOSURE: ${cleanLine(body.since, 60)}` : "", cleanLine(body.amount, 120) ? `AMOUNT / ROUTE: ${cleanLine(body.amount, 120)}` : "", `PATIENT: ${rxPatientLine(patient)}`, findings ? `<findings>\n${findings}\n</findings>` : ""].filter(Boolean).join("\n") },
+        ],
+        jsonMode: true,
+        effort: "high",
+        maxTokens: 6000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = poisonPlan(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't make a plan this time. Please try again, and call your poison centre." }, 502);
       return jsonResponse({ result });
     }
 

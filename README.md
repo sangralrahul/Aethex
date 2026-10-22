@@ -107,6 +107,12 @@ It provides an intelligent interface for medical and educational assistance.
 - Differential Builder: age, sex, setting and findings to a ranked differential with what fits and what doesn't, the deciding test for each, the can't-miss diagnoses and the next tests in order
 - Exam Study Planner: a day-by-day plan to NEET-PG, INI-CET, FMGE or a university exam from the Learn syllabus, with revision and mock days, re-planning after missed days and calendar (.ics) export
 - Desktop app 1.0.2: tray icon, Ctrl+Shift+Space quick-open, start with Windows, and reminders for flashcards due, open ward jobs and the study plan
+- ECG Reader: a photo of a 12-lead ECG read systematically (rate, rhythm, axis, intervals, findings by lead) by the stronger model, with urgent patterns such as STEMI, heart block and hyperkalaemia flagged; only a small thumbnail is kept
+- Antibiotic Guide: empiric regimens for common infections (ICMR-based, following the hospital antibiotic policy when added), with doses adjusted for kidneys, weight, allergy and pregnancy, what to send first and when to step down
+- Procedure Guide: bedside procedures step by step with an equipment checklist, complications and how often they happen, and a consent sheet in the patient's language; guides are saved for next time
+- Poisoning & Snakebite: first actions, antidotes and ASV with doses for the patient, what to avoid and how to monitor, following Indian protocols
+- Infusions, Dose Converter and ABG Interpreter, worked out on the device: ICU infusions (dose to mL/h and back, usual ranges, drip rates), steroid and opioid conversions, and step-by-step blood gas interpretation
+- PG Logbook (procedures, surgeries, cases, duties and academic work with counts by role, printable or CSV) and Follow-ups (who to review and when, shown on Today)
 
 > CADUS is intended as an educational and informational assistant and is not a replacement for qualified medical professionals.
 

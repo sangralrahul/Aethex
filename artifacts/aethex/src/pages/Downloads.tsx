@@ -16,6 +16,7 @@ import {
   Search, ShieldCheck, UserRound, WifiOff, X,
   BellRing, Bot, CalendarDays, FileScan, GitFork, HeartPulse, History, Languages, Layers, Pill, Presentation, ShieldPlus, Users2,
   ArrowRightLeft, CalendarCheck, FileOutput, Keyboard, Power, Waypoints, PanelBottom,
+  Activity, Bug, ListChecks, FlaskRound, Syringe, Scale, Wind, BookCheck, CalendarClock,
 } from "lucide-react";
 import CadusMark from "@/components/cadus/CadusMark";
 import { FONT_FACES } from "@/components/cadus/cadus-styles";
@@ -266,10 +267,21 @@ const TOOLS: [string, string][] = [
   ["Cadus Crew", "y"], ["Crew Huddle", "y"], ["Deep Dive research", "v"], ["Guideline Watch", "v"], ["Case Simulator", "y"],
   ["Presentation Coach", "y"], ["Flashcards", "y"], ["Exam practice", "y"], ["Patient leaflets", "t"], ["Offline library", "y"],
   ["Discharge Summary", "t"], ["Shift Handover", "r"], ["Differential Builder", "v"], ["Study Planner", "y"],
+  ["ECG Reader", "r"], ["Antibiotic Guide", "t"], ["Procedure Guide", "v"], ["Poisoning & Snakebite", "r"], ["Infusions", "t"],
+  ["ABG Interpreter", "v"], ["Dose Converter", "t"], ["PG Logbook", "y"], ["Follow-ups", "y"],
 ];
 
 /** What's arrived in Cadus lately. The app shows the live Cadus, so all of it is in the app already. */
 const NEW_IN_CADUS: { icon: typeof Pill; t: string; d: string }[] = [
+  { icon: Activity, t: "ECG Reader", d: "Photograph a 12-lead ECG: rate, rhythm, axis, intervals and findings by lead, with STEMI, heart block and hyperkalaemia flagged on top." },
+  { icon: Bug, t: "Antibiotic Guide", d: "Empiric antibiotics for the infection in front of you, following ICMR guidance and your hospital's policy, with doses adjusted for kidneys, allergy and pregnancy." },
+  { icon: ListChecks, t: "Procedure Guide", d: "LP, central line, chest drain, ascitic tap and more, step by step with an equipment checklist, and a consent sheet in the patient's language." },
+  { icon: FlaskRound, t: "Poisoning & Snakebite", d: "Organophosphate, celphos, paracetamol, krait and viper bites: first actions, antidotes and ASV doses for the patient, and how to monitor." },
+  { icon: Syringe, t: "Infusions", d: "Noradrenaline, insulin, heparin and sedation in standard dilutions: dose to mL/h and back, the usual range, and drip rates." },
+  { icon: Wind, t: "ABG Interpreter", d: "Any blood gas worked through step by step: compensation, anion gap with albumin correction, delta ratio, oxygenation and likely causes." },
+  { icon: Scale, t: "Dose Converter", d: "Steroid equivalents and opioid switches through oral morphine equivalents, with the cross-tolerance reduction worked out." },
+  { icon: BookCheck, t: "PG Logbook", d: "Log procedures, surgeries, cases, duties and seminars in seconds; counts by role and a printable logbook or Excel file for your department." },
+  { icon: CalendarClock, t: "Follow-ups", d: "Who to review and when, with what to check; due follow-ups appear on Today." },
   { icon: FileOutput, t: "Discharge Summary", d: "Paste the notes or photograph the case sheet: a structured discharge summary to print on your letterhead, what the notes are missing, and advice for the patient in their language." },
   { icon: ArrowRightLeft, t: "Shift Handover", d: "Your ward list as an I-PASS handover for the night team: severity, actions, \u201cif this, then that\u201d plans and what to watch, read back patient by patient." },
   { icon: Waypoints, t: "Differential Builder", d: "Findings in, a ranked differential out: what fits, what doesn't, the test that decides each one, and the can't-miss diagnoses flagged." },
@@ -319,7 +331,7 @@ const FAQ = [
   { q: "Windows says it protected my PC. Is the file safe?", a: <>Windows SmartScreen warns about new apps until they have been downloaded many times. Choose <b>More info</b>, then <b>Run anyway</b>. You can check the file against its SHA-256 checksum above.</> },
   { q: "Which Windows version should I download?", a: <>The installer for most PCs (Intel and AMD) is x64. Laptops with a Snapdragon or other ARM processor need Windows on ARM. This page picks the right one for this computer.</> },
   { q: "When will Cadus for Mac be available?", a: <>Once it is signed and notarised with Apple, so macOS opens it without warnings. <a href={MAC_MAIL}>Leave your email</a> and we'll tell you.</> },
-  { q: "Do I need to reinstall to get the new tools?", a: <>No. Discharge Summary, Shift Handover, Differential Builder, the Study Planner and every other tool are already in the app, because it shows the live Cadus. Only the app's own features (the tray, the shortcut, starting with Windows and reminders) need version {RELEASE.version}.</> },
+  { q: "Do I need to reinstall to get the new tools?", a: <>No. The ECG Reader, Antibiotic Guide, Infusions, ABG Interpreter, PG Logbook and every other tool are already in the app, because it shows the live Cadus. Only the app's own features (the tray, the shortcut, starting with Windows and reminders) need version {RELEASE.version}.</> },
   { q: `How do I get version ${RELEASE.version}?`, a: <>Download it above and install it over the old one: your sign-in, chats and settings stay. Cadus also tells you within a day that it's ready, or choose <b>Help › Check for updates</b>.</> },
   { q: "How do I turn off reminders, the tray or starting with Windows?", a: <>Right-click the Cadus icon in the tray, or open the <b>File</b> menu (press <b>Alt</b> if the menu bar is hidden), and untick what you don't want. <b>Quit Cadus</b> in the same menu closes it completely.</> },
   { q: "Can I use voice typing in the app?", a: <>Not yet: voice typing (dictation, voice mode and speaking to the Consult Translator) needs the speech service built into Chrome and Edge, so use Cadus in one of those for voice. Reading answers and translations aloud works in the app.</> },
