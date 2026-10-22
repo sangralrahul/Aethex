@@ -92,7 +92,7 @@ const POSTS: Post[] = [
     id: 5,
     title: "CDSCO Alert: Metformin recall — which batches are affected?",
     body: "CDSCO issued a recall notice for certain batches of Metformin 500mg tablets from Sun Pharma due to NDMA contamination above acceptable limits. Batch numbers: ZX-2024-09 and ZX-2024-10. If you have dispensed these, please advise patients to consult their physician. Full CDSCO alert linked below. This is the third recall in this category since 2022.",
-    category: "drug-updates", author: "Cadus AI Digest", specialty: "Pharmacovigilance", tier: "Magnus",
+    category: "drug-updates", author: "Cadus Digest", specialty: "Pharmacovigilance", tier: "Magnus",
     upvotes: 445, downvotes: 2, commentCount: 89, time: "6 hours ago",
     tags: ["CDSCO", "recall", "metformin", "NDMA", "drug safety"],
     comments: [
@@ -188,7 +188,7 @@ const POSTS: Post[] = [
     id: 14,
     title: "ICMR guidelines on H3N2 influenza — management protocol updated",
     body: "ICMR released updated guidelines for seasonal influenza H3N2 management last week. Key updates: 1) Oseltamivir recommended for all high-risk groups within 48h of symptom onset, 2) Zanamivir as alternative for oseltamivir-resistant strains, 3) Routine chest X-ray no longer recommended for uncomplicated influenza, 4) Antibiotic stewardship — avoid unless bacterial co-infection suspected. Full guideline PDF in comments.",
-    category: "drug-updates", author: "Cadus AI Digest", specialty: "Infectious Disease", tier: "Magnus",
+    category: "drug-updates", author: "Cadus Digest", specialty: "Infectious Disease", tier: "Magnus",
     upvotes: 334, downvotes: 3, commentCount: 47, time: "1 week ago",
     tags: ["ICMR", "influenza", "H3N2", "oseltamivir", "guidelines"],
     comments: [],
@@ -350,7 +350,7 @@ function PostCard({ post }: { post: Post }) {
                 <MessageSquare className="w-3.5 h-3.5" />{comments.length} comments
               </button>
               <a href={cadusUrl("/")} className="flex items-center gap-1.5 text-xs transition-all hover:opacity-80" style={{ color: "#007AFF", textDecoration: "none" }}>
-                <Sparkles className="w-3.5 h-3.5" />Ask Cadus AI
+                <Sparkles className="w-3.5 h-3.5" />Ask Cadus
               </a>
 
             </div>

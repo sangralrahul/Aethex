@@ -20,6 +20,7 @@ import {
   Sparkles, Square, SquarePen, Stethoscope, Sun, Syringe, Telescope, Trash2, Users, Volume2, VolumeX, X, Zap, Palette,
   BedDouble, BookMarked, BookOpenText, ChartLine, ClipboardPlus, FileBadge, FileSignature, Microscope, NotebookPen, NotepadText,
   Printer, Scissors, ScrollText, Sigma, PanelRight, EyeOff, Compass, Rows3, WifiOff, Building2, ScanSearch,
+  Bot, GitBranch, HeartPulse, MessageCircle,
   type LucideIcon,
 } from "lucide-react";
 import { invokeAi } from "@/lib/ai-functions";
@@ -53,7 +54,11 @@ import CanvasPanel, { type CanvasDoc } from "@/components/cadus/CanvasPanel";
 import VoiceMode, { voiceSupported } from "@/components/cadus/VoiceMode";
 import PersonalSettings from "@/components/cadus/PersonalSettings";
 import { CADUS_CHAT_CSS } from "@/components/cadus/cadus-chat-styles";
-import { closePartialMarkdown, createTextStore, streamCadus, StreamUnavailable } from "@/lib/cadus/stream";
+import { closePartialMarkdown, createTextStore, streamCadus, StreamUnavailable, type DeepStep } from "@/lib/cadus/stream";
+import {
+  BUILT_IN_CREW, blankCrew, cleanCrew, CREW_ICONS, CREW_MAX, CREW_TONES, crewPayload, findCrew, INSTRUCTIONS_MAX as CREW_INSTRUCTIONS_MAX, NAME_MAX as CREW_NAME_MAX,
+  readCrew, saveCrew, STARTER_MAX, TAGLINE_MAX, type CrewIcon, type CrewMember,
+} from "@/lib/cadus/crew";
 import {
   ACCEPT_ATTACH, attachmentPayload, attachmentsForStorage, attachProblem, describeAttachment, formatSize, readAttachment,
   type Attachment,
@@ -82,6 +87,7 @@ import { CADUS_REF_CSS } from "@/components/cadus/cadus-ref-styles";
 import { CADUS_WS_CSS } from "@/components/cadus/cadus-ws-styles";
 import { CADUS_CLINIC_CSS } from "@/components/cadus/cadus-clinic-styles";
 import { CADUS_LOOKS_CSS, LOOKS } from "@/components/cadus/cadus-looks-styles";
+import { CADUS_PLUS_CSS } from "@/components/cadus/cadus-plus-styles";
 import ScribeView from "@/components/cadus/ScribeView";
 import ProfileSetup, { PROFILE_SETUP_CSS } from "@/components/cadus/ProfileSetup";
 import { fetchRemoteProfile, pushRemoteProfile } from "@/lib/cadus/profileSync";
@@ -116,12 +122,15 @@ type ModeId =
   | "admission" | "progress" | "opnote" | "death" | "certificate" | "rx" | "evidence";
 /** "groq" only appears in chats saved before Cadus became Claude-only. */
 type Provider = "claude" | "groq" | "library";
-type View = "chat" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets";
+type View = "chat" | "crew" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets";
 /** Views reached from the Tools hub, so the hub stays highlighted in the sidebar. */
 const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets"]);
 type ToolTab = "all" | "clinical" | "documentation" | "learning";
 type SettingsTab = "general" | "personal" | "letterhead" | "institution" | "data" | "shortcuts" | "about";
 type StyleId = "concise" | "balanced" | "detailed";
+/** Cadus modes, picked beside the message box (like Grok's and ChatGPT's): how each answer is written. */
+type AnswerModeId = "auto" | "fast" | "think" | "exam" | "simple" | "deep";
+type ToneId = "professional" | "friendly" | "mentor";
 
 interface SourceRef {
   n: number;
@@ -182,6 +191,14 @@ interface Msg {
   took?: number;
   /** assistant message: the institution's local protocols that went with the question */
   protocols?: string[];
+  /** user message: the Cadus mode it was asked in (Fast, Exam, Simple or Deep Dive; Think is `think`) */
+  amode?: "fast" | "exam" | "simple" | "deep";
+  /** user message: the tone asked for (professional when unset) */
+  tone?: "friendly" | "mentor";
+  /** assistant message: a Deep Dive report: its stages, and how many papers and web sources were read */
+  deep?: { title?: string; steps: DeepStep[]; papers: number; web: number };
+  /** assistant message: follow-up questions written for this answer */
+  followups?: string[];
 }
 
 interface Session {
@@ -199,6 +216,8 @@ interface Session {
   autoTitle?: boolean;
   /** The patient case this chat is about. */
   caseId?: string;
+  /** The Cadus Crew assistant this chat is with. */
+  crewId?: string;
 }
 
 interface Project {
@@ -250,6 +269,10 @@ interface Prefs {
   nlem: boolean;
   /** Compact density fits more on the screen. */
   density: "comfortable" | "compact";
+  /** The Cadus mode for new questions. */
+  answerMode: AnswerModeId;
+  /** The tone of answers. */
+  tone: ToneId;
 }
 
 interface ModeDef {
@@ -371,6 +394,33 @@ const STYLES: { id: StyleId; label: string; desc: string; icon: LucideIcon }[] =
   { id: "detailed", label: "Thorough", desc: "Longer answers with more nuance", icon: Layers },
 ];
 
+const ANSWER_MODES: { id: AnswerModeId; label: string; desc: string; icon: LucideIcon }[] = [
+  { id: "auto", label: "Auto", desc: "Picks the right depth for each question", icon: Sparkles },
+  { id: "fast", label: "Fast", desc: "Quick, to-the-point answers", icon: Zap },
+  { id: "think", label: "Think", desc: "Reasons step by step for complex cases", icon: Lightbulb },
+  { id: "exam", label: "Exam", desc: "High-yield facts, traps, one-liners and MCQs", icon: GraduationCap },
+  { id: "simple", label: "Simple", desc: "Plain words and analogies, for anyone", icon: MessageCircle },
+  { id: "deep", label: "Deep Dive", desc: "Researches PubMed and guidelines in steps, then writes a cited report", icon: Telescope },
+];
+const AMODE = Object.fromEntries(ANSWER_MODES.map((m) => [m.id, m])) as Record<AnswerModeId, (typeof ANSWER_MODES)[number]>;
+const TONES: { id: ToneId; label: string; desc: string }[] = [
+  { id: "professional", label: "Professional", desc: "Precise, like a senior colleague" },
+  { id: "friendly", label: "Friendly", desc: "Warm and encouraging" },
+  { id: "mentor", label: "Mentor", desc: "Teaches the why, then checks you" },
+];
+/** Tools whose answers get follow-ups written for them by the AI (the others keep their own suggestions). */
+const SMART_FOLLOW = new Set<ModeId>(["general", "ddx", "drugs", "dosage", "labs", "image", "procedure", "research", "evidence"]);
+/** Icons a Cadus Crew assistant can show. */
+const CREW_ICON: Record<CrewIcon, LucideIcon> = {
+  stethoscope: Stethoscope, graduation: GraduationCap, pill: Pill, file: FileText, microscope: Microscope, heart: HeartPulse,
+  baby: Baby, brain: Brain, users: Users, clipboard: ClipboardList, siren: Siren, book: BookOpen,
+};
+/** A Crew assistant's badge. */
+function CrewBadge({ c, size = 40 }: { c: Pick<CrewMember, "icon" | "tone">; size?: number }) {
+  const I = CREW_ICON[c.icon] ?? Stethoscope;
+  return <span className={`cx-crew-badge tone-${c.tone}`} style={{ width: size, height: size }} aria-hidden="true"><I size={Math.round(size * 0.48)} /></span>;
+}
+
 type ModelId = "medius" | "magnus";
 /** The Cadus models users choose between. Medius runs the fast model, Magnus the deeper one. */
 const MODELS: { id: ModelId; name: string; short: string; desc: string; icon: LucideIcon }[] = [
@@ -409,7 +459,7 @@ const LIBRARY_KEY = "cadus3.library";
 const PROJECTS_KEY = "cadus3.projects";
 const UI_KEY = "cadus3.ui";
 const DOCS_KEY = "cadus3.docs";
-const DEFAULT_PREFS: Prefs = { theme: "light", accent: "navy", textSize: "m", style: "balanced", language: "English", enterToSend: true, safetyReview: true, sources: false, answerFont: "sans", model: "medius", privacyGuard: true, notify: false, units: "conventional", nlem: false, density: "comfortable", wallpaper: "none", look: "editorial" };
+const DEFAULT_PREFS: Prefs = { theme: "light", accent: "navy", textSize: "m", style: "balanced", language: "English", enterToSend: true, safetyReview: true, sources: false, answerFont: "sans", model: "medius", privacyGuard: true, notify: false, units: "conventional", nlem: false, density: "comfortable", wallpaper: "none", look: "editorial", answerMode: "auto", tone: "professional" };
 /** Bumped when the default look changes, so saved settings move to the new theme, colour and answer font once. */
 const PREFS_VERSION = 5;
 
@@ -424,6 +474,8 @@ function loadPrefs(): Prefs {
   const prefs = { ...DEFAULT_PREFS, ...saved };
   if (!isWallpaper(prefs.wallpaper)) prefs.wallpaper = "none";
   if (!LOOKS.some((l) => l.id === prefs.look)) prefs.look = "editorial";
+  if (!ANSWER_MODES.some((m) => m.id === prefs.answerMode)) prefs.answerMode = "auto";
+  if (!TONES.some((t) => t.id === prefs.tone)) prefs.tone = "professional";
   return prefs;
 }
 const PROJECT_IDEAS = ["Cardiology rotation", "NEET-PG revision", "Thesis literature review"];
@@ -881,6 +933,8 @@ export default function CadusAI() {
   const [pending, setPending] = useState<{
     id: string; sid: string; mode: ModeId; image: boolean; doc: boolean; stage: "draft" | "review" | "library";
     search: boolean; review: boolean; think: boolean; started: number; prior?: Msg;
+    /** Deep Dive: the stages so far. */
+    deep?: DeepStep[];
   } | null>(null);
   const [lastProvider, setLastProvider] = useState<Provider>("claude");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -916,7 +970,17 @@ export default function CadusAI() {
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
   const [wardLang, setWardLang] = useState("");
   const [personal, setPersonalState] = useState<Personal>(readPersonal);
-  const [think, setThink] = useState(false);
+  // The Cadus mode stays as picked, like Grok's; "Think deeper" is the Think mode.
+  const think = prefs.answerMode === "think";
+  const setThink = (v: boolean | ((cur: boolean) => boolean)) =>
+    setPrefs((p) => {
+      const next = typeof v === "function" ? v(p.answerMode === "think") : v;
+      return { ...p, answerMode: next ? "think" : p.answerMode === "think" ? "auto" : p.answerMode };
+    });
+  /** Cadus Crew: the user's own assistants, the one a new chat will be with, and the one being edited. */
+  const [crewMine, setCrewMine] = useState<CrewMember[]>(() => readCrew(MODES.map((m) => m.id)));
+  const [crewNext, setCrewNext] = useState("");
+  const [crewEdit, setCrewEdit] = useState<CrewMember | null>(null);
   /** The Read tool: what kind of image or report is attached. */
   const [reading, setReading] = useState("");
   const [tempNext, setTempNext] = useState(false);
@@ -1105,6 +1169,7 @@ export default function CadusAI() {
   useEffect(() => writeJSON(LIBRARY_KEY, library.slice(0, 300)), [library]);
   useEffect(() => writeJSON(USAGE_KEY, usage), [usage]);
   useEffect(() => writeJSON(PROJECTS_KEY, projects), [projects]);
+  useEffect(() => saveCrew(crewMine), [crewMine]);
   useEffect(() => writeJSON(UI_KEY, { collapsed: autoCollapsed.current ? false : collapsed, moreOpen }), [collapsed, moreOpen]);
   // Canvas needs room: on smaller desktop screens the sidebar folds away while it is open.
   useEffect(() => {
@@ -1269,6 +1334,49 @@ export default function CadusAI() {
     });
   }, []);
 
+  /* -------------------------------------------------------- Cadus Crew */
+
+  const openCrew = () => { setView("crew"); setSidebarOpen(false); setPop(null); };
+  /** A new chat with this Crew assistant: its starters on the home page, its instructions with every message. */
+  const startCrew = (c: CrewMember) => {
+    newChat();
+    setCrewNext(c.id);
+  };
+  const saveCrewEdit = () => {
+    if (!crewEdit) return;
+    const clean = cleanCrew(crewEdit, MODES.map((m) => m.id));
+    if (!clean) { toast("Give it a name and instructions"); return; }
+    const exists = crewMine.some((c) => c.id === clean.id);
+    if (!exists && crewMine.length >= CREW_MAX) { toast(`You can keep up to ${CREW_MAX} assistants`); return; }
+    setCrewMine((l) => (exists ? l.map((c) => (c.id === clean.id ? clean : c)) : [clean, ...l]));
+    setCrewEdit(null);
+    toast(exists ? "Saved" : `${clean.name} joined your crew`);
+  };
+  const deleteCrew = (id: string) => {
+    setCrewMine((l) => l.filter((c) => c.id !== id));
+    if (crewNext === id) setCrewNext("");
+    setPop(null);
+    toast("Removed from your crew");
+  };
+  /** A new chat holding this chat up to the chosen answer, to take the conversation another way. */
+  const branchFrom = (mid: string) => {
+    if (!active || pending) return;
+    const idx = active.messages.findIndex((x) => x.id === mid);
+    if (idx < 0) return;
+    const sid = uid();
+    const copy: Session = {
+      id: sid, title: clip(`Branch · ${active.title}`, 90), messages: active.messages.slice(0, idx + 1).map((x) => ({ ...x, id: uid() })), updatedAt: Date.now(),
+      ...(active.projectId ? { projectId: active.projectId } : {}), ...(active.crewId ? { crewId: active.crewId } : {}),
+      ...(active.caseId ? { caseId: active.caseId } : {}), ...(active.temp ? { temp: true } : {}),
+    };
+    setSessions((p) => [copy, ...p]);
+    setActiveId(sid);
+    setView("chat");
+    setEditing(null);
+    toast("Branched into a new chat");
+    focusComposer();
+  };
+
   /* -------------------------------------------------------- projects */
 
   const openProjects = () => {
@@ -1349,7 +1457,7 @@ export default function CadusAI() {
     setActiveId("");
     setInput("");
     setAttachments([]);
-    setThink(false);
+    setCrewNext("");
     setFb(null);
     setEditing(null);
     setMode(m);
@@ -1413,6 +1521,15 @@ export default function CadusAI() {
     } catch { /* keep the first-message title */ }
   };
 
+  /** Follow-up questions written for this answer (the tool's own suggestions show until they arrive, or if they don't). */
+  const suggestFollowups = async (sid: string, reply: Msg, q: Msg, language: string) => {
+    try {
+      const r = await invokeCadus({ action: "followups", question: (stripPlaceholders(q.content) || q.content).slice(0, 1500), answer: markdownToText(reply.content).slice(0, 2500), language });
+      const list = Array.isArray(r?.followups) ? (r.followups as unknown[]).filter((x): x is string => typeof x === "string" && !!x.trim()).slice(0, 3) : [];
+      if (list.length) setSessions((p) => p.map((s) => (s.id === sid ? { ...s, messages: s.messages.map((x) => (x.id === reply.id ? { ...x, followups: list } : x)) } : s)));
+    } catch { /* keep the tool's own suggestions */ }
+  };
+
   /** A desktop notification when an answer lands while Cadus is in a background tab. */
   const notifyDone = (sid: string, reply: Msg) => {
     if (!prefs.notify || typeof Notification === "undefined" || Notification.permission !== "granted" || document.visibilityState !== "hidden") return;
@@ -1425,7 +1542,7 @@ export default function CadusAI() {
   const runRequest = useCallback(
     async (
       sid: string, history: Msg[], userMsg: Msg, instructions = "",
-      extra: { improve?: Record<string, unknown>; prior?: Msg; temp?: boolean } = {},
+      extra: { improve?: Record<string, unknown>; prior?: Msg; temp?: boolean; crew?: CrewMember } = {},
     ): Promise<Msg | null> => {
       const reqId = uid();
       const started = Date.now();
@@ -1433,6 +1550,13 @@ export default function CadusAI() {
       const search = !roleplay && (userMsg.mode === "research" || !!userMsg.search);
       const doReview = prefs.safetyReview && !roleplay;
       const project = instructions.trim() ? { instructions: instructions.trim() } : {};
+      // The Crew assistant, the Cadus mode and the tone go with the draft and the review.
+      const crewBody = crewPayload(extra.crew);
+      const styled = {
+        ...(crewBody ? { crew: crewBody } : {}),
+        ...(userMsg.amode && userMsg.amode !== "deep" ? { answerMode: userMsg.amode } : {}),
+        ...(userMsg.tone ? { tone: userMsg.tone } : {}),
+      };
       // A message can ask for its own reply language (a patient explanation in Hindi, say).
       const language = userMsg.lang || prefs.language;
       const who = profilePayload(profile);
@@ -1462,7 +1586,8 @@ export default function CadusAI() {
       const controller = new AbortController();
       aborts.current.set(reqId, controller);
       streamStore.set("");
-      setPending({ id: reqId, sid, mode: userMsg.mode, image: hasImage && !hasDoc, doc: hasDoc, stage: "draft", search, review: doReview, think: !!userMsg.think, started, prior: extra.prior });
+      const isDeep = userMsg.amode === "deep";
+      setPending({ id: reqId, sid, mode: userMsg.mode, image: hasImage && !hasDoc, doc: hasDoc, stage: "draft", search, review: doReview, think: !!userMsg.think, started, prior: extra.prior, ...(isDeep ? { deep: [] } : {}) });
       setUsage((u) => (u.date === today() ? { ...u, count: u.count + 1 } : { date: today(), count: 1 }));
       const hist = history.filter((m) => !m.error && !m.stopped).slice(-16).map((m) => ({ role: m.role, content: m.content }));
       let reply: Msg;
@@ -1476,6 +1601,46 @@ export default function CadusAI() {
             review: data.review ?? undefined,
             reviewNote: doReview && !data.review ? "The fact-check couldn't run for this deck. Review it before teaching." : undefined,
             content: `Your lecture deck **${d.title}** is ready: ${d.slides.length} slides covering ${d.subtitle || "the topic"}.`,
+          };
+        } else if (isDeep) {
+          // Deep Dive: plan, search PubMed and guidelines step by step, then the cited report (streamed).
+          let steps: DeepStep[] = [];
+          const onStep = (st: DeepStep) => {
+            steps = steps.some((x) => x.id === st.id) ? steps.map((x) => (x.id === st.id ? st : x)) : [...steps, st];
+            setPending((p) => (p?.id === reqId ? { ...p, deep: steps } : p));
+          };
+          let done;
+          try {
+            done = await streamCadus({
+              action: "deep-dive", message: userMsg.content, language, history: hist.slice(-6), ...project, ...tailored,
+              ...(crewBody ? { crew: crewBody } : {}),
+            }, { onDelta: (t) => streamStore.append(t), onReset: () => streamStore.set(""), onStep, signal: controller.signal });
+          } catch (e) {
+            if (e instanceof StreamUnavailable) throw new Error("Deep Dive needs a live connection to Cadus. Check your connection and try again.");
+            throw e;
+          }
+          if (cancelled.current.has(reqId)) return null;
+          if (!done?.message) throw new Error("Deep Dive returned an empty report. Please try again.");
+          let content = String(done.message);
+          const sources = safeSources(done.sources as SourceRef[] | undefined);
+          streamStore.set(content);
+          let review: ReviewMeta | undefined;
+          let reviewNote: string | undefined;
+          if (doReview) {
+            setPending((p) => (p?.id === reqId ? { ...p, stage: "review" } : p));
+            try {
+              const rv = await invokeCadus({ action: "review", mode: "research", question: userMsg.content, draft: content, sources, language, ...project, ...tailored, ...(crewBody ? { crew: crewBody } : {}) });
+              if (rv?.message) { content = String(rv.message); review = rv.review ?? undefined; }
+              else reviewNote = "The safety review didn't return a result for this report. Check it carefully before relying on it.";
+            } catch {
+              reviewNote = "The safety review couldn't run for this report. Check it carefully before relying on it.";
+            }
+          }
+          reply = {
+            id: uid(), role: "assistant", mode: userMsg.mode, at: Date.now(), content,
+            provider: done.provider as Provider | undefined, model: done.model,
+            sources: sources.length ? sources : undefined, review, reviewNote,
+            deep: { title: done.title, steps, papers: Number(done.papers) || 0, web: Number(done.web) || 0 },
           };
         } else {
           // Step 1: draft, streamed as it is written (optionally grounded in live, cited sources)
@@ -1496,6 +1661,7 @@ export default function CadusAI() {
             ...(userMsg.think ? { think: true } : {}),
             ...(extra.improve ? { improve: extra.improve } : {}),
             ...project,
+            ...styled,
             ...tailored,
             ...(practicePrefs && !roleplay ? { practice: practicePrefs } : {}),
             ...(inst ? { institution: inst.payload } : {}),
@@ -1544,6 +1710,7 @@ export default function CadusAI() {
                   language,
                   ...(userMsg.voice ? { style: "voice" } : {}),
                   ...project,
+                  ...styled,
                   ...tailored,
                   ...(practicePrefs ? { practice: practicePrefs } : {}),
                   ...(inst ? { institution: inst.payload } : {}),
@@ -1594,6 +1761,7 @@ export default function CadusAI() {
       notifyDone(sid, reply);
       const sess = sessionsRef.current.find((x) => x.id === sid);
       if (isFirst && !reply.error && sess?.autoTitle && !sess.temp) void autoTitle(sid, userMsg.content, reply.content);
+      if (!reply.error && !reply.library && !reply.deck && !roleplay && !userMsg.voice && SMART_FOLLOW.has(userMsg.mode)) void suggestFollowups(sid, reply, userMsg, language);
       return reply;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1612,7 +1780,10 @@ export default function CadusAI() {
     extra?: { lang?: string; title?: string; voice?: boolean; files?: Attachment[]; refs?: SourceRef[]; caseId?: string },
   ): Promise<Msg | null> => {
     const raw = (textOverride ?? input).trim();
-    const m = modeOverride ?? mode;
+    const startingNew = !(view === "chat" && activeId);
+    // A chat with a Crew assistant uses its tool unless another tool was picked.
+    const crew = findCrew(startingNew ? crewNext : sessions.find((s) => s.id === activeId)?.crewId, crewMine);
+    const m = modeOverride ?? (crew && mode === "general" ? (crew.mode as ModeId) : mode);
     // Attachments in the composer go with what you type there, not with suggestion chips.
     const atts = extra?.files ?? (textOverride === undefined ? attachments : []);
     if ((!raw && !atts.length) || pending) return Promise.resolve(null);
@@ -1620,9 +1791,16 @@ export default function CadusAI() {
       setUpgrade({ reason: `You've used today's ${limits.questionsPerDay} questions on the ${PLAN_BY_ID[plan].name} plan.`, feature: "questions" });
       return Promise.resolve(null);
     }
+    // Deep Dive searches live sources, which come with Core and above; only for what's typed in the box.
+    const am = prefs.answerMode;
+    const deep = am === "deep" && textOverride === undefined && !extra?.voice && !ROLEPLAY.has(m) && m !== "slides" && !atts.length;
+    if (deep && !limits.sources) {
+      setUpgrade({ reason: "Deep Dive researches PubMed and live guideline sources, part of Core and above.", feature: "sources" });
+      return Promise.resolve(null);
+    }
     const guard = guardText(raw, m);
     const text = guard.text;
-    const isNew = !(view === "chat" && activeId);
+    const isNew = startingNew;
     const sid = isNew ? uid() : activeId;
     // A chat started from a project page belongs to that project.
     const inProject = isNew && view === "project" && project ? project.id : undefined;
@@ -1639,18 +1817,20 @@ export default function CadusAI() {
       content: text || (onlyImages ? (atts.length > 1 ? "Please analyse these images." : "Please analyse this image.") : "Please review the attached document."),
       ...(atts.length ? { files: atts } : {}),
       // An evidence summary uses only the attached PubMed records.
-      search: limits.sources && !ROLEPLAY.has(m) && m !== "evidence" && (prefs.sources || m === "research"),
+      search: limits.sources && !ROLEPLAY.has(m) && m !== "evidence" && (prefs.sources || m === "research" || !!crew?.sources || deep),
       ...(extra?.refs?.length ? { refs: extra.refs } : {}),
       ...(guard.total ? { privacy: { total: guard.total, hits: guard.hits } } : {}),
       ...(extra?.lang ? { lang: extra.lang } : {}),
       ...(think && textOverride === undefined ? { think: true } : {}),
+      ...(deep ? { amode: "deep" as const } : !ROLEPLAY.has(m) && (am === "fast" || am === "exam" || am === "simple") ? { amode: am } : {}),
+      ...(!ROLEPLAY.has(m) && prefs.tone !== "professional" ? { tone: prefs.tone } : {}),
       ...(reading && atts.length && textOverride === undefined ? { reading } : {}),
       ...(extra?.voice ? { voice: true } : {}),
     };
     const history = sessions.find((s) => s.id === sid)?.messages ?? [];
     const firstFile = atts.find((a) => a.kind !== "image");
     const title = extra?.title || stripPlaceholders(text) || (firstFile ? `Document: ${firstFile.name}` : "Image analysis");
-    upsert(sid, (msgs) => [...msgs, userMsg], clip(title, 64), inProject, { ...(temp ? { temp: true } : {}), ...(extra?.caseId ? { caseId: extra.caseId } : {}), autoTitle: !extra?.title });
+    upsert(sid, (msgs) => [...msgs, userMsg], clip(title, 64), inProject, { ...(temp ? { temp: true } : {}), ...(extra?.caseId ? { caseId: extra.caseId } : {}), ...(isNew && crew ? { crewId: crew.id } : {}), autoTitle: !extra?.title });
     setView("chat");
     setActiveId(sid);
     setMode(m);
@@ -1663,7 +1843,7 @@ export default function CadusAI() {
     if (!isNew && sessions.find((s) => s.id === sid)?.archived) setSessions((p) => p.map((s) => (s.id === sid ? { ...s, archived: false } : s)));
     setPop(null);
     if (!extra?.voice) focusComposer();
-    return runRequest(sid, history, userMsg, instructionsFor(sid, inProject), { temp });
+    return runRequest(sid, history, userMsg, instructionsFor(sid, inProject), { temp, crew });
   };
 
   // Links from the rest of Aethex open Cadus with a question (?q=), which is asked
@@ -1719,7 +1899,7 @@ export default function CadusAI() {
     setEditing(null);
     if (orig.files?.some((f) => !f.data)) toast("The attached PDF isn't kept after reloading. Attach it again for a full answer.");
     upsert(active.id, (msgs) => [...msgs.slice(0, idx), userMsg]);
-    void runRequest(active.id, active.messages.slice(0, idx), userMsg, instructionsFor(active.id), { temp: active.temp });
+    void runRequest(active.id, active.messages.slice(0, idx), userMsg, instructionsFor(active.id), { temp: active.temp, crew: findCrew(active.crewId, crewMine) });
   };
 
   const copyText = async (id: string, text: string) => {
@@ -1936,6 +2116,7 @@ export default function CadusAI() {
     void runRequest(active.id, active.messages.slice(0, userIdx), userMsg, instructionsFor(active.id), {
       prior,
       temp: active.temp,
+      crew: findCrew(active.crewId, crewMine),
       ...(improve ? { improve: { ...improve, previous: prior?.content ?? "" } } : {}),
     });
   };
@@ -2307,7 +2488,7 @@ export default function CadusAI() {
   const togglePop = (key: string) => setPop((p) => (p === key ? null : key));
 
   /** Open a composer menu sized to the space available above or below the composer. */
-  const toggleComposerMenu = (key: "add" | "tools", placement: "hero" | "dock") => {
+  const toggleComposerMenu = (key: "add" | "tools" | "amode", placement: "hero" | "dock") => {
     const r = composerRef.current?.getBoundingClientRect();
     if (r) setMenuMax(Math.max(220, Math.floor(placement === "hero" ? window.innerHeight - r.bottom - 20 : r.top - 20)));
     togglePop(key);
@@ -2320,6 +2501,9 @@ export default function CadusAI() {
     const match = (s: string) => !q || s.toLowerCase().includes(q);
     const actions: PaletteItem[] = [
       { key: "a:new", label: "New chat", hint: `${MOD} ⇧ O`, icon: SquarePen, run: () => newChat() },
+      { key: "a:crew", label: "Cadus Crew: assistants", hint: "Ready-made and your own", icon: Bot, run: () => openCrew() },
+      { key: "a:deep", label: prefs.answerMode === "deep" ? "Turn off Deep Dive" : "Deep Dive: a cited research report", hint: "PubMed and guidelines, step by step", icon: Telescope, run: () => { setPrefs((p) => ({ ...p, answerMode: p.answerMode === "deep" ? "auto" : "deep" })); focusComposer(); } },
+      ...ANSWER_MODES.filter((am) => am.id !== "deep" && am.id !== prefs.answerMode).map((am) => ({ key: `a:mode:${am.id}`, label: `Mode: ${am.label}`, hint: am.desc, icon: am.icon, run: () => { setPrefs((p) => ({ ...p, answerMode: am.id })); focusComposer(); } })),
       { key: "a:newproj", label: "New project", icon: FolderPlus, run: () => newProject() },
       { key: "a:projects", label: "Open projects", icon: Folder, run: () => openProjects() },
       { key: "a:lib", label: "Open Library", icon: Library, run: () => setView("library") },
@@ -2501,16 +2685,21 @@ export default function CadusAI() {
           >
             <Globe size={16} /><span>Sources</span>
           </button>
-          {!ROLEPLAY.has(mode) && mode !== "slides" && (
-            <button
-              className={`cx-cbtn cx-think-btn cx-tip ${think ? "on" : ""}`}
-              data-tip={think ? "Think deeper is on: slower, more careful reasoning" : "Think deeper for complex cases"}
-              aria-pressed={think}
-              onClick={() => setThink((v) => !v)}
-            >
-              <Lightbulb size={16} /><span>Think</span>
-            </button>
-          )}
+          {!ROLEPLAY.has(mode) && mode !== "slides" && (() => {
+            const cur = AMODE[prefs.answerMode] ?? AMODE.auto;
+            return (
+              <button
+                className={`cx-cbtn cx-amode-btn ${prefs.answerMode !== "auto" ? "on" : ""} ${prefs.answerMode === "deep" ? "deep" : ""} ${pop === "amode" ? "open" : ""}`}
+                data-pop="amode"
+                onClick={() => toggleComposerMenu("amode", placement)}
+                aria-haspopup="menu"
+                aria-expanded={pop === "amode"}
+                title={`Mode: ${cur.label}. ${cur.desc}`}
+              >
+                <cur.icon size={16} /><span>{cur.label}</span><ChevronDown size={13} className="cx-amode-chev" />
+              </button>
+            );
+          })()}
           {mode !== "general" && (
             <span className="cx-mode-pill">
               <modeDef.icon size={14} />
@@ -2541,10 +2730,51 @@ export default function CadusAI() {
               <Lightbulb size={16} /> Think deeper {think && <Check size={15} className="r" />}
             </button>
           )}
-          <button className="cx-pop-i" onClick={() => pickMode("research")}><Telescope size={16} /> Deep research {mode === "research" && <Check size={15} className="r" />}</button>
+          {!ROLEPLAY.has(mode) && mode !== "slides" && (
+            <button className="cx-pop-i" onClick={() => { setPrefs((p) => ({ ...p, answerMode: p.answerMode === "deep" ? "auto" : "deep" })); setPop(null); focusComposer(); }}>
+              <Telescope size={16} /> Deep Dive <span className="r">{prefs.answerMode === "deep" ? <Check size={15} /> : "Cited report"}</span>
+            </button>
+          )}
+          <button className="cx-pop-i" onClick={() => openCrew()}><Bot size={16} /> Cadus Crew <span className="r">Assistants</span></button>
           <button className="cx-pop-i" onClick={() => newDocument()}><FilePen size={16} /> New document <span className="r">Canvas</span></button>
           <div className="cx-pop-sep" />
           <p className="cx-pop-gl">Tip: drag files onto Cadus, or paste an image into the message box</p>
+        </div>
+      )}
+      {pop === "amode" && (
+        <div className={`cx-pop cx-amode-menu ${placement === "hero" ? "down" : "up"}`} data-pop="amode" role="menu" style={{ maxHeight: menuMax }}>
+          <p className="cx-pop-gl">Mode</p>
+          {ANSWER_MODES.map((am) => (
+            <button
+              key={am.id}
+              role="menuitemradio"
+              aria-checked={prefs.answerMode === am.id}
+              className={`cx-amode-i ${prefs.answerMode === am.id ? "on" : ""} ${am.id === "deep" ? "deep" : ""}`}
+              onClick={() => {
+                if (am.id === "deep" && !limits.sources) { setPop(null); setUpgrade({ reason: "Deep Dive researches PubMed and live guideline sources, part of Core and above.", feature: "sources" }); return; }
+                setPrefs((p) => ({ ...p, answerMode: am.id }));
+                setPop(null);
+                focusComposer();
+              }}
+            >
+              <span className="ic"><am.icon size={16} /></span>
+              <span className="tx"><b>{am.label}{am.id === "deep" && <em>New</em>}</b><small>{am.desc}</small></span>
+              {prefs.answerMode === am.id && <Check size={15} className="ck" />}
+            </button>
+          ))}
+          <div className="cx-pop-sep" />
+          <div className="cx-amode-row" role="radiogroup" aria-label="Tone">
+            <span>Tone</span>
+            {TONES.map((t) => (
+              <button key={t.id} role="radio" aria-checked={prefs.tone === t.id} className={prefs.tone === t.id ? "on" : ""} title={t.desc} onClick={() => setPrefs((p) => ({ ...p, tone: t.id }))}>{t.label}</button>
+            ))}
+          </div>
+          <div className="cx-amode-row" role="radiogroup" aria-label="Length">
+            <span>Length</span>
+            {STYLES.map((st) => (
+              <button key={st.id} role="radio" aria-checked={prefs.style === st.id} className={prefs.style === st.id ? "on" : ""} title={st.desc} onClick={() => setPrefs((p) => ({ ...p, style: st.id }))}>{st.id === "concise" ? "Short" : st.label}</button>
+            ))}
+          </div>
         </div>
       )}
       {pop === "tools" && (
@@ -2629,7 +2859,33 @@ export default function CadusAI() {
     </div>
   );
 
-  const renderHome = () => tempNext ? renderTempHome() : (
+  /** A new chat with a Crew assistant starts from its own page: who it is and its first questions. */
+  const homeCrew = view === "chat" && !activeId ? findCrew(crewNext, crewMine) : undefined;
+  const renderCrewHome = (c: CrewMember) => (
+    <section className="cx-home cx-crew-home">
+      <div className="cx-crew-hero">
+        <CrewBadge c={c} size={64} />
+        <h1>{c.name}</h1>
+        {c.tagline && <p>{c.tagline}</p>}
+        <span className="cx-crew-by">{c.builtIn ? "Cadus Crew · by Cadus" : "Cadus Crew · yours"}{c.mode !== "general" ? ` · ${MODE[c.mode as ModeId]?.label}` : ""}</span>
+        {showHeroComposer && <div className="cx-hero-c">{composer("hero")}</div>}
+        {c.starters.length > 0 && (
+          <div className="cx-crew-starters">
+            {c.starters.map((st, i) => (
+              <button key={st} style={{ ["--i" as string]: i }} onClick={() => { if (/^(paste|attach)\b/i.test(st)) { setInput(""); focusComposer(); toast(st); return; } void send(st); }}>{st}<ArrowUpRight size={14} /></button>
+            ))}
+          </div>
+        )}
+        <div className="cx-crew-home-f">
+          {!c.builtIn && <button className="cx-link" onClick={() => setCrewEdit({ ...c })}><Pencil size={13} /> Edit</button>}
+          <button className="cx-link" onClick={() => { setCrewNext(""); focusComposer(); }}><X size={13} /> Leave {c.name}</button>
+          <button className="cx-link" onClick={openCrew}><Bot size={13} /> All assistants</button>
+        </div>
+      </div>
+    </section>
+  );
+
+  const renderHome = () => tempNext ? renderTempHome() : homeCrew ? renderCrewHome(homeCrew) : (
     <section className="cx-home cx-fh cx-fh-premium">
       <div className="cx-fh-wash" aria-hidden="true"><i /><i /><i /></div>
       <div className="cx-fh-in">
@@ -2868,6 +3124,63 @@ export default function CadusAI() {
     setPop(null);
     setProjectDialog({ id: p.id, name: p.name, instructions: p.instructions });
   };
+
+  /** Cadus Crew: the user's assistants and the ready-made ones. */
+  const crewCard = (c: CrewMember, i: number) => {
+    const key = `crew:${c.id}`;
+    const tool = c.mode !== "general" ? MODE[c.mode as ModeId] : undefined;
+    return (
+      <div key={c.id} className={`cx-crew-card tone-${c.tone}`} style={{ ["--i" as string]: i }}>
+        <button className="cx-crew-main" onClick={() => startCrew(c)} aria-label={`Chat with ${c.name}`}>
+          <CrewBadge c={c} size={44} />
+          <span className="t"><b>{c.name}</b><small>{c.tagline || "Your assistant"}</small></span>
+          <span className="tags">
+            {tool && <em><tool.icon size={11} /> {tool.short}</em>}
+            {c.sources && <em><Globe size={11} /> Sources</em>}
+            {c.builtIn ? <em className="by">By Cadus</em> : <em className="by mine">Yours</em>}
+          </span>
+        </button>
+        <div className="cx-crew-acts">
+          <button className="cx-btn primary sm" onClick={() => startCrew(c)}><MessageSquare size={14} /> Chat</button>
+          <div className="cx-rel" data-pop={key}>
+            <button className={`cx-ib ${pop === key ? "open" : ""}`} onClick={() => togglePop(key)} aria-label={`More for ${c.name}`} aria-haspopup="menu" aria-expanded={pop === key}><Ellipsis size={16} /></button>
+            {pop === key && (
+              <div className="cx-pop cx-crew-menu" role="menu">
+                {!c.builtIn && <button className="cx-pop-i" onClick={() => { setPop(null); setCrewEdit({ ...c }); }}><Pencil size={15} /> Edit</button>}
+                <button className="cx-pop-i" onClick={() => { setPop(null); setCrewEdit({ ...c, id: "", builtIn: undefined, name: `${c.name} (copy)`.slice(0, CREW_NAME_MAX) }); }}><Copy size={15} /> {c.builtIn ? "Make my own version" : "Duplicate"}</button>
+                {!c.builtIn && <button className="cx-pop-i danger" onClick={() => deleteCrew(c.id)}><Trash2 size={15} /> Remove</button>}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+  const renderCrew = () => (
+    <section className="cx-page cx-crew-page">
+      <header className="cx-page-h cx-crew-h">
+        <div>
+          <p className="cx-crew-eyebrow"><Bot size={14} /> Cadus Crew</p>
+          <h1>Assistants for every job on your list</h1>
+          <p>Each one has its own instructions: a viva examiner, a discharge writer, a thesis guide. Chat with a ready-made one, or build your own in a minute. Cadus's accuracy standards and safety review still apply to every answer.</p>
+        </div>
+        <div className="cx-page-acts">
+          <button className="cx-btn primary" onClick={() => setCrewEdit(blankCrew())} disabled={crewMine.length >= CREW_MAX}><Plus size={15} /> Create an assistant</button>
+        </div>
+      </header>
+      <h2 className="cx-crew-sh">Your crew <span>{crewMine.length ? crewMine.length : ""}</span></h2>
+      {crewMine.length ? (
+        <div className="cx-crew-grid">{crewMine.map((c, i) => crewCard(c, i))}</div>
+      ) : (
+        <button className="cx-crew-new" onClick={() => setCrewEdit(blankCrew())}>
+          <span className="ic"><Plus size={20} /></span>
+          <span><b>Create your first assistant</b><small>For example a rotation buddy that knows your unit's protocols, or an examiner for your specialty</small></span>
+        </button>
+      )}
+      <h2 className="cx-crew-sh">Ready-made by Cadus</h2>
+      <div className="cx-crew-grid">{BUILT_IN_CREW.map((c, i) => crewCard(c, i + crewMine.length))}</div>
+    </section>
+  );
 
   const renderProjects = () => (
     <section className="cx-page">
@@ -3120,7 +3433,7 @@ export default function CadusAI() {
       <div key={m.id} className="cx-a" data-mid={m.id}>
         <div className="cx-a-h">
           <CadusMark size={20} title="Cadus" />
-          <span className="cx-a-kind">{MODE[v.mode]?.label ?? "Answer"}</span>
+          <span className={`cx-a-kind ${v.deep ? "deep" : ""}`}>{v.deep ? <><Telescope size={13} /> Deep Dive</> : MODE[v.mode]?.label ?? "Answer"}</span>
           {!m.error && !m.stopped && <span className="cx-a-model" title={v.library ? "Answered from the Medical Library" : "The model that drafted this answer"}>{v.library ? "Medical Library" : modelLabel(v.model, v.provider)}</span>}
           <time className="cx-a-time" dateTime={new Date(v.at).toISOString()}>{new Date(v.at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</time>
           {v.review && (
@@ -3156,6 +3469,20 @@ export default function CadusAI() {
           </>
         ) : (
           <>
+            {v.deep && (
+              <details className="cx-deepsum">
+                <summary>
+                  <Telescope size={14} />
+                  <span>Researched {v.deep.papers} PubMed paper{v.deep.papers === 1 ? "" : "s"}{v.deep.web ? ` and ${v.deep.web} guideline source${v.deep.web === 1 ? "" : "s"}` : ""} · {src.length} cited</span>
+                  <ChevronDown size={14} className="chev" />
+                </summary>
+                <ol>
+                  {v.deep.steps.map((st) => (
+                    <li key={st.id} className={st.state}>{st.state === "skip" ? <AlertTriangle size={13} /> : <Check size={13} />}<span>{st.label}{st.detail && <small>{st.detail}</small>}</span></li>
+                  ))}
+                </ol>
+              </details>
+            )}
             <MdBlock text={v.content} cites={src.length} outline />
             {src.length > 0 && (
               <div className="cx-sources">
@@ -3242,6 +3569,7 @@ export default function CadusAI() {
                 {pop === menuKey && (
                   <div className="cx-pop cx-msg-menu" role="menu">
                     <button className="cx-pop-i" onClick={() => { setPop(null); openCanvas(shown); }}><FilePen size={16} /> {doc ? "Open in Canvas" : "Edit in Canvas"}</button>
+                    <button className="cx-pop-i" onClick={() => { setPop(null); branchFrom(m.id); }} disabled={!!pending}><GitBranch size={16} /> Branch in a new chat</button>
                     <button className="cx-pop-i" onClick={() => { setPop(null); downloadWord(answerTitle(m, v.content), withSources(v.content, v.sources), m.mode); }}><FileDown size={16} /> Download for Word</button>
                     <button className="cx-pop-i" onClick={() => { setPop(null); exportAnswer(shown); }}><Download size={16} /> Download as PDF</button>
                     <button className="cx-pop-i" onClick={() => { setPop(null); printDoc(answerTitle(m, v.content), liftKeyPoints(v.content), { mode: m.mode, sources: src, large: m.mode === "patient" }); }}><Printer size={16} /> {m.mode === "patient" ? "Print handout" : "Print"}</button>
@@ -3305,12 +3633,16 @@ export default function CadusAI() {
                 </div>
               );
             })()}
-            {m.id === lastAssistant?.id && !pending && FOLLOW[m.mode].length > 0 && (
-              <div className="cx-follow">
-                <p>Suggested follow-ups</p>
-                {FOLLOW[m.mode].map((f) => (
-                  <button key={f.text} onClick={() => send(f.text, f.mode ?? m.mode)}><CornerDownRight size={15} /> {f.text}</button>
-                ))}
+            {m.id === lastAssistant?.id && !pending && (m.followups?.length || FOLLOW[m.mode].length > 0) && (
+              <div className={`cx-follow ${m.followups?.length ? "smart" : ""}`}>
+                <p>{m.followups?.length ? <><Sparkles size={13} /> Ask next</> : "Suggested follow-ups"}</p>
+                {m.followups?.length
+                  ? m.followups.map((f, i) => (
+                    <button key={f} style={{ ["--i" as string]: i }} onClick={() => send(f, m.mode)}><CornerDownRight size={15} /> {f}</button>
+                  ))
+                  : FOLLOW[m.mode].map((f) => (
+                    <button key={f.text} onClick={() => send(f.text, f.mode ?? m.mode)}><CornerDownRight size={15} /> {f.text}</button>
+                  ))}
               </div>
             )}
           </>
@@ -3321,7 +3653,7 @@ export default function CadusAI() {
 
   /** The answer being written: progress steps, then the text as it streams in. */
   const renderPending = (p: NonNullable<typeof pending>) => {
-    const reviewer = STUDY_MODES.has(p.mode) ? MODEL_DEF.medius.short : MODEL_DEF.magnus.short;
+    const reviewer = STUDY_MODES.has(p.mode) || p.deep ? MODEL_DEF.medius.short : MODEL_DEF.magnus.short;
     const draftLabel = p.mode === "evidence"
       ? "Reading the PubMed abstracts and summarising the evidence"
       : p.think
@@ -3331,6 +3663,7 @@ export default function CadusAI() {
       : p.image ? "Reviewing the image"
       : MODE[p.mode].busy;
     const status = p.mode === "slides" ? "Designing your deck"
+      : p.deep && p.stage === "draft" ? "Deep Dive"
       : p.stage === "review" ? "Safety review"
       : p.stage === "library" ? "Library mode"
       : p.think ? "Thinking deeply"
@@ -3352,6 +3685,22 @@ export default function CadusAI() {
           <div className="cx-steps">
             {p.mode === "slides" ? (
               <div className="cx-step on"><i className="cx-spin" /> {p.review ? "Designing your deck and fact-checking every slide" : "Designing your deck"}</div>
+            ) : p.deep ? (
+              <>
+                {p.deep.length === 0 && <div className="cx-step on"><i className="cx-spin" /> Starting the research</div>}
+                {p.deep.map((st) => (
+                  <div key={st.id} className={`cx-step cx-deep-step ${st.state === "on" && p.stage === "draft" ? "on" : st.state === "skip" ? "skip" : "done"}`}>
+                    {st.state === "on" && p.stage === "draft" ? <i className="cx-spin" /> : st.state === "skip" ? <AlertTriangle size={15} className="warn" /> : <Check size={15} />}
+                    <span><span className="l">{st.label}</span>{st.detail && <small>{st.detail}</small>}</span>
+                  </div>
+                ))}
+                {p.review && (
+                  <div className={`cx-step ${p.stage === "review" ? "on" : "todo"}`}>
+                    {p.stage === "review" ? <i className="cx-spin" /> : <i className="cx-dot" />}
+                    Safety review by {reviewer}: claims, doses and citations
+                  </div>
+                )}
+              </>
             ) : (
               <>
                 {p.stage === "library" ? (
@@ -3374,7 +3723,9 @@ export default function CadusAI() {
               </>
             )}
           </div>
-          {p.mode === "slides" ? skeleton : (
+          {p.mode === "slides" ? skeleton : p.deep && p.stage === "draft" && !p.deep.some((x) => x.id === "write") ? (
+            <p className="cx-deep-note"><Telescope size={14} /> Deep Dive reads the research before it writes, so the report starts in a minute or two. You can leave this tab open and come back.</p>
+          ) : (
             <LiveAnswer store={streamStore} writing={p.stage === "draft"} onGrow={followStream} placeholder={skeleton} />
           )}
           {p.stage === "review" && (
@@ -3387,6 +3738,16 @@ export default function CadusAI() {
 
   const renderThread = () => (
     <div className="cx-thread" onClick={onThreadClick} {...citeHandlers}>
+      {(() => {
+        const cr = findCrew(active?.crewId, crewMine);
+        return cr ? (
+          <div className={`cx-crewbar tone-${cr.tone}`}>
+            <CrewBadge c={cr} size={26} />
+            <span><b>{cr.name}</b>{cr.tagline ? ` · ${cr.tagline}` : ""}</span>
+            <button onClick={() => startCrew(cr)}><Plus size={13} /> New chat</button>
+          </div>
+        ) : null;
+      })()}
       {(() => {
         const c = active?.caseId ? cases.find((x) => x.id === active.caseId) : undefined;
         return c ? (
@@ -3442,7 +3803,7 @@ export default function CadusAI() {
             ) : (
               <>
                 <div className="cx-u-b">{m.content}</div>
-                {(!!m.privacy?.total || (!!m.lang && m.lang !== "English") || !!m.think || !!m.voice) && (
+                {(!!m.privacy?.total || (!!m.lang && m.lang !== "English") || !!m.think || !!m.voice || !!m.amode || !!m.tone) && (
                   <div className="cx-u-notes">
                     {m.privacy && m.privacy.total > 0 && (
                       <span className="cx-u-priv" title="Cadus's privacy guard replaced these details before your message was sent. The originals were not stored.">
@@ -3452,6 +3813,8 @@ export default function CadusAI() {
                     {m.lang && m.lang !== "English" && <span className="cx-u-priv"><Languages size={13} /> Reply in {m.lang}</span>}
                     {m.think && <span className="cx-u-priv tag"><Lightbulb size={13} /> Think deeper</span>}
                     {m.voice && <span className="cx-u-priv tag"><AudioLines size={13} /> Voice</span>}
+                    {m.amode && (() => { const am = AMODE[m.amode]; return <span className={`cx-u-priv tag ${m.amode === "deep" ? "deep" : ""}`}><am.icon size={13} /> {am.label}</span>; })()}
+                    {m.tone && <span className="cx-u-priv tag">{TONES.find((t) => t.id === m.tone)?.label} tone</span>}
                   </div>
                 )}
                 <div className="cx-u-acts">
@@ -3581,7 +3944,7 @@ export default function CadusAI() {
       style={{ ["--acc" as string]: dark ? accent.dark : accent.light, ["--fs" as string]: `${fontSize}px`, ["--fs-u" as string]: `${sansSize}px` }}
       {...dropHandlers}
     >
-      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS}</style>
+      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS}</style>
 
       {/* ============================================== sidebar */}
       <div className={`cx-scrim ${sidebarOpen ? "on" : ""}`} onClick={() => setSidebarOpen(false)} />
@@ -3608,6 +3971,7 @@ export default function CadusAI() {
             ["cases", ClipboardList, "Cases", activeCases, () => openCases()],
             ["practice", GraduationCap, "Learn", 0, openPractice],
             ["tools", LayoutGrid, "Tools", 0, () => { setView("tools"); setSidebarOpen(false); }],
+            ["crew", Bot, "Crew", 0, openCrew],
             ["library", Library, "Library", library.length, () => { setView("library"); setSidebarOpen(false); }],
           ] as [View, LucideIcon, string, number, () => void][]).map(([id, Icon, label, count, go]) => (
             <button
@@ -3870,6 +4234,7 @@ export default function CadusAI() {
             {view !== "chat" && (() => {
               const [Icon, label]: [LucideIcon, string] =
                 view === "tools" ? [LayoutGrid, "Tools"]
+                : view === "crew" ? [Bot, "Cadus Crew"]
                 : view === "calculators" ? [Calculator, "Calculators"]
                 : view === "practice" ? [GraduationCap, "Learn"]
                 : view === "library" ? [Library, "Library"]
@@ -4132,6 +4497,7 @@ export default function CadusAI() {
               />
             )
             : view === "tools" ? renderTools()
+            : view === "crew" ? renderCrew()
             : view === "library" ? renderLibrary()
             : view === "projects" ? renderProjects()
             : view === "project" ? renderProject()
@@ -4233,6 +4599,87 @@ export default function CadusAI() {
       )}
 
       {/* ============================================== project dialog */}
+      {crewEdit && (
+        <div className="cx-overlay center" onMouseDown={() => setCrewEdit(null)}>
+          <form
+            className="cx-dialog cx-crew-dialog"
+            onMouseDown={(e) => e.stopPropagation()}
+            onSubmit={(e) => { e.preventDefault(); saveCrewEdit(); }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cx-ce-title"
+          >
+            <div className="cx-dialog-h">
+              <div className="cx-crew-dh">
+                <CrewBadge c={crewEdit} size={44} />
+                <div>
+                  <h3 id="cx-ce-title">{crewEdit.id && crewMine.some((c) => c.id === crewEdit.id) ? `Edit ${crewEdit.name || "assistant"}` : "Create an assistant"}</h3>
+                  <p>Tell it who it is and how to answer. It keeps to Cadus's clinical standards.</p>
+                </div>
+              </div>
+              <button type="button" className="cx-ib" onClick={() => setCrewEdit(null)} aria-label="Close"><X size={18} /></button>
+            </div>
+            <div className="cx-dialog-b">
+              <div className="cx-crew-f2">
+                <label className="cx-field">
+                  <span>Name</span>
+                  <input className="cx-input" autoFocus maxLength={CREW_NAME_MAX} value={crewEdit.name} onChange={(e) => setCrewEdit({ ...crewEdit, name: e.target.value })} placeholder="e.g. Cardiology Registrar" />
+                </label>
+                <label className="cx-field">
+                  <span>One line about it <span className="opt">(optional)</span></span>
+                  <input className="cx-input" maxLength={TAGLINE_MAX} value={crewEdit.tagline} onChange={(e) => setCrewEdit({ ...crewEdit, tagline: e.target.value })} placeholder="e.g. Answers like my unit's senior registrar" />
+                </label>
+              </div>
+              <label className="cx-field">
+                <span>Instructions</span>
+                <textarea className="cx-input cx-crew-instr" maxLength={CREW_INSTRUCTIONS_MAX} value={crewEdit.instructions} onChange={(e) => setCrewEdit({ ...crewEdit, instructions: e.target.value })}
+                  placeholder="Who it is, who it helps and how it should answer. e.g. You are a cardiology registrar at a government medical college. Answer for an MD Medicine resident: follow ESC and CSI guidance, give doses for Indian formulations, and end every answer with what to tell the consultant." />
+                <small>{crewEdit.instructions.length} / {CREW_INSTRUCTIONS_MAX}. Avoid patient names or other identifying details.</small>
+              </label>
+              <div className="cx-field">
+                <span>First questions <span className="opt">(optional, up to 4)</span></span>
+                <div className="cx-crew-starters-ed">
+                  {[0, 1, 2, 3].map((i) => (
+                    <input key={i} className="cx-input" maxLength={STARTER_MAX} value={crewEdit.starters[i] ?? ""} placeholder={i === 0 ? "e.g. Approach to a broad complex tachycardia" : ""}
+                      onChange={(e) => { const st = [...crewEdit.starters]; st[i] = e.target.value; setCrewEdit({ ...crewEdit, starters: st.slice(0, 4) }); }} />
+                  ))}
+                </div>
+              </div>
+              <div className="cx-crew-f2">
+                <label className="cx-field">
+                  <span>Tool</span>
+                  <select className="cx-input" value={crewEdit.mode} onChange={(e) => setCrewEdit({ ...crewEdit, mode: e.target.value })}>
+                    <option value="general">General answers</option>
+                    {GROUPS.map((g) => (
+                      <optgroup key={g.label} label={g.label}>{g.ids.map((id) => <option key={id} value={id}>{MODE[id].label}</option>)}</optgroup>
+                    ))}
+                  </select>
+                </label>
+                <label className="cx-field cx-crew-src">
+                  <span>Sources</span>
+                  <span className="cx-crew-toggle"><input type="checkbox" checked={!!crewEdit.sources} onChange={(e) => setCrewEdit({ ...crewEdit, sources: e.target.checked })} /> Search trusted sources for every answer</span>
+                </label>
+              </div>
+              <div className="cx-field">
+                <span>Look</span>
+                <div className="cx-crew-look">
+                  <div className="icons" role="radiogroup" aria-label="Icon">
+                    {CREW_ICONS.map((ic) => { const I = CREW_ICON[ic]; return <button type="button" key={ic} role="radio" aria-checked={crewEdit.icon === ic} className={crewEdit.icon === ic ? "on" : ""} onClick={() => setCrewEdit({ ...crewEdit, icon: ic })} aria-label={ic}><I size={16} /></button>; })}
+                  </div>
+                  <div className="tones" role="radiogroup" aria-label="Colour">
+                    {CREW_TONES.map((t) => <button type="button" key={t} role="radio" aria-checked={crewEdit.tone === t} className={`tone-${t} ${crewEdit.tone === t ? "on" : ""}`} onClick={() => setCrewEdit({ ...crewEdit, tone: t })} aria-label={t} />)}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="cx-dialog-f">
+              <span className="count">Kept in this browser</span>
+              <button type="button" className="cx-btn" onClick={() => setCrewEdit(null)}>Cancel</button>
+              <button type="submit" className="cx-btn primary" disabled={!crewEdit.name.trim() || !crewEdit.instructions.trim()}>{crewEdit.id && crewMine.some((c) => c.id === crewEdit.id) ? "Save changes" : "Create"}</button>
+            </div>
+          </form>
+        </div>
+      )}
       {projectDialog && (
         <div className="cx-overlay center" onMouseDown={() => setProjectDialog(null)}>
           <form

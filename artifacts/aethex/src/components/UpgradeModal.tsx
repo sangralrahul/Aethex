@@ -9,7 +9,7 @@ interface UpgradeModalProps {
 const FEATURES = [
   { icon: Brain, text: "Full MCQ answers & explanations" },
   { icon: Shield, text: "Complete drug interaction details" },
-  { icon: Zap, text: "Unlimited Cadus AI queries" },
+  { icon: Zap, text: "Unlimited Cadus queries" },
   { icon: Star, text: "Deep Research & PDF reports" },
 ];
 

@@ -142,7 +142,7 @@ export default function Login() {
       ) : (
         <div className="au-step" key="password">
           <h2 className="au-title">Sign in to Aethex</h2>
-          <p className="au-sub">Welcome back. One account for the store, the Study Hub and Cadus AI.</p>
+          <p className="au-sub">Welcome back. One account for the store, the Study Hub and Cadus.</p>
           <div className="au-body">
             <button type="button" className="au-btn google" onClick={handleGoogle} disabled={googleLoading || loading}>
               {googleLoading ? <Spinner /> : <GoogleIcon />} Continue with Google

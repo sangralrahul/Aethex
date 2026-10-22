@@ -4,7 +4,7 @@ import { Smartphone, CheckCircle, Share2, Gift, Star, Bell, Brain, BookOpen, Sho
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const FEATURES = [
-  { icon: Brain, title: "Cadus AI on the go", desc: "Ask clinical questions, get SOAP notes, and drug info — anytime, anywhere.", color: "#8B5CF6" },
+  { icon: Brain, title: "Cadus on the go", desc: "Ask clinical questions, get SOAP notes, and drug info — anytime, anywhere.", color: "#8B5CF6" },
   { icon: BookOpen, title: "Offline Study Mode", desc: "Download MCQ packs and study notes for use without internet connection.", color: "#007AFF" },
   { icon: Bell, title: "Smart Reminders", desc: "Daily study reminders, live class alerts, and streak notifications.", color: "#F59E0B" },
   { icon: ShoppingBag, title: "Quick Medical Supply Orders", desc: "Order stethoscopes, equipment, and scrubs with one tap.", color: "#00C2A8" },
@@ -61,7 +61,7 @@ export default function AppWaitlist() {
           <h1 className="text-4xl sm:text-6xl font-black text-white mb-4" style={{ letterSpacing: "-2px" }}>
             Aethex <span style={{ background: "linear-gradient(135deg,#00C2A8,#007AFF)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>App</span>
           </h1>
-          <p className="text-lg max-w-lg mx-auto mb-8" style={{ color: "rgba(255,255,255,0.6)" }}>India's medical platform — now in your pocket. Cadus AI, MCQs, live classes, and medical supplies. All in one app.</p>
+          <p className="text-lg max-w-lg mx-auto mb-8" style={{ color: "rgba(255,255,255,0.6)" }}>India's medical platform — now in your pocket. Cadus, MCQs, live classes, and medical supplies. All in one app.</p>
 
           {!submitted ? (
             <form onSubmit={handleSubmit} className="max-w-md mx-auto">

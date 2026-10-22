@@ -96,7 +96,7 @@ export default function AiScribe() {
           <h1 className="text-4xl sm:text-5xl font-black text-white mb-3" style={{ letterSpacing: "-1px" }}>
             AI <span style={{ background: "linear-gradient(135deg,#8B5CF6,#007AFF)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Clinical Scribe</span>
           </h1>
-          <p className="text-base max-w-xl mx-auto" style={{ color: "rgba(255,255,255,0.6)" }}>Speak your clinical dictation — Cadus AI structures it into a professional SOAP note instantly. Indian medical terminology optimised.</p>
+          <p className="text-base max-w-xl mx-auto" style={{ color: "rgba(255,255,255,0.6)" }}>Speak your clinical dictation — Cadus structures it into a professional SOAP note instantly. Indian medical terminology optimised.</p>
         </div>
       </div>
 
@@ -104,7 +104,7 @@ export default function AiScribe() {
         {/* Disclaimer */}
         <div className="rounded-2xl p-4 mb-6 flex items-start gap-3" style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.2)" }}>
           <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" style={{ color: "#F59E0B" }} />
-          <p className="text-xs" style={{ color: "#636366" }}>Cadus AI assists, not replaces, clinical decision-making. Always review and edit the generated SOAP note before saving to the patient record.</p>
+          <p className="text-xs" style={{ color: "#636366" }}>Cadus assists, not replaces, clinical decision-making. Always review and edit the generated SOAP note before saving to the patient record.</p>
         </div>
 
         {phase === "idle" && (
@@ -156,7 +156,7 @@ export default function AiScribe() {
             <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "rgba(139,92,246,0.1)" }}>
               <Sparkles className="w-8 h-8 animate-spin" style={{ color: "#8B5CF6" }} />
             </div>
-            <p className="font-bold text-lg mb-1" style={{ color: "#1C1C1E" }}>Cadus AI is structuring your note...</p>
+            <p className="font-bold text-lg mb-1" style={{ color: "#1C1C1E" }}>Cadus is structuring your note...</p>
             <p className="text-sm" style={{ color: "#AEAEB2" }}>Extracting symptoms, vitals, diagnosis, and plan from your dictation</p>
           </div>
         )}

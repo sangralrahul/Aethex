@@ -412,7 +412,7 @@ function SectionChatsClean({ onClearAll, onClearCurrent, onExport, onClose, isFr
         <div className="mb-4 flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs"
           style={{ background: "rgba(0,188,212,0.07)", border: "1px solid rgba(0,188,212,0.15)", color: "rgba(0,200,255,0.6)" }}>
           <MessageSquare className="w-3.5 h-3.5 shrink-0" />
-          Chat actions are available inside the Cadus AI page.
+          Chat actions are available inside the Cadus page.
         </div>
       )}
       {rows.map((r, i) => {
@@ -633,7 +633,7 @@ function SectionAbout() {
             <Zap className="w-5 h-5" style={{ color: "#00E5FF" }} />
           </div>
           <div>
-            <p className="font-bold text-sm" style={{ color: "rgba(200,240,255,0.95)", fontFamily: "'Orbitron', monospace", letterSpacing: "0.06em" }}>Cadus AI</p>
+            <p className="font-bold text-sm" style={{ color: "rgba(200,240,255,0.95)", fontFamily: "'Orbitron', monospace", letterSpacing: "0.06em" }}>Cadus</p>
             <p className="text-xs" style={{ color: "rgba(100,170,220,0.55)" }}>Medical AI Suite · v3.0.0</p>
           </div>
         </div>
@@ -762,7 +762,7 @@ export default function SettingsModal({
           </nav>
 
           <div className="px-4 pt-3 mt-2" style={{ borderTop: "1px solid rgba(0,188,212,0.08)" }}>
-            <p className="text-[10px]" style={{ color: "rgba(0,200,255,0.25)" }}>Cadus AI · v3.0.0</p>
+            <p className="text-[10px]" style={{ color: "rgba(0,200,255,0.25)" }}>Cadus · v3.0.0</p>
           </div>
         </div>
 

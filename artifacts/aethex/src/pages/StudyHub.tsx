@@ -583,11 +583,11 @@ export default function StudyHub() {
       <section className="ax-wrap ax-sth-sec">
         <div className="ax-sth-cadus">
           <div>
-            <p className="tag"><Sparkles size={14} /> Cadus AI</p>
+            <p className="tag"><Sparkles size={14} /> Cadus</p>
             <h2>Stuck on a topic? Ask Cadus.</h2>
             <p>Explanations with sources, differentials, drug doses and practice questions — in seconds.</p>
           </div>
-          <a href={cadusUrl("/")} className="ax-btn teal lg"><Sparkles size={18} /> Try Cadus AI</a>
+          <a href={cadusUrl("/")} className="ax-btn teal lg"><Sparkles size={18} /> Try Cadus</a>
         </div>
       </section>
 

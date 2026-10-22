@@ -2,7 +2,7 @@
  * The frame of the Aethex sign-in pages (login.aethex.in: sign in and create
  * an account). A dark brand panel that is alive: a drifting constellation that
  * reacts to the pointer, a pulse line, a product window playing short demos of
- * Cadus AI, the Study Hub and the store, floating feature chips and rotating
+ * Cadus, the Study Hub and the store, floating feature chips and rotating
  * testimonials. The form sits on white with soft moving light. Phones show only
  * the form. Everything stops with reduced motion. The Cadus sign-in
  * (auth.aethex.in) has its own design.
@@ -131,7 +131,7 @@ function Constellation() {
 /* ------------------------------------------------------------------ the product window */
 
 const TABS = [
-  { id: "cadus", label: "Cadus AI", icon: Sparkles, url: "cadus.aethex.in" },
+  { id: "cadus", label: "Cadus", icon: Sparkles, url: "cadus.aethex.in" },
   { id: "study", label: "Study Hub", icon: GraduationCap, url: "aethex.in/study-hub" },
   { id: "store", label: "Store", icon: ShoppingBag, url: "aethex.in/orders" },
 ] as const;
@@ -256,9 +256,9 @@ function LiveDemo() {
 /* ------------------------------------------------------------------ testimonials (real, as on the homepage) */
 
 const QUOTES = [
-  { quote: "Aethex has completely changed how I manage patient care. Cadus AI gives me instant drug references mid-consultation — it's like having a pharmacologist in the room.", name: "Dr. Priya Sharma", role: "Cardiologist, Mumbai", initials: "PS" },
+  { quote: "Aethex has completely changed how I manage patient care. Cadus gives me instant drug references mid-consultation — it's like having a pharmacologist in the room.", name: "Dr. Priya Sharma", role: "Cardiologist, Mumbai", initials: "PS" },
   { quote: "As a GP seeing 40+ patients daily, the Drug Interaction Checker has saved me from three potentially dangerous prescriptions in a single week. I can't imagine going back.", name: "Dr. Arjun Mehta", role: "General Physician, Delhi", initials: "AM" },
-  { quote: "Cadus AI helped me cross-reference a rare neuro case at 11 PM — the depth of the response was remarkable. This platform is what Indian medicine has been waiting for.", name: "Dr. Vikram Nair", role: "Neurologist, Chennai", initials: "VN" },
+  { quote: "Cadus helped me cross-reference a rare neuro case at 11 PM — the depth of the response was remarkable. This platform is what Indian medicine has been waiting for.", name: "Dr. Vikram Nair", role: "Neurologist, Chennai", initials: "VN" },
 ];
 
 function Quotes() {
@@ -314,7 +314,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
           <div className="au-pitch">
             <p className="au-eyebrow au-in" style={delay(0.1)}>Your Aethex account</p>
             <h1 className="au-in" style={delay(0.18)}>One sign-in for everything on Aethex</h1>
-            <p className="au-lead au-in" style={delay(0.26)}>The same account works on aethex.in, in Cadus AI on the web and on your desktop, and in the Study Hub.</p>
+            <p className="au-lead au-in" style={delay(0.26)}>The same account works on aethex.in, in Cadus on the web and on your desktop, and in the Study Hub.</p>
             <LiveDemo />
           </div>
           <Quotes />

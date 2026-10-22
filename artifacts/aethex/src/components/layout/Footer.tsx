@@ -32,7 +32,7 @@ const COLS: { title: string; links: { href: string; label: string; external?: bo
   {
     title: "Clinical",
     links: [
-      { href: "/__cadus", label: "Cadus AI" },
+      { href: "/__cadus", label: "Cadus" },
       { href: "/drug-reference", label: "Drug reference" },
       { href: "/drug-interaction-checker", label: "Drug interactions" },
       { href: "/calculator", label: "Medical calculators" },
@@ -62,11 +62,11 @@ export function Footer() {
         <div className="ax-foot-top">
           <div className="ax-foot-brand">
             <Logo />
-            <p>One platform for India's doctors and medical students: Cadus AI, study tools and genuine medical supplies, with one account.</p>
+            <p>One platform for India's doctors and medical students: Cadus, study tools and genuine medical supplies, with one account.</p>
             <div className="ax-foot-apps">
               <a href={downloadsUrl()}><Download size={16} /> Cadus for Windows and Linux</a>
               <a href="https://hms.aethex.in" rel="noopener"><Hospital size={16} /> Hospital management app</a>
-              <a href={cadusUrl("/")}>Open Cadus AI <ArrowRight size={15} /></a>
+              <a href={cadusUrl("/")}>Open Cadus <ArrowRight size={15} /></a>
             </div>
           </div>
           {COLS.map((c) => (

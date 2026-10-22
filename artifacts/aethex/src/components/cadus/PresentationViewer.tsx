@@ -634,7 +634,7 @@ function TitleSlide({ slide, current, total }: { slide: PresentationSlide; curre
 
       {/* Bottom branding */}
       <div style={{ padding: "12px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "relative", zIndex: 1, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-        <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Powered by CADUS AI</span>
+        <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Powered by CADUS</span>
         <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 9 }}>1 / {total}</span>
       </div>
     </div>

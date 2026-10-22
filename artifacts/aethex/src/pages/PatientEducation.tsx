@@ -70,7 +70,7 @@ export default function PatientEducation() {
           <h1 className="text-4xl sm:text-5xl font-black text-white mb-3" style={{ letterSpacing: "-1px" }}>
             Patient <span style={{ background: "linear-gradient(135deg,#00C2A8,#007AFF)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Education</span> Hub
           </h1>
-          <p className="text-base max-w-xl mx-auto mb-6" style={{ color: "rgba(255,255,255,0.6)" }}>Print-friendly health guides for your patients — in their language. Generate custom instructions with Cadus AI.</p>
+          <p className="text-base max-w-xl mx-auto mb-6" style={{ color: "rgba(255,255,255,0.6)" }}>Print-friendly health guides for your patients — in their language. Generate custom instructions with Cadus.</p>
           <div className="flex gap-2 justify-center flex-wrap">
             {LANGUAGES.map(l => (
               <button key={l} onClick={() => setLang(l)} className="px-4 py-2 rounded-full text-sm font-medium transition-all" style={lang === l ? { background: "#FFFFFF", color: "#007AFF" } : { background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.15)" }}>

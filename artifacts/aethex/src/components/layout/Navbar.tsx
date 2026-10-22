@@ -1,5 +1,5 @@
 /**
- * The aethex.in header: logo, five sections (Shop, Study, Tools, Cadus AI,
+ * The aethex.in header: logo, five sections (Shop, Study, Tools, Cadus,
  * More) with tidy drop-downs, search, wishlist, cart and account. On phones
  * the sections open in a full-screen menu. Styles: src/site.css (ax-*).
  */
@@ -209,7 +209,7 @@ export function Navbar({ inner = false }: { inner?: boolean }) {
                 )}
               </div>
             ))}
-            <a href={cadusUrl("/")} className="cadus"><CadusMark size={16} variant="mono" color="currentColor" /> Cadus AI</a>
+            <a href={cadusUrl("/")} className="cadus"><CadusMark size={16} variant="mono" color="currentColor" /> Cadus</a>
             {(() => { const s = SECTIONS.find((x) => x.id === "more")!; return (
               <div className={`${open === s.id ? "open" : ""} ${s.match.test(location) ? "on" : ""}`} style={{ position: "relative" }} onMouseEnter={() => hoverOpen(s.id)} onMouseLeave={hoverClose}>
                 <button type="button" aria-expanded={open === s.id} onClick={() => toggle(s.id)}>{s.label} <ChevronDown size={14} className="chev" /></button>
@@ -246,7 +246,7 @@ export function Navbar({ inner = false }: { inner?: boolean }) {
                 </div>
               )}
             </div>
-            <a href={cadusUrl("/")} className="ax-btn dark"><Sparkles size={15} /> Try Cadus AI</a>
+            <a href={cadusUrl("/")} className="ax-btn dark"><Sparkles size={15} /> Try Cadus</a>
             <button type="button" className="ax-icon ax-burger" onClick={() => setMobile(true)} aria-label="Open menu"><Menu size={21} /></button>
           </div>
         </div>
@@ -267,7 +267,7 @@ export function Navbar({ inner = false }: { inner?: boolean }) {
               <p style={{ marginTop: 14 }}>Go to</p>
               <div>
                 <Link href="/shop">All products</Link><Link href="/books">Medical books</Link><Link href="/study-hub">Study Hub</Link><Link href="/drug-reference">Drug reference</Link>
-                <a href={cadusUrl("/")}>Ask Cadus AI</a>
+                <a href={cadusUrl("/")}>Ask Cadus</a>
               </div>
             </div>
             )}
@@ -280,7 +280,7 @@ export function Navbar({ inner = false }: { inner?: boolean }) {
           <div className="ax-mob-h"><Logo /><button type="button" className="ax-icon" onClick={() => setMobile(false)} aria-label="Close menu"><X size={22} /></button></div>
           <div className="ax-mob-b">
             <button type="button" className="ax-search-btn" style={{ width: "100%", height: 46, marginBottom: 8 }} onClick={() => { setMobile(false); setSearching(true); }}><Search size={17} /> <span style={{ display: "inline" }}>Search Aethex</span></button>
-            <a className="solo" href={cadusUrl("/")}>Cadus AI <CadusMark size={18} variant="mono" color="currentColor" /></a>
+            <a className="solo" href={cadusUrl("/")}>Cadus <CadusMark size={18} variant="mono" color="currentColor" /></a>
             {SECTIONS.map((s) => (
               <details key={s.id}>
                 <summary>{s.label} <ChevronDown size={18} className="chev" /></summary>

@@ -52,7 +52,7 @@ export default function NotFound() {
         {PLACES.map(({ href, label, hint, icon: I }) => (
           <li key={href}><Link href={href}><span className="ic"><I size={18} /></span><b>{label}</b><small>{hint}</small></Link></li>
         ))}
-        <li><a href={cadusUrl("/")}><span className="ic"><Sparkles size={18} /></span><b>Cadus AI</b><small>Clinical answers with sources</small></a></li>
+        <li><a href={cadusUrl("/")}><span className="ic"><Sparkles size={18} /></span><b>Cadus</b><small>Clinical answers with sources</small></a></li>
       </ul>
     </section>
   );

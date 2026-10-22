@@ -23,7 +23,7 @@ const benefits = [
   { icon: ClipboardList, title: "One list, one quotation", desc: "Build a list for every ward or department and get one quotation for all of it.", color: "#2B7A6F" },
   { icon: Banknote, title: "Bank transfer or purchase order", desc: "Pay on quotations the way your institution pays; small orders can be cash on delivery.", color: "#C2610C" },
   { icon: Truck, title: "Delivery across India", desc: "To your hospital, college or department.", color: "#0E7490" },
-  { icon: Sparkles, title: "Cadus AI for your doctors", desc: "Clinical answers with sources, dose checks and drug interactions.", color: "#2B7A6F" },
+  { icon: Sparkles, title: "Cadus for your doctors", desc: "Clinical answers with sources, dose checks and drug interactions.", color: "#2B7A6F" },
   { icon: GraduationCap, title: "Study Hub for your students", desc: "NEET-PG preparation, subject notes, mock tests and flashcards.", color: "#6375E0" },
 ];
 
@@ -397,7 +397,7 @@ export default function InstitutionHub({ mode }: InstitutionHubProps = {}) {
             <h2 className="text-3xl font-black mb-3" style={{ color: "#1C1C1E", letterSpacing: "-0.5px" }}>
               Talk to us
             </h2>
-            <p className="text-base" style={{ color: "#636366" }}>Questions about supplies for your institution, or about Cadus AI and the Study Hub for your doctors and students? Write to us. To order, <Link href="/hospitals" className="underline">build a list</Link> instead.</p>
+            <p className="text-base" style={{ color: "#636366" }}>Questions about supplies for your institution, or about Cadus and the Study Hub for your doctors and students? Write to us. To order, <Link href="/hospitals" className="underline">build a list</Link> instead.</p>
           </div>
 
           {submitted ? (

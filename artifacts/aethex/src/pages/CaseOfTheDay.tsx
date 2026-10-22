@@ -319,7 +319,7 @@ export default function CaseOfTheDay() {
               <p className="text-sm leading-relaxed" style={{ color: "#3A3A3C" }}>{caseData.explanation}</p>
             </div>
 
-            {/* Discuss with Cadus AI */}
+            {/* Discuss with Cadus */}
             <div className="px-5 pb-5">
               <a
                 href={cadusUrl("/", { context: buildCadusContext() })}
@@ -331,11 +331,11 @@ export default function CaseOfTheDay() {
                   boxShadow: "0 4px 16px rgba(0,122,255,0.25)",
                 }}>
                 <Sparkles className="w-4 h-4" />
-                Discuss with Cadus AI
+                Discuss with Cadus
                 <ChevronRight className="w-4 h-4" />
               </a>
               <p className="text-center text-xs mt-2" style={{ color: "#8E8E93" }}>
-                This case will be pre-loaded into your Cadus AI session for deeper clinical analysis
+                This case will be pre-loaded into your Cadus session for deeper clinical analysis
               </p>
             </div>
           </div>
@@ -350,7 +350,7 @@ export default function CaseOfTheDay() {
               <Sparkles className="w-4 h-4 text-white" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-semibold" style={{ color: "#1C1C1E" }}>Not sure? Ask Cadus AI</p>
+              <p className="text-sm font-semibold" style={{ color: "#1C1C1E" }}>Not sure? Ask Cadus</p>
               <p className="text-xs" style={{ color: "#636366" }}>Get a step-by-step clinical reasoning walkthrough</p>
             </div>
             <a

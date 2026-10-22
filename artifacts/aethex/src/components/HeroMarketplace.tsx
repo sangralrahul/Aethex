@@ -94,10 +94,10 @@ function CategoryRail({ categories }: { categories: any[] }) {
 /* ═════════ 3. Hero carousel (Amazon-style rotating banners) ═════════ */
 const SLIDES = [
   {
-    eyebrow: "Cadus AI · Clinical Assistant",
+    eyebrow: "Cadus · Clinical Assistant",
     title: "Diagnose faster.",
     subtitle: "20+ AI clinical modes — differentials, drug checks, prescriptions.",
-    cta: "Try Cadus AI Free",
+    cta: "Try Cadus Free",
     href: cadusUrl("/"),
 
     bg: "linear-gradient(120deg, #0F1729 0%, #17325C 55%, #1E4A8C 100%)",
@@ -248,7 +248,7 @@ function AskCadusBar() {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Ask Cadus AI — symptom, drug interaction, diagnosis, calculator…"
+          placeholder="Ask Cadus — symptom, drug interaction, diagnosis, calculator…"
           className="flex-1 bg-transparent border-0 outline-none text-sm min-w-0"
           style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#0F1729" }} />
         <div className="hidden md:flex items-center gap-1.5">

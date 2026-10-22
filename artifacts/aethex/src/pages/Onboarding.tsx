@@ -27,7 +27,7 @@ const STEPS = [
     subtitle: "Pick all that apply.",
     multi: true,
     options: [
-      { value: "ai",        emoji: "🤖", label: "Cadus AI",          sub: "Clinical decision support" },
+      { value: "ai",        emoji: "🤖", label: "Cadus",          sub: "Clinical decision support" },
       { value: "shop",      emoji: "🛒", label: "Medical Shop",       sub: "Equipment & supplies" },
       { value: "study",     emoji: "🎓", label: "Study Hub",          sub: "NEET-PG / MCQs / Notes" },
       { value: "invoices",  emoji: "🧾", label: "GST Invoices",       sub: "Billing & records" },
@@ -36,7 +36,7 @@ const STEPS = [
   {
     id: "specialty",
     question: "Which area are you in?",
-    subtitle: "Helps Cadus AI give better answers.",
+    subtitle: "Helps Cadus give better answers.",
     multi: false,
     options: [
       { value: "gp",        emoji: "👨‍⚕️", label: "General Practice",    sub: "" },
@@ -159,7 +159,7 @@ export default function Onboarding() {
             You're all set, {user?.name?.split(" ")[0]}!
           </h2>
           <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 14, color: "#555", margin: 0 }}>
-            Taking you to Cadus AI…
+            Taking you to Cadus…
           </p>
         </div>
         <AnimationStyles />

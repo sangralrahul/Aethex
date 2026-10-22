@@ -35,7 +35,7 @@ const SECTIONS = [
   {
     title: "3. Medical Information Disclaimer",
     content: [
-      "Cadus AI and all clinical tools on AETHEX are for **educational and informational purposes only**.",
+      "Cadus and all clinical tools on AETHEX are for **educational and informational purposes only**.",
       "No content on AETHEX constitutes professional medical advice, diagnosis, or treatment.",
       "Always consult a qualified healthcare professional for medical decisions.",
       "Do not disregard professional medical advice based on information from this platform.",
@@ -57,8 +57,8 @@ const SECTIONS = [
     content: [
       "All content on AETHEX — including text, images, tool interfaces, and AI outputs — is owned by Clavix Technologies Pvt Ltd or its licensors.",
       "You may not reproduce, distribute, or create derivative works without written permission.",
-      "AI-generated outputs from Cadus AI are provided for personal use only.",
-      "The AETHEX and Cadus AI names, logos, and trademarks are proprietary to Clavix Technologies Pvt Ltd.",
+      "AI-generated outputs from Cadus are provided for personal use only.",
+      "The AETHEX and Cadus names, logos, and trademarks are proprietary to Clavix Technologies Pvt Ltd.",
     ],
   },
   {
@@ -134,7 +134,7 @@ export default function TermsOfService() {
             Last updated: <strong>1 April 2026</strong> · Effective immediately
           </p>
           <p className="mt-3 text-base leading-relaxed" style={{ color: "#636366" }}>
-            Please read these Terms of Service carefully before using AETHEX, operated by Clavix Technologies Pvt Ltd. These terms govern your use of our medical store, Cadus AI assistant, and all clinical tools.
+            Please read these Terms of Service carefully before using AETHEX, operated by Clavix Technologies Pvt Ltd. These terms govern your use of our medical store, Cadus assistant, and all clinical tools.
           </p>
         </div>
       </div>

@@ -15,10 +15,10 @@ import { storeFetch } from "@/lib/store/api";
 import { normPhone, validEmail } from "@/lib/store/rules";
 import { BUSINESS } from "@/config/business";
 
-const TOPICS = ["An order", "A product", "Returns or replacement", "Bulk or institutional purchase", "Cadus AI", "Study Hub", "Something else"];
+const TOPICS = ["An order", "A product", "Returns or replacement", "Bulk or institutional purchase", "Cadus", "Study Hub", "Something else"];
 
 export default function Contact() {
-  useSeo({ title: "Contact us | Aethex", description: "Questions about an order, a product, returns or Cadus AI: write to the Aethex team.", path: "/contact" });
+  useSeo({ title: "Contact us | Aethex", description: "Questions about an order, a product, returns or Cadus: write to the Aethex team.", path: "/contact" });
   const { user } = useUserAuth();
   const [f, setF] = useState(() => {
     const c = readContact();

@@ -1017,7 +1017,7 @@ ${button(`${SITE_URL}/admin`, "Open the store admin")}`)),
 
 /* ------------------------------------------------------------------ the contact form */
 
-const TOPICS = ["An order", "A product", "Returns or replacement", "Bulk or institutional purchase", "Cadus AI", "Study Hub", "Something else"];
+const TOPICS = ["An order", "A product", "Returns or replacement", "Bulk or institutional purchase", "Cadus", "Study Hub", "Something else"];
 
 async function createContact(request: Request, env: DBEnv): Promise<Response> {
   const b = await readJson(request);

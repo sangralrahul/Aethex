@@ -151,10 +151,10 @@ export default function Analytics() {
           </div>
         </div>
 
-        {/* Cadus AI Query Topics */}
+        {/* Cadus Query Topics */}
         <div className="rounded-2xl p-6 mb-6" style={{ background: "#FFFFFF", border: "1px solid rgba(60,60,67,0.1)" }}>
           <h3 className="font-bold text-sm mb-4 flex items-center gap-2" style={{ color: "#1C1C1E" }}>
-            <Brain className="w-4 h-4" style={{ color: "#8B5CF6" }} /> What You Ask Cadus AI Most
+            <Brain className="w-4 h-4" style={{ color: "#8B5CF6" }} /> What You Ask Cadus Most
           </h3>
           <div className="space-y-2.5">
             {TOP_QUERIES.map((q, i) => (

@@ -15,7 +15,7 @@ function useSEO(title: string, description: string) {
 
 export default function MedicalDisclaimer() {
   useSEO(
-    "Medical Disclaimer — AETHEX | Cadus AI",
+    "Medical Disclaimer — AETHEX | Cadus",
     "AETHEX Medical Disclaimer: AI-generated content is for educational purposes only and is not a substitute for professional medical advice.",
   );
 
@@ -54,7 +54,7 @@ export default function MedicalDisclaimer() {
         {/* Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
-            { icon: Stethoscope, color: "#007AFF", title: "Not Medical Advice", body: "Content from Cadus AI and all clinical tools is informational only. It does not constitute clinical advice from a licensed physician." },
+            { icon: Stethoscope, color: "#007AFF", title: "Not Medical Advice", body: "Content from Cadus and all clinical tools is informational only. It does not constitute clinical advice from a licensed physician." },
             { icon: Brain, color: "#AF52DE", title: "AI Limitations", body: "AI models can make errors. Outputs may be incomplete, outdated, or contextually incorrect. Always verify clinical information from authoritative sources." },
             { icon: Phone, color: "#FF3B30", title: "Emergency — Call 108", body: "In a medical emergency, do not use this platform. Call emergency services (108) immediately or go to the nearest hospital." },
           ].map(({ icon: Icon, color, title, body }) => (
@@ -73,19 +73,19 @@ export default function MedicalDisclaimer() {
           {
             title: "Scope of This Disclaimer",
             items: [
-              "This disclaimer applies to all content on AETHEX, including Cadus AI chat responses, clinical tool outputs, blog articles, and medical news.",
+              "This disclaimer applies to all content on AETHEX, including Cadus chat responses, clinical tool outputs, blog articles, and medical news.",
               "It applies regardless of whether you access the platform as a registered user or visitor.",
               "This disclaimer is subject to change; continued use of the platform indicates acceptance.",
             ],
           },
           {
-            title: "Cadus AI — Specific Limitations",
+            title: "Cadus — Specific Limitations",
             items: [
-              "Cadus AI is a large-language model assistant. It does not have access to your personal medical records or history.",
+              "Cadus is a large-language model assistant. It does not have access to your personal medical records or history.",
               "AI outputs are probabilistic and may not reflect the latest clinical guidelines.",
-              "Drug dosages, interactions, and protocols provided by Cadus AI must be verified against current pharmacopoeia and senior clinical guidance.",
-              "Cadus AI should not be used for making time-critical clinical decisions in emergency settings.",
-              "Cadus AI is not a licensed medical practitioner and does not establish a doctor–patient relationship.",
+              "Drug dosages, interactions, and protocols provided by Cadus must be verified against current pharmacopoeia and senior clinical guidance.",
+              "Cadus should not be used for making time-critical clinical decisions in emergency settings.",
+              "Cadus is not a licensed medical practitioner and does not establish a doctor–patient relationship.",
             ],
           },
           {
@@ -136,7 +136,7 @@ export default function MedicalDisclaimer() {
         <div className="rounded-2xl p-6 flex flex-col sm:flex-row items-center gap-4"
           style={{ background: "linear-gradient(135deg,rgba(0,122,255,0.06),rgba(0,194,168,0.06))", border: "1px solid rgba(0,122,255,0.15)" }}>
           <div className="flex-1">
-            <p className="font-bold text-base" style={{ color: "#1C1C1E" }}>Ready to use Cadus AI responsibly?</p>
+            <p className="font-bold text-base" style={{ color: "#1C1C1E" }}>Ready to use Cadus responsibly?</p>
             <p className="text-sm mt-1" style={{ color: "#636366" }}>Use our clinical tools as a reference — not a replacement — for professional judgement.</p>
           </div>
           <div className="flex gap-3 shrink-0">
@@ -146,7 +146,7 @@ export default function MedicalDisclaimer() {
             </Link>
             <a href={cadusUrl("/")} className="px-5 py-2.5 rounded-full text-sm font-bold transition-all"
               style={{ background: "rgba(120,120,128,0.12)", color: "#1C1C1E", textDecoration: "none" }}>
-              Open Cadus AI
+              Open Cadus
             </a>
 
           </div>

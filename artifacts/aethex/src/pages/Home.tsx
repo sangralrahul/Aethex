@@ -1,6 +1,6 @@
 /**
  * aethex.in: the homepage. A storefront first (categories, deals, products),
- * with Cadus AI and the Study Hub alongside, in the site style (light, Inter,
+ * with Cadus and the Study Hub alongside, in the site style (light, Inter,
  * deep teal). Styles: src/site.css (home section, classes ax-h-*).
  */
 import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
@@ -28,9 +28,9 @@ const still = () => typeof window !== "undefined" && !!window.matchMedia?.("(pre
 /* ------------------------------------------------------------------ data */
 
 const TESTIMONIALS = [
-  { quote: "Aethex has completely changed how I manage patient care. Cadus AI gives me instant drug references mid-consultation — it's like having a pharmacologist in the room.", name: "Dr. Priya Sharma", role: "Cardiologist, Mumbai", initials: "PS" },
+  { quote: "Aethex has completely changed how I manage patient care. Cadus gives me instant drug references mid-consultation — it's like having a pharmacologist in the room.", name: "Dr. Priya Sharma", role: "Cardiologist, Mumbai", initials: "PS" },
   { quote: "As a GP seeing 40+ patients daily, the Drug Interaction Checker has saved me from three potentially dangerous prescriptions in a single week. I can't imagine going back.", name: "Dr. Arjun Mehta", role: "General Physician, Delhi", initials: "AM" },
-  { quote: "Cadus AI helped me cross-reference a rare neuro case at 11 PM — the depth of the response was remarkable. This platform is what Indian medicine has been waiting for.", name: "Dr. Vikram Nair", role: "Neurologist, Chennai", initials: "VN" },
+  { quote: "Cadus helped me cross-reference a rare neuro case at 11 PM — the depth of the response was remarkable. This platform is what Indian medicine has been waiting for.", name: "Dr. Vikram Nair", role: "Neurologist, Chennai", initials: "VN" },
 ];
 
 /** The category bar under the header. */
@@ -169,7 +169,7 @@ function CategoryTiles() {
 export default function Home() {
   useSeo({
     title: "Aethex — AI-Powered Medical Education & Clinical Tools in India",
-    description: "Cadus AI clinical assistant, NEET PG study hub, drug references and genuine medical supplies — one platform built for Indian doctors and medical students.",
+    description: "Cadus clinical assistant, NEET PG study hub, drug references and genuine medical supplies — one platform built for Indian doctors and medical students.",
     path: "/",
   });
   const [, navigate] = useLocation();
@@ -207,10 +207,10 @@ export default function Home() {
           <aside className="ax-h-side">
             <a href={cadusUrl("/")} className="ax-h-promo dark">
               <span className="tile"><CadusMark size={18} variant="mono" color="currentColor" /></span>
-              <small>Cadus AI</small>
+              <small>Cadus</small>
               <b>Clinical answers with sources, in seconds</b>
               <span className="q">"Warfarin with clarithromycin — safe?"</span>
-              <span className="go">Try Cadus AI <ArrowRight size={15} /></span>
+              <span className="go">Try Cadus <ArrowRight size={15} /></span>
             </a>
             <Link href="/case-of-the-day" className="ax-h-promo">
               <span className="tile light"><ClipboardList size={18} /></span>
@@ -265,11 +265,11 @@ export default function Home() {
         <div className="ax-wrap ax-h-duo">
           <div className="ax-h-ban cadus">
             <div>
-              <small><Sparkles size={14} /> Cadus AI</small>
+              <small><Sparkles size={14} /> Cadus</small>
               <h3>Your clinical assistant, with sources</h3>
               <p>Differentials, doses, drug interactions, lab reading and SOAP notes. Every answer is checked for dose and red-flag safety.</p>
               <div className="ctas">
-                <a href={cadusUrl("/")} className="ax-btn teal">Try Cadus AI free</a>
+                <a href={cadusUrl("/")} className="ax-btn teal">Try Cadus free</a>
                 <a href={downloadsUrl()} className="ax-btn ghost-l">Desktop app</a>
               </div>
             </div>

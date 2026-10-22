@@ -63,13 +63,13 @@ export default function StudyPlanner() {
         <div className="relative z-10 max-w-4xl mx-auto px-4 text-center">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-5" style={{ background: "rgba(0,122,255,0.15)", border: "1px solid rgba(0,122,255,0.25)", color: "#60A5FA" }}>
             <Sparkles className="w-3.5 h-3.5" />
-            <span className="text-xs font-semibold">Powered by Cadus AI</span>
+            <span className="text-xs font-semibold">Powered by Cadus</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-black text-white mb-3" style={{ letterSpacing: "-1px" }}>
             AI NEET-PG <span style={{ background: "linear-gradient(135deg,#00C2A8,#007AFF)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Study Planner</span>
           </h1>
           <p className="text-base max-w-xl mx-auto mb-0" style={{ color: "rgba(255,255,255,0.6)" }}>
-            Enter your exam date and Cadus AI builds a personalised day-by-day schedule — adapted to your weak areas.
+            Enter your exam date and Cadus builds a personalised day-by-day schedule — adapted to your weak areas.
           </p>
           {examDate && step === "plan" && (
             <div className="mt-6 inline-flex items-center gap-3 px-5 py-3 rounded-2xl" style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)" }}>
@@ -134,7 +134,7 @@ export default function StudyPlanner() {
               className="w-full py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-2 transition-all disabled:opacity-50"
               style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)", color: "#FFFFFF", boxShadow: "0 4px 16px rgba(0,122,255,0.3)" }}>
               {generating ? (
-                <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Cadus AI is building your plan...</>
+                <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Cadus is building your plan...</>
               ) : (
                 <><Sparkles className="w-4.5 h-4.5" /> Generate My Study Plan</>
               )}
@@ -202,7 +202,7 @@ export default function StudyPlanner() {
               </div>
               <div className="flex-1">
                 <p className="font-semibold text-sm" style={{ color: "#1C1C1E" }}>Missed a day?</p>
-                <p className="text-xs" style={{ color: "#AEAEB2" }}>Cadus AI will readjust your plan automatically</p>
+                <p className="text-xs" style={{ color: "#AEAEB2" }}>Cadus will readjust your plan automatically</p>
               </div>
               <button className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold" style={{ background: "rgba(239,68,68,0.08)", color: "#EF4444" }}>
                 <RotateCcw className="w-3.5 h-3.5" /> Reschedule

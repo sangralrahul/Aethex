@@ -6,7 +6,7 @@ const FEATURES = [
   { icon: BarChart3, title: "Faculty Dashboard", desc: "Track individual student progress, MCQ accuracy, study time, and CME credits.", color: "#8B5CF6" },
   { icon: GraduationCap, title: "Custom Certificates", desc: "College-branded CME certificates with your institution's logo and NMC-recognised credits.", color: "#F59E0B" },
   { icon: Award, title: "NEET-PG Analytics", desc: "Cohort-level performance analysis — identify weak areas across your batch.", color: "#00C2A8" },
-  { icon: Sparkles, title: "Cadus AI for Students", desc: "Unlimited Cadus AI access for every enrolled student in your institution.", color: "#EF4444" },
+  { icon: Sparkles, title: "Cadus for Students", desc: "Unlimited Cadus access for every enrolled student in your institution.", color: "#EF4444" },
   { icon: BarChart3, title: "Dedicated Account Manager", desc: "Dedicated support, onboarding training, and customisation for your institution.", color: "#10B981" },
 ];
 
@@ -39,7 +39,7 @@ export default function Enterprise() {
           <h1 className="text-4xl sm:text-5xl font-black text-white mb-4" style={{ letterSpacing: "-1px" }}>
             Aethex for <span style={{ background: "linear-gradient(135deg,#00C2A8,#007AFF)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Medical Colleges</span>
           </h1>
-          <p className="text-base max-w-2xl mx-auto mb-8" style={{ color: "rgba(255,255,255,0.6)" }}>Give your students India's most advanced medical learning platform. Bulk licensing, faculty dashboards, branded certificates, and Cadus AI — at scale.</p>
+          <p className="text-base max-w-2xl mx-auto mb-8" style={{ color: "rgba(255,255,255,0.6)" }}>Give your students India's most advanced medical learning platform. Bulk licensing, faculty dashboards, branded certificates, and Cadus — at scale.</p>
           <div className="flex items-center justify-center gap-8 flex-wrap">
             {[{ v: "50+", l: "Colleges Enrolled" }, { v: "25,000+", l: "Students Active" }, { v: "NMC", l: "Recognised CME" }].map((s, i) => (
               <div key={i} className="text-center">

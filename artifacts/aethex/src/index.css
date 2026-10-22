@@ -995,7 +995,7 @@ body {
   50%       { opacity: 0.18; }
 }
 
-/* ── Cadus AI v2 sidebar + tool scroll ─────────────────────────── */
+/* ── Cadus v2 sidebar + tool scroll ─────────────────────────── */
 .cadus-sidebar-scroll {
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.08) transparent;

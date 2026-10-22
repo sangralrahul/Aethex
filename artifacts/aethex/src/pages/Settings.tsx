@@ -435,10 +435,10 @@ function SectionPersonalization({ s, set }: { s: CadusSettings; set: (k: keyof C
             <Archive className="w-3 h-3" /> Manage
           </button>
         </div>
-        <Row label="Reference saved memories" desc="Cadus AI will save and reference memories when generating replies">
+        <Row label="Reference saved memories" desc="Cadus will save and reference memories when generating replies">
           <Toggle checked={s.referenceSavedMemories} onChange={(v) => set("referenceSavedMemories", v)} />
         </Row>
-        <Row label="Reference chat history" desc="Cadus AI will reference saved memory when generating responses" last>
+        <Row label="Reference chat history" desc="Cadus will reference saved memory when generating responses" last>
           <Toggle checked={s.referenceChatHistory} onChange={(v) => set("referenceChatHistory", v)} />
         </Row>
       </Card>
@@ -449,7 +449,7 @@ function SectionPersonalization({ s, set }: { s: CadusSettings; set: (k: keyof C
           style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
           <Pencil className="w-4 h-4 shrink-0" style={{ color: "rgba(0,188,212,0.6)" }} />
           <span className="flex-1 text-sm text-left" style={{ color: "rgba(200,230,255,0.85)" }}>
-            Customize Cadus AI instructions
+            Customize Cadus instructions
           </span>
           <ChevronRight className="w-4 h-4" style={{ color: "rgba(120,170,220,0.3)" }} />
         </button>
@@ -575,7 +575,7 @@ function SectionAbout() {
             <Zap className="w-6 h-6" style={{ color: "#007AFF" }} />
           </div>
           <div>
-            <p className="font-bold text-base" style={{ color: "#1c1c1e", fontFamily: "'Orbitron',monospace", letterSpacing: "0.06em" }}>Cadus AI</p>
+            <p className="font-bold text-base" style={{ color: "#1c1c1e", fontFamily: "'Orbitron',monospace", letterSpacing: "0.06em" }}>Cadus</p>
             <p className="text-xs" style={{ color: "rgba(100,170,220,0.5)" }}>Medical AI Suite · v3.0.0</p>
           </div>
         </div>
@@ -813,7 +813,7 @@ export default function SettingsPage() {
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#007AFF", boxShadow: "0 0 6px rgba(0,122,255,0.4)" }} />
             <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "rgba(0,122,255,0.65)", fontFamily: "'Orbitron',monospace" }}>
-              Cadus AI Settings
+              Cadus Settings
             </span>
           </div>
         </div>
@@ -863,7 +863,7 @@ export default function SettingsPage() {
               })}
             </nav>
             <div className="px-5 pt-4 mt-2" style={{ borderTop: "1px solid rgba(0,0,0,0.06)" }}>
-              <p className="text-[10px]" style={{ color: "rgba(0,122,255,0.4)" }}>Cadus AI · v3.0.0 · Clavix Technologies</p>
+              <p className="text-[10px]" style={{ color: "rgba(0,122,255,0.4)" }}>Cadus · v3.0.0 · Clavix Technologies</p>
             </div>
           </aside>
 

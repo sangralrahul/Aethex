@@ -447,7 +447,7 @@
 /* The old dark theme's form defaults (index.css, base layer) give inputs near-white text, borders and
    placeholders, and make selected text near-white: invisible on the site's light pages. Inside the
    site these defaults read dark instead. Kept in the base layer, so a page's own utility classes and
-   inline styles still win; Cadus AI (outside .ax-site) is untouched. */
+   inline styles still win; Cadus (outside .ax-site) is untouched. */
 @layer base {
   .ax-site input, .ax-site textarea, .ax-site select { color: var(--ax-ink); border-color: var(--ax-line2); }
   .ax-site input::placeholder, .ax-site textarea::placeholder { color: #8a94a6; opacity: 1; }

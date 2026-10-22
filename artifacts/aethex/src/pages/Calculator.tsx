@@ -698,7 +698,7 @@ function CalcCard({ calc, initialOpen }: { calc: Calculator; initialOpen?: boole
                 {result.unit && <span className="text-sm font-medium" style={{ color: severityColors[result.severity].text }}>{result.unit}</span>}
               </div>
               <p className="text-sm font-medium" style={{ color: severityColors[result.severity].text }}>{result.interpretation}</p>
-              <p className="text-[11px] mt-2" style={{ color: "#AEAEB2" }}>Ref: {calc.reference} · Cadus AI assists, not replaces, clinical decision-making.</p>
+              <p className="text-[11px] mt-2" style={{ color: "#AEAEB2" }}>Ref: {calc.reference} · Cadus assists, not replaces, clinical decision-making.</p>
             </div>
           )}
         </div>

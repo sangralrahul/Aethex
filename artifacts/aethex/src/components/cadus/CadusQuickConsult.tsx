@@ -167,11 +167,11 @@ export default function CadusQuickConsult() {
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <p className="font-bold text-sm text-white leading-tight">Cadus AI</p>
+                <p className="font-bold text-sm text-white leading-tight">Cadus</p>
                 <span className="text-xs font-medium text-white/60 leading-tight">· online</span>
               </div>
               <p className="text-xs leading-tight" style={{ color: "rgba(255,255,255,0.65)" }}>
-                Powered by Cadus AI — Aethex
+                Powered by Cadus — Aethex
               </p>
             </div>
           </div>
@@ -196,7 +196,7 @@ export default function CadusQuickConsult() {
                 <BotMessageSquare className="w-6 h-6" style={{ color: "#007AFF" }} />
               </div>
               <div>
-                <p className="font-semibold text-sm" style={{ color: "#1C1C1E" }}>Ask Cadus AI anything</p>
+                <p className="font-semibold text-sm" style={{ color: "#1C1C1E" }}>Ask Cadus anything</p>
                 <p className="text-xs mt-0.5" style={{ color: "#8E8E93" }}>Drug info · Dosages · Clinical questions</p>
               </div>
               <div className="flex flex-wrap gap-1.5 justify-center">

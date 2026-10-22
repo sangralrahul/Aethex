@@ -122,7 +122,7 @@ export default function Signup() {
     <AuthShell>
       <div className="au-step" key="details">
       <h2 className="au-title">Create your Aethex account</h2>
-      <p className="au-sub">Free to join. One account for the store, the Study Hub and Cadus AI.</p>
+      <p className="au-sub">Free to join. One account for the store, the Study Hub and Cadus.</p>
       <div className="au-body">
         <button type="button" className="au-btn google" onClick={handleGoogle} disabled={googleLoading || loading}>
           {googleLoading ? <Spinner /> : <GoogleIcon />} Sign up with Google

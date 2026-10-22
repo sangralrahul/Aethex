@@ -18,16 +18,16 @@ const SECTIONS = [
     content: [
       "**Account Information:** Name, email address, and password when you register.",
       "**Order Data:** Shipping address, phone number, and purchase history for medical supplies.",
-      "**Usage Data:** Pages visited, tools used, and interactions with Cadus AI — used to improve our services.",
+      "**Usage Data:** Pages visited, tools used, and interactions with Cadus — used to improve our services.",
       "**Device Information:** Browser type, IP address, and device identifiers for security purposes.",
-      "**Health Queries:** Anonymised queries submitted to Cadus AI to improve model accuracy. We do not link these to personal identifiers.",
+      "**Health Queries:** Anonymised queries submitted to Cadus to improve model accuracy. We do not link these to personal identifiers.",
     ],
   },
   {
     title: "2. How We Use Your Information",
     content: [
       "To process and fulfil your medical supply orders.",
-      "To operate and improve Cadus AI and all clinical tools.",
+      "To operate and improve Cadus and all clinical tools.",
       "To send order confirmations, shipping updates, and support messages.",
       "To send optional newsletters and medical insights (you can unsubscribe at any time).",
       "To comply with applicable Indian laws and regulations.",
@@ -128,7 +128,7 @@ export default function PrivacyPolicy() {
             Last updated: <strong>1 April 2026</strong> · Effective immediately
           </p>
           <p className="mt-3 text-base leading-relaxed" style={{ color: "#636366" }}>
-            Clavix Technologies Pvt Ltd ("we", "our", "us") operates the AETHEX platform, including its medical store, Cadus AI assistant, and clinical tools. This Privacy Policy describes how we collect, use, and safeguard your information.
+            Clavix Technologies Pvt Ltd ("we", "our", "us") operates the AETHEX platform, including its medical store, Cadus assistant, and clinical tools. This Privacy Policy describes how we collect, use, and safeguard your information.
           </p>
         </div>
       </div>

@@ -43,12 +43,12 @@ export default function TelemedicineDirectory() {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 py-8">
-        {/* Cadus AI help button */}
+        {/* Cadus help button */}
         <div className="rounded-2xl p-4 mb-6 flex items-center gap-4" style={{ background: "rgba(124,58,237,0.05)", border: "1px solid rgba(124,58,237,0.15)" }}>
           <Sparkles className="w-5 h-5 shrink-0" style={{ color: "#7C3AED" }} />
-          <p className="text-sm flex-1" style={{ color: "#636366" }}>Not sure which platform to join? Let Cadus AI help you set up your telemedicine practice based on your specialty and location.</p>
+          <p className="text-sm flex-1" style={{ color: "#636366" }}>Not sure which platform to join? Let Cadus help you set up your telemedicine practice based on your specialty and location.</p>
           <a href={cadusUrl("/")} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap" style={{ background: "#7C3AED", color: "#FFFFFF", textDecoration: "none" }}>
-            Ask Cadus AI <ArrowRight className="w-3.5 h-3.5" />
+            Ask Cadus <ArrowRight className="w-3.5 h-3.5" />
           </a>
 
         </div>

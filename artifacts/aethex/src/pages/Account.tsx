@@ -176,7 +176,7 @@ export default function Account() {
             <User className="w-8 h-8 text-[#8e8e93]" />
           </div>
           <h2 className="text-xl font-display font-bold text-[#1c1c1e] mb-2">Sign in to access your account</h2>
-          <p className="text-[#6c6c70] text-sm mb-6">Manage your profile, addresses, orders, and Cadus AI Pro subscription.</p>
+          <p className="text-[#6c6c70] text-sm mb-6">Manage your profile, addresses, orders, and Cadus Pro subscription.</p>
           <Link href="/" className="px-6 py-3 bg-[#00C2A8] text-[#F5F3EE] font-bold rounded-xl hover:bg-[#00D4B8] transition-colors">
             Sign In
           </Link>
@@ -383,7 +383,7 @@ export default function Account() {
                       { label: "Full Name", value: user.name },
                       { label: "Email Address", value: user.email },
                       { label: "Phone", value: user.phone || "Not set" },
-                      { label: "Account Type", value: user.isPro ? "Cadus AI Pro Member" : "Free Account" },
+                      { label: "Account Type", value: user.isPro ? "Cadus Pro Member" : "Free Account" },
                     ].map((field, i) => (
                       <div key={i} className="flex items-center justify-between py-3 border-b border-white/5 last:border-0">
                         <span className="text-sm text-[#6c6c70]">{field.label}</span>
@@ -424,14 +424,14 @@ export default function Account() {
               <div className="space-y-5">
                 <h2 className="text-lg font-display font-bold text-[#1c1c1e] flex items-center gap-2">
                   <Crown className="w-5 h-5 text-[#00C2A8]" />
-                  Cadus AI Subscription
+                  Cadus Subscription
                 </h2>
 
                 {/* Current Plan */}
                 <div className={`p-6 rounded-2xl border ${user.isPro ? "border-[#00C2A8]/40 bg-[#00C2A8]/5" : "border-black/[0.08] bg-white"}`}>
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h3 className="font-bold text-[#1c1c1e]">{user.isPro ? "Cadus AI Pro" : "Free Plan"}</h3>
+                      <h3 className="font-bold text-[#1c1c1e]">{user.isPro ? "Cadus Pro" : "Free Plan"}</h3>
                       <p className="text-sm text-[#6c6c70]">
                         {user.isPro
                           ? `Active until ${user.proExpiry ? new Date(user.proExpiry).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }) : "—"}`
@@ -461,7 +461,7 @@ export default function Account() {
 
                 {!user.isPro && (
                   <>
-                    <p className="text-sm text-[#3c3c43]">Upgrade to Cadus AI Pro for unlimited AI queries, advanced features, and priority access.</p>
+                    <p className="text-sm text-[#3c3c43]">Upgrade to Cadus Pro for unlimited AI queries, advanced features, and priority access.</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {[
                         { plan: "monthly" as const, label: "Monthly", price: 299, period: "/month", saving: null },
@@ -481,7 +481,7 @@ export default function Account() {
                           {option.saving && <p className="text-xs text-[#00C2A8] mb-4">{option.saving}</p>}
                           {!option.saving && <p className="text-xs text-[#6c6c70] mb-4">Cancel anytime</p>}
                           <ul className="space-y-2 mb-5">
-                            {["Unlimited Cadus AI queries", "Image & lab analysis", "PDF export", "Drug interaction checker", "SOAP notes generator", "MCQ generator"].map((feat, i) => (
+                            {["Unlimited Cadus queries", "Image & lab analysis", "PDF export", "Drug interaction checker", "SOAP notes generator", "MCQ generator"].map((feat, i) => (
                               <li key={i} className="flex items-center gap-2 text-xs text-[#3c3c43]">
                                 <CheckCircle2 className="w-3.5 h-3.5 text-[#00C2A8] shrink-0" />
                                 {feat}
@@ -676,7 +676,7 @@ export default function Account() {
                     My Consult History
                   </h2>
                   <p className="text-sm text-[#6c6c70] mb-4">
-                    All your saved Cadus AI conversations, searchable and accessible from here.
+                    All your saved Cadus conversations, searchable and accessible from here.
                   </p>
                   <Link href="/my-consults">
                     <button className="w-full py-3 rounded-xl font-semibold text-sm text-white transition-all hover:opacity-90" style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)" }}>
@@ -697,7 +697,7 @@ export default function Account() {
                 <div className="space-y-4">
                   {[
                     { label: "Order updates & tracking", desc: "Get notified about your order status", defaultOn: true },
-                    { label: "Cadus AI updates", desc: "New features and model updates", defaultOn: true },
+                    { label: "Cadus updates", desc: "New features and model updates", defaultOn: true },
                     { label: "Exclusive deals & offers", desc: "Personalized discounts on medical supplies", defaultOn: false },
                     { label: "Medical news digest", desc: "Weekly curated medical news", defaultOn: true },
                     { label: "Blog & study tips", desc: "New blog posts and exam tips", defaultOn: false },

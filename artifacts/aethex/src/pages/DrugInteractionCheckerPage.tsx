@@ -427,7 +427,7 @@ export default function DrugInteractionCheckerPage() {
                   </div>
                   <div className="flex-1">
                     <p className="font-bold text-sm" style={{ color: "#1C1C1E" }}>
-                      AI Deep Analysis {aiReport && <span className="text-xs font-normal" style={{ color: "#8E8E93" }}>· powered by Cadus AI</span>}
+                      AI Deep Analysis {aiReport && <span className="text-xs font-normal" style={{ color: "#8E8E93" }}>· powered by Cadus</span>}
                     </p>
                     <p className="text-xs mt-0.5 mb-3" style={{ color: "#636366" }}>
                       Evidence-based pairwise analysis with mechanism, management, monitoring plan, safer alternatives, and patient counseling points.

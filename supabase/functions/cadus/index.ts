@@ -1,4 +1,4 @@
-// Cadus AI endpoint. Pass `action` in the JSON body.
+// Cadus endpoint. Pass `action` in the JSON body.
 //
 //   chat / analyze-image  Draft an answer (Claude Haiku 5.5), optionally with live,
 //                         cited sources from trusted medical sites. With
@@ -444,6 +444,63 @@ function languageLine(language: unknown): string {
   return `LANGUAGE: Reply in ${lang.slice(0, 30)}. Keep drug names, doses, units and standard medical terms in English.`;
 }
 
+/** Cadus modes (the picker beside the message box): how the answer is written. "think" and "deep" have their own paths. */
+const ANSWER_MODE_PROMPTS: Record<string, string> = {
+  fast: "MODE: Fast. Give the shortest complete answer: the bottom line and the essentials in a few bullets. Never drop safety-critical information (doses with units, red flags, contraindications) to save space.",
+  exam: `MODE: Exam. Write for someone revising for NEET-PG, INI-CET, FMGE, NExT, USMLE or university exams. Keep the facts exactly as accurate as in clinical answers, and organise them for recall:
+- Start with "**Bottom line:**" as usual, then "## High-yield facts" as short bullets with the most-tested numbers, investigations of choice, gold standards and drugs of choice in bold.
+- Add "## Commonly confused" (look-alikes and how to tell them apart) and "## Exam traps" (the wrong options examiners use) where they apply.
+- Add one memory aid under "## Mnemonic" only if a well-known one exists; never invent a mnemonic and present it as standard.
+- End with "## One-liners" (five quick-recall lines) and, when it helps, two practice MCQs with the answers and a one-line reason each.`,
+  simple: `MODE: Simple. Explain in plain words for someone new to the topic, such as a first-year student or a curious patient:
+- Use short sentences and everyday words; explain each medical term the first time you use it.
+- Use one good analogy where it genuinely helps understanding, and say where the analogy stops being true.
+- Keep facts exactly as accurate as in a clinical answer, and keep any safety advice and red flags.
+- Keep the "**Bottom line:**" first; skip tables unless they are simpler than text.`,
+};
+/** Tone of voice, from the same picker. Professional is the default and needs no prompt. */
+const TONE_PROMPTS: Record<string, string> = {
+  friendly: "TONE: Warm and encouraging, like a supportive senior colleague. Keep it professional and precise; no filler, emoji or exclamation marks in clinical content.",
+  mentor: "TONE: A teaching mentor. After the answer, add \"## Check yourself\" with two short questions that test understanding of the key point (answers hidden under a final \"Answers:\" line). Explain the why behind each key step.",
+};
+
+/** A Cadus Crew assistant the user is chatting with: its name and instructions (the user's own, or a ready-made one). */
+function crewLine(raw: unknown): string {
+  if (!raw || typeof raw !== "object") return "";
+  const c = raw as Record<string, unknown>;
+  const name = typeof c.name === "string" ? c.name.replace(/[\r\n<>`"]/g, " ").trim().slice(0, 60) : "";
+  const text = typeof c.instructions === "string" ? c.instructions.replace(/\r/g, "").trim().slice(0, 4000) : "";
+  if (!name || !text) return "";
+  return [
+    `CREW ASSISTANT: In this chat you are "${name}", an assistant set up in Cadus Crew. Follow its instructions for role, focus, format and tone. Introduce yourself by that name only if asked.`,
+    "They never outrank the clinical standards above (accuracy, safety, honesty about uncertainty): where they conflict, the standards win.",
+    `<crew_instructions>\n${text}\n</crew_instructions>`,
+  ].join("\n");
+}
+
+const FOLLOWUPS_SYSTEM = `You suggest what a doctor or medical student would most likely ask next after an answer from Cadus, a clinical AI assistant for India.
+Return ONLY a JSON array of exactly three strings: short follow-up questions (each under 70 characters) written as the user would type them, specific to this question and answer, each going somewhere different (for example management, mechanism, a special population, an exam angle or the Indian context). No numbering, no quotes inside, no question that the answer already fully covers.`;
+
+const DEEP_PLAN_SYSTEM = `You plan a deep literature review for Cadus, a clinical AI assistant for doctors in India.
+Break the user's question into 3 to 5 focused sub-questions that together answer it (for example efficacy, safety, guidelines, special populations, the Indian context).
+For each, write a PubMed search: plain keywords and MeSH-style terms with AND/OR, no field tags, under 12 words.
+Also write 2 web searches for current guidelines or authoritative statements (WHO, ICMR, MoHFW, NICE, specialty societies).
+Return ONLY JSON: {"title": "a short title for the report", "questions": [{"q": "sub-question", "pubmed": "search"}], "web": ["search", "search"]}`;
+
+const DEEP_WEB_SYSTEM = `You are Cadus, researching current guidelines and authoritative statements for a clinical evidence review in India. Search trusted medical websites, then write compact notes (under 400 words) of what the guidelines and authoritative sources say, with the issuing body and year, citing what you found. Do not write an introduction or a reference list.`;
+
+const DEEP_WRITE_SYSTEM = `${CORE_SYSTEM}
+
+TASK: Deep Dive, a cited evidence report. You receive numbered sources: PubMed records (with abstracts) and notes from guideline searches. Write a thorough, well-organised report that answers the user's question from these sources:
+**Bottom line:** the practical answer for clinicians, in two to four sentences.
+## What the evidence shows (by sub-question, with the strength of the evidence)
+## Key studies (a table: Study | Design and size | Population | Main finding [n])
+## Guideline recommendations (issuing body and year)
+## In India
+## Gaps and uncertainties
+## Key points
+Rules: cite every factual claim with the source number in square brackets, like [3] or [2][5]; use only the numbers given; never cite a source for something it doesn't say; never invent studies, numbers or guideline years. Where the sources disagree, say so. If the sources don't cover part of the question, say that plainly instead of filling it in. Do not write a reference list or URLs (the app shows the sources).`;
+
 /** The user's own project instructions, capped. Empty when not set. */
 function projectText(raw: unknown): string {
   return typeof raw === "string" ? raw.replace(/\r/g, "").trim().slice(0, 2000) : "";
@@ -667,7 +724,7 @@ function normaliseDeck(deck: any, topic: string) {
     bullets: Array.isArray(sl?.bullets) ? sl.bullets.map(String) : [],
   }));
   deck.title = String(deck.title || topic);
-  deck.subtitle = String(deck.subtitle || "Cadus AI lecture deck");
+  deck.subtitle = String(deck.subtitle || "Cadus lecture deck");
   return deck;
 }
 
@@ -720,6 +777,142 @@ function streamAnswer(opts: Parameters<typeof callAI>[0], meta: { libraryAware: 
   });
 }
 
+/** One PubMed record as a numbered source for the Deep Dive writer: citation and abstract (capped). */
+function paperBlock(n: number, p: { title: string; authors: string[]; journal: string; year: string; types: string[]; abstract: { label?: string; text: string }[] }): string {
+  const who = p.authors.length ? `${p.authors[0]}${p.authors.length > 1 ? " et al." : ""}` : "";
+  const abs = p.abstract.map((a) => (a.label ? `${a.label}: ${a.text}` : a.text)).join(" ").slice(0, 1800);
+  const kind = p.types.filter((t) => /trial|review|meta|guideline|cohort/i.test(t)).slice(0, 2).join(", ");
+  return `[${n}] ${p.title} (${[who, p.journal, p.year].filter(Boolean).join(", ")}${kind ? `; ${kind}` : ""})\n${abs || "(no abstract)"}`;
+}
+
+/**
+ * Deep Dive: plan the question into sub-questions, search PubMed for each and the web for guidelines, then
+ * write a cited report, streamed as server-sent events:
+ *   start · step {id, label, state: "on"|"done"|"skip", detail?} · delta {t} · reset · done {message, sources, title, papers, web} · error {error, status}
+ */
+function deepDive(question: string, body: Record<string, any>): Response {
+  const enc = new TextEncoder();
+  const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
+  const writer = writable.getWriter();
+  let open = true;
+  const upstream = new AbortController();
+  const write = (chunk: string) => {
+    if (!open) return;
+    writer.write(enc.encode(chunk)).catch(() => { open = false; upstream.abort(); });
+  };
+  const send = (event: string, data: unknown) => write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  const step = (id: string, label: string, state: "on" | "done" | "skip", detail?: string) => send("step", { id, label, state, ...(detail ? { detail } : {}) });
+  const keepAlive = setInterval(() => write(": keep-alive\n\n"), 15000);
+  const language = languageLine(body.language);
+  (async () => {
+    try {
+      send("start", { deep: true });
+      // 1. Plan
+      step("plan", "Planning the research", "on");
+      const planned = await callAI({
+        model: CLAUDE_DRAFT_MODEL,
+        messages: [{ role: "system", content: DEEP_PLAN_SYSTEM }, { role: "user", content: `QUESTION: ${question}` }],
+        jsonMode: true, effort: "medium", maxTokens: 1200, signal: upstream.signal,
+      });
+      if (!planned.ok) { send("error", { error: planned.error, status: planned.status }); return; }
+      const plan = parseJsonLoose<{ title?: string; questions?: { q?: string; pubmed?: string }[]; web?: string[] }>(planned.content) ?? {};
+      const subs = (Array.isArray(plan.questions) ? plan.questions : [])
+        .map((x) => ({ q: String(x?.q ?? "").trim().slice(0, 200), pubmed: String(x?.pubmed ?? "").replace(/\[[a-z]+\]/gi, "").trim().slice(0, 160) }))
+        .filter((x) => x.q && x.pubmed).slice(0, 5);
+      if (!subs.length) subs.push({ q: question.slice(0, 200), pubmed: question.slice(0, 160) });
+      const webQs = (Array.isArray(plan.web) ? plan.web : []).map((w) => String(w).trim().slice(0, 160)).filter(Boolean).slice(0, 2);
+      const title = String(plan.title || question).replace(/\s+/g, " ").trim().slice(0, 100);
+      step("plan", `Planned ${subs.length} lines of enquiry`, "done", subs.map((x) => x.q).join(" · "));
+
+      // 2. PubMed, one sub-question at a time (NCBI allows a few requests a second)
+      const papers: any[] = [];
+      const seen = new Set<string>();
+      for (let i = 0; i < subs.length; i++) {
+        if (upstream.signal.aborted) return;
+        const id = `pm${i}`;
+        step(id, `Searching PubMed: ${subs[i].q}`, "on");
+        try {
+          const r = await searchPubMed({ q: subs[i].pubmed, type: "any", years: 10, sort: "relevance", perPage: 6 }, { apiKey: Deno.env.get("NCBI_API_KEY"), signal: upstream.signal });
+          const fresh = r.papers.filter((p) => !seen.has(p.pmid) && p.abstract.length).slice(0, 4);
+          fresh.forEach((p) => { seen.add(p.pmid); papers.push(p); });
+          step(id, `Searched PubMed: ${subs[i].q}`, "done", `${r.count.toLocaleString("en-IN")} found · ${fresh.length} read`);
+        } catch (e) {
+          if (upstream.signal.aborted) return;
+          step(id, `PubMed search: ${subs[i].q}`, "skip", e instanceof PubmedBusy ? "PubMed was busy" : "Couldn't reach PubMed");
+        }
+        await new Promise((res) => setTimeout(res, 350));
+      }
+
+      // 3. Guidelines on the web
+      let webNotes = "";
+      let webSources: Source[] = [];
+      if (webQs.length) {
+        step("web", "Searching guidelines and trusted sites", "on");
+        const w = await callAI({
+          model: CLAUDE_DRAFT_MODEL,
+          messages: [{ role: "system", content: DEEP_WEB_SYSTEM }, { role: "user", content: `QUESTION: ${question}\nSEARCH FOR: ${webQs.join("; ")}` }],
+          effort: "medium", maxTokens: 2500, webSearch: { maxUses: 4 }, signal: upstream.signal,
+        });
+        if (w.ok) {
+          webSources = w.sources ?? [];
+          webNotes = w.content;
+          step("web", "Searched guidelines and trusted sites", "done", `${webSources.length} source${webSources.length === 1 ? "" : "s"}`);
+        } else step("web", "Guideline search", "skip", "Not available just now");
+      }
+
+      // 4. Number the sources and write the report
+      const sources: Source[] = [];
+      const blocks: string[] = [];
+      papers.slice(0, 16).forEach((p) => {
+        const n = sources.length + 1;
+        sources.push({ n, url: `https://pubmed.ncbi.nlm.nih.gov/${p.pmid}/`, title: `${p.title} (${p.journal} ${p.year})`.slice(0, 240) });
+        blocks.push(paperBlock(n, p));
+      });
+      // Web notes cite their own [n]: renumbered after the papers.
+      const offset = sources.length;
+      webSources.forEach((s) => sources.push({ n: offset + s.n, url: s.url, title: s.title }));
+      const notes = webNotes.replace(/\[(\d+)\]/g, (_m, d) => `[${offset + Number(d)}]`);
+      if (!sources.length) {
+        send("error", { error: "Deep Dive couldn't find sources for this question just now. Try rephrasing it, or ask without Deep Dive.", status: 502 });
+        return;
+      }
+      step("write", `Writing the report from ${sources.length} sources`, "on");
+      const material = [
+        `QUESTION: ${question}`,
+        `SUB-QUESTIONS:\n${subs.map((x, i) => `${i + 1}. ${x.q}`).join("\n")}`,
+        blocks.length ? `PUBMED RECORDS:\n${blocks.join("\n\n")}` : "PUBMED RECORDS: none found.",
+        notes ? `GUIDELINE NOTES (cite with these numbers):\n${notes}\n\nWEB SOURCES:\n${webSources.map((s) => `[${offset + s.n}] ${s.title}`).join("\n")}` : "",
+      ].filter(Boolean).join("\n\n");
+      const r = await callAI({
+        model: CLAUDE_REVIEW_MODEL,
+        messages: [
+          { role: "system", content: [DEEP_WRITE_SYSTEM, projectLine(body.instructions), crewLine(body.crew), profileLine(body.profile), language].filter(Boolean).join("\n\n") },
+          { role: "user", content: material },
+        ],
+        effort: "high", maxTokens: 16000, signal: upstream.signal,
+        onText: (t) => send("delta", { t }), onReset: () => send("reset", {}),
+      });
+      if (!r.ok) { send("error", { error: r.error, status: r.status }); return; }
+      step("write", "Wrote the report", "done");
+      // Only the sources the report cites are kept, in their numbers.
+      const cited = new Set(Array.from(r.content.matchAll(/\[(\d+)\]/g), (m) => Number(m[1])));
+      send("done", { message: r.content, provider: r.provider, model: r.model, title, sources: sources.filter((s) => cited.has(s.n)), papers: papers.length, web: webSources.length, searched: true });
+    } catch (e) {
+      if (!upstream.signal.aborted) {
+        console.error("deep dive failed", e);
+        send("error", { error: "Deep Dive hit an unexpected error. Please try again.", status: 500 });
+      }
+    } finally {
+      clearInterval(keepAlive);
+      open = false;
+      writer.close().catch(() => {});
+    }
+  })();
+  return new Response(readable, {
+    headers: { ...cors, "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-cache, no-transform", "x-accel-buffering": "no" },
+  });
+}
+
 /* ------------------------------------------------------------------ handler */
 
 Deno.serve(async (req) => {
@@ -752,12 +945,16 @@ Deno.serve(async (req) => {
         attached.documents ? DOCUMENT_NOTE : "",
         earlier ? EARLIER_FILES_NOTE : "",
         STYLE_PROMPTS[style] ?? "",
+        // Cadus modes and tone: not for voice answers or role-play turns.
+        style !== "voice" && !roleplay ? ANSWER_MODE_PROMPTS[String(body.answerMode)] ?? "" : "",
+        style !== "voice" && !roleplay ? TONE_PROMPTS[String(body.tone)] ?? "" : "",
         mode === "evidence" ? SOURCES_RECORDS : search ? SOURCES_ON : SOURCES_OFF,
         // Spoken answers have no labels or cards.
         style !== "voice" && style !== "concise" && EXPERT_DEPTH_MODES.has(mode) ? EXPERT_DEPTH : "",
         style !== "voice" && EVIDENCE_TAG_MODES.has(mode) ? EVIDENCE_TAGS : "",
         style !== "voice" ? (mode === "dosage" ? DOSE_CARD_FORMAT : mode === "general" ? DOSE_CARD_OPTIONAL : "") : "",
         projectLine(body.instructions),
+        crewLine(body.crew),
         roleplay ? "" : practiceLine(body.practice),
         roleplay ? "" : institutionLine(body.institution),
         roleplay ? "" : profileLine(body.profile),
@@ -780,9 +977,11 @@ Deno.serve(async (req) => {
       // to the offline medical library; everything else gets the error.
       const libraryAware = body.library === true && !attached.parts.length && body.allowFallback !== true;
       // "Think deeper" asks for the most careful reasoning; voice replies are short.
-      const effort: Effort = body.think === true ? "high" : style === "voice" ? "medium" : draftEffort(mode, style, attached.parts.length > 0);
+      const fast = body.answerMode === "fast" && body.think !== true;
+      const effort: Effort = body.think === true ? "high" : style === "voice" ? "medium" : fast ? (HIGH_RISK.has(mode) || attached.parts.length ? "medium" : "low") : draftEffort(mode, style, attached.parts.length > 0);
       const callOpts = {
-        model: answerModel(body.model),
+        // Fast mode always uses the quicker model.
+        model: fast ? CLAUDE_DRAFT_MODEL : answerModel(body.model),
         messages,
         effort,
         maxTokens: 16000,
@@ -831,6 +1030,12 @@ Deno.serve(async (req) => {
           : "",
         practiceLine(body.practice)
           ? `THE USER'S PRACTICE PREFERENCES (keep the draft consistent with them):\n${practiceLine(body.practice)}`
+          : "",
+        crewLine(body.crew)
+          ? `THE DRAFT IS WRITTEN AS A CREW ASSISTANT THE USER SET UP (keep its role, format and tone unless safety requires otherwise):\n${crewLine(body.crew)}`
+          : "",
+        ANSWER_MODE_PROMPTS[String(body.answerMode)]
+          ? `THE USER ASKED FOR THIS ANSWER MODE (keep the draft's format; check its facts and any mnemonics or practice questions just as strictly):\n${ANSWER_MODE_PROMPTS[String(body.answerMode)]}`
           : "",
         institutionText(body.institution)
           ? `THE USER'S INSTITUTION (reference data: the draft should follow its protocols and formulary where they apply; check the doses in them too, and keep any flagged conflict with major guidelines):\n<institution>\n${institutionText(body.institution)}\n</institution>`
@@ -938,6 +1143,39 @@ Deno.serve(async (req) => {
         searchQueries: r.queries ?? [query],
         hasGoogleSearch: !!r.sources?.length,
       });
+    }
+
+    // ---------------------------------------------------------------- follow-up suggestions
+    if (action === "followups") {
+      const question = String(body.question || "").replace(/\s+/g, " ").trim().slice(0, 2000);
+      const answer = String(body.answer || "").trim().slice(0, 3000);
+      if (!question || !answer) return jsonResponse({ error: "question and answer are required" }, 400);
+      const r = await callAI({
+        model: CLAUDE_DRAFT_MODEL,
+        messages: [
+          { role: "system", content: [FOLLOWUPS_SYSTEM, languageLine(body.language)].filter(Boolean).join("\n\n") },
+          { role: "user", content: `QUESTION: ${question}\n\nANSWER:\n${answer}` },
+        ],
+        jsonMode: true,
+        effort: "low",
+        maxTokens: 300,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error }, r.status);
+      const list = parseJsonLoose<unknown[]>(r.content);
+      const followups = (Array.isArray(list) ? list : [])
+        .filter((x): x is string => typeof x === "string")
+        .map((x) => x.replace(/[\r\n]+/g, " ").replace(/^["'\d.)\s-]+|["'\s]+$/g, "").trim())
+        .filter((x) => x.length > 3 && x.length <= 120)
+        .slice(0, 3);
+      if (!followups.length) return jsonResponse({ error: "No suggestions" }, 502);
+      return jsonResponse({ followups });
+    }
+
+    // ---------------------------------------------------------------- Deep Dive (multi-step research, streamed)
+    if (action === "deep-dive") {
+      const question = String(body.message || body.query || "").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 2000);
+      if (!question) return jsonResponse({ error: "message is required" }, 400);
+      return deepDive(question, body);
     }
 
     // ---------------------------------------------------------------- chat title

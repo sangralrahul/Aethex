@@ -124,7 +124,7 @@ Evaluate this answer strictly as a NEET-PG examiner and respond ONLY as valid JS
             </div>
             <div>
               <h1 className="text-3xl font-bold">AI Answer Evaluator</h1>
-              <p style={{ color: "rgba(255,255,255,0.5)" }}>NEET-PG format · Scored by Cadus AI</p>
+              <p style={{ color: "rgba(255,255,255,0.5)" }}>NEET-PG format · Scored by Cadus</p>
             </div>
           </div>
           <div className="flex items-center gap-3 p-4 rounded-xl" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)" }}>

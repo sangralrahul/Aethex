@@ -67,7 +67,7 @@ export default function ConsultHistory() {
             </div>
             <div>
               <h1 className="text-3xl font-bold text-white">My Consults</h1>
-              <p className="text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>Your saved Cadus AI interactions</p>
+              <p className="text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>Your saved Cadus interactions</p>
             </div>
           </div>
         </div>
@@ -110,7 +110,7 @@ export default function ConsultHistory() {
                   {search ? "No matching consults found" : "No consults yet"}
                 </p>
                 <p className="text-sm" style={{ color: "#636366" }}>
-                  {search ? "Try a different search term." : "Your Cadus AI conversations will be saved here automatically."}
+                  {search ? "Try a different search term." : "Your Cadus conversations will be saved here automatically."}
                 </p>
                 {!search && (
                   <Link href="/cadus">
@@ -166,7 +166,7 @@ export default function ConsultHistory() {
                             <p className="text-sm leading-relaxed" style={{ color: "#1c1c1e" }}>{c.query}</p>
                           </div>
                           <div>
-                            <p className="text-xs font-semibold mb-1.5" style={{ color: "#00C2A8" }}>Cadus AI Response</p>
+                            <p className="text-xs font-semibold mb-1.5" style={{ color: "#00C2A8" }}>Cadus Response</p>
                             <div className="rounded-xl p-3.5 text-sm leading-relaxed whitespace-pre-wrap"
                               style={{ background: "rgba(0,194,168,0.04)", border: "1px solid rgba(0,194,168,0.12)", color: "#3c3c43", maxHeight: 400, overflowY: "auto" }}>
                               {c.response.slice(0, 2000)}{c.response.length > 2000 ? "…" : ""}

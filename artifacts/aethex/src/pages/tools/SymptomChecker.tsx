@@ -346,7 +346,7 @@ export default function SymptomChecker() {
                 </div>
                 <div className="flex-1">
                   <p className="font-bold text-sm" style={{ color: "#1C1C1E" }}>
-                    AI Differential Diagnosis <span className="text-xs font-normal" style={{ color: "#8E8E93" }}>· powered by Cadus AI</span>
+                    AI Differential Diagnosis <span className="text-xs font-normal" style={{ color: "#8E8E93" }}>· powered by Cadus</span>
                   </p>
                   <p className="text-xs mt-0.5" style={{ color: "#636366" }}>
                     Evidence-based ranked DDx with triage, workup, and safety-net advice.

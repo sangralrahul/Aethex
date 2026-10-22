@@ -17,7 +17,7 @@ AETHEX brings these experiences together into a single platform.
 ### The platform combines:
 
 - 🛒 Medical product commerce
-- 🤖 CADUS AI medical assistant
+- 🤖 CADUS medical assistant
 - 📚 Medical learning resources
 - 🧠 AI-powered educational tools
 - 🔎 Intelligent product discovery
@@ -57,9 +57,9 @@ Users can:
 
 ---
 
-## 🤖 CADUS AI
+## 🤖 CADUS
 
-CADUS AI is the AI layer of AETHEX.
+CADUS is the AI layer of AETHEX.
 
 It provides an intelligent interface for medical and educational assistance.
 
@@ -82,8 +82,12 @@ It provides an intelligent interface for medical and educational assistance.
 - A privacy guard that hides patient identifiers before anything is sent
 - Patient cases: a de-identified case sheet with a vitals timeline that Cadus reasons over and writes notes and letters from
 - Institution protocols: local protocols, formulary and antibiotic policy that answers follow, shared across a team as a team pack
+- Cadus modes, picked beside the message box: Auto, Fast, Think, Exam (high-yield facts, traps and MCQs), Simple (plain words) and Deep Dive, with a tone (Professional, Friendly, Mentor) and a length
+- Deep Dive: plans the question, searches PubMed and guideline sites step by step (shown live), then writes a cited report that is safety-reviewed
+- Cadus Crew: assistants with their own instructions, starters and tool, ready-made (Viva Examiner, NEET-PG Coach, Discharge Writer, Clinical Pharmacist, Thesis Guide and more) or your own
+- Follow-up questions written for each answer, and branching a chat from any answer
 
-> CADUS AI is intended as an educational and informational assistant and is not a replacement for qualified medical professionals.
+> CADUS is intended as an educational and informational assistant and is not a replacement for qualified medical professionals.
 
 ---
 
@@ -238,7 +242,7 @@ The Study Hub brings medical education resources into the same platform.
 
 ### AI
 
-- CADUS AI
+- CADUS
 - Natural-language interaction
 - AI medical assistance
 - AI educational tools
@@ -287,7 +291,7 @@ The Study Hub brings medical education resources into the same platform.
                 ┌──────────────┼──────────────┐
                 │              │              │
                 ▼              ▼              ▼
-           Commerce         CADUS AI       Study Hub
+           Commerce         CADUS       Study Hub
                 │              │              │
                 └──────────────┼──────────────┘
                                │

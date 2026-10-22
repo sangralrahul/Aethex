@@ -126,7 +126,7 @@ export default function AiDiagnosis() {
             </div>
             <div>
               <h1 className="text-3xl font-bold">AI Diagnosis Assistant</h1>
-              <p style={{ color: "rgba(255,255,255,0.55)" }}>Powered by Cadus AI · Educational use only</p>
+              <p style={{ color: "rgba(255,255,255,0.55)" }}>Powered by Cadus · Educational use only</p>
             </div>
             {mode === "practice" && (
               <div className="ml-auto flex items-center gap-2 px-4 py-2 rounded-xl" style={{ background: "rgba(0,194,168,0.12)", border: "1px solid rgba(0,194,168,0.25)" }}>
@@ -326,7 +326,7 @@ export default function AiDiagnosis() {
             <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: "rgba(0,194,168,0.15)" }}>
               <Loader2 size={32} style={{ color: "#00C2A8" }} className="animate-spin" />
             </div>
-            <p style={{ color: "rgba(255,255,255,0.5)" }}>Analysing symptoms with Cadus AI...</p>
+            <p style={{ color: "rgba(255,255,255,0.5)" }}>Analysing symptoms with Cadus...</p>
           </div>
         )}
       </div>

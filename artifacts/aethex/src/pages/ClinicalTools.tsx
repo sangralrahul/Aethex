@@ -412,7 +412,7 @@ export default function ClinicalTools() {
           </div>
         )}
 
-        {/* Cadus AI CTA */}
+        {/* Cadus CTA */}
         <div className="mt-14 rounded-2xl p-8 text-center relative overflow-hidden"
           style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)" }}>
           <div className="absolute inset-0 pointer-events-none"
@@ -421,17 +421,17 @@ export default function ClinicalTools() {
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4"
               style={{ background: "rgba(255,255,255,0.2)", border: "1px solid rgba(255,255,255,0.3)" }}>
               <Sparkles className="w-3.5 h-3.5 text-white" />
-              <span className="text-xs font-semibold text-white">Powered by Cadus AI</span>
+              <span className="text-xs font-semibold text-white">Powered by Cadus</span>
             </div>
             <h2 className="text-2xl font-bold text-white mb-2">Need a deeper clinical answer?</h2>
             <p className="text-white/75 text-sm mb-6 max-w-md mx-auto">
-              Ask Cadus AI anything — diagnosis, drug dosing, patient education, SOAP notes and more.
+              Ask Cadus anything — diagnosis, drug dosing, patient education, SOAP notes and more.
             </p>
             <a href={cadusUrl("/")}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all hover:opacity-90 hover:scale-105"
               style={{ background: "#FFFFFF", color: "#007AFF", textDecoration: "none" }}>
               <Sparkles className="w-4 h-4" />
-              Open Cadus AI
+              Open Cadus
             </a>
 
           </div>

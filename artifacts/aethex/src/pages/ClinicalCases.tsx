@@ -557,7 +557,7 @@ function CaseCard({ c }: { c: ClinicalCase }) {
           )}
 
           <a href={cadusUrl("/")} className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-90" style={{ background: "#007AFF", color: "#FFFFFF", textDecoration: "none" }}>
-            <Sparkles className="w-4 h-4" />Discuss this case with Cadus AI
+            <Sparkles className="w-4 h-4" />Discuss this case with Cadus
           </a>
 
         </div>

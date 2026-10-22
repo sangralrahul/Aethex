@@ -147,7 +147,7 @@ export default function MockTest() {
         <div className="rounded-2xl p-5 mb-4" style={{ background: "rgba(124,58,237,0.05)", border: "1px solid rgba(124,58,237,0.15)" }}>
           <div className="flex items-center gap-2 mb-3">
             <Sparkles className="w-4.5 h-4.5" style={{ color: "#7C3AED" }} />
-            <span className="font-bold text-sm" style={{ color: "#7C3AED" }}>Cadus AI Performance Analysis</span>
+            <span className="font-bold text-sm" style={{ color: "#7C3AED" }}>Cadus Performance Analysis</span>
           </div>
           <p className="text-sm mb-3" style={{ color: "#636366" }}>
             Your weakest area is <strong style={{ color: "#EF4444" }}>Pharmacology (55%)</strong>. You're spending too long on Pathology questions — averaging 72 sec vs recommended 36 sec. Focus on autonomic drugs and antibiotics this week.

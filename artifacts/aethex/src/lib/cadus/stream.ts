@@ -2,6 +2,7 @@
  * Streaming answers from the Cadus endpoint (server-sent events), so text
  * appears as it is written, like ChatGPT and Claude. The server sends:
  *   start · delta {t} · reset (discard the text so far) · done {...} · error {error}
+ * and, for Deep Dive, step {id, label, state, detail} as each stage of the research runs.
  * If streaming isn't available (no Worker, or an older server), callers fall
  * back to the normal request.
  */
@@ -15,7 +16,14 @@ export interface StreamDone {
   searched?: boolean;
   libraryMode?: boolean;
   reason?: string;
+  /** Deep Dive: the report's title, and how many papers and web sources were read. */
+  title?: string;
+  papers?: number;
+  web?: number;
 }
+
+/** A stage of a Deep Dive: planning, each search, writing. */
+export interface DeepStep { id: string; label: string; state: "on" | "done" | "skip"; detail?: string }
 
 /** Thrown when the endpoint can't stream at all, so the caller should use the normal request. */
 export class StreamUnavailable extends Error {
@@ -51,7 +59,7 @@ export function createSseParser(onEvent: (event: string, data: any) => void): (c
 
 export async function streamCadus(
   body: Record<string, unknown>,
-  handlers: { onDelta: (text: string) => void; onReset?: () => void; signal?: AbortSignal },
+  handlers: { onDelta: (text: string) => void; onReset?: () => void; onStep?: (step: DeepStep) => void; signal?: AbortSignal },
   url = "/api/fn/cadus",
 ): Promise<StreamDone> {
   let res: Response;
@@ -80,6 +88,9 @@ export async function streamCadus(
   const feed = createSseParser((event, data) => {
     if (event === "delta" && typeof data?.t === "string") handlers.onDelta(data.t);
     else if (event === "reset") handlers.onReset?.();
+    else if (event === "step" && typeof data?.id === "string" && typeof data?.label === "string") {
+      handlers.onStep?.({ id: data.id, label: data.label, state: data.state === "done" ? "done" : data.state === "skip" ? "skip" : "on", ...(typeof data.detail === "string" ? { detail: data.detail } : {}) });
+    }
     else if (event === "done") done = (data ?? {}) as StreamDone;
     else if (event === "error") error = String(data?.error || "Something went wrong. Please try again.");
   });

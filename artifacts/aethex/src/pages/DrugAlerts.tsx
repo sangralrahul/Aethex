@@ -132,7 +132,7 @@ export default function DrugAlerts() {
                 )}
                 <div className="flex gap-2">
                   <a href={cadusUrl("/")} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold" style={{ background: "rgba(124,58,237,0.08)", color: "#7C3AED", textDecoration: "none" }}>
-                    <Sparkles className="w-3.5 h-3.5" /> Ask Cadus AI
+                    <Sparkles className="w-3.5 h-3.5" /> Ask Cadus
                   </a>
 
                   <button className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold" style={{ background: "#F2F2F7", color: "#636366" }}>
