@@ -115,3 +115,55 @@ export const CADUS_STUDIO_CSS = `
   .cx-fc-front{font-size:18px}
 }
 `;
+
+/* Update 12: Med Reconciliation, Presentation Coach and Today */
+export const CADUS_TODAY_CSS = `
+.cx-mr-stage{margin-bottom:12px}
+.cx-mr-pt{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin:12px 0}
+.cx-mr-pt .cx-input,.cx-mr-pt .cx-select{width:100%;min-width:0;box-sizing:border-box}
+.cx-mr-chg{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:999px;font-size:11px;font-weight:650;background:var(--s2);color:var(--t2)}
+.cx-mr-chg.c-stopped{background:color-mix(in srgb,var(--danger) 13%,transparent);color:var(--danger)}
+.cx-mr-chg.c-started{background:color-mix(in srgb,var(--ok) 14%,transparent);color:var(--ok)}
+.cx-mr-chg.c-changed,.cx-mr-chg.c-unclear{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn)}
+.cx-pc-opts{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:12px 0 8px}
+.cx-pc-timer{display:inline-flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums;font-weight:600;color:var(--t2)}
+.cx-pc-timer.over{color:var(--danger)}
+.cx-pc-text{width:100%;box-sizing:border-box;font-size:15px;line-height:1.6}
+.cx-pc-words{color:var(--t3);font-size:12px;align-self:center}
+.cx-pc .cx-btn.rec{background:color-mix(in srgb,var(--danger) 14%,var(--surface));color:var(--danger);border-color:var(--danger)}
+.cx-pc-time{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--ok);font-weight:600}
+.cx-pc-time.over{color:var(--warn)}
+.cx-pc-rubric{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.cx-pc-row{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(80px,1fr) 44px;gap:4px 10px;align-items:center;font-size:13px}
+.cx-pc-row small{grid-column:1/-1;color:var(--t3);font-size:12px}
+.cx-pc-bar{height:8px;border-radius:999px;background:var(--s2);overflow:hidden}
+.cx-pc-bar i{display:block;height:100%;border-radius:999px;background:var(--danger)}
+.cx-pc-bar i.m{background:var(--warn)}.cx-pc-bar i.g{background:var(--ok)}
+.cx-today .cx-crew-eyebrow{display:inline-flex;align-items:center;gap:6px;margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--acc)}
+.cx-td-left{align-self:flex-start;padding:6px 12px;border-radius:999px;background:var(--s2);font-size:12.5px;color:var(--t2);white-space:nowrap}
+.cx-td-quick{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-bottom:16px}
+.cx-td-quick button{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:12px;border:1px solid var(--line);border-radius:var(--r-lg,10px);background:var(--surface);color:var(--text);font:inherit;font-size:13px;font-weight:600;text-align:left;cursor:pointer}
+.cx-td-quick button:hover{background:var(--hover)}
+.cx-td-quick svg{color:var(--acc)}
+.cx-td-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.cx-td-card{display:flex;flex-direction:column;gap:10px;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-lg,12px);background:var(--surface)}
+.cx-td-h{display:flex;align-items:center;gap:8px;font-size:14px}
+.cx-td-h svg{color:var(--acc)}
+.cx-td-h em{margin-left:auto;min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:var(--acc-soft);color:var(--acc);font-style:normal;font-size:12px;font-weight:700;display:inline-grid;place-items:center}
+.cx-td-empty{margin:0;font-size:13.5px;color:var(--t3)}
+.cx-td-card>.cx-link{align-self:flex-start;border:0;background:none;padding:0;font-size:13px;cursor:pointer}
+.cx-td-jobs,.cx-td-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:13.5px}
+.cx-td-jobs li,.cx-td-list li{display:flex;align-items:flex-start;gap:8px}
+.cx-td-jobs li>button{display:inline-flex;border:0;background:none;color:var(--t3);cursor:pointer;padding:1px}
+.cx-td-jobs li>button:hover{color:var(--ok)}
+.cx-td-jobs span,.cx-td-list span{flex:1;min-width:0;display:block}
+.cx-td-jobs span b{display:inline;margin-right:4px}
+.cx-td-jobs small,.cx-td-list small{display:block;color:var(--t3);font-size:12px}
+.cx-td-jobs li.more{color:var(--t3);font-size:12.5px;padding-left:24px}
+.cx-td-list li>svg{flex-shrink:0;margin-top:3px;color:var(--t3)}
+.cx-td-list .cx-link{border:0;background:none;padding:0;font-size:12.5px;cursor:pointer;white-space:nowrap}
+.cx-td-chat{display:flex;width:100%;border:0;background:none;padding:2px 0;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.cx-td-chat b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:900px){.cx-td-quick{grid-template-columns:repeat(3,minmax(0,1fr))}.cx-mr-pt{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:480px){.cx-td-quick{grid-template-columns:repeat(2,minmax(0,1fr))}.cx-td-grid{grid-template-columns:1fr}}
+`;

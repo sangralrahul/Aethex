@@ -34,6 +34,10 @@
 //   pathway               Clinical Pathways: the next question, action or disposition.
 //   flashcards            Flashcards from an answer, notes or a topic.
 //   compare               Compare over time: two studies of the same kind, what changed.
+//   med-rec               Med Reconciliation: before and after medicine lists matched, changes and
+//                         problems found, and a "your medicines now" sheet in the patient's language.
+//   present-coach         Presentation Coach: a case presentation scored against its format's
+//                         rubric, with what was missing and a model presentation.
 //   report-explain        Report Explainer: a lab, imaging or other report as a summary for
 //                         the doctor and an explanation for the patient in their language.
 import {
@@ -80,6 +84,11 @@ import {
   compareResult,
   FLASHCARDS_SYSTEM,
   flashcards,
+  MEDREC_SYSTEM,
+  medRec,
+  PRESENT_FORMATS,
+  PRESENT_SYSTEM,
+  presentation,
   PATHWAY_SYSTEM,
   pathwayAnswers,
   pathwayStep,
@@ -1757,6 +1766,64 @@ Deno.serve(async (req) => {
       const result = compareResult(parseJsonLoose<any>(r.content));
       if (!result) return jsonResponse({ error: "Couldn't compare these this time. Try clearer images, or paste the reports." }, 502);
       return jsonResponse({ result });
+    }
+
+    // ---------------------------------------------------------------- Med Reconciliation
+    if (action === "med-rec") {
+      const clean = (v: unknown) => String(v || "").replace(/\r/g, "").replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, " ").trim().slice(0, 6000);
+      const beforeText = clean(body.beforeText);
+      const afterText = clean(body.afterText);
+      const before = attachmentParts(body.before, "");
+      const after = attachmentParts(body.after, "");
+      if ((!beforeText && !before.parts.length) || (!afterText && !after.parts.length)) return jsonResponse({ error: "Add both medicine lists" }, 400);
+      const patient = rxPatient(body.patient);
+      const stage = ["admission", "transfer", "discharge"].includes(String(body.stage)) ? String(body.stage) : "discharge";
+      const language = cleanLine(body.language, 40) || "English";
+      const content = [
+        { type: "text", text: `Transition: ${stage}. PATIENT: ${rxPatientLine(patient)}. Patient's language for the sheet: ${language}${language !== "English" ? " (its own script; keep medicine names in English)" : ""}.\n\nBEFORE list:` },
+        ...before.parts,
+        ...(beforeText ? [{ type: "text", text: `<before>\n${beforeText}\n</before>` }] : []),
+        { type: "text", text: "AFTER list:" },
+        ...after.parts,
+        ...(afterText ? [{ type: "text", text: `<after>\n${afterText}\n</after>` }] : []),
+        { type: "text", text: "Reconcile the two lists." },
+      ];
+      const r = await callAI({
+        model: CLAUDE_REVIEW_MODEL,
+        messages: [
+          { role: "system", content: [MEDREC_SYSTEM, institutionLine(body.institution)].filter(Boolean).join("\n\n") },
+          { role: "user", content },
+        ],
+        jsonMode: true,
+        effort: "high",
+        maxTokens: 8000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = medRec(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't read the medicines. Try clearer photos, or type the lists." }, 502);
+      return jsonResponse({ result });
+    }
+
+    // ---------------------------------------------------------------- Presentation Coach
+    if (action === "present-coach") {
+      const said = String(body.text || "").replace(/\r/g, "").trim().slice(0, 12000);
+      if (said.split(/\s+/).length < 15) return jsonResponse({ error: "Present the case in a few sentences at least" }, 400);
+      const fmt = PRESENT_FORMATS[String(body.format)] ? String(body.format) : "rounds";
+      const level = ["mbbs", "intern", "pg"].includes(String(body.level)) ? String(body.level) : "mbbs";
+      const r = await callAI({
+        model: answerModel(body.model),
+        messages: [
+          { role: "system", content: PRESENT_SYSTEM },
+          { role: "user", content: [`FORMAT: ${PRESENT_FORMATS[fmt].label}`, `RUBRIC: ${PRESENT_FORMATS[fmt].rubric}`, `LEARNER: ${level === "pg" ? "postgraduate resident" : level === "intern" ? "intern" : "final-year MBBS student"}`, body.spoken === true ? "It was spoken; this is a transcript." : "", `<presentation>\n${said}\n</presentation>`].filter(Boolean).join("\n") },
+        ],
+        jsonMode: true,
+        effort: "medium",
+        maxTokens: 6000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = presentation(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't score that this time. Please try again." }, 502);
+      return jsonResponse({ result, format: fmt });
     }
 
     // ---------------------------------------------------------------- Study Hub

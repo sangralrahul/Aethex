@@ -145,3 +145,45 @@ export const readCompares = () => readKey<CompareRecord[]>(COMPARES_KEY, []).fil
 export const saveCompares = (l: CompareRecord[]) => saveKey(COMPARES_KEY, l.slice(0, 30));
 export const OVERALL_LABEL: Record<CompareResult["overall"], string> = { better: "Better", worse: "Worse", mixed: "Mixed", same: "No real change", unclear: "Can't tell" };
 export const TREND_LABEL: Record<CompareChange["trend"], string> = { better: "Better", worse: "Worse", new: "New", resolved: "Resolved", same: "Same" };
+
+/* ------------------------------------------------------------------ Med Reconciliation */
+
+export interface MedRecItem { generic: string; before: string; after: string; change: "continued" | "changed" | "started" | "stopped" | "unclear"; note: string; status: "ok" | "check" | "problem" }
+export interface MedRecIssue { severity: "high" | "moderate" | "low"; title: string; detail: string; action: string }
+export interface MedRecResult { summary: string; items: MedRecItem[]; issues: MedRecIssue[]; patientSheet: string; questions: string[] }
+export interface MedRecRecord { id: string; at: number; stage: string; language: string; patient: string; result: MedRecResult }
+export const MEDREC_KEY = "cadus3.medrec";
+export const readMedRecs = () => readKey<MedRecRecord[]>(MEDREC_KEY, []).filter((x) => x && x.result && Array.isArray(x.result.items));
+export const saveMedRecs = (l: MedRecRecord[]) => saveKey(MEDREC_KEY, l.slice(0, 30));
+export const CHANGE_LABEL: Record<MedRecItem["change"], string> = { continued: "Continued", changed: "Changed", started: "Started", stopped: "Stopped", unclear: "Unclear" };
+export const STAGES = [
+  { id: "admission", label: "On admission", before: "Home medicines", after: "Admission chart" },
+  { id: "transfer", label: "On transfer", before: "Previous ward or ICU chart", after: "New chart" },
+  { id: "discharge", label: "At discharge", before: "Home or inpatient medicines", after: "Discharge prescription" },
+] as const;
+export function medRecMarkdown(r: MedRecRecord): string {
+  const st = STAGES.find((s) => s.id === r.stage) ?? STAGES[2];
+  return [
+    `# Medicine reconciliation (${st.label.toLowerCase()})`,
+    r.patient ? `**Patient:** ${r.patient}` : "",
+    r.result.summary,
+    r.result.issues.length ? `## Problems\n${r.result.issues.map((i) => `- **${i.severity === "high" ? "High" : i.severity === "moderate" ? "Moderate" : "Low"}: ${i.title}.** ${i.detail}${i.action ? ` **Do:** ${i.action}` : ""}`).join("\n")}` : "",
+    `## Medicines\n| Medicine | ${st.before} | ${st.after} | Change | Note |\n|---|---|---|---|---|\n${r.result.items.map((i) => `| ${i.generic} | ${i.before || "-"} | ${i.after || "-"} | ${CHANGE_LABEL[i.change]} | ${i.note || ""} |`).join("\n")}`,
+    r.result.questions.length ? `## To confirm\n${r.result.questions.map((q) => `- ${q}`).join("\n")}` : "",
+  ].filter(Boolean).join("\n\n");
+}
+
+/* ------------------------------------------------------------------ Presentation Coach */
+
+export const PRESENT_FORMATS: { id: string; label: string; hint: string; seconds: number }[] = [
+  { id: "rounds", label: "Ward round", hint: "A patient on the morning round, under 2 minutes", seconds: 120 },
+  { id: "long", label: "Long case", hint: "University or PG exam, history to management", seconds: 600 },
+  { id: "short", label: "Short case", hint: "Examination findings and diagnosis", seconds: 180 },
+  { id: "sbar", label: "SBAR call", hint: "Handover, or a call to your senior", seconds: 60 },
+  { id: "opd", label: "OPD to consultant", hint: "One patient in under a minute", seconds: 60 },
+];
+export interface PresentResult { score: number; rubric: { item: string; score: number; note: string }[]; strengths: string[]; improve: string[]; missing: string[]; questions: string[]; model: string }
+export interface PresentRecord { id: string; at: number; format: string; seconds: number; words: number; text: string; result: PresentResult }
+export const PRESENT_KEY = "cadus3.present";
+export const readPresents = () => readKey<PresentRecord[]>(PRESENT_KEY, []).filter((x) => x && x.result);
+export const savePresents = (l: PresentRecord[]) => saveKey(PRESENT_KEY, l.slice(0, 40));

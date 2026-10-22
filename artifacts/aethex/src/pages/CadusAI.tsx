@@ -20,7 +20,7 @@ import {
   Sparkles, Square, SquarePen, Stethoscope, Sun, Syringe, Telescope, Trash2, Users, Volume2, VolumeX, X, Zap, Palette,
   BedDouble, BookMarked, BookOpenText, ChartLine, ClipboardPlus, FileBadge, FileSignature, Microscope, NotebookPen, NotepadText,
   Printer, Scissors, ScrollText, Sigma, PanelRight, EyeOff, Compass, Rows3, WifiOff, Building2, ScanSearch,
-  Bot, GitBranch, HeartPulse, MessageCircle, BellRing, FileScan, ShieldPlus, ScanLine, Shield, Bone, AtSign, Users2, GitFork,
+  Bot, GitBranch, HeartPulse, MessageCircle, BellRing, FileScan, ShieldPlus, ScanLine, Shield, Bone, AtSign, Users2, GitFork, CalendarDays,
   type LucideIcon,
 } from "lucide-react";
 import { invokeAi } from "@/lib/ai-functions";
@@ -68,8 +68,12 @@ import TranslatorView from "@/components/cadus/TranslatorView";
 import PathwaysView from "@/components/cadus/PathwaysView";
 import FlashcardsView from "@/components/cadus/FlashcardsView";
 import CompareView from "@/components/cadus/CompareView";
-import { CADUS_STUDIO_CSS } from "@/components/cadus/cadus-studio-styles";
-import { COMPARES_KEY, DECKS_KEY, PATHWAYS_KEY, TRANSLATOR_KEY } from "@/lib/cadus/studio";
+import { CADUS_STUDIO_CSS, CADUS_TODAY_CSS } from "@/components/cadus/cadus-studio-styles";
+import MedRecView from "@/components/cadus/MedRecView";
+import PresentCoachView from "@/components/cadus/PresentCoachView";
+import TodayView from "@/components/cadus/TodayView";
+import { cardStats } from "@/lib/cadus/learn";
+import { COMPARES_KEY, DECKS_KEY, MEDREC_KEY, PATHWAYS_KEY, PRESENT_KEY, TRANSLATOR_KEY } from "@/lib/cadus/studio";
 import {
   ACCEPT_ATTACH, attachmentPayload, attachmentsForStorage, attachProblem, describeAttachment, formatSize, readAttachment,
   type Attachment,
@@ -139,9 +143,9 @@ type ModeId =
   | "admission" | "progress" | "opnote" | "death" | "certificate" | "rx" | "evidence";
 /** "groq" only appears in chats saved before Cadus became Claude-only. */
 type Provider = "claude" | "groq" | "library";
-type View = "chat" | "crew" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "translate" | "pathways" | "flashcards" | "compare";
+type View = "chat" | "crew" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today";
 /** Views reached from the Tools hub, so the hub stays highlighted in the sidebar. */
-const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare"]);
+const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today"]);
 type ToolTab = "all" | "clinical" | "documentation" | "learning";
 type SettingsTab = "general" | "personal" | "letterhead" | "institution" | "data" | "shortcuts" | "about";
 type StyleId = "concise" | "balanced" | "detailed";
@@ -2113,6 +2117,8 @@ export default function CadusAI() {
     clinicalPathways: readJSON(PATHWAYS_KEY, []),
     flashcards: readJSON(DECKS_KEY, []),
     comparisons: readJSON(COMPARES_KEY, []),
+    medicineReconciliations: readJSON(MEDREC_KEY, []),
+    presentations: readJSON(PRESENT_KEY, []),
   });
   /** Removes everything Cadus keeps in this browser (Quick Consult too) and starts afresh. */
   const deleteEverything = () => {
@@ -2603,6 +2609,9 @@ export default function CadusAI() {
       { key: "a:translate", label: "Consult Translator: talk with a patient in their language", hint: "Two-way, by voice or typing, in 13 Indian languages", icon: Languages, run: () => openView("translate") },
       { key: "a:pathways", label: "Clinical Pathways: step-by-step decisions", hint: "Chest pain, sepsis, fever, DKA, stroke and more", icon: GitFork, run: () => openView("pathways") },
       { key: "a:flashcards", label: "Flashcards: review and make decks", hint: "Spaced repetition and Anki export", icon: Layers, run: () => openView("flashcards") },
+      { key: "a:today", label: "Today: my day at a glance", hint: "Ward jobs, revision due, unfinished pathways, recent chats", icon: CalendarDays, run: () => openView("today") },
+      { key: "a:medrec", label: "Med Reconciliation: before and after medicines", hint: "Admission, transfer or discharge; a patient medicine sheet", icon: Pill, run: () => openView("medrec") },
+      { key: "a:present", label: "Presentation Coach: practise presenting a case", hint: "Ward round, long case, SBAR; scored with a model answer", icon: Presentation, run: () => openView("present") },
       { key: "a:compare", label: "Compare over time: what changed between two studies", hint: "X-rays, ECGs, scans, reports and wound photos", icon: History, run: () => openView("compare") },
       { key: "a:newcase", label: "New patient case", hint: "Start a de-identified case sheet", icon: ClipboardList, run: () => { const c = newCase(); setCases((l) => [c, ...l]); openCases(c.id); } },
       { key: "a:pubmed", label: "Search PubMed", hint: "Research", icon: Microscope, run: () => openResearch({ tab: "search" }) },
@@ -2970,6 +2979,8 @@ export default function CadusAI() {
     { id: "pathways", icon: GitFork, tone: "amber", title: "Clinical Pathways", sub: "Step by step to a decision", go: () => openView("pathways") },
     { id: "flashcards", icon: Layers, tone: "violet", title: "Flashcards", sub: "Spaced repetition, Anki export", go: () => openView("flashcards") },
     { id: "compare", icon: History, tone: "sky", title: "Compare over time", sub: "What changed between studies", go: () => openView("compare") },
+    { id: "medrec", icon: Pill, tone: "rose", title: "Med Reconciliation", sub: "Before and after, a patient sheet", go: () => openView("medrec") },
+    { id: "present", icon: Presentation, tone: "violet", title: "Presentation Coach", sub: "Present a case, get scored", go: () => openView("present") },
   ];
   const workspaceTiles = (compact = false) => (
     <div className={`cx-ws-grid ${compact ? "compact" : ""}`}>
@@ -3090,6 +3101,7 @@ export default function CadusAI() {
               {ptot.attempted > 0 && <button onClick={openPractice}><Target size={14} /> <b>Practice</b><span>{accuracy(ptot) ?? 0}% · <Flame size={12} /> {streak(practice.days)} day{streak(practice.days) === 1 ? "" : "s"}{practice.mistakes.length ? ` · ${practice.mistakes.length} to revise` : ""}</span></button>}
               {library.length > 0 && <button onClick={() => setView("library")}><Bookmark size={14} /> <b>Saved</b><span>{library.length} answer{library.length === 1 ? "" : "s"}</span></button>}
               {decks.length > 0 && <button onClick={() => setView("decks")}><Presentation size={14} /> <b>Decks</b><span>{decks.length}</span></button>}
+              <button onClick={() => openView("today")} data-home="today"><CalendarDays size={14} /> <b>Today</b><span>Your day at a glance</span></button>
             </div>
           )}
         </div>
@@ -4087,7 +4099,7 @@ export default function CadusAI() {
       style={{ ["--acc" as string]: dark ? accent.dark : accent.light, ["--fs" as string]: `${fontSize}px`, ["--fs-u" as string]: `${sansSize}px` }}
       {...dropHandlers}
     >
-      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS}</style>
+      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS}</style>
 
       {/* ============================================== sidebar */}
       <div className={`cx-scrim ${sidebarOpen ? "on" : ""}`} onClick={() => setSidebarOpen(false)} />
@@ -4134,6 +4146,7 @@ export default function CadusAI() {
           {moreOpen && (
             <div className="cx-more">
               <p className="cx-more-gl">Workspaces</p>
+              <button className={`cx-nav-i ${view === "today" ? "on" : ""}`} onClick={() => openView("today")} title="Today"><CalendarDays size={16} /><span className="cx-nav-l">Today</span></button>
               <button data-tour="ward" className={`cx-nav-i ${view === "ward" ? "on" : ""}`} onClick={openWard} title="Ward round"><BedDouble size={16} /><span className="cx-nav-l">Ward round</span>{wardInfo.patients.length > 0 && <em>{wardInfo.patients.length}</em>}</button>
               <button data-tour="research" className={`cx-nav-i ${view === "research" ? "on" : ""}`} onClick={() => openResearch()} title="Research"><Microscope size={16} /><span className="cx-nav-l">Research</span></button>
               <button className={`cx-nav-i ${view === "drugs" ? "on" : ""}`} onClick={() => openDrugs()} title="Drugs and prescriber"><Pill size={16} /><span className="cx-nav-l">Drugs</span></button>
@@ -4149,6 +4162,8 @@ export default function CadusAI() {
               <button className={`cx-nav-i ${view === "pathways" ? "on" : ""}`} onClick={() => openView("pathways")} title="Clinical Pathways"><GitFork size={16} /><span className="cx-nav-l">Clinical Pathways</span></button>
               <button className={`cx-nav-i ${view === "flashcards" ? "on" : ""}`} onClick={() => openView("flashcards")} title="Flashcards"><Layers size={16} /><span className="cx-nav-l">Flashcards</span></button>
               <button className={`cx-nav-i ${view === "compare" ? "on" : ""}`} onClick={() => openView("compare")} title="Compare over time"><History size={16} /><span className="cx-nav-l">Compare over time</span></button>
+              <button className={`cx-nav-i ${view === "medrec" ? "on" : ""}`} onClick={() => openView("medrec")} title="Med Reconciliation"><Pill size={16} /><span className="cx-nav-l">Med Reconciliation</span></button>
+              <button className={`cx-nav-i ${view === "present" ? "on" : ""}`} onClick={() => openView("present")} title="Presentation Coach"><Presentation size={16} /><span className="cx-nav-l">Presentation Coach</span></button>
               <button data-tour="calculators" className={`cx-nav-i ${view === "calculators" ? "on" : ""}`} onClick={() => openCalculators()} title="Calculators"><Calculator size={16} /><span className="cx-nav-l">Calculators</span></button>
               <button className={`cx-nav-i ${view === "projects" || view === "project" ? "on" : ""}`} onClick={openProjects} title="Projects"><Folder size={16} /><span className="cx-nav-l">Projects</span>{projects.length > 0 && <em>{projects.length}</em>}</button>
               <button className={`cx-nav-i ${view === "decks" ? "on" : ""}`} onClick={() => { setView("decks"); setSidebarOpen(false); }} title="Decks"><Presentation size={16} /><span className="cx-nav-l">Decks</span>{decks.length > 0 && <em>{decks.length}</em>}</button>
@@ -4410,6 +4425,9 @@ export default function CadusAI() {
                 : view === "pathways" ? [GitFork, "Clinical Pathways"]
                 : view === "flashcards" ? [Layers, "Flashcards"]
                 : view === "compare" ? [History, "Compare over time"]
+                : view === "medrec" ? [Pill, "Med Reconciliation"]
+                : view === "present" ? [Presentation, "Presentation Coach"]
+                : view === "today" ? [CalendarDays, "Today"]
                 : view === "project" && project ? [Folder, project.name]
                 : [Folder, "Projects"];
               return <span className="cx-title-btn static"><Icon size={14} /> <span>{label}</span></span>;
@@ -4636,6 +4654,49 @@ export default function CadusAI() {
                 friendlyError={friendlyError}
                 toast={toast}
                 onPrint={(title, md) => printDoc(title, md, { mode: "note" })}
+              />
+            )
+            : view === "medrec" ? (
+              <MedRecView
+                generate={(body) => invokeCadus({ ...body, model: prefs.model, institution: institutionPayload(institution, "")?.payload })}
+                readFile={(f) => readAttachment(f, (img) => fileToDataUrl(img))}
+                friendlyError={friendlyError}
+                toast={toast}
+                onPrint={(title, md, large) => printDoc(title, md, { mode: large ? "leaflet" : "note", large: !!large })}
+                defaultLanguage={prefs.language}
+              />
+            )
+            : view === "present" ? (
+              <PresentCoachView
+                generate={(body) => invokeCadus({ ...body, model: prefs.model })}
+                friendlyError={friendlyError}
+                toast={toast}
+                onAsk={(q) => { if (pending) { toast("Wait for the current answer to finish"); return; } void send(q, "general"); }}
+              />
+            )
+            : view === "today" ? (
+              <TodayView
+                name={firstName}
+                ward={wardInfo.patients.map((p) => ({ id: p.id, bed: p.bed, label: p.label, diagnosis: p.diagnosis, jobs: p.jobs }))}
+                toggleJob={(pid, jid) => {
+                  const w = readWard();
+                  const next = { ...w, patients: w.patients.map((p) => (p.id === pid ? { ...p, jobs: p.jobs.map((j) => (j.id === jid ? { ...j, done: !j.done } : j)) } : p)) };
+                  saveWard(next);
+                  setWardInfo(next);
+                  toast("Job done");
+                }}
+                learn={{ streak: streak(practice.days), due: cardStats(learn).due, toRevise: practice.mistakes.length }}
+                activeCases={cases.filter((c) => c.status === "active").length}
+                chats={sessions.filter((x) => !x.temp && !x.archived && x.messages.length).sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 5).map((x) => ({ id: x.id, title: x.title, updatedAt: x.updatedAt }))}
+                questionsLeft={Number.isFinite(limits.questionsPerDay) && limits.questionsPerDay < 10000 ? Math.max(0, limits.questionsPerDay - (usage.date === today() ? usage.count : 0)) : null}
+                go={(where, id) => {
+                  if (where === "open-chat" && id) openSession(id);
+                  else if (where === "chat") newChat();
+                  else if (where === "ward") openWard();
+                  else if (where === "cases") openCases();
+                  else if (where === "practice") openPractice();
+                  else openView(where as View);
+                }}
               />
             )
             : view === "cases" ? (

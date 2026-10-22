@@ -142,3 +142,84 @@ export function compareResult(raw: any): CompareResult | null {
     limits: line(raw.limits, 240),
   };
 }
+
+/* ------------------------------------------------------------------ Medicine reconciliation */
+
+export const MEDREC_SYSTEM = `You are Cadus Med Reconciliation, a clinical pharmacist in an Indian hospital reconciling a patient's medicines at a transition of care (admission, transfer or discharge).
+You get the BEFORE list (what the patient was taking at home or before the transition) and the AFTER list (the new chart or discharge prescription), typed or as photos, and what is known about the patient. Brand names are common: map each to its generic and every component of a combination.
+Match the same medicine across the lists even when written differently. For each medicine decide: continued (same), changed (dose, frequency, route or formulation), started (only AFTER), stopped (only BEFORE), or unclear (cannot tell).
+Then check: stopped medicines with no reason that should probably continue (antiplatelets after a stent, antiepileptics, steroids, thyroxine, insulin), duplicates (including within combinations), interactions, doses wrong for the kidneys, liver, age or weight, allergies, and anything the condition needs that is missing.
+Reply ONLY as JSON (no code fences):
+{"summary": one or two sentences,
+ "items": [{"generic": generic name and strength, "before": dose and frequency as written, or "", "after": dose and frequency, or "", "change": "continued" | "changed" | "started" | "stopped" | "unclear", "note": one line (what changed or why it matters), "status": "ok" | "check" | "problem"}],
+ "issues": [{"severity": "high" | "moderate" | "low", "title": short, "detail": what and why, "action": what to do}],
+ "patientSheet": markdown in the patient's language and script: "Your medicines now" as a table (medicine, what it is for in plain words, when to take it: morning / afternoon / night, with or after food), then "Stopped: do not take" as a list, then "Changed" as a list, then one line to bring all medicines to the next visit. Plain words, no jargon. Only medicines from the AFTER list go in "now".,
+ "questions": things the doctor should confirm (0 to 5)}
+Never invent a medicine, dose or reason. If an entry cannot be read, mark it unclear.`;
+
+export const MEDREC_CHANGES = ["continued", "changed", "started", "stopped", "unclear"] as const;
+export interface MedRecItem { generic: string; before: string; after: string; change: (typeof MEDREC_CHANGES)[number]; note: string; status: "ok" | "check" | "problem" }
+export interface MedRecIssue { severity: "high" | "moderate" | "low"; title: string; detail: string; action: string }
+export interface MedRec { summary: string; items: MedRecItem[]; issues: MedRecIssue[]; patientSheet: string; questions: string[] }
+const SEV = { high: 0, moderate: 1, low: 2 } as const;
+const CHANGE_ORDER = { stopped: 0, started: 1, changed: 2, unclear: 3, continued: 4 } as const;
+export function medRec(raw: any): MedRec | null {
+  if (!raw || typeof raw !== "object") return null;
+  const items: MedRecItem[] = (Array.isArray(raw.items) ? raw.items : []).slice(0, 40).map((x: any) => ({
+    generic: line(x?.generic, 160),
+    before: line(x?.before, 120),
+    after: line(x?.after, 120),
+    change: pick(x?.change, MEDREC_CHANGES, "unclear"),
+    note: line(x?.note, 240),
+    status: pick(x?.status, ["ok", "check", "problem"] as const, "check"),
+  })).filter((x: MedRecItem) => x.generic);
+  if (!items.length) return null;
+  // A medicine on only one list cannot be "continued".
+  for (const it of items) {
+    if (it.change === "continued" && it.before && !it.after) it.change = "stopped";
+    if (it.change === "continued" && !it.before && it.after) it.change = "started";
+  }
+  items.sort((a, b) => CHANGE_ORDER[a.change] - CHANGE_ORDER[b.change]);
+  const issues: MedRecIssue[] = (Array.isArray(raw.issues) ? raw.issues : []).slice(0, 15).map((i: any) => ({
+    severity: pick(i?.severity, ["high", "moderate", "low"] as const, "moderate"),
+    title: line(i?.title, 140), detail: line(i?.detail, 500), action: line(i?.action, 400),
+  })).filter((i: MedRecIssue) => i.title);
+  issues.sort((a, b) => SEV[a.severity] - SEV[b.severity]);
+  return { summary: line(raw.summary, 400), items, issues, patientSheet: text(raw.patientSheet, 8000), questions: list(raw.questions, 5, 240) };
+}
+
+/* ------------------------------------------------------------------ Presentation Coach */
+
+export const PRESENT_FORMATS: Record<string, { label: string; rubric: string }> = {
+  rounds: { label: "Ward-round presentation", rubric: "Opening line (who, why admitted, day of admission); overnight events; current symptoms; vitals and examination; key results with trends; assessment by problem; plan by problem; concise and under 2 minutes" },
+  long: { label: "Long case (university or PG exam)", rubric: "Identification and chief complaints with duration; history of presenting illness in order with negatives that matter; past, drug, family, personal and socio-economic history; general and systemic examination in order; summary; provisional diagnosis with justification; differentials with reasons for and against; investigations planned; management" },
+  short: { label: "Short case (spot examination)", rubric: "Introduction and consent; inspection, palpation, percussion, auscultation in order; positive and relevant negative findings; a one-line summary; diagnosis with the anatomical and functional level; one or two differentials" },
+  sbar: { label: "SBAR handover or referral call", rubric: "Situation in one line; background that matters; assessment with vitals and the main concern; a clear recommendation or request with urgency; closed loop (read-back, what to do if worse)" },
+  opd: { label: "OPD case to a consultant", rubric: "Who and why in one line; key history; key examination; what you think it is; what you want to do or ask; under 60 seconds" },
+};
+export const PRESENT_SYSTEM = `You are Cadus Presentation Coach, a senior consultant in an Indian teaching hospital listening to a student or resident present a case. Be fair, specific and encouraging, and hold them to the standard of the format.
+You get the format, its rubric, the learner's level and the presentation (it may be a speech-to-text transcript with filler words; judge the content and order, not the transcription).
+Reply ONLY as JSON (no code fences):
+{"score": 0 to 100,
+ "rubric": [{"item": a rubric item, "score": 0 to 10, "note": one line}] (one per rubric item, in order),
+ "strengths": what they did well (2 to 4),
+ "improve": the most useful changes, most important first (2 to 5),
+ "missing": important facts or negatives a consultant would ask about that were not said (0 to 6),
+ "questions": 3 questions the consultant or examiner would now ask,
+ "model": markdown: the same case presented well in this format, using only the facts given (write [not stated] where a key fact is missing; never invent findings)}`;
+export interface Presentation { score: number; rubric: { item: string; score: number; note: string }[]; strengths: string[]; improve: string[]; missing: string[]; questions: string[]; model: string }
+export function presentation(raw: any): Presentation | null {
+  if (!raw || typeof raw !== "object") return null;
+  const n = Number(raw.score);
+  const model = text(raw.model, 8000);
+  if (!Number.isFinite(n) || !model) return null;
+  return {
+    score: Math.max(0, Math.min(100, Math.round(n))),
+    rubric: (Array.isArray(raw.rubric) ? raw.rubric : []).slice(0, 12).map((r: any) => ({ item: line(r?.item, 120), score: Math.max(0, Math.min(10, Math.round(Number(r?.score) || 0))), note: line(r?.note, 240) })).filter((r: { item: string }) => r.item),
+    strengths: list(raw.strengths, 4, 240),
+    improve: list(raw.improve, 5, 260),
+    missing: list(raw.missing, 6, 200),
+    questions: list(raw.questions, 3, 240),
+    model,
+  };
+}

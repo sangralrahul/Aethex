@@ -98,6 +98,10 @@ It provides an intelligent interface for medical and educational assistance.
 - Clinical Pathways: 16 guideline-based pathways (chest pain, sepsis, stroke, fever in India, DKA, child with diarrhoea, PPH and more) or your own, one question or action at a time, ending in a disposition and plan to print
 - Flashcards: decks from any answer ("Make flashcards"), your notes or a topic, reviewed with spaced repetition and exported to Anki
 - Compare over time: two X-rays, ECGs, scans, reports or wound photos from different dates, compared finding by finding with what needs attention
+- Med Reconciliation: before and after medicine lists (admission, transfer or discharge; typed or photographed) matched, with what was started, stopped or changed, problems such as a stopped antiplatelet after a stent, and a "your medicines now" sheet in the patient's language
+- Presentation Coach: present a case by voice or typing (ward round, long case, short case, SBAR, OPD) with a timer; scored against the format's rubric, with what was missing, the examiner's next questions and a model presentation
+- Today: the day at a glance, with open ward jobs to tick off, flashcards and Learn revision due, unfinished pathways, Guideline Watch, recent chats and quick starts
+- The privacy guard also hides patient names typed anywhere in free text (common Indian given names and surnames), keeping doctors' names, hospitals, places, schemes and eponyms
 
 > CADUS is intended as an educational and informational assistant and is not a replacement for qualified medical professionals.
 
