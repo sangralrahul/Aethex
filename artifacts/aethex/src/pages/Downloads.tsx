@@ -14,12 +14,14 @@ import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import {
   AppWindow, ArrowRight, BookOpen, Check, Copy, Download, LockKeyhole, Mic, Monitor, Plus, RefreshCw,
   Search, ShieldCheck, UserRound, WifiOff, X,
+  BellRing, Bot, CalendarDays, FileScan, GitFork, HeartPulse, History, Languages, Layers, Pill, Presentation, ShieldPlus, Users2,
 } from "lucide-react";
 import CadusMark from "@/components/cadus/CadusMark";
 import { FONT_FACES } from "@/components/cadus/cadus-styles";
 import { LEGAL_PATH, SUPPORT_EMAIL } from "@/lib/cadus/legal";
 import { cadusUrl, isCadusHost } from "@/lib/host";
 import RELEASE from "@/lib/downloads/release.json";
+import { CALCULATORS } from "@/lib/cadus/calculators";
 
 type FileEntry = (typeof RELEASE.files)[number];
 type Os = "windows" | "mac" | "linux" | "mobile" | "unknown";
@@ -189,7 +191,7 @@ function LiveWindow() {
             <small>Today</small>
             {DEMOS.map((d, k) => <span key={d.title} className={`app-chat ${k === i ? "on" : ""}`}>{d.title}</span>)}
             <small>Tools</small>
-            {["Drug interactions", "Lab trends", "Calculators", "Medical library"].map((t) => <span key={t} className="app-chat">{t}</span>)}
+            {["Today", "Cadus Crew", "Rx Safety Check", "Clinical Pathways"].map((t) => <span key={t} className="app-chat">{t}</span>)}
             <div className="app-user"><span>RS</span><div><b>Dr Rahul</b><em>Cadus Medius 3.1</em></div></div>
           </aside>
           <div className="app-main">
@@ -257,9 +259,28 @@ function FileRow({ f, title, sub, recommended }: { f: FileEntry; title: string; 
 }
 
 const TOOLS: [string, string][] = [
-  ["Clinical answers", "t"], ["Dose cards", "t"], ["Drug interactions", "r"], ["Lab interpretation", "t"], ["Lab trends", "t"],
-  ["Radiology reads", "v"], ["Clinical calculators", "t"], ["Emergency", "r"], ["Paediatrics", "v"], ["Ward list", "t"],
-  ["PubMed research", "v"], ["Exam practice", "y"], ["Patient leaflets", "t"], ["Dictation", "v"], ["Offline library", "y"],
+  ["Clinical answers", "t"], ["Dose cards", "t"], ["Drug interactions", "r"], ["Rx Safety Check", "r"], ["Med Reconciliation", "r"],
+  ["Lab interpretation", "t"], ["Report Explainer", "t"], ["Compare over time", "v"], ["Radiology reads", "v"], ["Clinical Pathways", "t"],
+  ["Clinical calculators", "t"], ["Emergency", "r"], ["Paediatrics", "v"], ["Ward list", "t"], ["Consult Translator", "v"],
+  ["Cadus Crew", "y"], ["Crew Huddle", "y"], ["Deep Dive research", "v"], ["Guideline Watch", "v"], ["Case Simulator", "y"],
+  ["Presentation Coach", "y"], ["Flashcards", "y"], ["Exam practice", "y"], ["Patient leaflets", "t"], ["Offline library", "y"],
+];
+
+/** What's arrived in Cadus lately. The app shows the live Cadus, so all of it is in the app already. */
+const NEW_IN_CADUS: { icon: typeof Pill; t: string; d: string }[] = [
+  { icon: CalendarDays, t: "Today", d: "Your day on one screen: ward jobs to tick off, revision due, unfinished pathways and recent chats." },
+  { icon: Bot, t: "Cadus Crew", d: "Twenty ready-made assistants, from Viva Examiner to Antibiotic Steward, or your own with its own knowledge files. Type @ in any chat to ask one." },
+  { icon: Users2, t: "Crew Huddle", d: "Ask up to four assistants at once, see their answers side by side, then one combined answer that Cadus has checked." },
+  { icon: ShieldPlus, t: "Rx Safety Check", d: "Type or photograph a prescription: doses, interactions, allergies, pregnancy and kidney checks, with generics and Jan Aushadhi names." },
+  { icon: Pill, t: "Med Reconciliation", d: "Before and after admission or discharge: what was started, stopped or changed, what's unsafe, and a medicine sheet for the patient." },
+  { icon: GitFork, t: "Clinical Pathways", d: "Chest pain, sepsis, fever in India, DKA and more, one guideline-based step at a time to a decision and plan." },
+  { icon: Languages, t: "Consult Translator", d: "Talk with patients in 13 Indian languages, with a translation back to check and the consultation written up as a note." },
+  { icon: FileScan, t: "Report Explainer", d: "Any lab or imaging report as a summary for you and an explanation for the patient in their language." },
+  { icon: History, t: "Compare over time", d: "Two X-rays, ECGs, scans or reports from different dates: what changed, finding by finding." },
+  { icon: BellRing, t: "Guideline Watch", d: "New guidelines, meta-analyses and trials in your specialties, summarised with every paper linked." },
+  { icon: HeartPulse, t: "Case Simulator", d: "A live patient to practise on: history, examination, tests and treatment, then a scored debrief." },
+  { icon: Presentation, t: "Presentation Coach", d: "Present a case as on rounds or in an exam; get a score, what was missing and a model presentation." },
+  { icon: Layers, t: "Flashcards", d: "Turn any answer into flashcards, review them with spaced repetition and export to Anki." },
 ];
 
 const UNDER_THE_HOOD = [
@@ -269,7 +290,7 @@ const UNDER_THE_HOOD = [
   { icon: ShieldCheck, t: "Safety review", d: "Cadus checks its own answers for doses and red flags before you read them." },
   { icon: LockKeyhole, t: "Private and contained", d: "The window opens only Cadus and Aethex. Every other link opens in your usual browser. No added tracking." },
   { icon: WifiOff, t: "Knows when you're offline", d: "No connection? Cadus says so plainly and reconnects by itself the moment you're back online." },
-  { icon: Mic, t: "Dictation and exports", d: "Dictate questions with your microphone, and save letters, notes and PDFs through the usual Save dialog." },
+  { icon: Mic, t: "Read aloud and exports", d: "Hear answers and translations read aloud, and save letters, notes, PDFs and flashcard decks through the usual Save dialog." },
   { icon: Monitor, t: "Runs on what you have", d: "Windows 10 and 11 on x64 or ARM, and Linux. macOS coming soon." },
 ];
 
@@ -279,6 +300,8 @@ const FAQ = [
   { q: "Windows says it protected my PC. Is the file safe?", a: <>Windows SmartScreen warns about new apps until they have been downloaded many times. Choose <b>More info</b>, then <b>Run anyway</b>. You can check the file against its SHA-256 checksum above.</> },
   { q: "Which Windows version should I download?", a: <>The installer for most PCs (Intel and AMD) is x64. Laptops with a Snapdragon or other ARM processor need Windows on ARM. This page picks the right one for this computer.</> },
   { q: "When will Cadus for Mac be available?", a: <>Once it is signed and notarised with Apple, so macOS opens it without warnings. <a href={MAC_MAIL}>Leave your email</a> and we'll tell you.</> },
+  { q: "Do I need to reinstall to get the new tools?", a: <>No. Today, Cadus Crew, Rx Safety Check, Clinical Pathways, Consult Translator and the other new tools are already in the app, because it shows the live Cadus. Reinstall only when the app tells you a new version is ready.</> },
+  { q: "Can I use voice typing in the app?", a: <>Not yet: voice typing (dictation, voice mode and speaking to the Consult Translator) needs the speech service built into Chrome and Edge, so use Cadus in one of those for voice. Reading answers and translations aloud works in the app.</> },
   { q: "Where is my data kept?", a: <>Exactly where it is in the browser: chats, cases and settings stay on this computer, and your account is kept by Aethex on Cloudflare.</> },
 ];
 
@@ -320,7 +343,8 @@ export default function Downloads() {
           <nav>
             <a href="#product">Product</a>
             <a href="#all">Download</a>
-            <a href="#notes">What's new</a>
+            <a href="#new">New in Cadus</a>
+            <a href="#notes">Release notes</a>
             <a href="#help">Help</a>
           </nav>
           <a className="nav-link" href={openCadus}>cadus.aethex.in</a>
@@ -380,7 +404,7 @@ export default function Downloads() {
         <section className="wrap sec-sm">
           <div className="stats rv">
             <div><b><CountUp to={15515} /></b><span>library articles, available offline</span></div>
-            <div><b><CountUp to={20} /></b><span>clinical calculators</span></div>
+            <div><b><CountUp to={CALCULATORS.length} /></b><span>clinical calculators</span></div>
             <div><b><CountUp to={3} /></b><span>desktop builds, macOS next</span></div>
             <div><b><CountUp to={2} /></b><span>models: Medius 3.1 and Magnus 3.6</span></div>
           </div>
@@ -474,6 +498,24 @@ export default function Downloads() {
           <div className="hood">
             {UNDER_THE_HOOD.map(({ icon: Icon, t, d }, k) => (
               <article key={t} className={`hood-card rv d${(k % 4) + 1}`}>
+                <span className="ic"><Icon size={19} /></span>
+                <h3>{t}</h3>
+                <p>{d}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {/* new in Cadus */}
+        <section className="wrap sec" id="new">
+          <div className="rv">
+            <p className="eyebrow">New in Cadus</p>
+            <h2 className="wide">Already in your app, no update needed</h2>
+            <p className="sub l">The app shows the live Cadus, so every new tool reaches it the moment it's released. Here is what's arrived lately.</p>
+          </div>
+          <div className="hood new-grid">
+            {NEW_IN_CADUS.map(({ icon: Icon, t, d }, k) => (
+              <article key={t} className={`hood-card rv d${(k % 4) + 1}`} data-new={t}>
                 <span className="ic"><Icon size={19} /></span>
                 <h3>{t}</h3>
                 <p>{d}</p>
@@ -780,6 +822,9 @@ const CSS = `
 .ax .dl-steps code:not(.dl-cmd){font-family:var(--mono);font-size:14px;color:var(--ink)}
 
 .ax .hood{display:grid;grid-template-columns:repeat(4,1fr);gap:22px;margin-top:64px}
+.ax .new-grid .hood-card{padding:28px 26px}
+.ax .new-grid .hood-card h3{margin:22px 0 10px;font-size:19px}
+.ax .new-grid .hood-card p{font-size:15.5px}
 .ax .hood-card{padding:34px 32px;border-radius:20px;border:1px solid var(--line);background:#fff;transition:transform .3s ease,box-shadow .3s ease,border-color .3s,opacity .7s ease}
 .ax .hood-card:hover{transform:translateY(-4px);border-color:#cfe6e0;box-shadow:0 24px 48px -28px rgba(16,24,40,.25);background:radial-gradient(260px circle at 30% 0%,#f3faf8,#fff 70%)}
 .ax .hood-card .ic{display:grid;place-items:center;width:54px;height:54px;border-radius:12px;background:var(--teal-bg);color:var(--teal);transition:transform .35s cubic-bezier(.2,.9,.3,1.4)}

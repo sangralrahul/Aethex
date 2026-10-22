@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Mic, MicOff, X } from "lucide-react";
 import { markdownToText } from "@/lib/cadus-markdown";
+import { canDictate, speechRecognition } from "@/lib/cadus/speech";
 
 type Phase = "listening" | "thinking" | "speaking" | "paused" | "error";
 
@@ -15,7 +16,7 @@ const LANG_CODE: Record<string, string> = {
 };
 
 export const voiceSupported = () =>
-  typeof window !== "undefined" && !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition) && "speechSynthesis" in window;
+  typeof window !== "undefined" && canDictate() && "speechSynthesis" in window;
 
 /** Text for speaking: no markdown, no citation markers, no tables. */
 export function speakable(md: string): string {
@@ -44,7 +45,7 @@ export default function VoiceMode({ language, ask, onClose }: {
 
   const listen = useCallback(() => {
     if (!alive.current) return;
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SR = speechRecognition();
     if (!SR) { setError("Voice mode needs a browser with speech recognition, such as Chrome, Edge or Safari."); go("error"); return; }
     try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
     const rec = new SR();

@@ -78,6 +78,7 @@ import {
   ACCEPT_ATTACH, attachmentPayload, attachmentsForStorage, attachProblem, describeAttachment, formatSize, readAttachment,
   type Attachment,
 } from "@/lib/cadus/files";
+import { dictationError, NO_DICTATION, speechRecognition } from "@/lib/cadus/speech";
 import { addMemory, personalPayload, readPersonal, rememberFrom, savePersonal, type Personal } from "@/lib/cadus/memory";
 import { downloadBlob, fileSlug, markdownToDocx } from "@/lib/cadus/docx";
 import { hasLetterhead, letterheadLines, readLetterhead, saveLetterhead, SIGNED_MODES, type Letterhead } from "@/lib/cadus/letterhead";
@@ -2438,7 +2439,7 @@ export default function CadusAI() {
   }, []);
   const canVoice = voiceSupported();
   const startVoice = () => {
-    if (!voiceSupported()) { toast("Voice mode needs a browser with speech recognition, such as Chrome, Edge or Safari"); return; }
+    if (!voiceSupported()) { toast(IN_DESKTOP_APP ? NO_DICTATION : "Voice mode needs a browser with speech recognition, such as Chrome, Edge or Safari"); return; }
     if (pending) { toast("Wait for the current answer to finish"); return; }
     if (view !== "chat") setView("chat");
     if (mode === "slides" || mode === "image") setMode("general");
@@ -2531,8 +2532,8 @@ export default function CadusAI() {
   };
 
   const toggleVoice = () => {
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) { toast("Voice input isn't supported in this browser"); return; }
+    const SR = speechRecognition();
+    if (!SR) { toast(NO_DICTATION); return; }
     if (listening) { recRef.current?.stop(); return; }
     const rec = new SR();
     rec.lang = prefs.language === "Hindi" ? "hi-IN" : "en-IN";
@@ -2544,7 +2545,7 @@ export default function CadusAI() {
       setInput((base ? `${base} ` : "") + t);
     };
     rec.onend = () => setListening(false);
-    rec.onerror = () => setListening(false);
+    rec.onerror = (e: any) => { setListening(false); const m = dictationError(e?.error); if (m) toast(m); };
     recRef.current = rec;
     setListening(true);
     rec.start();

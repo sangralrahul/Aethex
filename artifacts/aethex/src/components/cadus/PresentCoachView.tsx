@@ -9,9 +9,9 @@ import { Clock, Copy, Mic, MicOff, Presentation, RotateCcw, Sparkles, Trophy } f
 import { MdBlock } from "./LiveAnswer";
 import { deidentify } from "@/lib/cadus/deidentify";
 import { PRESENT_FORMATS, readPresents, savePresents, sid, type PresentRecord } from "@/lib/cadus/studio";
+import { canDictate, dictationError, NO_DICTATION, speechRecognition } from "@/lib/cadus/speech";
 
-const W = typeof window !== "undefined" ? (window as any) : {};
-const canListen = !!(W.SpeechRecognition || W.webkitSpeechRecognition);
+const canListen = canDictate();
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
 
 export default function PresentCoachView({ generate, friendlyError, toast, onAsk }: {
@@ -44,9 +44,9 @@ export default function PresentCoachView({ generate, friendlyError, toast, onAsk
   const words = text.trim() ? text.trim().split(/\s+/).length : 0;
 
   const listen = () => {
-    if (!canListen) { toast("Voice isn't available in this browser; type the presentation, or use Chrome or Edge"); return; }
+    if (!canListen) { toast(NO_DICTATION); return; }
     if (listening) { try { recRef.current?.stop(); } catch { /* ignore */ } return; }
-    const R = W.SpeechRecognition || W.webkitSpeechRecognition;
+    const R = speechRecognition();
     const rec = new R();
     rec.lang = "en-IN";
     rec.interimResults = true;
@@ -61,7 +61,7 @@ export default function PresentCoachView({ generate, friendlyError, toast, onAsk
       }
       setText(`${baseRef.current}${finals}${interim}`.replace(/\s{2,}/g, " "));
     };
-    rec.onerror = (e: any) => { if (e?.error === "not-allowed") toast("Allow the microphone to present by voice"); };
+    rec.onerror = (e: any) => { const m = dictationError(e?.error); if (m) toast(m); };
     rec.onend = () => { setListening(false); setStarted(0); };
     recRef.current = rec;
     setSpoken(true);

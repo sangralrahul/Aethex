@@ -9,9 +9,9 @@ import { ArrowLeftRight, Copy, FileText, Languages, Mic, MicOff, Plus, Stethosco
 import { MdBlock } from "./LiveAnswer";
 import { deidentify } from "@/lib/cadus/deidentify";
 import { englishOf, readTrSessions, saveTrSessions, sid, TR_LANGUAGES, TR_PHRASES, type TrSession, type TrTurn } from "@/lib/cadus/studio";
+import { canDictate, dictationError, NO_DICTATION, speechRecognition } from "@/lib/cadus/speech";
 
-const W = typeof window !== "undefined" ? (window as any) : {};
-const canListen = !!(W.SpeechRecognition || W.webkitSpeechRecognition);
+const canListen = canDictate();
 const canSpeak = typeof window !== "undefined" && "speechSynthesis" in window;
 
 export default function TranslatorView({ generate, friendlyError, toast, onPrint, defaultLanguage }: {
@@ -77,9 +77,9 @@ export default function TranslatorView({ generate, friendlyError, toast, onPrint
   };
 
   const listen = () => {
-    if (!canListen) { toast("Voice input isn't available in this browser; try Chrome or Edge"); return; }
+    if (!canListen) { toast(NO_DICTATION); return; }
     if (listening) { try { recRef.current?.stop(); } catch { /* ignore */ } return; }
-    const R = W.SpeechRecognition || W.webkitSpeechRecognition;
+    const R = speechRecognition();
     const rec = new R();
     rec.lang = who === "doctor" ? "en-IN" : lang.speech;
     rec.interimResults = true;
@@ -93,7 +93,7 @@ export default function TranslatorView({ generate, friendlyError, toast, onPrint
       }
       setInput((finalText + interim).trim());
     };
-    rec.onerror = (e: any) => { setListening(false); if (e?.error === "not-allowed") toast("Allow the microphone to use voice"); };
+    rec.onerror = (e: any) => { setListening(false); const m = dictationError(e?.error); if (m) toast(m); };
     rec.onend = () => { setListening(false); if (finalText.trim()) void send(finalText, who); };
     recRef.current = rec;
     setListening(true);

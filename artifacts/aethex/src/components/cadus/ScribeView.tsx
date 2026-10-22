@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ClipboardList, FileSignature, Mic, MicOff, Pencil, Plus, Printer, Search, ShieldCheck, Sparkles, Trash2, X } from "lucide-react";
 import { MdBlock } from "./LiveAnswer";
 import { ICD10, NOTE_KINDS, newNote, noteMarkdown, readNotes, saveNotes, searchIcd10, type Icd10, type Note, type NoteKind } from "@/lib/cadus/scribe";
+import { dictationError, NO_DICTATION, speechRecognition } from "@/lib/cadus/speech";
 
 export default function ScribeView({ generate, onPrint, onWord, onAsk, friendlyError, toast, letterhead, signer, language }: {
   generate: (body: Record<string, unknown>) => Promise<{ note?: string; codes?: Icd10[]; gaps?: string[]; title?: string }>;
@@ -37,8 +38,8 @@ export default function ScribeView({ generate, onPrint, onWord, onAsk, friendlyE
   const patch = (id: string, f: Partial<Note>) => setNotes((l) => l.map((n) => (n.id === id ? { ...n, ...f, updatedAt: Date.now() } : n)));
 
   const toggleMic = () => {
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) { toast("Dictation isn't supported in this browser; type the consultation instead"); return; }
+    const SR = speechRecognition();
+    if (!SR) { toast(NO_DICTATION); return; }
     if (listening) { rec.current?.stop(); return; }
     const r = new SR();
     r.lang = language === "Hindi" ? "hi-IN" : "en-IN";
@@ -53,7 +54,7 @@ export default function ScribeView({ generate, onPrint, onWord, onAsk, friendlyE
       setTranscript(`${base ? base + " " : ""}${finalText}${interim}`.trim());
     };
     r.onend = () => { base = `${base ? base + " " : ""}${finalText}`.trim(); setListening(false); };
-    r.onerror = () => setListening(false);
+    r.onerror = (e: any) => { setListening(false); const m = dictationError(e?.error); if (m) toast(m); };
     rec.current = r;
     setListening(true);
     r.start();
