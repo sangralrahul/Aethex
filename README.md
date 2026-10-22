@@ -86,6 +86,10 @@ It provides an intelligent interface for medical and educational assistance.
 - Deep Dive: plans the question, searches PubMed and guideline sites step by step (shown live), then writes a cited report that is safety-reviewed
 - Cadus Crew: assistants with their own instructions, starters and tool, ready-made (Viva Examiner, NEET-PG Coach, Discharge Writer, Clinical Pharmacist, Thesis Guide and more) or your own
 - Follow-up questions written for each answer, and branching a chat from any answer
+- Case Simulator: a live patient to practise on (ask, examine, order tests, treat, call a senior) with changing vitals and a clock, then a scored debrief with the diagnosis, what was missed and teaching points
+- Rx Safety Check: a typed, photographed or PDF prescription checked for one patient (doses, interactions, allergies, pregnancy, kidney, liver, age, duplicates), with generics, NLEM and Jan Aushadhi names, and Cadus's own interaction table as a second check
+- Guideline Watch: the newest guidelines, meta-analyses and trials on PubMed for the specialties you follow (last 7, 30 or 90 days), summarised only from those records, with papers new since your last check marked and digests saved to the Library
+- Report Explainer: a lab, imaging or pathology report (photo, PDF or text) as a summary for the doctor, with critical values first, and an explanation for the patient in their language to print or send on WhatsApp
 
 > CADUS is intended as an educational and informational assistant and is not a replacement for qualified medical professionals.
 

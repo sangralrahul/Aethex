@@ -19,6 +19,15 @@
 //                         records with abstracts, for the Research page. No AI.
 //   deep-research         Legacy endpoint used by the classic page.
 //   med-knowledge         Study Hub content.
+//   case-sim              Case Simulator: step "start" writes a hidden case, "act" plays the
+//                         patient, nurse and lab for one learner action, "debrief" scores it.
+//   rx-check              Rx Safety Check: a typed, photographed or PDF prescription checked
+//                         for one patient (doses, interactions, allergy, pregnancy, kidney,
+//                         liver, age), with generics, NLEM and Jan Aushadhi names.
+//   watch                 Guideline Watch: the newest PubMed records on a topic (last 7, 30
+//                         or 90 days) and a digest written only from them.
+//   report-explain        Report Explainer: a lab, imaging or other report as a summary for
+//                         the doctor and an explanation for the patient in their language.
 import {
   callAI,
   CLAUDE_DRAFT_MODEL,
@@ -30,6 +39,32 @@ import {
   type Source,
 } from "../_shared/ai.ts";
 import { PubmedBusy, searchPubMed, type PaperType } from "../_shared/pubmed.ts";
+import {
+  EXPLAIN_SYSTEM,
+  explainResult,
+  line as cleanLine,
+  RX_CHECK_SYSTEM,
+  rxPatient,
+  rxPatientLine,
+  rxReport,
+  SIM_ACTIONS,
+  SIM_DEBRIEF_SYSTEM,
+  SIM_DIFFICULTY,
+  SIM_LEVELS,
+  SIM_START_SYSTEM,
+  SIM_TURN_SYSTEM,
+  simCase,
+  simDebrief,
+  simDebriefPrompt,
+  simLog,
+  simStartPrompt,
+  simTurn,
+  simTurnPrompt,
+  simVitals,
+  WATCH_SYSTEM,
+  watchDigest,
+  watchRecords,
+} from "../_shared/labs.ts";
 
 /* ------------------------------------------------------------------ prompts */
 
@@ -1202,13 +1237,14 @@ Deno.serve(async (req) => {
     if (action === "literature") {
       const q = String(body.query || "").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 300);
       if (!q) return jsonResponse({ error: "query is required" }, 400);
-      const types: PaperType[] = ["any", "sr", "rct", "guideline", "review"];
+      const types: PaperType[] = ["any", "sr", "rct", "guideline", "review", "key"];
       try {
         const r = await searchPubMed(
           {
             q,
             type: types.includes(body.type) ? body.type : "any",
             years: [0, 1, 5, 10].includes(Number(body.years)) ? Number(body.years) : 0,
+            days: [0, 7, 30, 90].includes(Number(body.days)) ? Number(body.days) : 0,
             free: body.free === true,
             india: body.india === true,
             sort: body.sort === "date" ? "date" : "relevance",
@@ -1334,6 +1370,162 @@ Deno.serve(async (req) => {
       const text = r.content.replace(/^\s*```(?:markdown|md)?\s*\n/i, "").replace(/\n```\s*$/, "").trim();
       if (!text) return jsonResponse({ error: "The leaflet came back empty. Please try again." }, 502);
       return jsonResponse({ text, provider: r.provider, model: r.model });
+    }
+
+    // ---------------------------------------------------------------- Case Simulator
+    if (action === "case-sim") {
+      const step = String(body.step || "start");
+      if (step === "start") {
+        const level = (SIM_LEVELS as readonly string[]).includes(String(body.level)) ? String(body.level) : "mbbs";
+        const difficulty = (SIM_DIFFICULTY as readonly string[]).includes(String(body.difficulty)) ? String(body.difficulty) : "medium";
+        const r = await callAI({
+          model: answerModel(body.model),
+          messages: [
+            { role: "system", content: SIM_START_SYSTEM },
+            { role: "user", content: simStartPrompt({ specialty: cleanLine(body.specialty, 60), level, difficulty, seed: cleanLine(body.seed, 160) }) },
+          ],
+          jsonMode: true,
+          effort: "medium",
+          maxTokens: 3000,
+        });
+        if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+        const c = simCase({ ...(parseJsonLoose<any>(r.content) || {}), level, difficulty });
+        if (!c) return jsonResponse({ error: "Couldn't write a case this time. Please try again." }, 502);
+        return jsonResponse({ case: c, provider: r.provider, model: r.model });
+      }
+      const c = simCase(body.case);
+      if (!c) return jsonResponse({ error: "case is required" }, 400);
+      const log = simLog(body.log);
+      const minute = Math.max(0, Math.min(1440, Math.round(Number(body.minute) || 0)));
+      if (step === "act") {
+        const kind = (SIM_ACTIONS as readonly string[]).includes(String(body.kind)) ? (String(body.kind) as (typeof SIM_ACTIONS)[number]) : "history";
+        const what = cleanLine(body.text, 400);
+        if (!what && kind !== "wait") return jsonResponse({ error: "text is required" }, 400);
+        // The vitals as they stand now (the browser keeps them between turns).
+        const now = simVitals(body.vitals);
+        const before = Object.fromEntries(Object.entries(c.vitals).map(([k, v]) => [k, now[k as keyof typeof now] ?? v])) as typeof c.vitals;
+        const r = await callAI({
+          model: answerModel(body.model),
+          messages: [
+            { role: "system", content: SIM_TURN_SYSTEM },
+            { role: "user", content: simTurnPrompt({ ...c, vitals: before }, log, { kind, text: what }, minute) },
+          ],
+          jsonMode: true,
+          effort: "low",
+          maxTokens: 1500,
+        });
+        if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+        const turn = simTurn(parseJsonLoose<any>(r.content), before);
+        if (!turn) return jsonResponse({ error: "The patient didn't respond. Please try again." }, 502);
+        return jsonResponse({ turn });
+      }
+      if (step === "debrief") {
+        const r = await callAI({
+          model: CLAUDE_REVIEW_MODEL,
+          messages: [
+            { role: "system", content: SIM_DEBRIEF_SYSTEM },
+            { role: "user", content: simDebriefPrompt(c, log, cleanLine(body.diagnosis, 200), cleanLine(body.plan, 1200), minute) },
+          ],
+          jsonMode: true,
+          effort: "medium",
+          maxTokens: 3000,
+        });
+        if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+        const debrief = simDebrief(parseJsonLoose<any>(r.content));
+        if (!debrief) return jsonResponse({ error: "Couldn't score the case this time. Please try again." }, 502);
+        return jsonResponse({ debrief, diagnosis: c.diagnosis });
+      }
+      return jsonResponse({ error: "Unknown step" }, 400);
+    }
+
+    // ---------------------------------------------------------------- Rx Safety Check
+    if (action === "rx-check") {
+      const rxText = String(body.text || "").replace(/\r/g, "").replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, " ").trim().slice(0, 6000);
+      const attached = attachmentParts(body.files, "");
+      if (!rxText && !attached.parts.length) return jsonResponse({ error: "Type the prescription or add a photo of it" }, 400);
+      const patient = rxPatient(body.patient);
+      const ask = [
+        `PATIENT: ${rxPatientLine(patient)}`,
+        rxText ? `PRESCRIPTION (typed):\n${rxText}` : "PRESCRIPTION: in the attached file. Read every line.",
+      ].join("\n\n");
+      const r = await callAI({
+        model: CLAUDE_REVIEW_MODEL,
+        messages: [
+          { role: "system", content: [RX_CHECK_SYSTEM, institutionLine(body.institution)].filter(Boolean).join("\n\n") },
+          attached.parts.length ? { role: "user", content: [...attached.parts, { type: "text", text: ask }] } : { role: "user", content: ask },
+        ],
+        jsonMode: true,
+        effort: "high",
+        maxTokens: 6000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const report = rxReport(parseJsonLoose<any>(r.content));
+      if (!report) return jsonResponse({ error: "Couldn't read any medicines in that prescription. Try a clearer photo or type it." }, 502);
+      return jsonResponse({ report, provider: r.provider, model: r.model });
+    }
+
+    // ---------------------------------------------------------------- Guideline Watch
+    if (action === "watch") {
+      const topic = cleanLine(body.topic, 300);
+      const label = cleanLine(body.label, 60) || topic;
+      if (!topic) return jsonResponse({ error: "topic is required" }, 400);
+      const days = [7, 30, 90].includes(Number(body.days)) ? Number(body.days) : 30;
+      let papers;
+      try {
+        const res = await searchPubMed(
+          { q: topic, type: body.keyOnly === false ? "any" : "key", days, india: body.india === true, sort: "relevance", perPage: 12 },
+          { apiKey: Deno.env.get("NCBI_API_KEY") },
+        );
+        papers = res.papers;
+      } catch (e) {
+        if (e instanceof PubmedBusy) return jsonResponse({ error: "PubMed is busy right now. Please try again in a moment." }, 429);
+        console.error("Guideline Watch search failed", e);
+        return jsonResponse({ error: "Couldn't reach PubMed. Please try again." }, 502);
+      }
+      const brief = papers.map((p) => ({ pmid: p.pmid, title: p.title, journal: p.journal, year: p.year, types: p.types.slice(0, 4), doi: p.doi ?? "" }));
+      if (!papers.length) return jsonResponse({ papers: [], digest: null, days });
+      const r = await callAI({
+        model: answerModel(body.model),
+        messages: [
+          { role: "system", content: [WATCH_SYSTEM, languageLine(body.language)].filter(Boolean).join("\n\n") },
+          { role: "user", content: `TOPIC: ${label}\n\nRECORDS:\n${watchRecords(papers)}` },
+        ],
+        jsonMode: true,
+        effort: "medium",
+        maxTokens: 3000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const digest = watchDigest(parseJsonLoose<any>(r.content), new Set(papers.map((p) => p.pmid)));
+      return jsonResponse({ papers: brief, digest, days, provider: r.provider, model: r.model });
+    }
+
+    // ---------------------------------------------------------------- Report Explainer
+    if (action === "report-explain") {
+      const reportText = String(body.text || "").replace(/\r/g, "").replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, " ").trim().slice(0, 20000);
+      const attached = attachmentParts(body.files, "");
+      if (!reportText && !attached.parts.length) return jsonResponse({ error: "Add the report as a photo or PDF, or paste it" }, 400);
+      const language = cleanLine(body.language, 40) || "English";
+      const level = String(body.level) === "simple" ? "very simple words, for someone who did not finish school" : "plain language for an adult";
+      const ask = [
+        `Patient's language: ${language}${language !== "English" ? " (write patientSummary and questions in this language and its own script; keep test names, numbers and units as printed)" : ""}`,
+        `Reading level for the patient: ${level}`,
+        cleanLine(body.context, 600) ? `Clinical context from the doctor: ${cleanLine(body.context, 600)}` : "",
+        reportText ? `REPORT (text):\n${reportText}` : "REPORT: in the attached file.",
+      ].filter(Boolean).join("\n");
+      const r = await callAI({
+        model: answerModel(body.model),
+        messages: [
+          { role: "system", content: EXPLAIN_SYSTEM },
+          attached.parts.length ? { role: "user", content: [...attached.parts, { type: "text", text: ask }] } : { role: "user", content: ask },
+        ],
+        jsonMode: true,
+        effort: "medium",
+        maxTokens: 7000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = explainResult(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't read that report. Try a clearer photo, or paste the values." }, 502);
+      return jsonResponse({ result, provider: r.provider, model: r.model });
     }
 
     // ---------------------------------------------------------------- Study Hub

@@ -5,13 +5,15 @@
 // Without an API key NCBI allows 3 requests a second; set NCBI_API_KEY (a free
 // key from an NCBI account) to raise that to 10.
 
-export type PaperType = "any" | "sr" | "rct" | "guideline" | "review";
+export type PaperType = "any" | "sr" | "rct" | "guideline" | "review" | "key";
 
 export interface PubmedQuery {
   q: string;
   type?: PaperType;
   /** Only papers from the last N calendar years (0 = any year). */
   years?: number;
+  /** Only records added to PubMed in the last N days (Guideline Watch; 0 = no limit). */
+  days?: number;
   free?: boolean;
   india?: boolean;
   sort?: "relevance" | "date";
@@ -70,8 +72,12 @@ export function buildTerm(q: PubmedQuery, nowYear = new Date().getUTCFullYear())
   else if (q.type === "rct") parts.push("randomized controlled trial[pt]");
   else if (q.type === "guideline") parts.push("(guideline[pt] OR practice guideline[pt])");
   else if (q.type === "review") parts.push("review[pt]");
+  // "key": the evidence that changes practice (guidelines, meta-analyses, systematic reviews, trials).
+  else if (q.type === "key") parts.push("(guideline[pt] OR practice guideline[pt] OR meta-analysis[pt] OR systematic review[pt] OR randomized controlled trial[pt])");
   const years = Math.round(Number(q.years) || 0);
   if (years > 0) parts.push(`("${nowYear - years + 1}"[dp] : "3000"[dp])`);
+  const days = Math.round(Number(q.days) || 0);
+  if (days > 0) parts.push(`"last ${Math.min(days, 3650)} days"[edat]`);
   if (q.free) parts.push("free full text[sb]");
   if (q.india) parts.push("(India[tiab] OR Indian[tiab] OR India[ad])");
   return parts.join(" AND ");
