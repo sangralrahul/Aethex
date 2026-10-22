@@ -20,7 +20,7 @@ import {
   Sparkles, Square, SquarePen, Stethoscope, Sun, Syringe, Telescope, Trash2, Users, Volume2, VolumeX, X, Zap, Palette,
   BedDouble, BookMarked, BookOpenText, ChartLine, ClipboardPlus, FileBadge, FileSignature, Microscope, NotebookPen, NotepadText,
   Printer, Scissors, ScrollText, Sigma, PanelRight, EyeOff, Compass, Rows3, WifiOff, Building2, ScanSearch,
-  Bot, GitBranch, HeartPulse, MessageCircle, BellRing, FileScan, ShieldPlus, ScanLine, Shield, Bone, AtSign, Users2, GitFork, CalendarDays,
+  Bot, GitBranch, HeartPulse, MessageCircle, BellRing, FileScan, ShieldPlus, ScanLine, Shield, Bone, AtSign, Users2, GitFork, CalendarDays, FileOutput, ArrowRightLeft, Waypoints, CalendarCheck,
   type LucideIcon,
 } from "lucide-react";
 import { invokeAi } from "@/lib/ai-functions";
@@ -68,12 +68,18 @@ import TranslatorView from "@/components/cadus/TranslatorView";
 import PathwaysView from "@/components/cadus/PathwaysView";
 import FlashcardsView from "@/components/cadus/FlashcardsView";
 import CompareView from "@/components/cadus/CompareView";
-import { CADUS_STUDIO_CSS, CADUS_TODAY_CSS } from "@/components/cadus/cadus-studio-styles";
+import { CADUS_STUDIO_CSS, CADUS_TODAY_CSS, CADUS_WARD_CSS } from "@/components/cadus/cadus-studio-styles";
 import MedRecView from "@/components/cadus/MedRecView";
 import PresentCoachView from "@/components/cadus/PresentCoachView";
 import TodayView from "@/components/cadus/TodayView";
+import DischargeView from "@/components/cadus/DischargeView";
+import HandoverView from "@/components/cadus/HandoverView";
+import DifferentialView from "@/components/cadus/DifferentialView";
+import StudyPlanView from "@/components/cadus/StudyPlanView";
+import { STUDYPLAN_KEY } from "@/lib/cadus/studyplan";
+import { installDesktopBridge, isOpenTarget, type OpenTarget } from "@/lib/cadus/desktop";
 import { cardStats } from "@/lib/cadus/learn";
-import { COMPARES_KEY, DECKS_KEY, MEDREC_KEY, PATHWAYS_KEY, PRESENT_KEY, TRANSLATOR_KEY } from "@/lib/cadus/studio";
+import { COMPARES_KEY, DDX_KEY, DECKS_KEY, DISCHARGE_KEY, HANDOVER_KEY, MEDREC_KEY, PATHWAYS_KEY, PRESENT_KEY, TRANSLATOR_KEY } from "@/lib/cadus/studio";
 import {
   ACCEPT_ATTACH, attachmentPayload, attachmentsForStorage, attachProblem, describeAttachment, formatSize, readAttachment,
   type Attachment,
@@ -144,9 +150,9 @@ type ModeId =
   | "admission" | "progress" | "opnote" | "death" | "certificate" | "rx" | "evidence";
 /** "groq" only appears in chats saved before Cadus became Claude-only. */
 type Provider = "claude" | "groq" | "library";
-type View = "chat" | "crew" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today";
+type View = "chat" | "crew" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan";
 /** Views reached from the Tools hub, so the hub stays highlighted in the sidebar. */
-const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today"]);
+const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today", "discharge", "handover", "ddx", "studyplan"]);
 type ToolTab = "all" | "clinical" | "documentation" | "learning";
 type SettingsTab = "general" | "personal" | "letterhead" | "institution" | "data" | "shortcuts" | "about";
 type StyleId = "concise" | "balanced" | "detailed";
@@ -1941,6 +1947,27 @@ export default function CadusAI() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // The desktop app (tray, reminders, quick-open shortcut) and ?open= links open a part of Cadus.
+  const openTargetRef = useRef<(t: OpenTarget) => void>(() => {});
+  openTargetRef.current = (t: OpenTarget) => {
+    if (t === "new-chat") { newChat(); focusComposer(); }
+    else if (t === "ward") openWard();
+    else if (t === "calculators") openCalculators();
+    else if (t === "practice") openPractice();
+    else openView(t);
+  };
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get("open");
+    if (t) {
+      params.delete("open");
+      const rest = params.toString();
+      window.history.replaceState(window.history.state, "", `${window.location.pathname}${rest ? `?${rest}` : ""}${window.location.hash}`);
+      if (isOpenTarget(t)) openTargetRef.current(t);
+    }
+    return installDesktopBridge((x) => openTargetRef.current(x));
+  }, []);
+
   const stop = () => {
     if (!pending) return;
     cancelled.current.add(pending.id);
@@ -2120,6 +2147,10 @@ export default function CadusAI() {
     comparisons: readJSON(COMPARES_KEY, []),
     medicineReconciliations: readJSON(MEDREC_KEY, []),
     presentations: readJSON(PRESENT_KEY, []),
+    dischargeSummaries: readJSON(DISCHARGE_KEY, []),
+    handovers: readJSON(HANDOVER_KEY, []),
+    differentials: readJSON(DDX_KEY, []),
+    studyPlan: readJSON(STUDYPLAN_KEY, null),
   });
   /** Removes everything Cadus keeps in this browser (Quick Consult too) and starts afresh. */
   const deleteEverything = () => {
@@ -2612,6 +2643,10 @@ export default function CadusAI() {
       { key: "a:flashcards", label: "Flashcards: review and make decks", hint: "Spaced repetition and Anki export", icon: Layers, run: () => openView("flashcards") },
       { key: "a:today", label: "Today: my day at a glance", hint: "Ward jobs, revision due, unfinished pathways, recent chats", icon: CalendarDays, run: () => openView("today") },
       { key: "a:medrec", label: "Med Reconciliation: before and after medicines", hint: "Admission, transfer or discharge; a patient medicine sheet", icon: Pill, run: () => openView("medrec") },
+      { key: "a:discharge", label: "Discharge Summary: write it from the case notes", hint: "Typed notes or case-sheet photos; patient advice in their language", icon: FileOutput, run: () => openView("discharge") },
+      { key: "a:handover", label: "Shift Handover: I-PASS for the next team", hint: "From your ward list, with if/then plans", icon: ArrowRightLeft, run: () => openView("handover") },
+      { key: "a:ddx", label: "Differential Builder: ranked differential from findings", hint: "Can't-miss diagnoses and the next tests", icon: Waypoints, run: () => openView("ddx") },
+      { key: "a:studyplan", label: "Exam Study Planner: a day-by-day plan to your exam", hint: "NEET-PG, INI-CET, FMGE or university", icon: CalendarCheck, run: () => openView("studyplan") },
       { key: "a:present", label: "Presentation Coach: practise presenting a case", hint: "Ward round, long case, SBAR; scored with a model answer", icon: Presentation, run: () => openView("present") },
       { key: "a:compare", label: "Compare over time: what changed between two studies", hint: "X-rays, ECGs, scans, reports and wound photos", icon: History, run: () => openView("compare") },
       { key: "a:newcase", label: "New patient case", hint: "Start a de-identified case sheet", icon: ClipboardList, run: () => { const c = newCase(); setCases((l) => [c, ...l]); openCases(c.id); } },
@@ -2982,6 +3017,10 @@ export default function CadusAI() {
     { id: "compare", icon: History, tone: "sky", title: "Compare over time", sub: "What changed between studies", go: () => openView("compare") },
     { id: "medrec", icon: Pill, tone: "rose", title: "Med Reconciliation", sub: "Before and after, a patient sheet", go: () => openView("medrec") },
     { id: "present", icon: Presentation, tone: "violet", title: "Presentation Coach", sub: "Present a case, get scored", go: () => openView("present") },
+    { id: "discharge", icon: FileOutput, tone: "sky", title: "Discharge Summary", sub: "From notes, with patient advice", go: () => openView("discharge") },
+    { id: "handover", icon: ArrowRightLeft, tone: "amber", title: "Shift Handover", sub: "I-PASS from your ward list", go: () => openView("handover") },
+    { id: "ddx", icon: Waypoints, tone: "rose", title: "Differential Builder", sub: "Ranked, with can't-miss flags", go: () => openView("ddx") },
+    { id: "studyplan", icon: CalendarCheck, tone: "violet", title: "Study Planner", sub: "Day by day to your exam", go: () => openView("studyplan") },
   ];
   const workspaceTiles = (compact = false) => (
     <div className={`cx-ws-grid ${compact ? "compact" : ""}`}>
@@ -4100,7 +4139,7 @@ export default function CadusAI() {
       style={{ ["--acc" as string]: dark ? accent.dark : accent.light, ["--fs" as string]: `${fontSize}px`, ["--fs-u" as string]: `${sansSize}px` }}
       {...dropHandlers}
     >
-      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS}</style>
+      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS}</style>
 
       {/* ============================================== sidebar */}
       <div className={`cx-scrim ${sidebarOpen ? "on" : ""}`} onClick={() => setSidebarOpen(false)} />
@@ -4165,6 +4204,10 @@ export default function CadusAI() {
               <button className={`cx-nav-i ${view === "compare" ? "on" : ""}`} onClick={() => openView("compare")} title="Compare over time"><History size={16} /><span className="cx-nav-l">Compare over time</span></button>
               <button className={`cx-nav-i ${view === "medrec" ? "on" : ""}`} onClick={() => openView("medrec")} title="Med Reconciliation"><Pill size={16} /><span className="cx-nav-l">Med Reconciliation</span></button>
               <button className={`cx-nav-i ${view === "present" ? "on" : ""}`} onClick={() => openView("present")} title="Presentation Coach"><Presentation size={16} /><span className="cx-nav-l">Presentation Coach</span></button>
+              <button className={`cx-nav-i ${view === "discharge" ? "on" : ""}`} onClick={() => openView("discharge")} title="Discharge Summary"><FileOutput size={16} /><span className="cx-nav-l">Discharge Summary</span></button>
+              <button className={`cx-nav-i ${view === "handover" ? "on" : ""}`} onClick={() => openView("handover")} title="Shift Handover"><ArrowRightLeft size={16} /><span className="cx-nav-l">Shift Handover</span></button>
+              <button className={`cx-nav-i ${view === "ddx" ? "on" : ""}`} onClick={() => openView("ddx")} title="Differential Builder"><Waypoints size={16} /><span className="cx-nav-l">Differential Builder</span></button>
+              <button className={`cx-nav-i ${view === "studyplan" ? "on" : ""}`} onClick={() => openView("studyplan")} title="Study Planner"><CalendarCheck size={16} /><span className="cx-nav-l">Study Planner</span></button>
               <button data-tour="calculators" className={`cx-nav-i ${view === "calculators" ? "on" : ""}`} onClick={() => openCalculators()} title="Calculators"><Calculator size={16} /><span className="cx-nav-l">Calculators</span></button>
               <button className={`cx-nav-i ${view === "projects" || view === "project" ? "on" : ""}`} onClick={openProjects} title="Projects"><Folder size={16} /><span className="cx-nav-l">Projects</span>{projects.length > 0 && <em>{projects.length}</em>}</button>
               <button className={`cx-nav-i ${view === "decks" ? "on" : ""}`} onClick={() => { setView("decks"); setSidebarOpen(false); }} title="Decks"><Presentation size={16} /><span className="cx-nav-l">Decks</span>{decks.length > 0 && <em>{decks.length}</em>}</button>
@@ -4429,6 +4472,10 @@ export default function CadusAI() {
                 : view === "medrec" ? [Pill, "Med Reconciliation"]
                 : view === "present" ? [Presentation, "Presentation Coach"]
                 : view === "today" ? [CalendarDays, "Today"]
+                : view === "discharge" ? [FileOutput, "Discharge Summary"]
+                : view === "handover" ? [ArrowRightLeft, "Shift Handover"]
+                : view === "ddx" ? [Waypoints, "Differential Builder"]
+                : view === "studyplan" ? [CalendarCheck, "Study Planner"]
                 : view === "project" && project ? [Folder, project.name]
                 : [Folder, "Projects"];
               return <span className="cx-title-btn static"><Icon size={14} /> <span>{label}</span></span>;
@@ -4673,6 +4720,48 @@ export default function CadusAI() {
                 friendlyError={friendlyError}
                 toast={toast}
                 onAsk={(q) => { if (pending) { toast("Wait for the current answer to finish"); return; } void send(q, "general"); }}
+              />
+            )
+            : view === "discharge" ? (
+              <DischargeView
+                generate={(body) => invokeCadus({ ...body, model: prefs.model, institution: institutionPayload(institution, "")?.payload })}
+                readFile={(f) => readAttachment(f, (img) => fileToDataUrl(img))}
+                friendlyError={friendlyError}
+                toast={toast}
+                onPrint={(title, md, large) => printDoc(title, md, { mode: large ? "leaflet" : "discharge", large: !!large })}
+                defaultLanguage={prefs.language}
+                ward={wardInfo.patients.map((p) => ({ id: p.id, bed: p.bed, label: p.label, diagnosis: p.diagnosis, problems: p.problems, meds: p.meds, plan: p.plan, admittedOn: p.admittedOn }))}
+              />
+            )
+            : view === "handover" ? (
+              <HandoverView
+                ward={wardInfo.patients.map((p) => ({ id: p.id, bed: p.bed, label: p.label, diagnosis: p.diagnosis, status: p.status, problems: p.problems, meds: p.meds, plan: p.plan, jobs: p.jobs }))}
+                generate={(body) => invokeCadus({ ...body, model: prefs.model })}
+                friendlyError={friendlyError}
+                toast={toast}
+                onPrint={(title, md) => printDoc(title, md, { mode: "note" })}
+                onOpenWard={openWard}
+              />
+            )
+            : view === "ddx" ? (
+              <DifferentialView
+                generate={(body) => invokeCadus({ ...body, model: prefs.model })}
+                friendlyError={friendlyError}
+                toast={toast}
+                onPrint={(title, md) => printDoc(title, md, { mode: "note" })}
+                onAsk={(q) => { if (pending) { toast("Wait for the current answer to finish"); return; } void send(q, "general"); }}
+              />
+            )
+            : view === "studyplan" ? (
+              <StudyPlanView
+                learn={learn}
+                setLearn={setLearn}
+                practice={practice}
+                defaultExam={profile?.exam ?? ""}
+                defaultExamDate={profile?.examDate ?? ""}
+                onAsk={(q) => { if (pending) { toast("Wait for the current answer to finish"); return; } void send(q, "general", { title: "Study plan quiz" }); }}
+                onPractice={openPractice}
+                toast={toast}
               />
             )
             : view === "today" ? (

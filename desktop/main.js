@@ -10,18 +10,27 @@
 // with a one-time code, and the app trades code + secret for its own sign-in
 // (worker/auth.ts, /api/auth/desktop). A code alone is useless without the secret.
 // When there is no connection, a local page explains and retries.
-const { app, BrowserWindow, Menu, shell, session, dialog, nativeTheme, net } = require("electron");
+//
+// Since 1.0.2: a tray icon (Cadus keeps running when its window is closed), a
+// quick-open shortcut (Ctrl+Shift+Space) from any app, an option to start with
+// the computer, and reminders when flashcards are due or ward jobs are open. The
+// app never reads the page's data: it asks the page for counts through
+// window.__cadusStatus() and opens parts of Cadus with a "cadus:open" event
+// (artifacts/aethex/src/lib/cadus/desktop.ts).
+const { app, BrowserWindow, Menu, Tray, Notification, globalShortcut, nativeImage, shell, session, dialog, nativeTheme, net } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs");
 const crypto = require("node:crypto");
 
-const START_URL = "https://cadus.aethex.in/";
+// A test build can point at a local copy of Cadus; an installed app always uses cadus.aethex.in.
+const START_URL = (!app.isPackaged && process.env.CADUS_START_URL) || "https://cadus.aethex.in/";
 const DOWNLOADS_URL = "https://aethex.in/downloads";
 const MANIFEST_URL = "https://aethex.in/downloads/latest.json";
 const PARTITION = "persist:cadus";
 
 /** Addresses the window may show; everything else opens in the browser. */
-const IN_APP = /^https:\/\/(?:(?:cadus|auth|login)\.)?aethex\.in(?:[/?#]|$)/;
+const IN_APP_LIVE = /^https:\/\/(?:(?:cadus|auth|login)\.)?aethex\.in(?:[/?#]|$)/;
+const IN_APP = START_URL.startsWith("https://cadus.aethex.in/") ? IN_APP_LIVE : { test: (u) => IN_APP_LIVE.test(u) || String(u).startsWith(START_URL) };
 /** The Worker's Google sign-in start, on any aethex.in address. */
 const GOOGLE_START = /^https:\/\/(?:(?:cadus|auth|login|www)\.)?aethex\.in\/api\/auth\/google(?:[?#]|$)/;
 const PROTOCOL = "cadus";
@@ -116,8 +125,20 @@ function createWindow() {
     },
   });
   if (state.maximized) win.maximize();
-  win.once("ready-to-show", () => win.show());
-  win.on("close", saveState);
+  win.once("ready-to-show", () => { if (!startHidden) win.show(); startHidden = false; });
+  win.on("close", (e) => {
+    saveState();
+    // With the tray on, closing the window keeps Cadus running (for reminders and the shortcut).
+    if (!quitting && settings.tray && tray) {
+      e.preventDefault();
+      win.hide();
+      if (!settings.toldAboutTray) {
+        settings.toldAboutTray = true;
+        saveSettings();
+        notify("Cadus is still running", "It's in the tray, for reminders and Ctrl+Shift+Space. Right-click the tray icon to quit.", null);
+      }
+    }
+  });
 
   const wc = win.webContents;
   wc.setUserAgent(userAgent());
@@ -181,7 +202,17 @@ function buildMenu() {
   const isMac = process.platform === "darwin";
   const template = [
     ...(isMac ? [{ role: "appMenu" }] : []),
-    { label: "File", submenu: [isMac ? { role: "close" } : { role: "quit", label: "Quit Cadus" }] },
+    {
+      label: "File",
+      submenu: [
+        { label: `New chat (${shortcutLabel()})`, click: () => openTarget("new-chat") },
+        { label: "Today", click: () => openTarget("today") },
+        { type: "separator" },
+        ...settingsItems(),
+        { type: "separator" },
+        isMac ? { role: "close" } : { label: "Quit Cadus", accelerator: "CmdOrCtrl+Q", click: quitApp },
+      ],
+    },
     { role: "editMenu" },
     {
       label: "View",
@@ -238,22 +269,216 @@ async function checkForUpdate(manual = false) {
   }
 }
 
+
+/* ------------------------------------------------------------------ settings */
+
+const settingsPath = () => path.join(app.getPath("userData"), "settings.json");
+const DEFAULTS = { tray: true, startAtLogin: false, reminders: true, shortcut: true, lastReminder: 0, toldAboutTray: false };
+let settings = { ...DEFAULTS };
+function loadSettings() {
+  try { settings = { ...DEFAULTS, ...JSON.parse(fs.readFileSync(settingsPath(), "utf8")) }; } catch { settings = { ...DEFAULTS }; }
+}
+function saveSettings() { try { fs.writeFileSync(settingsPath(), JSON.stringify(settings)); } catch { /* read-only profile */ } }
+/** Started by the computer at sign-in: stay in the tray until opened. */
+let startHidden = process.argv.includes("--hidden");
+let quitting = false;
+function quitApp() { quitting = true; app.quit(); }
+app.on("before-quit", () => { quitting = true; });
+
+function setSetting(key, value) {
+  settings[key] = value;
+  saveSettings();
+  if (key === "startAtLogin") applyStartAtLogin();
+  if (key === "shortcut") applyShortcut();
+  if (key === "tray") { if (value) makeTray(); else if (tray) { tray.destroy(); tray = null; } }
+  buildMenu();
+  refreshTray();
+}
+function settingsItems() {
+  return [
+    { label: "Keep running in the tray when closed", type: "checkbox", checked: settings.tray, click: (i) => setSetting("tray", i.checked) },
+    { label: process.platform === "win32" ? "Start with Windows" : "Start when the computer starts", type: "checkbox", checked: settings.startAtLogin, enabled: process.platform !== "darwin", click: (i) => setSetting("startAtLogin", i.checked) },
+    { label: "Reminders (cards due, ward jobs)", type: "checkbox", checked: settings.reminders, click: (i) => setSetting("reminders", i.checked) },
+    { label: `Quick-open shortcut (${shortcutLabel()})`, type: "checkbox", checked: settings.shortcut, click: (i) => setSetting("shortcut", i.checked) },
+  ];
+}
+
+/* ------------------------------------------------------------------ start with the computer */
+
+function applyStartAtLogin() {
+  const on = !!settings.startAtLogin;
+  if (process.platform === "win32") {
+    try { app.setLoginItemSettings({ openAtLogin: on, args: ["--hidden"] }); } catch { /* not allowed */ }
+  } else if (process.platform === "linux") {
+    // The freedesktop way: a .desktop file in ~/.config/autostart.
+    const dir = path.join(app.getPath("home"), ".config", "autostart");
+    const file = path.join(dir, "cadus.desktop");
+    try {
+      if (on) {
+        const exe = process.env.APPIMAGE || process.execPath;
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(file, `[Desktop Entry]\nType=Application\nName=Cadus\nComment=Clinical AI by Aethex\nExec="${exe.replace(/"/g, '\\"')}" --hidden\nIcon=cadus\nTerminal=false\nX-GNOME-Autostart-enabled=true\n`);
+      } else if (fs.existsSync(file)) fs.unlinkSync(file);
+    } catch { /* read-only home */ }
+  }
+}
+
+/* ------------------------------------------------------------------ opening parts of Cadus */
+
+const TARGETS = new Set(["new-chat", "today", "calculators", "flashcards", "ward", "studyplan", "handover", "discharge", "ddx", "practice"]);
+function showWindow() {
+  if (!win || win.isDestroyed()) createWindow();
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
+}
+/** Opens a part of Cadus: through the page when it is loaded, otherwise by address. */
+async function openTarget(target) {
+  if (!TARGETS.has(target)) return;
+  showWindow();
+  const wc = win.webContents;
+  let viaPage = false;
+  try {
+    if (IN_APP.test(wc.getURL()) && !wc.isLoading()) {
+      viaPage = await wc.executeJavaScript(`(function(){ if (typeof window.__cadusStatus !== "function") return false; window.dispatchEvent(new CustomEvent("cadus:open", { detail: ${JSON.stringify(target)} })); return true; })()`, true);
+    }
+  } catch { viaPage = false; }
+  if (!viaPage) {
+    const u = new URL(START_URL);
+    u.searchParams.set("open", target);
+    wc.loadURL(u.toString());
+  }
+}
+
+/** What is waiting, from the page: counts only. null when Cadus isn't open or signed in. */
+async function readStatus() {
+  if (!win || win.isDestroyed()) return null;
+  const wc = win.webContents;
+  if (!IN_APP.test(wc.getURL()) || wc.isLoading()) return null;
+  try {
+    const s = await Promise.race([
+      wc.executeJavaScript(`(function(){ try { return typeof window.__cadusStatus === "function" ? window.__cadusStatus() : null; } catch (e) { return null; } })()`, true),
+      new Promise((r) => setTimeout(() => r(null), 3000)),
+    ]);
+    if (!s || typeof s !== "object") return null;
+    const n = (v) => (Number.isFinite(Number(v)) ? Math.max(0, Math.min(9999, Math.round(Number(v)))) : 0);
+    return { cardsDue: n(s.cardsDue), learnDue: n(s.learnDue), openJobs: n(s.openJobs), studyToday: typeof s.studyToday === "string" ? s.studyToday.slice(0, 80) : "" };
+  } catch { return null; }
+}
+function statusParts(s) {
+  if (!s) return [];
+  const p = [];
+  if (s.openJobs) p.push(`${s.openJobs} ward job${s.openJobs === 1 ? "" : "s"} open`);
+  if (s.cardsDue) p.push(`${s.cardsDue} flashcard${s.cardsDue === 1 ? "" : "s"} due`);
+  if (s.learnDue) p.push(`${s.learnDue} Learn question${s.learnDue === 1 ? "" : "s"} to revise`);
+  if (s.studyToday) p.push(s.studyToday);
+  return p;
+}
+
+/* ------------------------------------------------------------------ tray */
+
+let tray = null;
+let lastStatus = null;
+function trayImage() {
+  const dir = path.join(__dirname, "build", "icons");
+  const img = nativeImage.createFromPath(path.join(dir, "16x16.png"));
+  const big = nativeImage.createFromPath(path.join(dir, "32x32.png"));
+  if (!img.isEmpty() && !big.isEmpty()) { img.addRepresentation({ scaleFactor: 2, width: 32, height: 32, buffer: big.toPNG() }); return img; }
+  return nativeImage.createFromPath(path.join(__dirname, "build", "icon.png")).resize({ width: 16, height: 16 });
+}
+function makeTray() {
+  if (tray || process.platform === "darwin") return;
+  try { tray = new Tray(trayImage()); } catch { tray = null; return; }
+  tray.setToolTip("Cadus");
+  tray.on("click", () => { if (win && win.isVisible() && win.isFocused()) win.hide(); else showWindow(); });
+  refreshTray();
+}
+function refreshTray() {
+  if (!tray) return;
+  const parts = statusParts(lastStatus);
+  tray.setToolTip(parts.length ? `Cadus: ${parts.join(", ")}` : "Cadus");
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: "Open Cadus", click: showWindow },
+    { label: `New chat\t${shortcutLabel()}`, click: () => openTarget("new-chat") },
+    { label: "Today", click: () => openTarget("today") },
+    { label: "Calculators", click: () => openTarget("calculators") },
+    { label: "Flashcards", click: () => openTarget("flashcards") },
+    { label: "Study plan", click: () => openTarget("studyplan") },
+    ...(parts.length ? [{ type: "separator" }, ...parts.map((p) => ({ label: p, enabled: false }))] : []),
+    { type: "separator" },
+    ...settingsItems(),
+    { type: "separator" },
+    { label: "Quit Cadus", click: quitApp },
+  ]));
+}
+
+/* ------------------------------------------------------------------ quick-open shortcut */
+
+const SHORTCUTS = ["CommandOrControl+Shift+Space", "CommandOrControl+Alt+C"];
+let shortcut = "";
+function shortcutLabel() { return (shortcut || SHORTCUTS[0]).replace("CommandOrControl", process.platform === "darwin" ? "Cmd" : "Ctrl"); }
+function applyShortcut() {
+  if (shortcut) { try { globalShortcut.unregister(shortcut); } catch { /* already gone */ } shortcut = ""; }
+  if (!settings.shortcut) return;
+  // Another app may own the first choice; then the second.
+  for (const key of SHORTCUTS) {
+    try { if (globalShortcut.register(key, () => openTarget("new-chat"))) { shortcut = key; return; } } catch { /* taken */ }
+  }
+}
+app.on("will-quit", () => globalShortcut.unregisterAll());
+
+/* ------------------------------------------------------------------ reminders */
+
+/** Tests of an unpackaged build (CADUS_TEST=1) can reach these; an installed app never exposes them. */
+const TEST = !app.isPackaged && process.env.CADUS_TEST === "1" ? (globalThis.__cadusTest = { notes: [] }) : null;
+function notify(title, body, target) {
+  if (TEST) TEST.notes.push({ title, body, target });
+  if (!Notification.isSupported()) return;
+  const n = new Notification({ title, body, icon: path.join(__dirname, "build", "icon.png"), silent: false });
+  if (target) n.on("click", () => openTarget(target));
+  n.show();
+}
+const REMIND_EVERY = 3 * 3600_000;
+/** Every 15 minutes: refresh the tray, and between 8 am and 9 pm, at most every 3 hours, remind. */
+async function checkReminders() {
+  lastStatus = await readStatus();
+  refreshTray();
+  if (!settings.reminders || !lastStatus) return;
+  const h = new Date().getHours();
+  if (h < 8 || h >= 21 || Date.now() - (settings.lastReminder || 0) < REMIND_EVERY) return;
+  const parts = statusParts(lastStatus);
+  if (!parts.length) return;
+  settings.lastReminder = Date.now();
+  saveSettings();
+  notify("Cadus: waiting for you", parts.join(" · "), "today");
+}
+
+if (TEST) Object.assign(TEST, { checkReminders, readStatus, openTarget, setSetting, settings: () => settings, hasTray: () => !!tray, shortcut: () => shortcut, isQuitting: () => quitting });
+
 app.on("second-instance", (_e, argv) => {
   const link = linkIn(argv);
   if (link) { handleAppLink(link); return; }
-  if (win) { if (win.isMinimized()) win.restore(); win.focus(); }
+  // Opening Cadus again (or from the Start menu while it is in the tray) shows the window.
+  if (!argv.includes("--hidden")) showWindow();
 });
 app.on("web-contents-created", (_e, contents) => {
   // No <webview> tags and no other windows, whatever a page asks for.
   contents.on("will-attach-webview", (e) => e.preventDefault());
 });
 app.whenReady().then(() => {
+  loadSettings();
+  if (!settings.tray) startHidden = false;
   secureSession();
+  applyShortcut();
   buildMenu();
   createWindow();
+  if (settings.tray) makeTray();
+  if (settings.startAtLogin) applyStartAtLogin();
+  setTimeout(() => void checkReminders(), 90_000);
+  setInterval(() => void checkReminders(), 15 * 60_000);
   const first = linkIn(process.argv);
   if (first) handleAppLink(first);
   setTimeout(() => checkForUpdate(false), 15_000);
   app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
-app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });
+app.on("window-all-closed", () => { if (process.platform !== "darwin" && !(settings.tray && tray)) app.quit(); });

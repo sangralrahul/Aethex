@@ -38,6 +38,11 @@
 //                         problems found, and a "your medicines now" sheet in the patient's language.
 //   present-coach         Presentation Coach: a case presentation scored against its format's
 //                         rubric, with what was missing and a model presentation.
+//   discharge             Discharge Summary: case notes (typed, photos or PDFs) to a structured
+//                         summary, with advice for the patient in their language.
+//   handover              Shift Handover: the ward list as an I-PASS handover for the next team.
+//   differential          Differential Builder: findings to a ranked differential with the
+//                         can't-miss diagnoses and the next tests.
 //   report-explain        Report Explainer: a lab, imaging or other report as a summary for
 //                         the doctor and an explanation for the patient in their language.
 import {
@@ -89,6 +94,12 @@ import {
   PRESENT_FORMATS,
   PRESENT_SYSTEM,
   presentation,
+  DISCHARGE_SYSTEM,
+  dischargeSummary,
+  HANDOVER_SYSTEM,
+  handover,
+  DDX_SYSTEM,
+  differential,
   PATHWAY_SYSTEM,
   pathwayAnswers,
   pathwayStep,
@@ -1824,6 +1835,86 @@ Deno.serve(async (req) => {
       const result = presentation(parseJsonLoose<any>(r.content));
       if (!result) return jsonResponse({ error: "Couldn't score that this time. Please try again." }, 502);
       return jsonResponse({ result, format: fmt });
+    }
+
+    // ---------------------------------------------------------------- Discharge Summary
+    if (action === "discharge") {
+      const notes = String(body.notes || "").replace(/\r/g, "").replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, " ").trim().slice(0, 20000);
+      const files = attachmentParts(body.files, "");
+      if (notes.split(/\s+/).length < 12 && !files.parts.length) return jsonResponse({ error: "Add the case notes: a few lines at least, or photos of the case sheet" }, 400);
+      const language = cleanLine(body.language, 40) || "English";
+      const r = await callAI({
+        model: CLAUDE_REVIEW_MODEL,
+        messages: [
+          { role: "system", content: [DISCHARGE_SYSTEM, institutionLine(body.institution)].filter(Boolean).join("\n\n") },
+          { role: "user", content: [
+            { type: "text", text: `Patient's language for the advice: ${language}${language !== "English" ? " (its own script)" : ""}.${cleanLine(body.admitted, 40) ? ` Admitted: ${cleanLine(body.admitted, 40)}.` : ""}${cleanLine(body.discharged, 40) ? ` Discharge: ${cleanLine(body.discharged, 40)}.` : ""}${cleanLine(body.department, 80) ? ` Department: ${cleanLine(body.department, 80)}.` : ""}` },
+            ...files.parts,
+            ...(notes ? [{ type: "text", text: `<case_notes>\n${notes}\n</case_notes>` }] : []),
+            { type: "text", text: "Write the discharge summary." },
+          ] },
+        ],
+        jsonMode: true,
+        effort: "high",
+        maxTokens: 10000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = dischargeSummary(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't write the summary from those notes. Add more detail and try again." }, 502);
+      return jsonResponse({ result });
+    }
+
+    // ---------------------------------------------------------------- Shift Handover
+    if (action === "handover") {
+      const raw = Array.isArray(body.patients) ? body.patients.slice(0, 40) : [];
+      const patients = raw.map((p: any) => ({
+        bed: cleanLine(p?.bed, 20), label: cleanLine(p?.label, 40), diagnosis: cleanLine(p?.diagnosis, 200),
+        status: ["stable", "watch", "sick"].includes(String(p?.status)) ? String(p.status) : "",
+        problems: String(p?.problems || "").slice(0, 1500), meds: String(p?.meds || "").slice(0, 1500), plan: String(p?.plan || "").slice(0, 1500),
+        jobs: (Array.isArray(p?.jobs) ? p.jobs : []).slice(0, 12).map((j: unknown) => cleanLine(j, 200)).filter(Boolean),
+      })).filter((p: { bed: string; diagnosis: string }) => p.bed || p.diagnosis);
+      const extra = String(body.notes || "").replace(/\r/g, "").trim().slice(0, 6000);
+      if (!patients.length && extra.split(/\s+/).length < 8) return jsonResponse({ error: "Add patients to your ward list, or type them in" }, 400);
+      const shift = ["night", "evening", "weekend", "day"].includes(String(body.shift)) ? String(body.shift) : "night";
+      const listText = patients.map((p: any) => [`Bed ${p.bed || "?"} · ${p.label || "?"} · ${p.diagnosis || "diagnosis not given"}${p.status ? ` · status: ${p.status}` : ""}`, p.problems && `Problems: ${p.problems}`, p.meds && `Medicines: ${p.meds}`, p.plan && `Plan: ${p.plan}`, p.jobs.length && `Open jobs: ${p.jobs.join("; ")}`].filter(Boolean).join("\n")).join("\n\n");
+      const r = await callAI({
+        model: answerModel(body.model),
+        messages: [
+          { role: "system", content: HANDOVER_SYSTEM },
+          { role: "user", content: [`Handing over to the ${shift} team.`, listText ? `<ward_list>\n${listText}\n</ward_list>` : "", extra ? `<notes>\n${extra}\n</notes>` : ""].filter(Boolean).join("\n\n") },
+        ],
+        jsonMode: true,
+        effort: "medium",
+        maxTokens: 12000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = handover(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't write the handover this time. Please try again." }, 502);
+      return jsonResponse({ result, shift });
+    }
+
+    // ---------------------------------------------------------------- Differential Builder
+    if (action === "differential") {
+      const findings = String(body.findings || "").replace(/\r/g, "").trim().slice(0, 8000);
+      if (findings.split(/\s+/).length < 4) return jsonResponse({ error: "Describe the findings in a few words at least" }, 400);
+      const age = cleanLine(body.age, 20);
+      const sex = ["male", "female", "other"].includes(String(body.sex)) ? String(body.sex) : "";
+      const setting = ["opd", "ward", "emergency", "icu"].includes(String(body.setting)) ? String(body.setting) : "";
+      const results = String(body.results || "").replace(/\r/g, "").trim().slice(0, 4000);
+      const r = await callAI({
+        model: CLAUDE_REVIEW_MODEL,
+        messages: [
+          { role: "system", content: DDX_SYSTEM },
+          { role: "user", content: [`PATIENT: ${age ? `${age} years` : "age not given"}, ${sex || "sex not given"}${setting ? `, seen in ${setting === "opd" ? "OPD" : setting === "icu" ? "ICU" : setting}` : ""}.`, `<findings>\n${findings}\n</findings>`, results ? `<results>\n${results}\n</results>` : ""].filter(Boolean).join("\n") },
+        ],
+        jsonMode: true,
+        effort: "high",
+        maxTokens: 8000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = differential(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't build a differential this time. Please try again." }, 502);
+      return jsonResponse({ result });
     }
 
     // ---------------------------------------------------------------- Study Hub

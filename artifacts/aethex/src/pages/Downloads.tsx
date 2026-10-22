@@ -15,6 +15,7 @@ import {
   AppWindow, ArrowRight, BookOpen, Check, Copy, Download, LockKeyhole, Mic, Monitor, Plus, RefreshCw,
   Search, ShieldCheck, UserRound, WifiOff, X,
   BellRing, Bot, CalendarDays, FileScan, GitFork, HeartPulse, History, Languages, Layers, Pill, Presentation, ShieldPlus, Users2,
+  ArrowRightLeft, CalendarCheck, FileOutput, Keyboard, Power, Waypoints, PanelBottom,
 } from "lucide-react";
 import CadusMark from "@/components/cadus/CadusMark";
 import { FONT_FACES } from "@/components/cadus/cadus-styles";
@@ -264,10 +265,15 @@ const TOOLS: [string, string][] = [
   ["Clinical calculators", "t"], ["Emergency", "r"], ["Paediatrics", "v"], ["Ward list", "t"], ["Consult Translator", "v"],
   ["Cadus Crew", "y"], ["Crew Huddle", "y"], ["Deep Dive research", "v"], ["Guideline Watch", "v"], ["Case Simulator", "y"],
   ["Presentation Coach", "y"], ["Flashcards", "y"], ["Exam practice", "y"], ["Patient leaflets", "t"], ["Offline library", "y"],
+  ["Discharge Summary", "t"], ["Shift Handover", "r"], ["Differential Builder", "v"], ["Study Planner", "y"],
 ];
 
 /** What's arrived in Cadus lately. The app shows the live Cadus, so all of it is in the app already. */
 const NEW_IN_CADUS: { icon: typeof Pill; t: string; d: string }[] = [
+  { icon: FileOutput, t: "Discharge Summary", d: "Paste the notes or photograph the case sheet: a structured discharge summary to print on your letterhead, what the notes are missing, and advice for the patient in their language." },
+  { icon: ArrowRightLeft, t: "Shift Handover", d: "Your ward list as an I-PASS handover for the night team: severity, actions, \u201cif this, then that\u201d plans and what to watch, read back patient by patient." },
+  { icon: Waypoints, t: "Differential Builder", d: "Findings in, a ranked differential out: what fits, what doesn't, the test that decides each one, and the can't-miss diagnoses flagged." },
+  { icon: CalendarCheck, t: "Exam Study Planner", d: "NEET-PG, INI-CET, FMGE or university: a day-by-day plan to the exam with revision and mock days, that ticks off Learn and goes into your calendar." },
   { icon: CalendarDays, t: "Today", d: "Your day on one screen: ward jobs to tick off, revision due, unfinished pathways and recent chats." },
   { icon: Bot, t: "Cadus Crew", d: "Twenty ready-made assistants, from Viva Examiner to Antibiotic Steward, or your own with its own knowledge files. Type @ in any chat to ask one." },
   { icon: Users2, t: "Crew Huddle", d: "Ask up to four assistants at once, see their answers side by side, then one combined answer that Cadus has checked." },
@@ -281,6 +287,19 @@ const NEW_IN_CADUS: { icon: typeof Pill; t: string; d: string }[] = [
   { icon: HeartPulse, t: "Case Simulator", d: "A live patient to practise on: history, examination, tests and treatment, then a scored debrief." },
   { icon: Presentation, t: "Presentation Coach", d: "Present a case as on rounds or in an exam; get a score, what was missing and a model presentation." },
   { icon: Layers, t: "Flashcards", d: "Turn any answer into flashcards, review them with spaced repetition and export to Anki." },
+];
+
+/** New in the desktop app itself: these need the new installer. */
+const NEW_IN_APP = [
+  { icon: Keyboard, t: "Quick-open shortcut", d: "Press Ctrl+Shift+Space in any app, even mid-note in the hospital system, and Cadus comes up with a new chat, ready to type." },
+  { icon: PanelBottom, t: "Tray icon", d: "Close the window and Cadus waits in the tray: New chat, Today, Calculators, Flashcards and your study plan are one click away." },
+  { icon: Power, t: "Start with Windows", d: "Turn it on and Cadus opens quietly in the tray when you sign in to your computer. Off unless you choose it." },
+  { icon: BellRing, t: "Reminders", d: "A gentle notification when flashcards are due, ward jobs are open or your study plan has work for today. At most every 3 hours, 8 am to 9 pm." },
+];
+
+/** Notes from earlier versions, newest first (the current version's notes come from release.json). */
+const EARLIER = [
+  { v: "1.0.1", notes: ["Continue with Google opens in your usual browser, then brings you back to Cadus signed in.", "Cadus in its own window, with your sign-in, chats and settings kept on this computer.", "Checks once a day for a newer version."] },
 ];
 
 const UNDER_THE_HOOD = [
@@ -300,7 +319,9 @@ const FAQ = [
   { q: "Windows says it protected my PC. Is the file safe?", a: <>Windows SmartScreen warns about new apps until they have been downloaded many times. Choose <b>More info</b>, then <b>Run anyway</b>. You can check the file against its SHA-256 checksum above.</> },
   { q: "Which Windows version should I download?", a: <>The installer for most PCs (Intel and AMD) is x64. Laptops with a Snapdragon or other ARM processor need Windows on ARM. This page picks the right one for this computer.</> },
   { q: "When will Cadus for Mac be available?", a: <>Once it is signed and notarised with Apple, so macOS opens it without warnings. <a href={MAC_MAIL}>Leave your email</a> and we'll tell you.</> },
-  { q: "Do I need to reinstall to get the new tools?", a: <>No. Today, Cadus Crew, Rx Safety Check, Clinical Pathways, Consult Translator and the other new tools are already in the app, because it shows the live Cadus. Reinstall only when the app tells you a new version is ready.</> },
+  { q: "Do I need to reinstall to get the new tools?", a: <>No. Discharge Summary, Shift Handover, Differential Builder, the Study Planner and every other tool are already in the app, because it shows the live Cadus. Only the app's own features (the tray, the shortcut, starting with Windows and reminders) need version {RELEASE.version}.</> },
+  { q: `How do I get version ${RELEASE.version}?`, a: <>Download it above and install it over the old one: your sign-in, chats and settings stay. Cadus also tells you within a day that it's ready, or choose <b>Help › Check for updates</b>.</> },
+  { q: "How do I turn off reminders, the tray or starting with Windows?", a: <>Right-click the Cadus icon in the tray, or open the <b>File</b> menu (press <b>Alt</b> if the menu bar is hidden), and untick what you don't want. <b>Quit Cadus</b> in the same menu closes it completely.</> },
   { q: "Can I use voice typing in the app?", a: <>Not yet: voice typing (dictation, voice mode and speaking to the Consult Translator) needs the speech service built into Chrome and Edge, so use Cadus in one of those for voice. Reading answers and translations aloud works in the app.</> },
   { q: "Where is my data kept?", a: <>Exactly where it is in the browser: chats, cases and settings stay on this computer, and your account is kept by Aethex on Cloudflare.</> },
 ];
@@ -343,6 +364,7 @@ export default function Downloads() {
           <nav>
             <a href="#product">Product</a>
             <a href="#all">Download</a>
+            <a href="#app">New in {RELEASE.version}</a>
             <a href="#new">New in Cadus</a>
             <a href="#notes">Release notes</a>
             <a href="#help">Help</a>
@@ -506,6 +528,33 @@ export default function Downloads() {
           </div>
         </section>
 
+        {/* new in the app */}
+        <section className="band" id="app">
+          <div className="wrap split app-split">
+            <div className="rv">
+              <p className="eyebrow">New in the app · {RELEASE.version}</p>
+              <h2>Cadus, one shortcut away</h2>
+              <p className="sub l">Version {RELEASE.version} stays close at hand without getting in the way. Install it over your current version; everything you have stays.</p>
+              <p className="keys" aria-label="Control, Shift, Space"><kbd>Ctrl</kbd><span>+</span><kbd>Shift</kbd><span>+</span><kbd>Space</kbd></p>
+              <a className="cx-btn primary" href="#all"><Download size={17} /> Get {RELEASE.version}</a>
+            </div>
+            <div className="app-grid rv d1">
+              {NEW_IN_APP.map(({ icon: Icon, t, d }) => (
+                <article key={t} className="app-card" data-app={t}>
+                  <span className="ic"><Icon size={18} /></span>
+                  <div><h3>{t}</h3><p>{d}</p></div>
+                </article>
+              ))}
+              <div className="tray-mock" aria-hidden="true">
+                <p className="tm-h"><span className="tile"><CadusMark size={13} variant="mono" color="currentColor" /></span> Cadus</p>
+                <span>Open Cadus</span><span>New chat <kbd>Ctrl+Shift+Space</kbd></span><span>Today</span><span>Study plan</span>
+                <i /><span className="muted">2 ward jobs open · 12 flashcards due</span><i />
+                <span className="chk">Start with Windows</span><span className="chk on">Reminders</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* new in Cadus */}
         <section className="wrap sec" id="new">
           <div className="rv">
@@ -535,8 +584,14 @@ export default function Downloads() {
             <div className="rv d1">
               <div className="notes-card">
                 <div className="ver"><span>{RELEASE.version}</span> Released {releasedOn}</div>
-                <h3 id="dl-notes-t">Cadus {RELEASE.version}: the first desktop release</h3>
+                <h3 id="dl-notes-t">Cadus {RELEASE.version}{"title" in RELEASE && RELEASE.title ? `: ${RELEASE.title}` : ""}</h3>
                 <ol className="dl-notes">{RELEASE.notes.map((n) => <li key={n}>{n}</li>)}</ol>
+                {EARLIER.filter((e) => e.v !== RELEASE.version).map((e) => (
+                  <details key={e.v} className="earlier" data-earlier={e.v}>
+                    <summary>Earlier: version {e.v}</summary>
+                    <ul>{e.notes.map((n) => <li key={n}>{n}</li>)}</ul>
+                  </details>
+                ))}
               </div>
               <div className="req" id="requirements">
                 <table>
@@ -832,6 +887,28 @@ const CSS = `
 .ax .hood-card h3{margin:34px 0 12px;font-size:21px;font-weight:650;letter-spacing:-.01em}
 .ax .hood-card p{font-size:17px;line-height:1.65;color:var(--t2)}
 
+.ax .app-split{align-items:start}
+.ax .keys{display:flex;align-items:center;gap:8px;margin:28px 0;color:var(--t3);font-weight:600}
+.ax kbd{display:inline-block;padding:7px 12px;border-radius:9px;border:1px solid var(--line2);border-bottom-width:3px;background:#fff;color:var(--ink);font:650 15px/1 var(--sans)}
+.ax .app-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.ax .app-card{display:flex;gap:16px;padding:24px;border-radius:18px;border:1px solid var(--line);background:#fff}
+.ax .app-card .ic{flex:none;display:grid;place-items:center;width:44px;height:44px;border-radius:11px;background:var(--teal-bg);color:var(--teal)}
+.ax .app-card h3{margin:2px 0 8px;font-size:18px;font-weight:650}
+.ax .app-card p{margin:0;font-size:15.5px;line-height:1.6;color:var(--t2)}
+.ax .tray-mock{grid-column:1/-1;justify-self:end;width:min(300px,100%);display:flex;flex-direction:column;padding:8px;border-radius:12px;border:1px solid var(--line2);background:#fff;box-shadow:0 24px 48px -24px rgba(16,24,40,.35);font-size:14px}
+.ax .tray-mock .tm-h{display:flex;align-items:center;gap:8px;margin:0;padding:6px 10px 8px;font-weight:700}
+.ax .tray-mock .tile{display:grid;place-items:center;width:22px;height:22px;border-radius:6px;background:var(--ink);color:#fff}
+.ax .tray-mock span{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-radius:7px;color:var(--ink)}
+.ax .tray-mock span:nth-of-type(2){background:var(--teal-bg)}
+.ax .tray-mock span.muted{color:var(--t3);font-size:13px}
+.ax .tray-mock kbd{padding:2px 6px;border-bottom-width:1px;font-size:11.5px;color:var(--t3)}
+.ax .tray-mock i{height:1px;margin:4px 8px;background:var(--line)}
+.ax .tray-mock .chk::after{content:"";width:14px;height:14px;border-radius:4px;border:1.5px solid var(--line2)}
+.ax .tray-mock .chk.on::after{background:var(--teal);border-color:var(--teal)}
+.ax .earlier{margin-top:26px;border-top:1px solid var(--line);padding-top:18px;color:var(--t2)}
+.ax .earlier summary{cursor:pointer;font-weight:600;color:var(--ink)}
+.ax .earlier ul{margin:12px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:16px}
+@media (max-width:700px){.ax .app-grid{grid-template-columns:1fr}.ax .tray-mock{justify-self:stretch;width:auto}}
 .ax .notes-card{padding:40px;border-radius:22px;border:1px solid var(--line);background:#fff}
 .ax .ver{display:flex;align-items:center;gap:14px;font-size:17px;color:var(--t2)}
 .ax .ver span{padding:6px 12px;border-radius:9px;background:var(--teal-bg);color:var(--teal-t);font-weight:700}
@@ -870,6 +947,7 @@ const CSS = `
 
 @media (max-width:1100px){
   .ax .nav nav{gap:22px}
+  .ax .nav-link{display:none}
   .ax .hood{grid-template-columns:repeat(2,1fr)}
   .ax .tabs{position:static;margin-bottom:28px}
   .ax .dl-card>header{padding-right:0}

@@ -223,3 +223,118 @@ export function presentation(raw: any): Presentation | null {
     model,
   };
 }
+
+/* ------------------------------------------------------------------ Discharge Summary */
+
+export const DISCHARGE_SYSTEM = `You are Cadus Discharge Summary, a senior resident in an Indian hospital writing the discharge summary from the case notes you are given (typed, or photos or PDFs of the case sheet).
+Use ONLY facts in the notes. Never invent a diagnosis, result, date, dose or procedure; where something a discharge summary needs is not in the notes, leave the field empty and list it under "missing".
+Write clinical sections in concise clinical English, the way a good discharge summary in India reads. Medicines: generic name first (brand in brackets only if the notes give one), strength, dose, frequency in the 1-0-1 style, route, duration and food timing where known.
+Reply ONLY as JSON (no code fences):
+{"diagnosis": [final diagnoses, primary first],
+ "procedures": [procedures or surgeries done, with dates if given],
+ "presentation": chief complaints and duration, one or two lines,
+ "history": relevant past history, comorbidities and allergies, short,
+ "course": markdown: the hospital course in short paragraphs or bullets, by problem, with key events and treatment given,
+ "investigations": [{"test": name, "result": key result with date if given}] (the ones that matter),
+ "condition": condition at discharge (vitals and status if given),
+ "medications": [{"name": generic and strength, "dose": dose and frequency, "duration": how long, "note": food timing or special instruction}],
+ "followUp": when and where to review, and tests to repeat before review,
+ "redFlags": [warning signs that should bring the patient back at once, specific to the diagnoses] (3 to 6),
+ "patientAdvice": markdown in the patient's language and script, plain words: what happened in two or three lines, the medicines and when to take them, diet and activity, the follow-up date, and when to come back at once. Keep medicine names in English.,
+ "missing": [things a complete discharge summary needs that are not in the notes] (0 to 8)}`;
+
+export interface DischargeMed { name: string; dose: string; duration: string; note: string }
+export interface DischargeSummary {
+  diagnosis: string[]; procedures: string[]; presentation: string; history: string; course: string;
+  investigations: { test: string; result: string }[]; condition: string; medications: DischargeMed[];
+  followUp: string; redFlags: string[]; patientAdvice: string; missing: string[];
+}
+export function dischargeSummary(raw: any): DischargeSummary | null {
+  if (!raw || typeof raw !== "object") return null;
+  const diagnosis = list(raw.diagnosis, 8, 200);
+  const course = text(raw.course, 8000);
+  if (!diagnosis.length && !course) return null;
+  return {
+    diagnosis,
+    procedures: list(raw.procedures, 8, 200),
+    presentation: line(raw.presentation, 500),
+    history: line(raw.history, 800),
+    course,
+    investigations: (Array.isArray(raw.investigations) ? raw.investigations : []).slice(0, 25).map((i: any) => ({ test: line(i?.test, 120), result: line(i?.result, 300) })).filter((i: { test: string; result: string }) => i.test && i.result),
+    condition: line(raw.condition, 500),
+    medications: (Array.isArray(raw.medications) ? raw.medications : []).slice(0, 30).map((m: any) => ({ name: line(m?.name, 160), dose: line(m?.dose, 120), duration: line(m?.duration, 80), note: line(m?.note, 200) })).filter((m: DischargeMed) => m.name),
+    followUp: line(raw.followUp, 600),
+    redFlags: list(raw.redFlags, 6, 200),
+    patientAdvice: text(raw.patientAdvice, 8000),
+    missing: list(raw.missing, 8, 200),
+  };
+}
+
+/* ------------------------------------------------------------------ Shift Handover (I-PASS) */
+
+export const HANDOVER_SYSTEM = `You are Cadus Handover, helping a doctor in an Indian hospital hand over their patients to the next team using I-PASS: Illness severity, Patient summary, Action list, Situation awareness and contingency planning, Synthesis by receiver.
+You get the shift being handed over to and a de-identified ward list (bed, label, diagnosis, status, problems, medicines, plan and open jobs), and sometimes extra notes.
+For each patient write what the receiving doctor needs at night, briefly. Use ONLY the facts given; if something important for safe handover is not given (code status, allergies, pending results), say so in "awareness" rather than inventing it.
+Reply ONLY as JSON (no code fences):
+{"patients": [{"bed": as given, "label": as given,
+   "severity": "stable" | "watcher" | "unstable",
+   "summary": one or two lines: who, why admitted, where things stand now,
+   "actions": [{"task": a specific job for the receiving team, "when": a time or "tonight" or "if needed"}],
+   "contingency": [{"if": a change that could happen tonight, "then": what to do}] (1 to 3, specific to the problems),
+   "awareness": one line: what to watch or what is pending}],
+ "priorities": [the 1 to 4 most important things for the whole shift, most urgent first]}
+Keep the order of the list given, but sort nothing away: every patient given must appear once.`;
+
+export interface HandoverPatient { bed: string; label: string; severity: "stable" | "watcher" | "unstable"; summary: string; actions: { task: string; when: string }[]; contingency: { if: string; then: string }[]; awareness: string }
+export interface Handover { patients: HandoverPatient[]; priorities: string[] }
+export function handover(raw: any): Handover | null {
+  if (!raw || typeof raw !== "object") return null;
+  const patients: HandoverPatient[] = (Array.isArray(raw.patients) ? raw.patients : []).slice(0, 60).map((p: any) => ({
+    bed: line(p?.bed, 20),
+    label: line(p?.label, 40),
+    severity: pick(p?.severity, ["stable", "watcher", "unstable"] as const, "watcher"),
+    summary: line(p?.summary, 500),
+    actions: (Array.isArray(p?.actions) ? p.actions : []).slice(0, 8).map((a: any) => ({ task: line(a?.task, 240), when: line(a?.when, 60) })).filter((a: { task: string }) => a.task),
+    contingency: (Array.isArray(p?.contingency) ? p.contingency : []).slice(0, 4).map((c: any) => ({ if: line(c?.if, 200), then: line(c?.then, 300) })).filter((c: { if: string; then: string }) => c.if && c.then),
+    awareness: line(p?.awareness, 300),
+  })).filter((p: HandoverPatient) => p.bed || p.summary);
+  if (!patients.length) return null;
+  return { patients, priorities: list(raw.priorities, 4, 240) };
+}
+
+/* ------------------------------------------------------------------ Differential Builder */
+
+export const DDX_SYSTEM = `You are Cadus Differential Builder, an experienced physician in India thinking through a patient's findings with a junior doctor.
+You get the age, sex, setting and the findings. Consider the Indian context: tuberculosis, enteric fever, malaria, dengue, scrub typhus, leptospirosis, snake bite and poisoning are common; so are the usual causes seen anywhere.
+Build a ranked differential. Be honest about uncertainty; use only the findings given, and do not assume findings that were not stated.
+Reply ONLY as JSON (no code fences):
+{"summary": a one-line problem representation (age, sex, key features, tempo),
+ "diagnoses": [{"name": diagnosis, "likelihood": "likely" | "possible" | "less likely", "cantMiss": true if dangerous and must be excluded now, "for": [findings that support it], "against": [findings that argue against it, or expected findings that are absent], "test": the single most useful test to confirm or exclude it}] (4 to 8, most likely first),
+ "nextTests": [{"test": name, "why": what it separates}] (2 to 6, in the order to do them, bedside and cheap first),
+ "ask": [history or examination points that would change the ranking] (2 to 6),
+ "redFlags": [anything in the findings that needs action now] (0 to 4)}`;
+
+export interface DdxItem { name: string; likelihood: "likely" | "possible" | "less likely"; cantMiss: boolean; for: string[]; against: string[]; test: string }
+export interface Differential { summary: string; diagnoses: DdxItem[]; nextTests: { test: string; why: string }[]; ask: string[]; redFlags: string[] }
+const LIKELY = { likely: 0, possible: 1, "less likely": 2 } as const;
+export function differential(raw: any): Differential | null {
+  if (!raw || typeof raw !== "object") return null;
+  const diagnoses: DdxItem[] = (Array.isArray(raw.diagnoses) ? raw.diagnoses : []).slice(0, 10).map((d: any) => ({
+    name: line(d?.name, 160),
+    likelihood: pick(d?.likelihood, ["likely", "possible", "less likely"] as const, "possible"),
+    cantMiss: d?.cantMiss === true || d?.cantMiss === "true",
+    for: list(d?.for, 6, 200),
+    against: list(d?.against, 6, 200),
+    test: line(d?.test, 200),
+  })).filter((d: DdxItem) => d.name);
+  if (!diagnoses.length) return null;
+  // Stable: keeps the model's order within each likelihood band.
+  diagnoses.sort((a, b) => LIKELY[a.likelihood] - LIKELY[b.likelihood]);
+  return {
+    summary: line(raw.summary, 400),
+    diagnoses,
+    nextTests: (Array.isArray(raw.nextTests) ? raw.nextTests : []).slice(0, 6).map((t: any) => ({ test: line(t?.test, 160), why: line(t?.why, 240) })).filter((t: { test: string }) => t.test),
+    ask: list(raw.ask, 6, 200),
+    redFlags: list(raw.redFlags, 4, 240),
+  };
+}

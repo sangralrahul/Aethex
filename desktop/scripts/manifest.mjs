@@ -33,11 +33,13 @@ const manifest = {
   version,
   released: new Date().toISOString().slice(0, 10),
   electron: pkg.devDependencies.electron,
+  title: "tray, quick-open shortcut and reminders",
   files,
   notes: [
-    "Continue with Google now works: Google sign-in opens in your usual browser, then brings you back to Cadus signed in.",
-    "Opens Cadus in its own window, with your sign-in, chats and settings kept on this computer.",
-    "Checks once a day for a newer version and tells you when one is ready.",
+    "Tray icon: Cadus keeps running when you close its window, with New chat, Today, Calculators, Flashcards and your study plan one click away.",
+    "Quick-open shortcut: press Ctrl+Shift+Space in any app to bring Cadus up with a new chat, ready to type.",
+    "Start with Windows (or with your Linux desktop): an option to open Cadus quietly in the tray when the computer starts.",
+    "Reminders: a desktop notification when flashcards are due, ward jobs are still open or your study plan has work for today, at most every 3 hours, 8 am to 9 pm.",
   ],
 };
 

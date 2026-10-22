@@ -102,6 +102,11 @@ It provides an intelligent interface for medical and educational assistance.
 - Presentation Coach: present a case by voice or typing (ward round, long case, short case, SBAR, OPD) with a timer; scored against the format's rubric, with what was missing, the examiner's next questions and a model presentation
 - Today: the day at a glance, with open ward jobs to tick off, flashcards and Learn revision due, unfinished pathways, Guideline Watch, recent chats and quick starts
 - The privacy guard also hides patient names typed anywhere in free text (common Indian given names and surnames), keeping doctors' names, hospitals, places, schemes and eponyms
+- Discharge Summary: case notes (typed, from the ward list, or case-sheet photos and PDFs) written up as a structured discharge summary to print on the letterhead, with what the notes are missing and advice for the patient in their language
+- Shift Handover: the ward list as an I-PASS handover for the next team (severity, summary, actions, if/then plans, what to watch), read back patient by patient
+- Differential Builder: age, sex, setting and findings to a ranked differential with what fits and what doesn't, the deciding test for each, the can't-miss diagnoses and the next tests in order
+- Exam Study Planner: a day-by-day plan to NEET-PG, INI-CET, FMGE or a university exam from the Learn syllabus, with revision and mock days, re-planning after missed days and calendar (.ics) export
+- Desktop app 1.0.2: tray icon, Ctrl+Shift+Space quick-open, start with Windows, and reminders for flashcards due, open ward jobs and the study plan
 
 > CADUS is intended as an educational and informational assistant and is not a replacement for qualified medical professionals.
 

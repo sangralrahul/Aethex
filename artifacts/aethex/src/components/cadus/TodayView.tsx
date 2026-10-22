@@ -4,9 +4,10 @@
  * last chats, with quick starts for the tools used most. Everything is read from this device.
  */
 import type { ReactNode } from "react";
-import { ArrowRight, BedDouble, BellRing, CalendarDays, CheckSquare, ClipboardList, Flame, GitFork, GraduationCap, Layers, Languages, MessageSquare, Pill, Presentation, ShieldPlus, Square } from "lucide-react";
+import { ArrowRight, BedDouble, BellRing, CalendarCheck, CalendarDays, CheckSquare, ClipboardList, Flame, GitFork, GraduationCap, Layers, Languages, MessageSquare, Pill, Presentation, ShieldPlus, Square } from "lucide-react";
 import { dueCards, readDecks, readRuns } from "@/lib/cadus/studio";
 import { readWatch } from "@/lib/cadus/labs";
+import { KIND_LABEL, progress, readPlan } from "@/lib/cadus/studyplan";
 
 export interface TodayWardPatient { id: string; bed: string; label: string; diagnosis: string; jobs: { id: string; text: string; done: boolean }[] }
 
@@ -41,6 +42,8 @@ export default function TodayView({ name, ward, toggleJob, learn, activeCases, c
   const lastWatch = Math.max(0, ...followed.map((t) => watch.runs[t.id]?.at ?? 0));
   const watchStale = followed.length > 0 && Date.now() - lastWatch > 7 * 86400000;
   const fresh = followed.reduce((n, t) => n + (watch.runs[t.id]?.fresh.length ?? 0), 0);
+  const plan = readPlan();
+  const planPr = plan ? progress(plan) : null;
   const openJobs = ward.flatMap((p) => p.jobs.filter((j) => !j.done).map((j) => ({ ...j, patient: p })));
   const date = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
   const quick: { label: string; icon: ReactNode; where: string }[] = [
@@ -88,6 +91,17 @@ export default function TodayView({ name, ward, toggleJob, learn, activeCases, c
             <li><GraduationCap size={14} /> <span>{learn.due ? <><b>{learn.due}</b> Learn question{learn.due === 1 ? "" : "s"} to revise</> : "Learn: nothing to revise"}</span><button className="cx-link" onClick={() => go("practice")}>{learn.due ? "Revise" : "Daily set"}</button></li>
             {learn.streak > 0 && <li><Flame size={14} /> <span><b>{learn.streak}-day</b> streak</span></li>}
           </ul>
+        </Card>
+
+        <Card icon={<CalendarCheck size={16} />} title="Study plan" count={planPr ? `${planPr.daysLeft} days left` : undefined} testId="studyplan"
+          empty="No plan yet. Make a day-by-day plan to your exam."
+          action={{ label: plan ? "Open plan" : "Make a plan", go: () => go("studyplan") }}>
+          {plan && planPr ? (
+            <ul className="cx-td-list">
+              <li><CalendarCheck size={14} /> <span>{planPr.today ? <><b>{planPr.today.done ? "Done today" : KIND_LABEL[planPr.today.kind]}</b>{planPr.today.items.length > 0 && planPr.today.kind !== "mock" ? `: ${planPr.today.items.map((i) => i.topic || i.subject).slice(0, 3).join(", ")}${planPr.today.items.length > 3 ? "…" : ""}` : ""}</> : `${plan.exam} is today`}</span></li>
+              <li><Flame size={14} /> <span><b>{planPr.pct}%</b> of the plan done{planPr.behind ? ` · ${planPr.behind} behind` : ""}</span></li>
+            </ul>
+          ) : undefined}
         </Card>
 
         <Card icon={<GitFork size={16} />} title="Unfinished pathways" count={runs.length} empty="None. Start one when a patient needs it." action={{ label: "All pathways", go: () => go("pathways") }} testId="pathways">

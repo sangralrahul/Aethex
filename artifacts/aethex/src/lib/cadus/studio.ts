@@ -187,3 +187,85 @@ export interface PresentRecord { id: string; at: number; format: string; seconds
 export const PRESENT_KEY = "cadus3.present";
 export const readPresents = () => readKey<PresentRecord[]>(PRESENT_KEY, []).filter((x) => x && x.result);
 export const savePresents = (l: PresentRecord[]) => saveKey(PRESENT_KEY, l.slice(0, 40));
+
+/* ------------------------------------------------------------------ Discharge Summary */
+
+export interface DischargeMed { name: string; dose: string; duration: string; note: string }
+export interface DischargeResult {
+  diagnosis: string[]; procedures: string[]; presentation: string; history: string; course: string;
+  investigations: { test: string; result: string }[]; condition: string; medications: DischargeMed[];
+  followUp: string; redFlags: string[]; patientAdvice: string; missing: string[];
+}
+export interface DischargeRecord { id: string; at: number; language: string; department: string; admitted: string; discharged: string; label: string; result: DischargeResult }
+export const DISCHARGE_KEY = "cadus3.discharge";
+export const readDischarges = () => readKey<DischargeRecord[]>(DISCHARGE_KEY, []).filter((x) => x && x.result && Array.isArray(x.result.diagnosis));
+export const saveDischarges = (l: DischargeRecord[]) => saveKey(DISCHARGE_KEY, l.slice(0, 30));
+export function dischargeMarkdown(r: DischargeRecord): string {
+  const x = r.result;
+  return [
+    "# Discharge summary",
+    [r.department && `**Department:** ${r.department}`, r.admitted && `**Admitted:** ${r.admitted}`, r.discharged && `**Discharged:** ${r.discharged}`, r.label && `**Patient:** ${r.label}`].filter(Boolean).join(" · "),
+    x.diagnosis.length ? `## Diagnosis\n${x.diagnosis.map((d) => `- ${d}`).join("\n")}` : "",
+    x.procedures.length ? `## Procedures\n${x.procedures.map((d) => `- ${d}`).join("\n")}` : "",
+    x.presentation ? `## Presenting complaints\n${x.presentation}` : "",
+    x.history ? `## Relevant history\n${x.history}` : "",
+    x.course ? `## Course in hospital\n${x.course}` : "",
+    x.investigations.length ? `## Key investigations\n| Test | Result |\n|---|---|\n${x.investigations.map((i) => `| ${i.test} | ${i.result} |`).join("\n")}` : "",
+    x.condition ? `## Condition at discharge\n${x.condition}` : "",
+    x.medications.length ? `## Medicines on discharge\n| Medicine | Dose | Duration | Note |\n|---|---|---|---|\n${x.medications.map((m) => `| ${m.name} | ${m.dose || "-"} | ${m.duration || "-"} | ${m.note || ""} |`).join("\n")}` : "",
+    x.followUp ? `## Follow-up\n${x.followUp}` : "",
+    x.redFlags.length ? `## Come back at once if\n${x.redFlags.map((d) => `- ${d}`).join("\n")}` : "",
+  ].filter(Boolean).join("\n\n");
+}
+
+/* ------------------------------------------------------------------ Shift Handover */
+
+export type HandoverSeverity = "stable" | "watcher" | "unstable";
+export interface HandoverPatient { bed: string; label: string; severity: HandoverSeverity; summary: string; actions: { task: string; when: string }[]; contingency: { if: string; then: string }[]; awareness: string }
+export interface HandoverResult { patients: HandoverPatient[]; priorities: string[] }
+export interface HandoverRecord { id: string; at: number; shift: string; result: HandoverResult; readBack: string[] }
+export const HANDOVER_KEY = "cadus3.handover";
+export const readHandovers = () => readKey<HandoverRecord[]>(HANDOVER_KEY, []).filter((x) => x && x.result && Array.isArray(x.result.patients)).map((x) => ({ ...x, readBack: Array.isArray(x.readBack) ? x.readBack : [] }));
+export const saveHandovers = (l: HandoverRecord[]) => saveKey(HANDOVER_KEY, l.slice(0, 20));
+export const SEVERITY_LABEL: Record<HandoverSeverity, string> = { stable: "Stable", watcher: "Watcher", unstable: "Unstable" };
+export const SHIFTS = [
+  { id: "night", label: "Night team" },
+  { id: "evening", label: "Evening team" },
+  { id: "weekend", label: "Weekend team" },
+  { id: "day", label: "Day team" },
+] as const;
+export function handoverMarkdown(r: HandoverRecord): string {
+  const shift = SHIFTS.find((s) => s.id === r.shift)?.label ?? "Next team";
+  return [
+    `# Handover to the ${shift.toLowerCase()} (I-PASS)`,
+    new Date(r.at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
+    r.result.priorities.length ? `## Priorities\n${r.result.priorities.map((p, i) => `${i + 1}. ${p}`).join("\n")}` : "",
+    ...r.result.patients.map((p) => [
+      `## Bed ${p.bed || "?"} · ${p.label} · ${SEVERITY_LABEL[p.severity]}`,
+      `**Summary:** ${p.summary}`,
+      p.actions.length ? `**Actions:**\n${p.actions.map((a) => `- [ ] ${a.task}${a.when ? ` (${a.when})` : ""}`).join("\n")}` : "",
+      p.contingency.length ? `**If / then:**\n${p.contingency.map((c) => `- If ${c.if}: ${c.then}`).join("\n")}` : "",
+      p.awareness ? `**Watch:** ${p.awareness}` : "",
+    ].filter(Boolean).join("\n\n")),
+  ].filter(Boolean).join("\n\n");
+}
+
+/* ------------------------------------------------------------------ Differential Builder */
+
+export interface DdxItem { name: string; likelihood: "likely" | "possible" | "less likely"; cantMiss: boolean; for: string[]; against: string[]; test: string }
+export interface DdxResult { summary: string; diagnoses: DdxItem[]; nextTests: { test: string; why: string }[]; ask: string[]; redFlags: string[] }
+export interface DdxRecord { id: string; at: number; age: string; sex: string; setting: string; findings: string; results: string; result: DdxResult }
+export const DDX_KEY = "cadus3.ddx";
+export const readDdx = () => readKey<DdxRecord[]>(DDX_KEY, []).filter((x) => x && x.result && Array.isArray(x.result.diagnoses));
+export const saveDdx = (l: DdxRecord[]) => saveKey(DDX_KEY, l.slice(0, 30));
+export function ddxMarkdown(r: DdxRecord): string {
+  const x = r.result;
+  return [
+    "# Differential diagnosis",
+    x.summary ? `**${x.summary}**` : "",
+    x.redFlags.length ? `## Act now\n${x.redFlags.map((f) => `- ${f}`).join("\n")}` : "",
+    `## Differential\n${x.diagnoses.map((d, i) => `${i + 1}. **${d.name}** (${d.likelihood}${d.cantMiss ? ", can't miss" : ""})${d.for.length ? `\n   - For: ${d.for.join("; ")}` : ""}${d.against.length ? `\n   - Against: ${d.against.join("; ")}` : ""}${d.test ? `\n   - Test: ${d.test}` : ""}`).join("\n")}`,
+    x.nextTests.length ? `## Next tests\n${x.nextTests.map((t, i) => `${i + 1}. ${t.test}${t.why ? `: ${t.why}` : ""}`).join("\n")}` : "",
+    x.ask.length ? `## Ask or examine\n${x.ask.map((a) => `- ${a}`).join("\n")}` : "",
+  ].filter(Boolean).join("\n\n");
+}

@@ -1,7 +1,7 @@
 {
   "name": "cadus-desktop",
   "productName": "Cadus",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Cadus, clinical AI for doctors and medical students, by Aethex.",
   "homepage": "https://aethex.in/downloads",
   "author": {
@@ -37,6 +37,8 @@
       "offline.html",
       "google-wait.html",
       "build/icon.png",
+      "build/icons/16x16.png",
+      "build/icons/32x32.png",
       "package.json"
     ],
     "afterPack": "scripts/after-pack.cjs",

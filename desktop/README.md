@@ -13,6 +13,23 @@ The download page is https://aethex.in/downloads
 (`artifacts/aethex/src/pages/Downloads.tsx`). The installers are served from
 Cloudflare R2 at https://downloads.aethex.in/cadus/<version>/.
 
+## Tray, shortcut and reminders (1.0.2)
+
+Closing the window keeps Cadus in the tray (unless turned off). Ctrl+Shift+Space
+(or Ctrl+Alt+C if another app owns it) brings Cadus up with a new chat. "Start
+with Windows" uses the Windows login items with `--hidden`; on Linux it writes
+`~/.config/autostart/cadus.desktop`. Every 15 minutes the app asks the page for
+counts through `window.__cadusStatus()` (cards due, open ward jobs, today's study
+plan: numbers only) and, between 8 am and 9 pm and at most every 3 hours, shows a
+notification. The tray, File menu and notifications open parts of Cadus with a
+`cadus:open` event, or `?open=` when the page isn't loaded
+(`artifacts/aethex/src/lib/cadus/desktop.ts`). The settings live in
+`settings.json` in the app's user-data folder.
+
+Test an unpackaged build against a local copy of the site with
+`CADUS_START_URL=http://localhost:…/ CADUS_TEST=1 npx electron .` (both are
+ignored by an installed app).
+
 ## Build
 
 Needs Node 22 on Linux (Wine, with 32-bit support, for the Windows installers:

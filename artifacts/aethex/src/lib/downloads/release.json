@@ -1,53 +1,55 @@
 {
   "product": "Cadus",
-  "version": "1.0.1",
-  "released": "2026-10-19",
+  "version": "1.0.2",
+  "released": "2026-10-23",
   "electron": "44.5.1",
+  "title": "tray, quick-open shortcut and reminders",
   "files": [
     {
       "id": "win-x64",
       "os": "windows",
       "arch": "x64",
       "kind": "Installer (.exe)",
-      "file": "Cadus-Setup-1.0.1-x64.exe",
-      "url": "https://downloads.aethex.in/cadus/1.0.1/Cadus-Setup-1.0.1-x64.exe",
-      "size": 110937423,
-      "sha256": "38d41ff4fd49d806122051d96ed22a8d9fc28dc8b67484ea07af4b44fa08cf9c"
+      "file": "Cadus-Setup-1.0.2-x64.exe",
+      "url": "https://downloads.aethex.in/cadus/1.0.2/Cadus-Setup-1.0.2-x64.exe",
+      "size": 110942728,
+      "sha256": "e8013eb9a12951c14093d3c603282b663c8ce34f9905978ed3e6a9c02ec725ab"
     },
     {
       "id": "win-arm64",
       "os": "windows",
       "arch": "arm64",
       "kind": "Installer (.exe)",
-      "file": "Cadus-Setup-1.0.1-arm64.exe",
-      "url": "https://downloads.aethex.in/cadus/1.0.1/Cadus-Setup-1.0.1-arm64.exe",
-      "size": 105583859,
-      "sha256": "f3dee2709626006dd55ad34a14dfad582980f147ad96cfef58b4a558e3f99116"
+      "file": "Cadus-Setup-1.0.2-arm64.exe",
+      "url": "https://downloads.aethex.in/cadus/1.0.2/Cadus-Setup-1.0.2-arm64.exe",
+      "size": 105589230,
+      "sha256": "c05ec7d5925ea2f97aaa861a009daed811eb3147da171bd8a368494a5d68ac83"
     },
     {
       "id": "linux-appimage",
       "os": "linux",
       "arch": "x64",
       "kind": "AppImage",
-      "file": "Cadus-1.0.1-x86_64.AppImage",
-      "url": "https://downloads.aethex.in/cadus/1.0.1/Cadus-1.0.1-x86_64.AppImage",
-      "size": 97325105,
-      "sha256": "013f86462766cc65c42a9951cc42df82443e61a3b6681ace663697b1f8d92f42"
+      "file": "Cadus-1.0.2-x86_64.AppImage",
+      "url": "https://downloads.aethex.in/cadus/1.0.2/Cadus-1.0.2-x86_64.AppImage",
+      "size": 97329221,
+      "sha256": "dab7063f4e1b4c89a6ae1a3fecfcb1063d9ec56fc2c92c35525a1dad27c7afd1"
     },
     {
       "id": "linux-deb",
       "os": "linux",
       "arch": "x64",
       "kind": "Debian / Ubuntu (.deb)",
-      "file": "Cadus-1.0.1-amd64.deb",
-      "url": "https://downloads.aethex.in/cadus/1.0.1/Cadus-1.0.1-amd64.deb",
-      "size": 97167720,
-      "sha256": "0de7dbcc16482289c7e9c1b6e2f16abeb1d08de37c82bbd43c29a853dc5d9836"
+      "file": "Cadus-1.0.2-amd64.deb",
+      "url": "https://downloads.aethex.in/cadus/1.0.2/Cadus-1.0.2-amd64.deb",
+      "size": 97173200,
+      "sha256": "097a46db35d954eb7481cf2690cb89edaf56e1c1b863b9f3281c9c881be58ef3"
     }
   ],
   "notes": [
-    "Continue with Google now works: Google sign-in opens in your usual browser, then brings you back to Cadus signed in.",
-    "Opens Cadus in its own window, with your sign-in, chats and settings kept on this computer.",
-    "Checks once a day for a newer version and tells you when one is ready."
+    "Tray icon: Cadus keeps running when you close its window, with New chat, Today, Calculators, Flashcards and your study plan one click away.",
+    "Quick-open shortcut: press Ctrl+Shift+Space in any app to bring Cadus up with a new chat, ready to type.",
+    "Start with Windows (or with your Linux desktop): an option to open Cadus quietly in the tray when the computer starts.",
+    "Reminders: a desktop notification when flashcards are due, ward jobs are still open or your study plan has work for today, at most every 3 hours, 8 am to 9 pm."
   ]
 }
