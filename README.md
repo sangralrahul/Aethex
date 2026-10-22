@@ -84,7 +84,11 @@ It provides an intelligent interface for medical and educational assistance.
 - Institution protocols: local protocols, formulary and antibiotic policy that answers follow, shared across a team as a team pack
 - Cadus modes, picked beside the message box: Auto, Fast, Think, Exam (high-yield facts, traps and MCQs), Simple (plain words) and Deep Dive, with a tone (Professional, Friendly, Mentor) and a length
 - Deep Dive: plans the question, searches PubMed and guideline sites step by step (shown live), then writes a cited report that is safety-reviewed
-- Cadus Crew: assistants with their own instructions, starters and tool, ready-made (Viva Examiner, NEET-PG Coach, Discharge Writer, Clinical Pharmacist, Thesis Guide and more) or your own
+- Cadus Crew: assistants with their own instructions, starters and tool, 20 ready-made (Viva Examiner, NEET-PG Coach, Clinical Pharmacist, Antibiotic Steward, Radiology Reader, ICU Registrar, OBG Registrar, Paper Critic, PSM Tutor and more, grouped for study, wards, writing and research) or your own
+  - @mentions: type @ in any chat to have an assistant answer one message in its own role
+  - Knowledge files: up to five documents per assistant (PDFs and photos read once into text, text files, pasted notes; 40,000 characters), used and named in its answers, never sent to the safety review
+  - Share and import: a link, WhatsApp, QR code or file that adds a copy of an assistant (without its knowledge) after a preview
+  - Crew Huddle: ask two to four assistants at once, read their answers side by side, then one combined answer checked by the stronger model, with what they agree on, where they differ and any corrections
 - Follow-up questions written for each answer, and branching a chat from any answer
 - Case Simulator: a live patient to practise on (ask, examine, order tests, treat, call a senior) with changing vitals and a clock, then a scored debrief with the diagnosis, what was missed and teaching points
 - Rx Safety Check: a typed, photographed or PDF prescription checked for one patient (doses, interactions, allergies, pregnancy, kidney, liver, age, duplicates), with generics, NLEM and Jan Aushadhi names, and Cadus's own interaction table as a second check

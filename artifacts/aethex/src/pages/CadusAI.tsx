@@ -20,7 +20,7 @@ import {
   Sparkles, Square, SquarePen, Stethoscope, Sun, Syringe, Telescope, Trash2, Users, Volume2, VolumeX, X, Zap, Palette,
   BedDouble, BookMarked, BookOpenText, ChartLine, ClipboardPlus, FileBadge, FileSignature, Microscope, NotebookPen, NotepadText,
   Printer, Scissors, ScrollText, Sigma, PanelRight, EyeOff, Compass, Rows3, WifiOff, Building2, ScanSearch,
-  Bot, GitBranch, HeartPulse, MessageCircle, BellRing, FileScan, ShieldPlus,
+  Bot, GitBranch, HeartPulse, MessageCircle, BellRing, FileScan, ShieldPlus, ScanLine, Shield, Bone, AtSign, Users2,
   type LucideIcon,
 } from "lucide-react";
 import { invokeAi } from "@/lib/ai-functions";
@@ -58,7 +58,12 @@ import { closePartialMarkdown, createTextStore, streamCadus, StreamUnavailable, 
 import {
   BUILT_IN_CREW, blankCrew, cleanCrew, CREW_ICONS, CREW_MAX, CREW_TONES, crewPayload, findCrew, INSTRUCTIONS_MAX as CREW_INSTRUCTIONS_MAX, NAME_MAX as CREW_NAME_MAX,
   readCrew, saveCrew, STARTER_MAX, TAGLINE_MAX, type CrewIcon, type CrewMember,
+  CREW_GROUPS, matchCrew, readShareCode, type HuddleResult,
 } from "@/lib/cadus/crew";
+import CrewKnowledge from "@/components/cadus/CrewKnowledge";
+import { CrewImportDialog, CrewPasteImport, CrewShareDialog } from "@/components/cadus/CrewShare";
+import CrewHuddleView from "@/components/cadus/CrewHuddleView";
+import { CADUS_CREW_CSS } from "@/components/cadus/cadus-crew-styles";
 import {
   ACCEPT_ATTACH, attachmentPayload, attachmentsForStorage, attachProblem, describeAttachment, formatSize, readAttachment,
   type Attachment,
@@ -128,7 +133,7 @@ type ModeId =
   | "admission" | "progress" | "opnote" | "death" | "certificate" | "rx" | "evidence";
 /** "groq" only appears in chats saved before Cadus became Claude-only. */
 type Provider = "claude" | "groq" | "library";
-type View = "chat" | "crew" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain";
+type View = "chat" | "crew" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle";
 /** Views reached from the Tools hub, so the hub stays highlighted in the sidebar. */
 const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain"]);
 type ToolTab = "all" | "clinical" | "documentation" | "learning";
@@ -205,6 +210,8 @@ interface Msg {
   deep?: { title?: string; steps: DeepStep[]; papers: number; web: number };
   /** assistant message: follow-up questions written for this answer */
   followups?: string[];
+  /** user message: an @mentioned Crew assistant answers this one message; assistant message: the assistant that answered */
+  mention?: { id: string; name: string; icon: CrewIcon; tone: CrewMember["tone"] };
 }
 
 interface Session {
@@ -420,6 +427,7 @@ const SMART_FOLLOW = new Set<ModeId>(["general", "ddx", "drugs", "dosage", "labs
 const CREW_ICON: Record<CrewIcon, LucideIcon> = {
   stethoscope: Stethoscope, graduation: GraduationCap, pill: Pill, file: FileText, microscope: Microscope, heart: HeartPulse,
   baby: Baby, brain: Brain, users: Users, clipboard: ClipboardList, siren: Siren, book: BookOpen,
+  scan: ScanLine, scalpel: Scissors, shield: Shield, bone: Bone,
 };
 /** A Crew assistant's badge. */
 function CrewBadge({ c, size = 40 }: { c: Pick<CrewMember, "icon" | "tone">; size?: number }) {
@@ -987,6 +995,12 @@ export default function CadusAI() {
   const [crewMine, setCrewMine] = useState<CrewMember[]>(() => readCrew(MODES.map((m) => m.id)));
   const [crewNext, setCrewNext] = useState("");
   const [crewEdit, setCrewEdit] = useState<CrewMember | null>(null);
+  /** Sharing and importing assistants, @mentions in the composer, and the huddle's first picks. */
+  const [crewShare, setCrewShare] = useState<CrewMember | null>(null);
+  const [crewImport, setCrewImport] = useState<CrewMember | null>(null);
+  const [mention, setMention] = useState<CrewMember | null>(null);
+  const [atMenu, setAtMenu] = useState<{ q: string; i: number } | null>(null);
+  const [huddleInit, setHuddleInit] = useState<string[] | undefined>(undefined);
   /** The Read tool: what kind of image or report is attached. */
   const [reading, setReading] = useState("");
   const [tempNext, setTempNext] = useState(false);
@@ -1357,6 +1371,28 @@ export default function CadusAI() {
     setCrewMine((l) => (exists ? l.map((c) => (c.id === clean.id ? clean : c)) : [clean, ...l]));
     setCrewEdit(null);
     toast(exists ? "Saved" : `${clean.name} joined your crew`);
+  };
+  /** Adds an imported assistant to your crew (a new copy, never replacing one). */
+  const addImported = (c: CrewMember) => {
+    if (crewMine.length >= CREW_MAX) { toast(`You can keep up to ${CREW_MAX} assistants`); return; }
+    const clean = cleanCrew({ ...c, id: "", importedAt: Date.now() }, MODES.map((m) => m.id));
+    if (!clean) return;
+    setCrewMine((l) => [clean, ...l]);
+    setCrewImport(null);
+    setView("crew");
+    toast(`${clean.name} joined your crew`);
+  };
+  const openHuddle = (ids?: string[]) => { setHuddleInit(ids); setView("huddle"); setSidebarOpen(false); setPop(null); };
+  /** The @ picker in the composer: the assistants that match what's typed after "@". */
+  const atList = atMenu ? matchCrew(atMenu.q, crewMine) : [];
+  const pickMention = (c: CrewMember) => {
+    const ta = taRef.current;
+    const caret = ta ? ta.selectionStart ?? input.length : input.length;
+    const before = input.slice(0, caret).replace(/@[\p{L}\p{N}-]{0,30}$/u, "");
+    setInput(before + input.slice(caret));
+    setMention(c);
+    setAtMenu(null);
+    focusComposer();
   };
   const deleteCrew = (id: string) => {
     setCrewMine((l) => l.filter((c) => c.id !== id));
@@ -1751,6 +1787,7 @@ export default function CadusAI() {
       aborts.current.delete(reqId);
       if (cancelled.current.has(reqId)) return null;
       reply.took = Date.now() - started;
+      if (userMsg.mention) reply.mention = userMsg.mention;
       // Regenerating keeps the earlier answers as versions (‹ 1 / 2 ›).
       if (extra.prior && !extra.prior.error && !extra.prior.stopped) {
         const { versions: older = [], ...prev } = extra.prior;
@@ -1788,8 +1825,11 @@ export default function CadusAI() {
     const raw = (textOverride ?? input).trim();
     const startingNew = !(view === "chat" && activeId);
     // A chat with a Crew assistant uses its tool unless another tool was picked.
-    const crew = findCrew(startingNew ? crewNext : sessions.find((s) => s.id === activeId)?.crewId, crewMine);
-    const m = modeOverride ?? (crew && mode === "general" ? (crew.mode as ModeId) : mode);
+    const chatCrew = findCrew(startingNew ? crewNext : sessions.find((s) => s.id === activeId)?.crewId, crewMine);
+    // An @mentioned assistant answers just this message, in its own role.
+    const asked = textOverride === undefined ? mention : null;
+    const crew = asked ?? chatCrew;
+    const m = modeOverride ?? (!asked && crew && mode === "general" ? (crew.mode as ModeId) : mode);
     // Attachments in the composer go with what you type there, not with suggestion chips.
     const atts = extra?.files ?? (textOverride === undefined ? attachments : []);
     if ((!raw && !atts.length) || pending) return Promise.resolve(null);
@@ -1832,11 +1872,12 @@ export default function CadusAI() {
       ...(!ROLEPLAY.has(m) && prefs.tone !== "professional" ? { tone: prefs.tone } : {}),
       ...(reading && atts.length && textOverride === undefined ? { reading } : {}),
       ...(extra?.voice ? { voice: true } : {}),
+      ...(asked ? { mention: { id: asked.id, name: asked.name, icon: asked.icon, tone: asked.tone } } : {}),
     };
     const history = sessions.find((s) => s.id === sid)?.messages ?? [];
     const firstFile = atts.find((a) => a.kind !== "image");
     const title = extra?.title || stripPlaceholders(text) || (firstFile ? `Document: ${firstFile.name}` : "Image analysis");
-    upsert(sid, (msgs) => [...msgs, userMsg], clip(title, 64), inProject, { ...(temp ? { temp: true } : {}), ...(extra?.caseId ? { caseId: extra.caseId } : {}), ...(isNew && crew ? { crewId: crew.id } : {}), autoTitle: !extra?.title });
+    upsert(sid, (msgs) => [...msgs, userMsg], clip(title, 64), inProject, { ...(temp ? { temp: true } : {}), ...(extra?.caseId ? { caseId: extra.caseId } : {}), ...(isNew && chatCrew ? { crewId: chatCrew.id } : {}), autoTitle: !extra?.title });
     setView("chat");
     setActiveId(sid);
     setMode(m);
@@ -1844,6 +1885,8 @@ export default function CadusAI() {
       setInput("");
       setAttachments([]);
       setReading("");
+      setMention(null);
+      setAtMenu(null);
     }
     // Carrying on in an archived chat brings it back to the sidebar.
     if (!isNew && sessions.find((s) => s.id === sid)?.archived) setSessions((p) => p.map((s) => (s.id === sid ? { ...s, archived: false } : s)));
@@ -1869,6 +1912,19 @@ export default function CadusAI() {
       setInput(context.slice(0, 12000));
       focusComposer();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // A shared Cadus Crew link (?crew=…) opens the assistant to preview and add.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("crew");
+    if (!code) return;
+    params.delete("crew");
+    const rest = params.toString();
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}${rest ? `?${rest}` : ""}${window.location.hash}`);
+    const c = readShareCode(code, MODES.map((x) => x.id));
+    if (c) { setCrewImport(c); setView("crew"); } else toast("That Cadus Crew link is incomplete or damaged");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1905,7 +1961,7 @@ export default function CadusAI() {
     setEditing(null);
     if (orig.files?.some((f) => !f.data)) toast("The attached PDF isn't kept after reloading. Attach it again for a full answer.");
     upsert(active.id, (msgs) => [...msgs.slice(0, idx), userMsg]);
-    void runRequest(active.id, active.messages.slice(0, idx), userMsg, instructionsFor(active.id), { temp: active.temp, crew: findCrew(active.crewId, crewMine) });
+    void runRequest(active.id, active.messages.slice(0, idx), userMsg, instructionsFor(active.id), { temp: active.temp, crew: findCrew(userMsg.mention?.id, crewMine) ?? findCrew(active.crewId, crewMine) });
   };
 
   const copyText = async (id: string, text: string) => {
@@ -2126,7 +2182,7 @@ export default function CadusAI() {
     void runRequest(active.id, active.messages.slice(0, userIdx), userMsg, instructionsFor(active.id), {
       prior,
       temp: active.temp,
-      crew: findCrew(active.crewId, crewMine),
+      crew: findCrew(userMsg.mention?.id, crewMine) ?? findCrew(active.crewId, crewMine),
       ...(improve ? { improve: { ...improve, previous: prior?.content ?? "" } } : {}),
     });
   };
@@ -2512,6 +2568,7 @@ export default function CadusAI() {
     const actions: PaletteItem[] = [
       { key: "a:new", label: "New chat", hint: `${MOD} ⇧ O`, icon: SquarePen, run: () => newChat() },
       { key: "a:crew", label: "Cadus Crew: assistants", hint: "Ready-made and your own", icon: Bot, run: () => openCrew() },
+      { key: "a:huddle", label: "Crew Huddle: ask several assistants at once", hint: "Side-by-side answers and a checked combined answer", icon: Users2, run: () => openHuddle() },
       { key: "a:deep", label: prefs.answerMode === "deep" ? "Turn off Deep Dive" : "Deep Dive: a cited research report", hint: "PubMed and guidelines, step by step", icon: Telescope, run: () => { setPrefs((p) => ({ ...p, answerMode: p.answerMode === "deep" ? "auto" : "deep" })); focusComposer(); } },
       ...ANSWER_MODES.filter((am) => am.id !== "deep" && am.id !== prefs.answerMode).map((am) => ({ key: `a:mode:${am.id}`, label: `Mode: ${am.label}`, hint: am.desc, icon: am.icon, run: () => { setPrefs((p) => ({ ...p, answerMode: am.id })); focusComposer(); } })),
       { key: "a:newproj", label: "New project", icon: FolderPlus, run: () => newProject() },
@@ -2658,6 +2715,22 @@ export default function CadusAI() {
           </span>
         </div>
       )}
+      {atMenu && atList.length > 0 && (
+        <div className="cx-at" role="listbox" aria-label="Ask a Crew assistant" data-at="menu">
+          <p className="cx-at-h"><AtSign size={12} /> Ask a Crew assistant</p>
+          {atList.map((c, i) => (
+            <button key={c.id} type="button" role="option" aria-selected={i === atMenu.i} className={i === atMenu.i ? "on" : ""} onMouseDown={(e) => { e.preventDefault(); pickMention(c); }} onMouseEnter={() => setAtMenu({ ...atMenu, i })}>
+              <CrewBadge c={c} size={24} /><span><b>{c.name}</b><small>{c.tagline}</small></span>
+            </button>
+          ))}
+        </div>
+      )}
+      {mention && (
+        <div className={`cx-mention tone-${mention.tone}`} data-at="chip">
+          <CrewBadge c={mention} size={20} /><span>Asking <b>{mention.name}</b> for this reply</span>
+          <button type="button" onClick={() => setMention(null)} aria-label={`Stop asking ${mention.name}`}><X size={13} /></button>
+        </div>
+      )}
       <textarea
         ref={taRef}
         value={input}
@@ -2669,7 +2742,13 @@ export default function CadusAI() {
           : modeDef.placeholder
         }
         aria-label="Message Cadus"
-        onChange={(e) => setInput(e.target.value)}
+        onChange={(e) => {
+          const v = e.target.value;
+          setInput(v);
+          // "@" at the start of a word opens the Crew picker.
+          const at = /(^|\s)@([\p{L}\p{N}-]{0,30})$/u.exec(v.slice(0, e.target.selectionStart ?? v.length));
+          setAtMenu(at && !ROLEPLAY.has(mode) ? { q: at[2], i: 0 } : null);
+        }}
         onPaste={(e) => {
           const files = Array.from(e.clipboardData.files);
           if (!files.length) return;
@@ -2679,6 +2758,12 @@ export default function CadusAI() {
           void onFiles(files);
         }}
         onKeyDown={(e) => {
+          if (atMenu && atList.length) {
+            if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); setAtMenu({ ...atMenu, i: (atMenu.i + (e.key === "ArrowDown" ? 1 : atList.length - 1)) % atList.length }); return; }
+            if ((e.key === "Enter" || e.key === "Tab") && !e.nativeEvent.isComposing) { e.preventDefault(); pickMention(atList[Math.min(atMenu.i, atList.length - 1)]); return; }
+            if (e.key === "Escape") { e.preventDefault(); setAtMenu(null); return; }
+          }
+          if (e.key === "Backspace" && mention && !input && (e.currentTarget.selectionStart ?? 0) === 0) { setMention(null); return; }
           if (e.key === "Enter" && !e.shiftKey && prefs.enterToSend && !e.nativeEvent.isComposing) {
             e.preventDefault();
             send();
@@ -2691,6 +2776,7 @@ export default function CadusAI() {
           <button className={`cx-cbtn cx-tools-btn ${pop === "tools" ? "open" : ""}`} data-pop="tools" onClick={() => toggleComposerMenu("tools", placement)} aria-haspopup="menu" aria-expanded={pop === "tools"}>
             <SlidersHorizontal size={16} /><span>Tools</span>
           </button>
+          <button className="cx-cbtn cx-tip cx-at-btn" data-tip="Ask a Crew assistant (@)" aria-label="Ask a Crew assistant" onClick={() => { const v = input && !/\s$/.test(input) ? `${input} @` : `${input}@`; setInput(v); setAtMenu({ q: "", i: 0 }); focusComposer(); }}><AtSign size={16} /></button>
           <button
             className={`cx-cbtn cx-src cx-tip ${prefs.sources || mode === "research" ? "on" : ""}`}
             data-tip={mode === "research" ? "Deep research always searches sources" : prefs.sources ? "Sources on: cites WHO, NICE, ICMR, PubMed" : "Search trusted medical sources"}
@@ -3125,7 +3211,7 @@ export default function CadusAI() {
                 <h3>{x.question}</h3>
                 <p>{markdownToText(x.answer)}</p>
                 <div className="cx-lib-acts">
-                  {x.sessionId ? <button onClick={() => openSession(x.sessionId)} disabled={!exists} title={exists ? "Open the original chat" : "The original chat was deleted"}><ExternalLink size={13} /> Open chat</button> : <button onClick={() => openView("watch")} title="Saved from Guideline Watch"><BellRing size={13} /> Guideline Watch</button>}
+                  {x.sessionId ? <button onClick={() => openSession(x.sessionId)} disabled={!exists} title={exists ? "Open the original chat" : "The original chat was deleted"}><ExternalLink size={13} /> Open chat</button> : (x.question.startsWith("Crew Huddle") ? <button onClick={() => openHuddle()} title="Saved from Crew Huddle"><Users2 size={13} /> Crew Huddle</button> : <button onClick={() => openView("watch")} title="Saved from Guideline Watch"><BellRing size={13} /> Guideline Watch</button>)}
                   <button onClick={() => { void navigator.clipboard?.writeText(withSources(referenceToPlain(x.answer), x.sources)); toast("Copied to clipboard"); }}><Copy size={13} /> Copy</button>
                   <button onClick={() => void exportPdf(x.question, [{ who: "Question", text: x.question }, { who: "Cadus", text: withSources(x.answer, x.sources) }])}><Download size={13} /> PDF</button>
                   <button className="danger" onClick={() => { setLibrary((l) => l.filter((y) => y.id !== x.id)); toast("Removed from Library"); }}><Trash2 size={13} /> Remove</button>
@@ -3155,7 +3241,8 @@ export default function CadusAI() {
           <span className="tags">
             {tool && <em><tool.icon size={11} /> {tool.short}</em>}
             {c.sources && <em><Globe size={11} /> Sources</em>}
-            {c.builtIn ? <em className="by">By Cadus</em> : <em className="by mine">Yours</em>}
+            {c.knowledge?.length ? <em><BookOpen size={11} /> {c.knowledge.length} doc{c.knowledge.length === 1 ? "" : "s"}</em> : null}
+            {c.builtIn ? <em className="by">By Cadus</em> : <em className="by mine">{c.importedAt ? "Imported" : "Yours"}</em>}
           </span>
         </button>
         <div className="cx-crew-acts">
@@ -3165,7 +3252,9 @@ export default function CadusAI() {
             {pop === key && (
               <div className="cx-pop cx-crew-menu" role="menu">
                 {!c.builtIn && <button className="cx-pop-i" onClick={() => { setPop(null); setCrewEdit({ ...c }); }}><Pencil size={15} /> Edit</button>}
-                <button className="cx-pop-i" onClick={() => { setPop(null); setCrewEdit({ ...c, id: "", builtIn: undefined, name: `${c.name} (copy)`.slice(0, CREW_NAME_MAX) }); }}><Copy size={15} /> {c.builtIn ? "Make my own version" : "Duplicate"}</button>
+                <button className="cx-pop-i" onClick={() => { setPop(null); setCrewShare(c); }}><Share2 size={15} /> Share</button>
+                <button className="cx-pop-i" onClick={() => { setPop(null); openHuddle([c.id]); }}><Users2 size={15} /> Huddle with others</button>
+                <button className="cx-pop-i" onClick={() => { setPop(null); setCrewEdit({ ...c, id: "", builtIn: undefined, group: undefined, name: `${c.name} (copy)`.slice(0, CREW_NAME_MAX) }); }}><Copy size={15} /> {c.builtIn ? "Make my own version" : "Duplicate"}</button>
                 {!c.builtIn && <button className="cx-pop-i danger" onClick={() => deleteCrew(c.id)}><Trash2 size={15} /> Remove</button>}
               </div>
             )}
@@ -3183,9 +3272,15 @@ export default function CadusAI() {
           <p>Each one has its own instructions: a viva examiner, a discharge writer, a thesis guide. Chat with a ready-made one, or build your own in a minute. Cadus's accuracy standards and safety review still apply to every answer.</p>
         </div>
         <div className="cx-page-acts">
+          <button className="cx-btn" onClick={() => openHuddle()} data-crew="huddle"><Users2 size={15} /> Crew Huddle</button>
           <button className="cx-btn primary" onClick={() => setCrewEdit(blankCrew())} disabled={crewMine.length >= CREW_MAX}><Plus size={15} /> Create an assistant</button>
         </div>
       </header>
+      <div className="cx-crew-tips">
+        <span><AtSign size={14} /> Type <b>@</b> in any chat to bring in an assistant for one reply</span>
+        <span><Users2 size={14} /> <button className="cx-link" onClick={() => openHuddle()}>Huddle</button>: ask up to four at once</span>
+        <span><BookOpen size={14} /> Give your own assistants knowledge files</span>
+      </div>
       <h2 className="cx-crew-sh">Your crew <span>{crewMine.length ? crewMine.length : ""}</span></h2>
       {crewMine.length ? (
         <div className="cx-crew-grid">{crewMine.map((c, i) => crewCard(c, i))}</div>
@@ -3195,8 +3290,16 @@ export default function CadusAI() {
           <span><b>Create your first assistant</b><small>For example a rotation buddy that knows your unit's protocols, or an examiner for your specialty</small></span>
         </button>
       )}
-      <h2 className="cx-crew-sh">Ready-made by Cadus</h2>
-      <div className="cx-crew-grid">{BUILT_IN_CREW.map((c, i) => crewCard(c, i + crewMine.length))}</div>
+      <CrewPasteImport modes={MODES.map((m) => m.id)} onFound={setCrewImport} toast={toast} />
+      {CREW_GROUPS.map((g) => {
+        const group = BUILT_IN_CREW.filter((c) => (c.group ?? "Clinical") === g);
+        return group.length ? (
+          <div key={g}>
+            <h2 className="cx-crew-sh">{g === "Study" ? "For study and exams" : g === "Clinical" ? "For the wards and OPD" : g === "Writing" ? "For notes and patients" : "For research"} <span>By Cadus</span></h2>
+            <div className="cx-crew-grid">{group.map((c, i) => crewCard(c, i + crewMine.length))}</div>
+          </div>
+        ) : null;
+      })}
     </section>
   );
 
@@ -3450,7 +3553,7 @@ export default function CadusAI() {
     return (
       <div key={m.id} className="cx-a" data-mid={m.id}>
         <div className="cx-a-h">
-          <CadusMark size={20} title="Cadus" />
+          {m.mention ? <span className="cx-a-crew" title={`${m.mention.name}, from Cadus Crew`}><CrewBadge c={m.mention} size={20} /> {m.mention.name}</span> : <CadusMark size={20} title="Cadus" />}
           <span className={`cx-a-kind ${v.deep ? "deep" : ""}`}>{v.deep ? <><Telescope size={13} /> Deep Dive</> : MODE[v.mode]?.label ?? "Answer"}</span>
           {!m.error && !m.stopped && <span className="cx-a-model" title={v.library ? "Answered from the Medical Library" : "The model that drafted this answer"}>{v.library ? "Medical Library" : modelLabel(v.model, v.provider)}</span>}
           <time className="cx-a-time" dateTime={new Date(v.at).toISOString()}>{new Date(v.at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</time>
@@ -3821,7 +3924,7 @@ export default function CadusAI() {
             ) : (
               <>
                 <div className="cx-u-b">{m.content}</div>
-                {(!!m.privacy?.total || (!!m.lang && m.lang !== "English") || !!m.think || !!m.voice || !!m.amode || !!m.tone) && (
+                {(!!m.privacy?.total || (!!m.lang && m.lang !== "English") || !!m.think || !!m.voice || !!m.amode || !!m.tone || !!m.mention) && (
                   <div className="cx-u-notes">
                     {m.privacy && m.privacy.total > 0 && (
                       <span className="cx-u-priv" title="Cadus's privacy guard replaced these details before your message was sent. The originals were not stored.">
@@ -3833,6 +3936,7 @@ export default function CadusAI() {
                     {m.voice && <span className="cx-u-priv tag"><AudioLines size={13} /> Voice</span>}
                     {m.amode && (() => { const am = AMODE[m.amode]; return <span className={`cx-u-priv tag ${m.amode === "deep" ? "deep" : ""}`}><am.icon size={13} /> {am.label}</span>; })()}
                     {m.tone && <span className="cx-u-priv tag">{TONES.find((t) => t.id === m.tone)?.label} tone</span>}
+                    {m.mention && <span className="cx-u-priv tag at"><AtSign size={13} /> {m.mention.name}</span>}
                   </div>
                 )}
                 <div className="cx-u-acts">
@@ -3962,7 +4066,7 @@ export default function CadusAI() {
       style={{ ["--acc" as string]: dark ? accent.dark : accent.light, ["--fs" as string]: `${fontSize}px`, ["--fs-u" as string]: `${sansSize}px` }}
       {...dropHandlers}
     >
-      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS}</style>
+      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS}</style>
 
       {/* ============================================== sidebar */}
       <div className={`cx-scrim ${sidebarOpen ? "on" : ""}`} onClick={() => setSidebarOpen(false)} />
@@ -4257,6 +4361,7 @@ export default function CadusAI() {
               const [Icon, label]: [LucideIcon, string] =
                 view === "tools" ? [LayoutGrid, "Tools"]
                 : view === "crew" ? [Bot, "Cadus Crew"]
+                : view === "huddle" ? [Users2, "Crew Huddle"]
                 : view === "calculators" ? [Calculator, "Calculators"]
                 : view === "practice" ? [GraduationCap, "Learn"]
                 : view === "library" ? [Library, "Library"]
@@ -4561,6 +4666,40 @@ export default function CadusAI() {
             )
             : view === "tools" ? renderTools()
             : view === "crew" ? renderCrew()
+            : view === "huddle" ? (
+              <CrewHuddleView
+                mine={crewMine}
+                initial={huddleInit}
+                badge={(c, size) => <CrewBadge c={c} size={size} />}
+                ask={async (c, q) => {
+                  const r = await invokeCadus({ action: "chat", message: q, mode: "general", history: [], crew: crewPayload(c), model: prefs.model, language: prefs.language, search: limits.sources && !!c.sources, ...(profilePayload(profile) ? { profile: profilePayload(profile) } : {}) });
+                  if (!r?.message) throw new Error("No answer came back");
+                  return String(r.message);
+                }}
+                merge={async (question, answers) => {
+                  const r = await invokeCadus({ action: "huddle-merge", question, answers, language: prefs.language });
+                  if (!r?.answer) throw new Error("No combined answer came back");
+                  return r as HuddleResult;
+                }}
+                canAsk={(n) => {
+                  if (usage.date === today() && usage.count + n > limits.questionsPerDay) { setUpgrade({ reason: `A huddle of ${n} uses ${n} of today's ${limits.questionsPerDay} questions on the ${PLAN_BY_ID[plan].name} plan.`, feature: "questions" }); return false; }
+                  setUsage((u) => (u.date === today() ? { ...u, count: u.count + n } : { date: today(), count: n }));
+                  return true;
+                }}
+                friendlyError={friendlyError}
+                toast={toast}
+                onSave={(question, answer) => { setLibrary((l) => [{ id: uid(), sessionId: "", messageId: uid(), question, answer, mode: "general", at: Date.now() }, ...l]); toast("Saved to Library"); }}
+                onContinue={(c, q, answer) => {
+                  const sid = uid();
+                  const u: Msg = { id: uid(), role: "user", mode: "general", at: Date.now(), content: q };
+                  const a: Msg = { id: uid(), role: "assistant", mode: "general", at: Date.now(), content: answer, mention: { id: c.id, name: c.name, icon: c.icon, tone: c.tone } };
+                  upsert(sid, () => [u, a], clip(q, 64), undefined, { crewId: c.id });
+                  setActiveId(sid);
+                  setView("chat");
+                  focusComposer();
+                }}
+              />
+            )
             : view === "library" ? renderLibrary()
             : view === "projects" ? renderProjects()
             : view === "project" ? renderProject()
@@ -4723,6 +4862,12 @@ export default function CadusAI() {
                   <span className="cx-crew-toggle"><input type="checkbox" checked={!!crewEdit.sources} onChange={(e) => setCrewEdit({ ...crewEdit, sources: e.target.checked })} /> Search trusted sources for every answer</span>
                 </label>
               </div>
+              <CrewKnowledge
+                docs={crewEdit.knowledge ?? []}
+                onChange={(knowledge) => setCrewEdit((x) => (x ? { ...x, knowledge } : x))}
+                extract={async (f) => { const r = await invokeCadus({ action: "extract-text", files: [f] }); if (!r?.text) throw new Error("No text came back"); return String(r.text); }}
+                toast={toast}
+              />
               <div className="cx-field">
                 <span>Look</span>
                 <div className="cx-crew-look">
@@ -5134,6 +5279,8 @@ export default function CadusAI() {
 
       {profileOpen && <ProfileDialog profile={profile} onSave={updateProfile} onClose={() => setProfileOpen(false)} />}
       {shareItem && <ShareDialog item={shareItem} onClose={() => setShareItem(null)} toast={toast} dark={dark} />}
+      {crewShare && <CrewShareDialog c={crewShare} base={`${window.location.origin}${window.location.pathname}`} badge={<CrewBadge c={crewShare} size={44} />} dark={dark} onClose={() => setCrewShare(null)} toast={toast} />}
+      {crewImport && <CrewImportDialog c={crewImport} badge={<CrewBadge c={crewImport} size={44} />} already={crewMine.some((x) => x.name === crewImport.name)} onAdd={() => addImported(crewImport)} onClose={() => setCrewImport(null)} />}
       {onboardOpen && (
         <Onboarding
           languages={LANGUAGES}
