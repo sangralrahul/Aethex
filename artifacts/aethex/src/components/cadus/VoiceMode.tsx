@@ -3,6 +3,7 @@
  * Cadus listens, sends what you said when you pause, reads the (short) answer
  * aloud and listens again. Uses the browser's speech recognition and voices.
  */
+import { speak, stopSpeaking } from "@/lib/cadus/voice";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Mic, MicOff, X } from "lucide-react";
 import { markdownToText } from "@/lib/cadus-markdown";
@@ -16,7 +17,7 @@ const LANG_CODE: Record<string, string> = {
 };
 
 export const voiceSupported = () =>
-  typeof window !== "undefined" && canDictate() && "speechSynthesis" in window;
+  typeof window !== "undefined" && canDictate() && ("speechSynthesis" in window || "Audio" in window);
 
 /** Text for speaking: no markdown, no citation markers, no tables. */
 export function speakable(md: string): string {
@@ -47,7 +48,7 @@ export default function VoiceMode({ language, ask, onClose }: {
     if (!alive.current) return;
     const SR = speechRecognition();
     if (!SR) { setError("Voice mode needs a browser with speech recognition, such as Chrome, Edge or Safari."); go("error"); return; }
-    try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
+    stopSpeaking();
     const rec = new SR();
     rec.lang = lang;
     rec.interimResults = true;
@@ -80,15 +81,9 @@ export default function VoiceMode({ language, ask, onClose }: {
       if (!alive.current) return;
       if (!reply) { setError("Cadus couldn't answer that. Tap the microphone to try again."); go("paused"); return; }
       setAnswer(reply);
-      const synth = window.speechSynthesis;
-      const u = new SpeechSynthesisUtterance(speakable(reply));
-      u.lang = lang;
       const next = () => { if (alive.current && phaseRef.current === "speaking") { setHeard(""); go("listening"); listen(); } };
-      u.onend = next;
-      u.onerror = next;
       go("speaking");
-      synth.cancel();
-      synth.speak(u);
+      speak(speakable(reply), { lang, quality: "fast", onEnd: next });
     };
     recRef.current = rec;
     setError("");
@@ -102,7 +97,7 @@ export default function VoiceMode({ language, ask, onClose }: {
     return () => {
       alive.current = false;
       try { recRef.current?.abort?.(); } catch { /* ignore */ }
-      try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
+      stopSpeaking();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -118,7 +113,7 @@ export default function VoiceMode({ language, ask, onClose }: {
       go("paused");
       try { recRef.current?.stop?.(); } catch { /* ignore */ }
     } else if (phase === "speaking") {
-      try { window.speechSynthesis.cancel(); } catch { /* ignore */ }
+      stopSpeaking();
       setHeard("");
       listen();
     } else if (phase !== "thinking") {

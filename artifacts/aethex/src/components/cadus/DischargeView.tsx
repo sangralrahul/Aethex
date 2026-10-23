@@ -3,6 +3,7 @@
  * case sheet) written up as a structured discharge summary by the stronger model, with
  * what the notes are missing, and advice for the patient in their language.
  */
+import { PatientAudio } from "./AudioParts";
 import { useEffect, useRef, useState } from "react";
 import { BedDouble, Copy, FileText, FileOutput, MessageCircle, Paperclip, Printer, Sparkles, Trash2, TriangleAlert, X } from "lucide-react";
 import { MdBlock } from "./LiveAnswer";
@@ -121,6 +122,7 @@ export default function DischargeView({ generate, readFile, friendlyError, toast
                 <button className="cx-btn primary" onClick={() => onPrint("Going home", x.patientAdvice, true)}><Printer size={14} /> Print large</button>
                 <a className="cx-btn" href={`https://wa.me/?text=${encodeURIComponent(x.patientAdvice.replace(/[#*|]/g, " ").replace(/-{3,}/g, "").replace(/[ \t]{2,}/g, " ").slice(0, 3500))}`} target="_blank" rel="noopener noreferrer"><MessageCircle size={14} /> WhatsApp</a>
               </div>
+              <PatientAudio text={x.patientAdvice} language={open.language} title="Going home" generate={generate} toast={toast} />
             </>
           )}
         </div>

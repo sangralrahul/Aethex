@@ -19,11 +19,13 @@
 //   ADMIN_EMAILS, STORE_EMAIL                 the store admin, and where orders are emailed
 //   RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET      online payments (off until both are set)
 //   RAZORPAY_WEBHOOK_SECRET                   Razorpay's webhook to /api/store/razorpay/webhook (optional)
+//   ELEVENLABS_API_KEY                        natural voices, Scribe and audio (worker/voice.ts; optional)
 import { functionHandler, functionNames, useEnv } from "./deno-shim";
 import { handleAuth, handleCart, handleProfile, runScheduled, type AuthEnv } from "./auth";
 import { serveDownload, type R2Bucket } from "./downloads";
 import { handleStore, runStoreScheduled, type StoreEnv } from "./store";
 import { handleTranscribe, type AiBinding } from "./transcribe";
+import { handleVoice, voiceEnabled, type VoiceEnv } from "./voice";
 import "./names/cadus";
 import "../supabase/functions/cadus/index.ts";
 import "./names/analyze-drug-interactions";
@@ -35,7 +37,7 @@ import "../supabase/functions/predict-symptoms/index.ts";
 import "./names/analyze-radiology";
 import "../supabase/functions/analyze-radiology/index.ts";
 
-interface Env extends AuthEnv, StoreEnv {
+interface Env extends AuthEnv, StoreEnv, VoiceEnv {
   ASSETS: { fetch: (request: Request) => Promise<Response> };
   ANTHROPIC_API_KEY?: string;
   /** R2 bucket "aethex-downloads": the desktop installers. */
@@ -72,7 +74,7 @@ export default {
 
     if (url.pathname === "/api/health") {
       // Shows whether the keys are set (never their values), to check the setup.
-      return json({ ok: true, functions: functionNames(), anthropic: !!env.ANTHROPIC_API_KEY, accounts: !!env.DB, google: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET), email: !!env.BREVO_API_KEY, downloads: !!env.DOWNLOADS, voiceTyping: !!env.AI, storeAdmin: !!env.ADMIN_EMAILS, onlinePayments: !!(env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET), paymentWebhook: !!env.RAZORPAY_WEBHOOK_SECRET });
+      return json({ ok: true, functions: functionNames(), anthropic: !!env.ANTHROPIC_API_KEY, accounts: !!env.DB, google: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET), email: !!env.BREVO_API_KEY, downloads: !!env.DOWNLOADS, voiceTyping: !!env.AI || voiceEnabled(env), elevenlabs: voiceEnabled(env), storeAdmin: !!env.ADMIN_EMAILS, onlinePayments: !!(env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET), paymentWebhook: !!env.RAZORPAY_WEBHOOK_SECRET });
     }
 
     const account = url.pathname.startsWith("/api/auth/") || url.pathname === "/api/auth" ? handleAuth : url.pathname === "/api/profile" ? handleProfile : url.pathname === "/api/cart" ? handleCart : null;
@@ -111,7 +113,21 @@ export default {
       const origin = request.headers.get("origin");
       if (origin && !ALLOWED_ORIGIN.test(origin)) return json({ error: "Origin not allowed" }, 403);
       if (request.method === "POST" && !origin) return json({ error: "Origin required" }, 403);
-      return handleTranscribe(request, env.AI);
+      return handleTranscribe(request, env.AI, env);
+    }
+
+    // ElevenLabs: natural voices, Scribe and audio. Only this site's pages may use them.
+    if (url.pathname.startsWith("/api/voice/")) {
+      const origin = request.headers.get("origin");
+      if (origin && !ALLOWED_ORIGIN.test(origin)) return json({ error: "Origin not allowed" }, 403);
+      if (request.method === "POST" && !origin) return json({ error: "Origin required" }, 403);
+      try {
+        const r = await handleVoice(request, env);
+        if (r) return r;
+      } catch (e) {
+        console.error(`${url.pathname} failed`, e);
+        return json({ error: "The voice service hit an unexpected error. Please try again." }, 500);
+      }
     }
 
     const match = /^\/api\/fn\/([a-z0-9-]+)\/?$/.exec(url.pathname);

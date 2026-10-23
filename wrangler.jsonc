@@ -25,6 +25,10 @@
   // Workers AI (Whisper) for voice typing in the Cadus desktop app and in browsers without
   // their own speech service (worker/transcribe.ts). No key needed; billed by Workers AI.
   "ai": { "binding": "AI" },
+  // ElevenLabs (optional): natural voices, Scribe, patient audio and podcasts (worker/voice.ts).
+  //   npx wrangler secret put ELEVENLABS_API_KEY
+  // Optional variables: ELEVENLABS_VOICE (default voice id), ELEVENLABS_DAILY_SPEAK (speak calls a day
+  // per signed-in account, default 400), ELEVENLABS_DAILY_STT (default 300), and model overrides.
   // Store cart reminders and clean-up, every hour.
   "triggers": { "crons": ["17 * * * *"] },
   // The site and its subdomains. Custom domains get their DNS records and

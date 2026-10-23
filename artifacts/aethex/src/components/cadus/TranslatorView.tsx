@@ -4,6 +4,7 @@
  * back for checking, explains medical words, flags anything worrying, and reads the
  * translation aloud. The consultation can then be written up as a clinical note.
  */
+import { speak as speakAloud, stopSpeaking } from "@/lib/cadus/voice";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeftRight, Copy, FileText, Languages, Mic, MicOff, Plus, Stethoscope, Trash2, TriangleAlert, UserRound, Volume2 } from "lucide-react";
 import { MdBlock } from "./LiveAnswer";
@@ -12,7 +13,7 @@ import { englishOf, readTrSessions, saveTrSessions, sid, TR_LANGUAGES, TR_PHRASE
 import { canDictate, dictationError, NO_DICTATION, speechRecognition } from "@/lib/cadus/speech";
 
 const canListen = canDictate();
-const canSpeak = typeof window !== "undefined" && "speechSynthesis" in window;
+const canSpeak = typeof window !== "undefined" && ("speechSynthesis" in window || "Audio" in window);
 
 export default function TranslatorView({ generate, friendlyError, toast, onPrint, defaultLanguage }: {
   generate: (body: Record<string, unknown>) => Promise<any>;
@@ -34,7 +35,7 @@ export default function TranslatorView({ generate, friendlyError, toast, onPrint
   const endRef = useRef<HTMLDivElement>(null);
   useEffect(() => saveTrSessions(sessions), [sessions]);
   useEffect(() => { endRef.current?.scrollIntoView?.({ block: "end", behavior: "smooth" }); }, [current.turns.length]);
-  useEffect(() => () => { try { recRef.current?.abort?.(); } catch { /* ignore */ } try { if (canSpeak) window.speechSynthesis.cancel(); } catch { /* ignore */ } }, []);
+  useEffect(() => () => { try { recRef.current?.abort?.(); } catch { /* ignore */ } stopSpeaking(); }, []);
   const lang = TR_LANGUAGES.find((l) => l.name === current.language) ?? TR_LANGUAGES[0];
 
   const persist = (s: TrSession) => {
@@ -43,16 +44,8 @@ export default function TranslatorView({ generate, friendlyError, toast, onPrint
   };
 
   const speak = (text: string, code: string) => {
-    if (!canSpeak || !text) return;
-    try {
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text.replace(/[*#_`]/g, ""));
-      u.lang = code;
-      const v = window.speechSynthesis.getVoices().find((x) => x.lang?.toLowerCase().startsWith(code.slice(0, 2).toLowerCase()));
-      if (v) u.voice = v;
-      u.rate = 0.95;
-      window.speechSynthesis.speak(u);
-    } catch { /* speech blocked */ }
+    if (!text) return;
+    speakAloud(text.replace(/[*#_`]/g, ""), { lang: code, quality: "fast" });
   };
 
   const send = async (raw: string, side = who) => {

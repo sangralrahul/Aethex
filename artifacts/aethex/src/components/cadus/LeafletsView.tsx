@@ -3,6 +3,7 @@
  * language, get a leaflet written for the patient, then print it on the
  * letterhead, send it by WhatsApp, or keep it for next time.
  */
+import { PatientAudio } from "./AudioParts";
 import { useEffect, useState } from "react";
 import { FileText, Languages, MessageCircle, Printer, ShieldCheck, Sparkles, Trash2 } from "lucide-react";
 import { MdBlock } from "./LiveAnswer";
@@ -83,6 +84,7 @@ export default function LeafletsView({ generate, onPrint, onWord, friendlyError,
                 </div>
               </div>
               <div className="cx-sc-note cx-lf-text"><MdBlock text={open.text} /></div>
+              {open.kind !== "consent" && <PatientAudio text={open.text} language={open.language} title={title(open)} generate={generate as (b: Record<string, unknown>) => Promise<any>} toast={toast} />}
               <p className="cx-rs-foot"><ShieldCheck size={13} /> Written for the patient from standard guidance; read it through and change anything that does not fit your patient before handing it over. {open.kind === "consent" ? "Consent is a conversation; the form records it." : ""}</p>
             </>
           ) : (

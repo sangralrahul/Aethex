@@ -20,7 +20,7 @@ import {
   Sparkles, Square, SquarePen, Stethoscope, Sun, Syringe, Telescope, Trash2, Users, Volume2, VolumeX, X, Zap, Palette,
   BedDouble, BookMarked, BookOpenText, ChartLine, ClipboardPlus, FileBadge, FileSignature, Microscope, NotebookPen, NotepadText,
   Printer, Scissors, ScrollText, Sigma, PanelRight, EyeOff, Compass, Rows3, WifiOff, Building2, ScanSearch,
-  Bot, GitBranch, HeartPulse, MessageCircle, BellRing, FileScan, ShieldPlus, ScanLine, Shield, Bone, AtSign, Users2, GitFork, CalendarDays, FileOutput, ArrowRightLeft, Waypoints, CalendarCheck, Activity, Bug, ListChecks, FlaskRound, Wind, BookCheck, CalendarClock, Eye, Ear, Droplets, Swords, Workflow,
+  Bot, GitBranch, HeartPulse, MessageCircle, BellRing, FileScan, ShieldPlus, ScanLine, Shield, Bone, AtSign, Users2, GitFork, CalendarDays, FileOutput, ArrowRightLeft, Waypoints, CalendarCheck, Activity, Bug, ListChecks, FlaskRound, Wind, BookCheck, CalendarClock, Eye, Ear, Droplets, Swords, Workflow, Headphones,
   type LucideIcon,
 } from "lucide-react";
 import { invokeAi } from "@/lib/ai-functions";
@@ -66,7 +66,9 @@ import CrewHuddleView from "@/components/cadus/CrewHuddleView";
 import CrewDebateView from "@/components/cadus/CrewDebateView";
 import CrewPlaybookView from "@/components/cadus/CrewPlaybookView";
 import CrewBuilder from "@/components/cadus/CrewBuilder";
-import { CADUS_CREW_CSS, CADUS_CREWPLUS_CSS } from "@/components/cadus/cadus-crew-styles";
+import PodcastView from "@/components/cadus/PodcastView";
+import { VoiceSettings } from "@/components/cadus/AudioParts";
+import { CADUS_CREW_CSS, CADUS_CREWPLUS_CSS, CADUS_VOICE_CSS } from "@/components/cadus/cadus-crew-styles";
 import TranslatorView from "@/components/cadus/TranslatorView";
 import PathwaysView from "@/components/cadus/PathwaysView";
 import FlashcardsView from "@/components/cadus/FlashcardsView";
@@ -91,6 +93,7 @@ import FollowUpView from "@/components/cadus/FollowUpView";
 import { ABX_KEY, ECG_KEY, POISON_KEY, PROC_KEY } from "@/lib/cadus/clinicalAi";
 import { FOLLOWUP_KEY, LOG_KEY } from "@/lib/cadus/records";
 import { STUDYPLAN_KEY } from "@/lib/cadus/studyplan";
+import { speak as speakAloud, stopSpeaking } from "@/lib/cadus/voice";
 import { installDesktopBridge, isOpenTarget, type OpenTarget } from "@/lib/cadus/desktop";
 import { cardStats } from "@/lib/cadus/learn";
 import { COMPARES_KEY, DDX_KEY, DECKS_KEY, DISCHARGE_KEY, HANDOVER_KEY, MEDREC_KEY, PATHWAYS_KEY, PRESENT_KEY, TRANSLATOR_KEY } from "@/lib/cadus/studio";
@@ -164,9 +167,9 @@ type ModeId =
   | "admission" | "progress" | "opnote" | "death" | "certificate" | "rx" | "evidence";
 /** "groq" only appears in chats saved before Cadus became Claude-only. */
 type Provider = "claude" | "groq" | "library";
-type View = "chat" | "crew" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "debate" | "playbooks" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan" | "ecg" | "abx" | "procedure" | "poison" | "infusions" | "convert" | "abg" | "logbook" | "followups";
+type View = "chat" | "crew" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "debate" | "playbooks" | "podcasts" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan" | "ecg" | "abx" | "procedure" | "poison" | "infusions" | "convert" | "abg" | "logbook" | "followups";
 /** Views reached from the Tools hub, so the hub stays highlighted in the sidebar. */
-const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today", "discharge", "handover", "ddx", "studyplan", "ecg", "abx", "procedure", "poison", "infusions", "convert", "abg", "logbook", "followups"]);
+const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today", "discharge", "handover", "ddx", "studyplan", "podcasts", "ecg", "abx", "procedure", "poison", "infusions", "convert", "abg", "logbook", "followups"]);
 type ToolTab = "all" | "clinical" | "documentation" | "learning";
 type SettingsTab = "general" | "personal" | "letterhead" | "institution" | "data" | "shortcuts" | "about";
 type StyleId = "concise" | "balanced" | "detailed";
@@ -1177,7 +1180,7 @@ export default function CadusAI() {
     return () => {
       document.title = prevTitle;
       icons.forEach((l, i) => { l.href = prev[i]; });
-      try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
+      stopSpeaking();
     };
   }, []);
 
@@ -2289,17 +2292,10 @@ export default function CadusAI() {
   };
 
   const speak = (m: Msg) => {
-    const synth = typeof window !== "undefined" ? window.speechSynthesis : undefined;
-    if (!synth) { toast("Read aloud isn't supported in this browser"); return; }
-    if (speakingId === m.id) { synth.cancel(); setSpeakingId(""); return; }
-    synth.cancel();
-    const u = new SpeechSynthesisUtterance(markdownToText(m.content).slice(0, 6000));
-    u.lang = prefs.language === "Hindi" ? "hi-IN" : "en-IN";
+    if (speakingId === m.id) { stopSpeaking(); setSpeakingId(""); return; }
     const done = () => setSpeakingId((id) => (id === m.id ? "" : id));
-    u.onend = done;
-    u.onerror = done;
     setSpeakingId(m.id);
-    synth.speak(u);
+    speakAloud(markdownToText(m.content).slice(0, 12000), { lang: prefs.language === "Hindi" ? "hi" : "en", quality: "fast", onEnd: done });
   };
 
   /** A title for an answer as a document: its heading or the tool's name for letters and notes, otherwise the question. */
@@ -2670,6 +2666,7 @@ export default function CadusAI() {
       { key: "a:handover", label: "Shift Handover: I-PASS for the next team", hint: "From your ward list, with if/then plans", icon: ArrowRightLeft, run: () => openView("handover") },
       { key: "a:ddx", label: "Differential Builder: ranked differential from findings", hint: "Can't-miss diagnoses and the next tests", icon: Waypoints, run: () => openView("ddx") },
       { key: "a:studyplan", label: "Exam Study Planner: a day-by-day plan to your exam", hint: "NEET-PG, INI-CET, FMGE or university", icon: CalendarCheck, run: () => openView("studyplan") },
+      { key: "a:podcasts", label: "Revision Podcasts: a topic as a two-voice audio lesson", hint: "Natural voices; from a topic or a flashcard deck", icon: Headphones, run: () => openView("podcasts") },
       { key: "a:ecg", label: "ECG Reader: read an ECG photo", hint: "Rate, rhythm, axis, intervals; STEMI and other urgent patterns flagged", icon: Activity, run: () => openView("ecg") },
       { key: "a:abx", label: "Antibiotic Guide: empiric antibiotics", hint: "ICMR-based, adjusted for kidneys, allergy and your hospital policy", icon: Bug, run: () => openView("abx") },
       { key: "a:procedure", label: "Procedure Guide and consent", hint: "LP, central line, chest drain, ascitic tap and more", icon: ListChecks, run: () => openView("procedure") },
@@ -3053,6 +3050,7 @@ export default function CadusAI() {
     { id: "handover", icon: ArrowRightLeft, tone: "amber", title: "Shift Handover", sub: "I-PASS from your ward list", go: () => openView("handover") },
     { id: "ddx", icon: Waypoints, tone: "rose", title: "Differential Builder", sub: "Ranked, with can't-miss flags", go: () => openView("ddx") },
     { id: "studyplan", icon: CalendarCheck, tone: "violet", title: "Study Planner", sub: "Day by day to your exam", go: () => openView("studyplan") },
+    { id: "podcasts", icon: Headphones, tone: "violet", title: "Revision Podcasts", sub: "Two voices, on the go", go: () => openView("podcasts") },
     { id: "ecg", icon: Activity, tone: "rose", title: "ECG Reader", sub: "Photo in, systematic read out", go: () => openView("ecg") },
     { id: "abx", icon: Bug, tone: "sky", title: "Antibiotic Guide", sub: "Empiric, adjusted to the patient", go: () => openView("abx") },
     { id: "procedure", icon: ListChecks, tone: "amber", title: "Procedure Guide", sub: "Steps, checklist and consent", go: () => openView("procedure") },
@@ -4191,7 +4189,7 @@ export default function CadusAI() {
       style={{ ["--acc" as string]: dark ? accent.dark : accent.light, ["--fs" as string]: `${fontSize}px`, ["--fs-u" as string]: `${sansSize}px` }}
       {...dropHandlers}
     >
-      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS + CADUS_CREWPLUS_CSS}</style>
+      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS + CADUS_CREWPLUS_CSS + CADUS_VOICE_CSS}</style>
 
       {/* ============================================== sidebar */}
       <div className={`cx-scrim ${sidebarOpen ? "on" : ""}`} onClick={() => setSidebarOpen(false)} />
@@ -4260,6 +4258,7 @@ export default function CadusAI() {
               <button className={`cx-nav-i ${view === "handover" ? "on" : ""}`} onClick={() => openView("handover")} title="Shift Handover"><ArrowRightLeft size={16} /><span className="cx-nav-l">Shift Handover</span></button>
               <button className={`cx-nav-i ${view === "ddx" ? "on" : ""}`} onClick={() => openView("ddx")} title="Differential Builder"><Waypoints size={16} /><span className="cx-nav-l">Differential Builder</span></button>
               <button className={`cx-nav-i ${view === "studyplan" ? "on" : ""}`} onClick={() => openView("studyplan")} title="Study Planner"><CalendarCheck size={16} /><span className="cx-nav-l">Study Planner</span></button>
+              <button className={`cx-nav-i ${view === "podcasts" ? "on" : ""}`} onClick={() => openView("podcasts")} title="Revision Podcasts"><Headphones size={16} /><span className="cx-nav-l">Revision Podcasts</span></button>
               <button className={`cx-nav-i ${view === "ecg" ? "on" : ""}`} onClick={() => openView("ecg")} title="ECG Reader"><Activity size={16} /><span className="cx-nav-l">ECG Reader</span></button>
               <button className={`cx-nav-i ${view === "abx" ? "on" : ""}`} onClick={() => openView("abx")} title="Antibiotic Guide"><Bug size={16} /><span className="cx-nav-l">Antibiotic Guide</span></button>
               <button className={`cx-nav-i ${view === "procedure" ? "on" : ""}`} onClick={() => openView("procedure")} title="Procedure Guide"><ListChecks size={16} /><span className="cx-nav-l">Procedure Guide</span></button>
@@ -4539,6 +4538,7 @@ export default function CadusAI() {
                 : view === "handover" ? [ArrowRightLeft, "Shift Handover"]
                 : view === "ddx" ? [Waypoints, "Differential Builder"]
                 : view === "studyplan" ? [CalendarCheck, "Study Planner"]
+                : view === "podcasts" ? [Headphones, "Revision Podcasts"]
                 : view === "ecg" ? [Activity, "ECG Reader"]
                 : view === "abx" ? [Bug, "Antibiotic Guide"]
                 : view === "procedure" ? [ListChecks, "Procedure Guide"]
@@ -4835,6 +4835,9 @@ export default function CadusAI() {
                 onPractice={openPractice}
                 toast={toast}
               />
+            )
+            : view === "podcasts" ? (
+              <PodcastView generate={(body) => invokeCadus({ ...body, model: prefs.model })} friendlyError={friendlyError} toast={toast} />
             )
             : view === "ecg" ? (
               <EcgView
@@ -5409,6 +5412,10 @@ export default function CadusAI() {
                       <select className="cx-select" value={prefs.language} onChange={(e) => setPrefs({ ...prefs, language: e.target.value })} aria-label="Reply language">
                         {LANGUAGES.map((l) => <option key={l}>{l}</option>)}
                       </select>
+                    </div>
+                    <div className="cx-set-row cx-set-col" data-settings="voice">
+                      <div><b>Voice</b><small>The voice that reads answers aloud and speaks in voice mode, the Translator, patient audio and podcasts</small></div>
+                      <VoiceSettings toast={toast} />
                     </div>
                     <div className="cx-set-row">
                       <div><b>Units</b><small>Conventional units (mg/dL) as most Indian laboratories report them, or SI units first (mmol/L), with the other in brackets.</small></div>

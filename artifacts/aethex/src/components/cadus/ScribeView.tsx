@@ -3,6 +3,7 @@
  * ICD-10 codes, review the gaps, edit, sign, and print on the letterhead or
  * export to Word. Notes stay on this device.
  */
+import { ConsultRecorder } from "./AudioParts";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ClipboardList, FileSignature, Mic, MicOff, Pencil, Plus, Printer, Search, ShieldCheck, Sparkles, Trash2, X } from "lucide-react";
 import { MdBlock } from "./LiveAnswer";
@@ -108,6 +109,7 @@ export default function ScribeView({ generate, onPrint, onWord, onAsk, friendlyE
               <textarea className="cx-input" rows={9} value={transcript} onChange={(e) => setTranscript(e.target.value)} placeholder={"Speak or type as you would tell a colleague: \"52-year-old woman, known diabetic on metformin 500 twice a day, sugars 180 to 220 fasting, no hypos, has numbness in both feet since two months... examination: BP 140 by 90, monofilament reduced both feet... plan: add glimepiride 1 mg, HbA1c, lipid, foot care advice, review in a month.\""} aria-label="Consultation transcript" />
               <div className="cx-sc-dictate-f">
                 <button className={`cx-btn ${listening ? "danger" : ""}`} onClick={toggleMic}>{listening ? <><MicOff size={14} /> Stop dictating</> : <><Mic size={14} /> Dictate</>}</button>
+                <ConsultRecorder language={language} onTranscript={(t) => setTranscript(t)} toast={toast} disabled={listening} />
                 {listening && <span className="cx-sc-live"><i /> Listening… speak naturally, pause between sections</span>}
                 <span className="cx-sc-count">{transcript.trim().split(/\s+/).filter(Boolean).length} words</span>
                 <button className="cx-btn primary" onClick={makeNote} disabled={busy || !transcript.trim()}><Sparkles size={14} /> {busy ? "Writing the note…" : "Write the note"}</button>

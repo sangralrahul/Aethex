@@ -16,7 +16,7 @@ import {
   Search, ShieldCheck, UserRound, WifiOff, X,
   BellRing, Bot, CalendarDays, FileScan, GitFork, HeartPulse, History, Languages, Layers, Pill, Presentation, ShieldPlus, Users2,
   ArrowRightLeft, CalendarCheck, FileOutput, Keyboard, Power, Waypoints, PanelBottom,
-  Activity, Bug, ListChecks, FlaskRound, Syringe, Scale, Wind, BookCheck, CalendarClock, Swords, Workflow, Wand2,
+  Activity, Bug, ListChecks, FlaskRound, Syringe, Scale, Wind, BookCheck, CalendarClock, Swords, Workflow, Wand2, Headphones, AudioLines, Volume2,
 } from "lucide-react";
 import CadusMark from "@/components/cadus/CadusMark";
 import { FONT_FACES } from "@/components/cadus/cadus-styles";
@@ -266,13 +266,16 @@ const TOOLS: [string, string][] = [
   ["Clinical calculators", "t"], ["Emergency", "r"], ["Paediatrics", "v"], ["Ward list", "t"], ["Consult Translator", "v"],
   ["Cadus Crew", "y"], ["Crew Huddle", "y"], ["Crew Debate", "y"], ["Crew Playbooks", "y"], ["Deep Dive research", "v"], ["Guideline Watch", "v"], ["Case Simulator", "y"],
   ["Presentation Coach", "y"], ["Flashcards", "y"], ["Exam practice", "y"], ["Patient leaflets", "t"], ["Offline library", "y"],
-  ["Voice typing", "v"], ["Discharge Summary", "t"], ["Shift Handover", "r"], ["Differential Builder", "v"], ["Study Planner", "y"],
+  ["Voice typing", "v"], ["Natural voices", "y"], ["Revision Podcasts", "y"], ["Discharge Summary", "t"], ["Shift Handover", "r"], ["Differential Builder", "v"], ["Study Planner", "y"],
   ["ECG Reader", "r"], ["Antibiotic Guide", "t"], ["Procedure Guide", "v"], ["Poisoning & Snakebite", "r"], ["Infusions", "t"],
   ["ABG Interpreter", "v"], ["Dose Converter", "t"], ["PG Logbook", "y"], ["Follow-ups", "y"],
 ];
 
 /** What's arrived in Cadus lately. The app shows the live Cadus, so all of it is in the app already. */
 const NEW_IN_CADUS: { icon: typeof Pill; t: string; d: string }[] = [
+  { icon: Volume2, t: "Natural voices", d: "Answers, voice mode and the Consult Translator read aloud in natural, human-sounding voices, in English, Hindi and other Indian languages. Choose the voice in Settings." },
+  { icon: AudioLines, t: "Audio for the patient", d: "Discharge advice, the medicines sheet or a leaflet as an MP3 in the patient's language, to play in the clinic or send on WhatsApp; and the Scribe records a consultation and tells doctor and patient apart." },
+  { icon: Headphones, t: "Revision Podcasts", d: "Any topic or flashcard deck as a short two-voice audio lesson, a teacher and a student, for NEET-PG revision on the bus or at the gym." },
   { icon: Swords, t: "Crew Debate", d: "Two assistants argue opposite sides of a clinical question, such as thrombolyse or not, each rebuts the other, and a neutral judge weighs the evidence." },
   { icon: Workflow, t: "Crew Playbooks", d: "Chain assistants into a workflow: rough notes become a case presentation, a medicines check and a discharge summary, one step after another." },
   { icon: Wand2, t: "Assistant Builder", d: "Describe an assistant in one line and Cadus writes its instructions, starter questions and icon, ready to review and save." },

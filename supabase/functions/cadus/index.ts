@@ -26,6 +26,8 @@
 //                         liver, age), with generics, NLEM and Jan Aushadhi names.
 //   watch                 Guideline Watch: the newest PubMed records on a topic (last 7, 30
 //                         or 90 days) and a digest written only from them.
+//   audio-script          Patient instructions rewritten as a spoken script in their language (for a natural voice).
+//   podcast-script        A two-voice revision podcast script (teacher and student) on a topic or notes.
 //   crew-build            Assistant Builder: a one-line description to a full Crew assistant.
 //   debate-turn           Crew Debate: one assistant's opening or rebuttal for its side.
 //   debate-judge          Crew Debate: the neutral verdict on both sides' arguments.
@@ -117,6 +119,7 @@ import {
   TRANSLATE_SYSTEM,
   translateTurn,
 } from "../_shared/studio.ts";
+import { podcastScript, podcastWords, PODCAST_SYSTEM, spokenScript, SPOKEN_SYSTEM } from "../_shared/audio.ts";
 import { BUILD_SYSTEM, builtAssistant, DEBATE_SYSTEM, debatePrompt, debateVerdict, JUDGE_SYSTEM } from "../_shared/crewplus.ts";
 import { ABX_SYSTEM, abxPlan, ECG_SYSTEM, ecgRead, POISON_SYSTEM, poisonPlan, PROCEDURE_SYSTEM, procGuide } from "../_shared/bedside.ts";
 
@@ -1646,6 +1649,50 @@ Deno.serve(async (req) => {
         provider: r.provider,
         model: r.model,
       });
+    }
+
+    // ---------------------------------------------------------------- Audio: spoken patient instructions
+    if (action === "audio-script") {
+      const written = String(body.text || "").replace(/\r/g, "").trim().slice(0, 12000);
+      if (written.split(/\s+/).length < 8) return jsonResponse({ error: "There's nothing to read aloud yet" }, 400);
+      const language = cleanLine(body.language, 40) || "English";
+      const r = await callAI({
+        model: answerModel(body.model),
+        messages: [
+          { role: "system", content: SPOKEN_SYSTEM },
+          { role: "user", content: `Language: ${language}${language !== "English" ? " (its own script; medicine names in English)" : ""}.\n<instructions>\n${written}\n</instructions>` },
+        ],
+        effort: "low",
+        maxTokens: 3000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const script = spokenScript(r.content);
+      if (script.length < 20) return jsonResponse({ error: "Couldn't write the spoken version. Please try again." }, 502);
+      return jsonResponse({ script });
+    }
+
+    // ---------------------------------------------------------------- Audio: revision podcast script
+    if (action === "podcast-script") {
+      const topic = cleanLine(body.topic, 200);
+      const source = String(body.source || "").replace(/\r/g, "").trim().slice(0, 12000);
+      if (topic.length < 3 && source.split(/\s+/).length < 15) return jsonResponse({ error: "Give a topic, or paste notes to turn into a podcast" }, 400);
+      const minutes = Math.max(2, Math.min(10, Number(body.minutes) || 4));
+      const language = ["English", "Hinglish", "Hindi"].includes(String(body.language)) ? String(body.language) : "English";
+      const exam = cleanLine(body.exam, 40) || "NEET-PG";
+      const r = await callAI({
+        model: answerModel(body.model),
+        messages: [
+          { role: "system", content: PODCAST_SYSTEM },
+          { role: "user", content: [`TOPIC: ${topic || "the notes below"}`, `EXAM: ${exam}`, `LANGUAGE: ${language}`, `LENGTH: about ${podcastWords(minutes)} words in total (${minutes} minutes)`, source ? `Base it on these notes (correct anything wrong in them):\n<notes>\n${source}\n</notes>` : ""].filter(Boolean).join("\n") },
+        ],
+        jsonMode: true,
+        effort: "medium",
+        maxTokens: 6000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = podcastScript(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't write the podcast this time. Please try again." }, 502);
+      return jsonResponse({ result });
     }
 
     // ---------------------------------------------------------------- Assistant Builder

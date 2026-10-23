@@ -4,6 +4,7 @@
  * stopped or changed, finds problems, and writes a "your medicines now" sheet for the
  * patient in their language.
  */
+import { PatientAudio } from "./AudioParts";
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Copy, FileText, MessageCircle, Paperclip, Pill, Printer, ShieldAlert, ShieldCheck, Sparkles, Trash2, TriangleAlert, X } from "lucide-react";
 import { MdBlock } from "./LiveAnswer";
@@ -139,6 +140,7 @@ export default function MedRecView({ generate, readFile, friendlyError, toast, o
                 <button className="cx-btn primary" onClick={() => onPrint("Your medicines", r.patientSheet, true)}><Printer size={14} /> Print large</button>
                 <a className="cx-btn" href={`https://wa.me/?text=${encodeURIComponent(r.patientSheet.replace(/[#*|]/g, " ").replace(/-{3,}/g, "").replace(/[ \t]{2,}/g, " ").slice(0, 3500))}`} target="_blank" rel="noopener noreferrer"><MessageCircle size={14} /> WhatsApp</a>
               </div>
+              <PatientAudio text={r.patientSheet} language={open.language} title="Your medicines" generate={generate} toast={toast} />
             </>
           )}
         </div>
