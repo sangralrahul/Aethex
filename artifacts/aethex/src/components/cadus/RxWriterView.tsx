@@ -14,15 +14,17 @@ import { draftToPrescription, formularyMatch, type RxDraft } from "@/lib/cadus/c
 
 const EXAMPLES = ["Community-acquired pneumonia, outpatient", "Uncomplicated UTI in a non-pregnant woman", "Acute gastroenteritis with some dehydration", "Newly diagnosed type 2 diabetes, HbA1c 8.4", "Hypertension stage 1", "Acute migraine"];
 
-export default function RxWriterView({ generate, friendlyError, toast, onPrint, onOpenPrescriber, defaultLanguage }: {
+export default function RxWriterView({ generate, friendlyError, toast, onPrint, onOpenPrescriber, defaultLanguage, initial }: {
   generate: (body: Record<string, unknown>) => Promise<any>;
   friendlyError: (raw: string) => string;
   toast: (t: string) => void;
   onPrint: (title: string, md: string) => void;
   onOpenPrescriber: () => void;
   defaultLanguage: string;
+  /** From the OPD queue: the patient who is in. */
+  initial?: { diagnosis?: string; age?: string; sex?: string; weight?: string };
 }) {
-  const [f, setF] = useState({ diagnosis: "", age: "", sex: "", weight: "", renal: "", hepatic: "", pregnancy: "", allergies: "", current: "", setting: "OPD", notes: "" });
+  const [f, setF] = useState({ diagnosis: initial?.diagnosis ?? "", age: initial?.age ?? "", sex: initial?.sex ?? "", weight: initial?.weight ?? "", renal: "", hepatic: "", pregnancy: "", allergies: "", current: "", setting: "OPD", notes: "" });
   const [language, setLanguage] = useState(LANGUAGES.includes(defaultLanguage) ? defaultLanguage : "English");
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState<RxDraft | null>(null);

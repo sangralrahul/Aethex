@@ -38,6 +38,9 @@
 //   mccd                  The cause-of-death sequence for the MCCD (Form 4 / 4A).
 //   mnemonic              Mnemonics for a topic or list.
 //   generic-lookup        Generic compositions of brand names not in the formulary.
+//   image-quiz            Quiz questions from the user's own clinical images.
+//   oncall                On-call Helper: the first minutes of a call from the ward.
+//   appraise              Journal Club: critical appraisal of a paper (text or PDF) with a slide outline.
 //   crew-build            Assistant Builder: a one-line description to a full Crew assistant.
 //   debate-turn           Crew Debate: one assistant's opening or rebuttal for its side.
 //   debate-judge          Crew Debate: the neutral verdict on both sides' arguments.
@@ -135,6 +138,7 @@ import {
   ADR_SYSTEM, adrReport, DAILY_CASE_SYSTEM, DAILY_LEVELS, dailyCase, GENERIC_SYSTEM, genericLookup, LAB_EXTRACT_SYSTEM, LAB_TREND_SYSTEM, labExplain, labRows,
   LETTER_KINDS, letterResult, letterSystem, MCCD_SYSTEM, mccdResult, MNEMONIC_SYSTEM, mnemonicsResult, RX_WRITE_SYSTEM, rxDraft, rxPrompt, type LetterKind,
 } from "../_shared/clinic20.ts";
+import { APPRAISE_SYSTEM, appraisal, IMAGE_QUIZ_SYSTEM, imageQuiz, ONCALL_CALLS, ONCALL_SYSTEM, oncallPlan } from "../_shared/clinic21.ts";
 import { ABX_SYSTEM, abxPlan, ECG_SYSTEM, ecgRead, POISON_SYSTEM, poisonPlan, PROCEDURE_SYSTEM, procGuide } from "../_shared/bedside.ts";
 
 /* ------------------------------------------------------------------ prompts */
@@ -2180,6 +2184,74 @@ Deno.serve(async (req) => {
       });
       if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
       return jsonResponse({ items: genericLookup(parseJsonLoose<any>(r.content)) });
+    }
+
+    // ---------------------------------------------------------------- Update 21
+    if (action === "image-quiz") {
+      const files = attachmentParts(body.files, "");
+      if (!files.images) return jsonResponse({ error: "Add one or more images" }, 400);
+      const per = Math.max(1, Math.min(3, Number(body.perImage) || 2));
+      const level = cleanLine(body.level, 30) || "MBBS";
+      const hint = String(body.hint || "").replace(/\r/g, "").trim().slice(0, 1500);
+      const r = await callAI({
+        model: CLAUDE_REVIEW_MODEL,
+        messages: [
+          { role: "system", content: IMAGE_QUIZ_SYSTEM },
+          { role: "user", content: [
+            { type: "text", text: `LEARNERS: ${level}. QUESTIONS PER IMAGE: ${per}.${hint ? `\nTEACHER'S HINT (what the images show): ${hint}` : ""}` },
+            ...files.parts,
+            { type: "text", text: `There are ${files.images} images, numbered in this order. Write the quiz.` },
+          ] },
+        ],
+        jsonMode: true,
+        effort: "high",
+        maxTokens: 8000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = imageQuiz(parseJsonLoose<any>(r.content), files.images);
+      if (!result) return jsonResponse({ error: "Couldn't write questions from those images. Try clearer images or add a hint." }, 502);
+      return jsonResponse({ result });
+    }
+
+    if (action === "oncall") {
+      const call = (ONCALL_CALLS as readonly string[]).includes(String(body.call)) ? String(body.call) : "Other";
+      const said = String(body.said || "").replace(/\r/g, "").trim().slice(0, 2000);
+      const patient = String(body.patient || "").replace(/\r/g, "").trim().slice(0, 2000);
+      if (call === "Other" && said.split(/\s+/).length < 4) return jsonResponse({ error: "Say what the nurse told you" }, 400);
+      const r = await callAI({
+        model: answerModel(body.model),
+        messages: [
+          { role: "system", content: ONCALL_SYSTEM },
+          { role: "user", content: [`CALL ABOUT: ${call}`, said && `THE NURSE SAYS: ${said}`, patient && `THE PATIENT: ${patient}`, cleanLine(body.vitals, 200) && `VITALS: ${cleanLine(body.vitals, 200)}`].filter(Boolean).join("\n") },
+        ],
+        jsonMode: true,
+        effort: "low",
+        maxTokens: 3000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = oncallPlan(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't make a plan this time. Please try again." }, 502);
+      return jsonResponse({ result });
+    }
+
+    if (action === "appraise") {
+      const paper = String(body.paper || "").replace(/\r/g, "").trim().slice(0, 60000);
+      const files = attachmentParts(body.files, "");
+      if (paper.split(/\s+/).length < 60 && !files.documents && !files.images) return jsonResponse({ error: "Paste the paper or its abstract, or attach the PDF" }, 400);
+      const r = await callAI({
+        model: CLAUDE_REVIEW_MODEL,
+        messages: [
+          { role: "system", content: APPRAISE_SYSTEM },
+          { role: "user", content: [...files.parts, ...(paper ? [{ type: "text", text: `<paper>\n${paper}\n</paper>` }] : []), { type: "text", text: "Appraise this paper for journal club." }] },
+        ],
+        jsonMode: true,
+        effort: "high",
+        maxTokens: 9000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = appraisal(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't appraise that. Paste more of the paper, or attach the PDF." }, 502);
+      return jsonResponse({ result });
     }
 
     // ---------------------------------------------------------------- Shift Handover

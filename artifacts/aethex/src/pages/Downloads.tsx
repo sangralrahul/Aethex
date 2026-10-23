@@ -18,6 +18,7 @@ import {
   ArrowRightLeft, CalendarCheck, FileOutput, Keyboard, Power, Waypoints, PanelBottom,
   Activity, Bug, ListChecks, FlaskRound, Syringe, Scale, Wind, BookCheck, CalendarClock, Swords, Workflow, Wand2, Headphones, AudioLines, Volume2,
   MicVocal, Speech, FileAudio, FilePen, ChartLine, CalendarHeart, ScrollText, ShieldAlert, FileSignature, Brain, PillBottle,
+  ListOrdered, Images, Weight, Timer, PhoneCall, BookOpenText, Sigma, CalendarRange,
 } from "lucide-react";
 import CadusMark from "@/components/cadus/CadusMark";
 import { FONT_FACES } from "@/components/cadus/cadus-styles";
@@ -272,10 +273,19 @@ const TOOLS: [string, string][] = [
   ["ABG Interpreter", "v"], ["Dose Converter", "t"], ["PG Logbook", "y"], ["Follow-ups", "y"],
   ["Voice Viva", "y"], ["Voice OSCE", "y"], ["Your own voice", "v"], ["Patient Audio Library", "t"],
   ["Prescription Writer", "t"], ["Lab Trends", "v"], ["Daily Clinical Case", "y"], ["Letters & Certificates", "r"], ["ADR Report", "r"], ["Cause of Death (MCCD)", "v"], ["Mnemonic Maker", "y"], ["Generic Finder", "t"],
+  ["OPD Queue", "t"], ["Clinical Image Quiz", "y"], ["Dose Card by Weight", "r"], ["Mock Tests", "y"], ["On-call Helper", "r"], ["Journal Club", "v"], ["Statistics Test Chooser", "v"], ["Duty Roster", "t"],
 ];
 
 /** What's arrived in Cadus lately. The app shows the live Cadus, so all of it is in the app already. */
 const NEW_IN_CADUS: { icon: typeof Pill; t: string; d: string }[] = [
+  { icon: ListOrdered, t: "OPD Queue", d: "Today's outpatients with token numbers, waiting times, quick vitals and a big token board for the waiting area; one tap to write the prescription." },
+  { icon: Images, t: "Clinical Image Quiz", d: "Turn your own X-rays, ECGs and clinical photos into quiz questions, and send your batch one page that works on any phone." },
+  { icon: Weight, t: "Dose Card by Weight", d: "Every emergency drug dose, the tube size and fluids for a child's weight (or age), on one card to print for the trolley." },
+  { icon: Timer, t: "Subject-wise mock tests", d: "Timed papers of 25, 50 or 100 questions on the subjects you choose, scored +4/−1 like NEET-PG, with your weak topics." },
+  { icon: PhoneCall, t: "On-call Helper", d: "The ward calls at night: whether to go now, what to ask the nurse, what to order, what not to miss and when to call your senior." },
+  { icon: BookOpenText, t: "Journal Club", d: "Attach a paper: CASP appraisal, results with the numbers, biases, relevance to India, discussion questions and slides." },
+  { icon: Sigma, t: "Statistics Test Chooser", d: "Which test for your thesis, with its assumptions, where it is in SPSS and how to report it." },
+  { icon: CalendarRange, t: "Duty Roster", d: "A fair on-call roster for the month in seconds: weekends shared, leave respected, no back-to-back nights; print it or open it in Excel." },
   { icon: FilePen, t: "Prescription Writer", d: "Give the diagnosis and the patient's details: Cadus drafts the prescription with doses for age, weight and kidneys, checks it against the formulary and for interactions, and writes the advice in the patient's language." },
   { icon: ChartLine, t: "Lab Trends", d: "Photograph a patient's lab reports: every result is charted over time against its usual range and explained test by test, with what to check next." },
   { icon: CalendarHeart, t: "Daily Clinical Case", d: "A new case every day with five questions. Keep your streak going and share your score with your batch." },

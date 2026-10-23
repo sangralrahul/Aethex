@@ -22,7 +22,7 @@ import {
   Printer, Scissors, ScrollText, Sigma, PanelRight, EyeOff, Compass, Rows3, WifiOff, Building2, ScanSearch,
   Bot, GitBranch, HeartPulse, MessageCircle, BellRing, FileScan, ShieldPlus, ScanLine, Shield, Bone, AtSign, Users2, GitFork, CalendarDays, FileOutput, ArrowRightLeft, Waypoints, CalendarCheck, Activity, Bug, ListChecks, FlaskRound, Wind, BookCheck, CalendarClock, Eye, Ear, Droplets, Swords, Workflow, Headphones,
   type LucideIcon,
-  FileAudio, MicVocal, Speech, CalendarHeart, PillBottle,
+  FileAudio, MicVocal, Speech, CalendarHeart, PillBottle, ListOrdered, Images, Weight, Timer, PhoneCall, CalendarRange,
 } from "lucide-react";
 import { invokeAi } from "@/lib/ai-functions";
 import { useUserAuth } from "@/hooks/use-user-auth";
@@ -60,6 +60,13 @@ import DailyCaseView from "@/components/cadus/DailyCaseView";
 import DocWriterView from "@/components/cadus/DocWriterView";
 import MnemonicView from "@/components/cadus/MnemonicView";
 import GenericFinderView from "@/components/cadus/GenericFinderView";
+import OpdQueueView from "@/components/cadus/OpdQueueView";
+import ImageQuizView from "@/components/cadus/ImageQuizView";
+import DoseCardView from "@/components/cadus/DoseCardView";
+import OnCallView from "@/components/cadus/OnCallView";
+import JournalClubView from "@/components/cadus/JournalClubView";
+import StatsChooserView from "@/components/cadus/StatsChooserView";
+import RosterView from "@/components/cadus/RosterView";
 import PersonalSettings from "@/components/cadus/PersonalSettings";
 import { CADUS_CHAT_CSS } from "@/components/cadus/cadus-chat-styles";
 import { closePartialMarkdown, createTextStore, streamCadus, StreamUnavailable, type DeepStep } from "@/lib/cadus/stream";
@@ -76,7 +83,7 @@ import CrewPlaybookView from "@/components/cadus/CrewPlaybookView";
 import CrewBuilder from "@/components/cadus/CrewBuilder";
 import PodcastView from "@/components/cadus/PodcastView";
 import { VoiceSettings } from "@/components/cadus/AudioParts";
-import { CADUS_CLINIC20_CSS, CADUS_CREW_CSS, CADUS_CREWPLUS_CSS, CADUS_VOICE_CSS } from "@/components/cadus/cadus-crew-styles";
+import { CADUS_CLINIC20_CSS, CADUS_CLINIC21_CSS, CADUS_CREW_CSS, CADUS_CREWPLUS_CSS, CADUS_VOICE_CSS } from "@/components/cadus/cadus-crew-styles";
 import TranslatorView from "@/components/cadus/TranslatorView";
 import PathwaysView from "@/components/cadus/PathwaysView";
 import FlashcardsView from "@/components/cadus/FlashcardsView";
@@ -175,9 +182,9 @@ type ModeId =
   | "admission" | "progress" | "opnote" | "death" | "certificate" | "rx" | "evidence";
 /** "groq" only appears in chats saved before Cadus became Claude-only. */
 type Provider = "claude" | "groq" | "library";
-type View = "chat" | "crew" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "debate" | "playbooks" | "podcasts" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan" | "ecg" | "abx" | "procedure" | "poison" | "infusions" | "convert" | "abg" | "logbook" | "followups" | "audiolib" | "rxwrite" | "labtrend" | "daily" | "letters" | "adr" | "mccd" | "mnemonics" | "generics";
+type View = "chat" | "crew" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "debate" | "playbooks" | "podcasts" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan" | "ecg" | "abx" | "procedure" | "poison" | "infusions" | "convert" | "abg" | "logbook" | "followups" | "audiolib" | "rxwrite" | "labtrend" | "daily" | "letters" | "adr" | "mccd" | "mnemonics" | "generics" | "opd" | "imagequiz" | "dosecard" | "oncall" | "journal" | "stats" | "roster";
 /** Views reached from the Tools hub, so the hub stays highlighted in the sidebar. */
-const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today", "discharge", "handover", "ddx", "studyplan", "podcasts", "ecg", "abx", "procedure", "poison", "infusions", "convert", "abg", "logbook", "followups", "audiolib", "rxwrite", "labtrend", "daily", "letters", "adr", "mccd", "mnemonics", "generics"]);
+const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today", "discharge", "handover", "ddx", "studyplan", "podcasts", "ecg", "abx", "procedure", "poison", "infusions", "convert", "abg", "logbook", "followups", "audiolib", "rxwrite", "labtrend", "daily", "letters", "adr", "mccd", "mnemonics", "generics", "opd", "imagequiz", "dosecard", "oncall", "journal", "stats", "roster"]);
 type ToolTab = "all" | "clinical" | "documentation" | "learning";
 type SettingsTab = "general" | "personal" | "letterhead" | "institution" | "data" | "shortcuts" | "about";
 type StyleId = "concise" | "balanced" | "detailed";
@@ -2086,7 +2093,11 @@ export default function CadusAI() {
     setPop(null);
   };
 
-  const openPractice = () => {
+  const [practiceInit, setPracticeInit] = useState<{ tab?: "today" | "mock" | "syllabus" | "subjects"; key: number }>({ key: 0 });
+  const [rxInit, setRxInit] = useState<{ diagnosis?: string; age?: string; sex?: string; weight?: string; key: number }>({ key: 0 });
+  const openPractice = (tab?: unknown) => {
+    // Also used directly as a click handler, so only a tab name counts.
+    if (tab === "today" || tab === "mock" || tab === "syllabus" || tab === "subjects") setPracticeInit({ tab, key: Date.now() });
     setView("practice");
     setSidebarOpen(false);
     setPop(null);
@@ -2726,6 +2737,14 @@ export default function CadusAI() {
       { key: "a:mccd", label: "Cause of Death: write the MCCD sequence correctly", hint: "Immediate, antecedent and underlying causes with ICD-10", icon: FileSignature, run: () => openView("mccd") },
       { key: "a:mnemonics", label: "Mnemonic Maker: remember any list", hint: "Classic or new mnemonics, saved to flashcards", icon: Brain, run: () => openView("mnemonics") },
       { key: "a:generics", label: "Generic Finder: brand names to generics", hint: "NLEM status, other brands and the usual dose", icon: PillBottle, run: () => openView("generics") },
+      { key: "a:opd", label: "OPD Queue: today's patients with tokens", hint: "Call next, vitals, token board; straight to the prescription", icon: ListOrdered, run: () => openView("opd") },
+      { key: "a:imagequiz", label: "Clinical Image Quiz: your X-rays and ECGs as questions", hint: "Play it, or send your batch one page", icon: Images, run: () => openView("imagequiz") },
+      { key: "a:dosecard", label: "Dose Card: every emergency dose for a weight", hint: "Tube size, fluids, common medicines; print it", icon: Weight, run: () => openView("dosecard") },
+      { key: "a:mocks", label: "Mock Tests: timed papers by subject", hint: "25, 50 or 100 questions, scored like NEET-PG", icon: Timer, run: () => openPractice("mock") },
+      { key: "a:oncall", label: "On-call Helper: the ward is calling", hint: "See now or not, orders, don't miss, when to escalate", icon: PhoneCall, run: () => openView("oncall") },
+      { key: "a:journal", label: "Journal Club: appraise a paper", hint: "CASP checklist, results, bias, slides", icon: BookOpenText, run: () => openView("journal") },
+      { key: "a:stats", label: "Statistics: which test to use", hint: "With SPSS steps and how to report it", icon: Sigma, run: () => openView("stats") },
+      { key: "a:roster", label: "Duty Roster: a fair on-call roster", hint: "Weekends shared, leave respected; print or Excel", icon: CalendarRange, run: () => openView("roster") },
       { key: "a:present", label: "Presentation Coach: practise presenting a case", hint: "Ward round, long case, SBAR; scored with a model answer", icon: Presentation, run: () => openView("present") },
       { key: "a:compare", label: "Compare over time: what changed between two studies", hint: "X-rays, ECGs, scans, reports and wound photos", icon: History, run: () => openView("compare") },
       { key: "a:newcase", label: "New patient case", hint: "Start a de-identified case sheet", icon: ClipboardList, run: () => { const c = newCase(); setCases((l) => [c, ...l]); openCases(c.id); } },
@@ -3121,6 +3140,14 @@ export default function CadusAI() {
     { id: "mccd", icon: FileSignature, tone: "sky", title: "Cause of Death (MCCD)", sub: "The causal sequence, done right", go: () => openView("mccd") },
     { id: "mnemonics", icon: Brain, tone: "violet", title: "Mnemonic Maker", sub: "Classic or new, with a story", go: () => openView("mnemonics") },
     { id: "generics", icon: PillBottle, tone: "lime", title: "Generic Finder", sub: "Brand to generic and NLEM", go: () => openView("generics") },
+    { id: "opd", icon: ListOrdered, tone: "teal", title: "OPD Queue", sub: "Tokens, vitals, token board", go: () => openView("opd") },
+    { id: "imagequiz", icon: Images, tone: "violet", title: "Clinical Image Quiz", sub: "Your images as a quiz", go: () => openView("imagequiz") },
+    { id: "dosecard", icon: Weight, tone: "rose", title: "Dose Card by Weight", sub: "Emergency doses for a weight", go: () => openView("dosecard") },
+    { id: "mocks", icon: Timer, tone: "amber", title: "Mock Tests", sub: "Timed, subject-wise, +4/−1", go: () => openPractice("mock") },
+    { id: "oncall", icon: PhoneCall, tone: "rose", title: "On-call Helper", sub: "The ward is calling: what now", go: () => openView("oncall") },
+    { id: "journal", icon: BookOpenText, tone: "sky", title: "Journal Club", sub: "Appraise a paper, CASP", go: () => openView("journal") },
+    { id: "stats", icon: Sigma, tone: "lime", title: "Statistics Test Chooser", sub: "Which test for your thesis", go: () => openView("stats") },
+    { id: "roster", icon: CalendarRange, tone: "amber", title: "Duty Roster", sub: "A fair on-call roster", go: () => openView("roster") },
   ];
   const workspaceTiles = (compact = false) => (
     <div className={`cx-ws-grid ${compact ? "compact" : ""}`}>
@@ -4250,7 +4277,7 @@ export default function CadusAI() {
       style={{ ["--acc" as string]: dark ? accent.dark : accent.light, ["--fs" as string]: `${fontSize}px`, ["--fs-u" as string]: `${sansSize}px` }}
       {...dropHandlers}
     >
-      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS + CADUS_CREWPLUS_CSS + CADUS_VOICE_CSS + CADUS_CLINIC20_CSS}</style>
+      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS + CADUS_CREWPLUS_CSS + CADUS_VOICE_CSS + CADUS_CLINIC20_CSS + CADUS_CLINIC21_CSS}</style>
 
       {/* ============================================== sidebar */}
       <div className={`cx-scrim ${sidebarOpen ? "on" : ""}`} onClick={() => setSidebarOpen(false)} />
@@ -4340,6 +4367,14 @@ export default function CadusAI() {
               <button className={`cx-nav-i ${view === "mccd" ? "on" : ""}`} onClick={() => openView("mccd")} title="Cause of Death (MCCD)"><FileSignature size={16} /><span className="cx-nav-l">Cause of Death (MCCD)</span></button>
               <button className={`cx-nav-i ${view === "mnemonics" ? "on" : ""}`} onClick={() => openView("mnemonics")} title="Mnemonic Maker"><Brain size={16} /><span className="cx-nav-l">Mnemonic Maker</span></button>
               <button className={`cx-nav-i ${view === "generics" ? "on" : ""}`} onClick={() => openView("generics")} title="Generic Finder"><PillBottle size={16} /><span className="cx-nav-l">Generic Finder</span></button>
+              <button className={`cx-nav-i ${view === "opd" ? "on" : ""}`} onClick={() => openView("opd")} title="OPD Queue"><ListOrdered size={16} /><span className="cx-nav-l">OPD Queue</span></button>
+              <button className={`cx-nav-i ${view === "imagequiz" ? "on" : ""}`} onClick={() => openView("imagequiz")} title="Clinical Image Quiz"><Images size={16} /><span className="cx-nav-l">Clinical Image Quiz</span></button>
+              <button className={`cx-nav-i ${view === "dosecard" ? "on" : ""}`} onClick={() => openView("dosecard")} title="Dose Card by Weight"><Weight size={16} /><span className="cx-nav-l">Dose Card by Weight</span></button>
+              <button className="cx-nav-i" onClick={() => openPractice("mock")} title="Mock Tests"><Timer size={16} /><span className="cx-nav-l">Mock Tests</span></button>
+              <button className={`cx-nav-i ${view === "oncall" ? "on" : ""}`} onClick={() => openView("oncall")} title="On-call Helper"><PhoneCall size={16} /><span className="cx-nav-l">On-call Helper</span></button>
+              <button className={`cx-nav-i ${view === "journal" ? "on" : ""}`} onClick={() => openView("journal")} title="Journal Club"><BookOpenText size={16} /><span className="cx-nav-l">Journal Club</span></button>
+              <button className={`cx-nav-i ${view === "stats" ? "on" : ""}`} onClick={() => openView("stats")} title="Statistics Test Chooser"><Sigma size={16} /><span className="cx-nav-l">Statistics Test Chooser</span></button>
+              <button className={`cx-nav-i ${view === "roster" ? "on" : ""}`} onClick={() => openView("roster")} title="Duty Roster"><CalendarRange size={16} /><span className="cx-nav-l">Duty Roster</span></button>
               <button data-tour="calculators" className={`cx-nav-i ${view === "calculators" ? "on" : ""}`} onClick={() => openCalculators()} title="Calculators"><Calculator size={16} /><span className="cx-nav-l">Calculators</span></button>
               <button className={`cx-nav-i ${view === "projects" || view === "project" ? "on" : ""}`} onClick={openProjects} title="Projects"><Folder size={16} /><span className="cx-nav-l">Projects</span>{projects.length > 0 && <em>{projects.length}</em>}</button>
               <button className={`cx-nav-i ${view === "decks" ? "on" : ""}`} onClick={() => { setView("decks"); setSidebarOpen(false); }} title="Decks"><Presentation size={16} /><span className="cx-nav-l">Decks</span>{decks.length > 0 && <em>{decks.length}</em>}</button>
@@ -4629,6 +4664,13 @@ export default function CadusAI() {
                 : view === "mccd" ? [FileSignature, "Cause of Death (MCCD)"]
                 : view === "mnemonics" ? [Brain, "Mnemonic Maker"]
                 : view === "generics" ? [PillBottle, "Generic Finder"]
+                : view === "opd" ? [ListOrdered, "OPD Queue"]
+                : view === "imagequiz" ? [Images, "Clinical Image Quiz"]
+                : view === "dosecard" ? [Weight, "Dose Card by Weight"]
+                : view === "oncall" ? [PhoneCall, "On-call Helper"]
+                : view === "journal" ? [BookOpenText, "Journal Club"]
+                : view === "stats" ? [Sigma, "Statistics Test Chooser"]
+                : view === "roster" ? [CalendarRange, "Duty Roster"]
                 : view === "project" && project ? [Folder, project.name]
                 : [Folder, "Projects"];
               return <span className="cx-title-btn static"><Icon size={14} /> <span>{label}</span></span>;
@@ -4710,6 +4752,8 @@ export default function CadusAI() {
             />
           ) : view === "practice" ? (
             <LearnView
+              key={practiceInit.key}
+              initialTab={practiceInit.tab}
               profile={profile}
               practice={practice}
               setPractice={setPractice}
@@ -4964,12 +5008,19 @@ export default function CadusAI() {
             )
             : view === "followups" ? <FollowUpView toast={toast} />
             : view === "audiolib" ? <AudioLibraryView generate={(body) => invokeCadus({ ...body, model: prefs.model })} friendlyError={friendlyError} toast={toast} defaultLanguage={prefs.language} />
-            : view === "rxwrite" ? <RxWriterView generate={(body) => invokeCadus({ ...body, model: prefs.model, institution: institutionPayload(institution, "")?.payload })} friendlyError={friendlyError} toast={toast} onPrint={(title, md) => printDoc(title, md, { mode: "rx" })} onOpenPrescriber={() => openDrugs({ tab: "prescriber" })} defaultLanguage={prefs.language} />
+            : view === "rxwrite" ? <RxWriterView key={rxInit.key} initial={rxInit} generate={(body) => invokeCadus({ ...body, model: prefs.model, institution: institutionPayload(institution, "")?.payload })} friendlyError={friendlyError} toast={toast} onPrint={(title, md) => printDoc(title, md, { mode: "rx" })} onOpenPrescriber={() => openDrugs({ tab: "prescriber" })} defaultLanguage={prefs.language} />
             : view === "labtrend" ? <LabTrendsView generate={(body) => invokeCadus({ ...body, model: prefs.model })} readFile={(f) => readAttachment(f, (img) => fileToDataUrl(img))} friendlyError={friendlyError} toast={toast} onAsk={(q) => { if (pending) { toast("Wait for the current answer to finish"); return; } void send(q, "general"); }} />
             : view === "daily" ? <DailyCaseView generate={(body) => invokeCadus({ ...body, model: prefs.model })} friendlyError={friendlyError} toast={toast} onAsk={(q) => { if (pending) { toast("Wait for the current answer to finish"); return; } void send(q, "general"); }} defaultLevel={profile?.role === "student" ? "mbbs" : profile?.role === "intern" ? "intern" : profile?.role === "aspirant" || profile?.role === "resident" ? "pg" : "mbbs"} />
             : view === "letters" || view === "adr" || view === "mccd" ? <DocWriterView key={view} tool={view} generate={(body) => invokeCadus({ ...body, model: prefs.model, institution: institutionPayload(institution, "")?.payload })} friendlyError={friendlyError} toast={toast} onPrint={(title, md, mode) => printDoc(title, md, { mode })} doctor={lh ? [lh.name, lh.qualifications, lh.designation, lh.registration].filter(Boolean).join(", ") : ""} />
             : view === "mnemonics" ? <MnemonicView generate={(body) => invokeCadus({ ...body, model: prefs.model })} friendlyError={friendlyError} toast={toast} />
             : view === "generics" ? <GenericFinderView generate={(body) => invokeCadus({ ...body, model: prefs.model })} friendlyError={friendlyError} toast={toast} />
+            : view === "opd" ? <OpdQueueView toast={toast} onPrescribe={(p) => { setRxInit({ diagnosis: p.complaint, age: p.age, sex: p.sex, weight: p.weight, key: Date.now() }); openView("rxwrite"); }} onScribe={() => openView("scribe")} onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
+            : view === "imagequiz" ? <ImageQuizView generate={(body) => invokeCadus({ ...body, model: prefs.model })} readFile={(f) => readAttachment(f, (img) => fileToDataUrl(img))} friendlyError={friendlyError} toast={toast} />
+            : view === "dosecard" ? <DoseCardView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
+            : view === "oncall" ? <OnCallView generate={(body) => invokeCadus({ ...body, model: prefs.model })} friendlyError={friendlyError} toast={toast} />
+            : view === "journal" ? <JournalClubView generate={(body) => invokeCadus({ ...body, model: prefs.model })} readFile={(f) => readAttachment(f, (img) => fileToDataUrl(img))} friendlyError={friendlyError} toast={toast} onPrint={(title, md) => printDoc(title, md, { mode: "" })} onSlides={(o) => { if (pending) { toast("Wait for the current answer to finish"); return; } void send(`Make journal club slides from this outline:\n\n${o}`, "slides", { title: "Journal club" }); }} />
+            : view === "stats" ? <StatsChooserView toast={toast} onAsk={(q) => { if (pending) { toast("Wait for the current answer to finish"); return; } void send(q, "general"); }} />
+            : view === "roster" ? <RosterView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
             : view === "today" ? (
               <TodayView
                 name={firstName}

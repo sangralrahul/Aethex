@@ -153,6 +153,30 @@ export const MOCK_PRESETS: { id: string; label: string; questions: number; minut
   { id: "full", label: "Full mock 100", questions: 100, minutes: 100, subjects: 12 },
 ];
 
+/** Subject-wise mocks: the subjects chosen and how many questions. */
+export const SUBJECT_MOCK_SIZES = [25, 50, 100] as const;
+/**
+ * The calls that write a subject-wise mock: up to 10 questions each, the subjects taking turns, and each
+ * repeat of a subject on a different syllabus topic so the paper doesn't repeat itself.
+ */
+export function subjectMockPlan(subjects: string[], questions: number): { subject: string; topic: string; count: number }[] {
+  const subs = subjects.filter(Boolean).slice(0, 6);
+  if (!subs.length || questions < 1) return [];
+  const calls = Math.ceil(questions / 10);
+  const plan: { subject: string; topic: string; count: number }[] = [];
+  let left = questions;
+  for (let i = 0; i < calls; i++) {
+    const subject = subs[i % subs.length];
+    const round = Math.floor(i / subs.length);
+    const topics = SYLLABUS[subject] ?? [];
+    const count = Math.min(10, left);
+    // The first round is a mix of the subject; later rounds take its topics in turn.
+    plan.push({ subject, topic: round === 0 || !topics.length ? "" : topics[(round - 1) % topics.length], count: Math.max(3, count) });
+    left -= count;
+  }
+  return plan;
+}
+
 /** A spread of subjects for a mock, weighted the way the exams are (clinical subjects more). */
 export function mockSubjects(n: number, seed = Date.now()): string[] {
   const weights: Record<string, number> = { Medicine: 3, Surgery: 3, "Obstetrics and Gynaecology": 2, Paediatrics: 2, Pharmacology: 2, Pathology: 2, "Community Medicine": 2, Microbiology: 1, Anatomy: 1, Physiology: 1, Biochemistry: 1, "Forensic Medicine": 1, ENT: 1, Ophthalmology: 1, Orthopaedics: 1, Dermatology: 1, Psychiatry: 1, Anaesthesia: 1, Radiology: 1 };

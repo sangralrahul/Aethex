@@ -11,7 +11,7 @@ import { accuracy, recordAnswer, streak, type PracticeQuestion, type PracticeSta
 import { type MedicalProfile, practiceExam } from "@/lib/cadus/profile";
 import {
   addCard, analyseMock, BOX_DAYS, cardStats, dailySubjects, dueCards, EXAMS, localDay, MOCK_PRESETS, mockSubjects, mockTrend, recordMock,
-  retireKnown, reviewCard, SYLLABUS, syllabusProgress, toggleTopic, type Card, type LearnState, type MockAnswer, type MockResult,
+  retireKnown, reviewCard, SUBJECT_MOCK_SIZES, subjectMockPlan, SYLLABUS, syllabusProgress, toggleTopic, type Card, type LearnState, type MockAnswer, type MockResult,
 } from "@/lib/cadus/learn";
 import { SUBJECTS } from "@/lib/cadus/practice";
 
@@ -88,7 +88,7 @@ export default function LearnView({ profile, practice, setPractice, learn, setLe
     try {
       const raw = JSON.parse(localStorage.getItem(MOCK_RUN_KEY) || "null");
       if (!raw || !Array.isArray(raw.items) || !raw.items.length || raw.submitted || !Number.isFinite(raw.endsAt)) return null;
-      const preset = MOCK_PRESETS.find((p) => p.id === raw.preset?.id);
+      const preset = MOCK_PRESETS.find((p) => p.id === raw.preset?.id) ?? (raw.preset?.id === "custom" && Number(raw.preset.questions) > 0 && Number(raw.preset.minutes) > 0 ? raw.preset : null);
       if (!preset) return null;
       return { ...raw, preset } as MockRun;
     } catch { return null; }
@@ -108,13 +108,26 @@ export default function LearnView({ profile, practice, setPractice, learn, setLe
   const left = mock ? Math.max(0, Math.round((mock.endsAt - now) / 1000)) : 0;
 
   const lastSwitch = useRef(Date.now());
-  const startMock = async (preset: (typeof MOCK_PRESETS)[number]) => {
+  const [mockSubs, setMockSubs] = useState<string[]>([]);
+  const [mockSize, setMockSize] = useState<number>(50);
+  const startMock = async (preset: (typeof MOCK_PRESETS)[number], chosen?: string[]) => {
     if (!canMock) { onLocked?.("mocks"); return; }
     setMockLoading(preset.id);
     try {
-      const subjects = mockSubjects(preset.subjects);
-      const per = Math.ceil(preset.questions / subjects.length);
-      const sets = await Promise.all(subjects.map((subject) => generate({ action: "practice-mcqs", subject, count: Math.min(10, per), exam }).then((d) => (d.questions ?? []).map((q) => ({ ...q, subject })))));
+      let sets: MockQ[][];
+      if (chosen?.length) {
+        // Subject-wise: several calls per subject on different topics, a few at a time.
+        const plan = subjectMockPlan(chosen, preset.questions);
+        sets = [];
+        for (let i = 0; i < plan.length; i += 4) {
+          const batch = await Promise.all(plan.slice(i, i + 4).map((c) => generate({ action: "practice-mcqs", subject: c.subject, topic: c.topic, count: c.count, exam }).then((d) => (d.questions ?? []).map((q: PracticeQuestion) => ({ ...q, subject: c.subject }))).catch(() => [] as MockQ[])));
+          sets.push(...batch);
+        }
+      } else {
+        const subjects = mockSubjects(preset.subjects);
+        const per = Math.ceil(preset.questions / subjects.length);
+        sets = await Promise.all(subjects.map((subject) => generate({ action: "practice-mcqs", subject, count: Math.min(10, per), exam }).then((d) => (d.questions ?? []).map((q: PracticeQuestion) => ({ ...q, subject })))));
+      }
       // Interleave subjects as a paper does.
       const items: MockQ[] = [];
       for (let k = 0; items.length < preset.questions; k++) {
@@ -293,6 +306,15 @@ export default function LearnView({ profile, practice, setPractice, learn, setLe
               <button className="cx-btn primary" disabled={!!mockLoading} onClick={() => startMock(p)}>{mockLoading === p.id ? "Writing the paper…" : "Start"} <ArrowRight size={14} /></button>
             </div>
           ))}
+          <div className="cx-ln-card wide" data-mock="subject">
+            <h2><Target size={16} /> Subject-wise mock</h2>
+            <p>Choose up to six subjects for a timed paper on just those, one minute a question, scored +4 / −1 like {exam}.</p>
+            <div className="cx-ln-subs">{SUBJECTS.map((s) => { const on = mockSubs.includes(s); return <button key={s} className={on ? "on" : ""} aria-pressed={on} onClick={() => setMockSubs(on ? mockSubs.filter((x) => x !== s) : mockSubs.length >= 6 ? mockSubs : [...mockSubs, s])} data-mock-sub={s}>{s}</button>; })}</div>
+            <div className="cx-ln-mockrow">
+              <div className="cx-seg">{SUBJECT_MOCK_SIZES.map((n) => <button key={n} className={mockSize === n ? "on" : ""} onClick={() => setMockSize(n)} data-mock-size={n}>{n} questions</button>)}</div>
+              <button className="cx-btn primary" disabled={!!mockLoading || !mockSubs.length} onClick={() => startMock({ id: "custom", label: `${mockSubs.length === 1 ? mockSubs[0] : `${mockSubs.length} subjects`}: ${mockSize}`, questions: mockSize, minutes: mockSize, subjects: mockSubs.length }, mockSubs)} data-mock="start">{mockLoading === "custom" ? "Writing the paper…" : `Start ${mockSize} in ${mockSize} min`} <ArrowRight size={14} /></button>
+            </div>
+          </div>
           {learn.mocks.length > 0 && (
             <div className="cx-ln-card wide">
               <h2><TrendingUp size={16} /> Past mocks</h2>
