@@ -12,16 +12,12 @@
  */
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import {
-  AppWindow, ArrowRight, BookOpen, Check, Copy, Download, LockKeyhole, Mic, Monitor, Plus, RefreshCw,
-  Search, ShieldCheck, UserRound, WifiOff, X,
-  BellRing, Bot, CalendarDays, FileScan, GitFork, HeartPulse, History, Languages, Layers, Pill, Presentation, ShieldPlus, Users2,
-  ArrowRightLeft, CalendarCheck, FileOutput, Keyboard, Power, Waypoints, PanelBottom,
-  Activity, Bug, ListChecks, FlaskRound, Syringe, Scale, Wind, BookCheck, CalendarClock, Swords, Workflow, Wand2, Headphones, AudioLines, Volume2,
-  MicVocal, Speech, FileAudio, FilePen, ChartLine, CalendarHeart, ScrollText, ShieldAlert, FileSignature, Brain, PillBottle,
-  ListOrdered, Images, Weight, Timer, PhoneCall, BookOpenText, Sigma, CalendarRange,
-  FolderHeart, AudioWaveform, NotebookPen, BarChart3, ClipboardPlus, MessageSquareText, Baby, Sun,
+  AppWindow, ArrowRight, BookOpen, Check, Copy, Download, LockKeyhole, Mic, Monitor, Plus, RefreshCw, Search,
+  ShieldCheck, UserRound, WifiOff, X, BellRing, Pill, ShieldPlus, Users2, Keyboard, Power, PanelBottom,
+  Activity, Volume2, MicVocal, FilePen, CalendarHeart, ScrollText, ListOrdered, AudioWaveform,
 } from "lucide-react";
 import CadusMark from "@/components/cadus/CadusMark";
+import LiveFx, { FX_CSS, fxFor, type FxKind } from "@/components/downloads/LiveFx";
 import { FONT_FACES } from "@/components/cadus/cadus-styles";
 import { LEGAL_PATH, SUPPORT_EMAIL } from "@/lib/cadus/legal";
 import { cadusUrl, isCadusHost } from "@/lib/host";
@@ -65,11 +61,10 @@ function useReveal(root: RefObject<HTMLElement | null>) {
     if (still() || typeof IntersectionObserver === "undefined") { items.forEach((i) => i.classList.add("in")); return; }
     const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { rootMargin: "0px 0px -6% 0px", threshold: 0.06 });
     items.forEach((i) => io.observe(i));
-    // The live backgrounds of "New in Cadus" run only while that section is on screen.
-    const news = root.current?.querySelector<HTMLElement>("#new");
-    const live = news ? new IntersectionObserver(([e]) => news.classList.toggle("live", e.isIntersecting), { threshold: 0 }) : null;
-    if (news) live!.observe(news);
-    return () => { io.disconnect(); live?.disconnect(); };
+    // The live card backgrounds run only while their section is on screen.
+    const live = new IntersectionObserver((es) => es.forEach((e) => e.target.classList.toggle("live", e.isIntersecting)), { threshold: 0 });
+    root.current?.querySelectorAll<HTMLElement>("#product, #new").forEach((sec) => live.observe(sec));
+    return () => { io.disconnect(); live.disconnect(); };
   }, [root]);
 }
 
@@ -282,100 +277,21 @@ const TOOLS: [string, string][] = [
   ["Patient Records", "t"], ["Ward Rounds by Voice", "v"], ["Revision Notes", "y"], ["Clinic Analytics", "v"], ["Pre-op Assessment", "r"], ["Patient Messages", "t"], ["Pregnancy & Breastfeeding", "r"], ["Pill Chart", "y"],
 ];
 
-/** What's arrived in Cadus lately. The app shows the live Cadus, so all of it is in the app already. */
-/* ------------------------------------------------------------------ live card backgrounds (New in Cadus) */
-
-type Fx = "pulse" | "wave" | "scan" | "orbit" | "flow" | "spark" | "chart" | "write";
-/** A quiet animated motif behind each "New in Cadus" card, chosen from what the tool does. */
-export function fxFor(title: string): Fx {
-  const t = title.toLowerCase();
-  if (/voice|audio|podcast|viva|osce|message|natural/.test(t)) return "wave";
-  if (/ecg|heart|on-call|emergency|dose|infusion|poison|pre-op|abg|antibiotic|pregnan/.test(t)) return "pulse";
-  if (/analytic|trend|statistic|mock|chart/.test(t)) return "chart";
-  if (/image|photo|reader|compare|scan|lab/.test(t)) return "scan";
-  if (/crew|debate|assistant|huddle|journal/.test(t)) return "orbit";
-  if (/queue|roster|playbook|pathway|handover|round|follow|planner|logbook/.test(t)) return "flow";
-  if (/letter|record|prescription|discharge|mccd|death|adr|summary|scribe|generic|procedure|pill/.test(t)) return "write";
-  return "spark";
-}
-function CardFx({ kind, seed }: { kind: Fx; seed: number }) {
-  const d = (n: number) => ({ animationDelay: `${-((seed * 0.37 + n * 0.53) % 4).toFixed(2)}s` });
-  return (
-    <span className={`fx fx-${kind}`} aria-hidden="true">
-      {kind === "pulse" && <svg viewBox="0 0 240 80" preserveAspectRatio="none"><path className="fx-trace" style={d(0)} d="M0 50 H70 L80 50 L88 30 L96 64 L106 12 L116 58 L124 50 H170 L178 44 L186 50 H240" /><path className="fx-trace ghost" d="M0 50 H70 L80 50 L88 30 L96 64 L106 12 L116 58 L124 50 H170 L178 44 L186 50 H240" /></svg>}
-      {kind === "wave" && <span className="fx-bars">{Array.from({ length: 14 }, (_, i) => <i key={i} style={d(i)} />)}</span>}
-      {kind === "scan" && <><span className="fx-grid" /><span className="fx-beam" style={d(0)} /></>}
-      {kind === "orbit" && <span className="fx-orbits"><i style={d(0)}><b /></i><i style={d(1)}><b /></i><i style={d(2)}><b /></i></span>}
-      {kind === "flow" && <svg viewBox="0 0 240 90" preserveAspectRatio="none"><path className="fx-flow" style={d(0)} d="M-10 70 C 50 70, 60 25, 120 25 S 190 70, 250 40" /><path className="fx-flow b" style={d(2)} d="M-10 82 C 60 82, 80 45, 130 45 S 200 82, 250 62" /></svg>}
-      {kind === "spark" && <span className="fx-dots">{Array.from({ length: 9 }, (_, i) => <i key={i} style={{ ...d(i), left: `${(i * 37 + seed * 13) % 92}%`, width: 4 + (i % 3) * 3, height: 4 + (i % 3) * 3 }} />)}</span>}
-      {kind === "chart" && <span className="fx-cols">{[38, 62, 46, 80, 58, 92, 70].map((h, i) => <i key={i} style={{ ...d(i), height: `${h}%` }} />)}</span>}
-      {kind === "write" && <span className="fx-lines">{[92, 74, 86, 58].map((w, i) => <i key={i} style={{ ...d(i), width: `${w}%`, animationDelay: `${i * 0.6 + (seed % 3) * 0.2}s` }} />)}</span>}
-      <span className="fx-glow" style={d(3)} />
-    </span>
-  );
-}
-
-const NEW_IN_CADUS: { icon: typeof Pill; t: string; d: string }[] = [
-  { icon: FolderHeart, t: "Patient Records", d: "A simple file for each patient on your device: allergies, problems, medicines and every visit, vitals charted over time, and a summary before the next visit." },
-  { icon: AudioWaveform, t: "Ward Rounds by Voice", d: "Dictate your review at each bed: Cadus updates the ward list (problems, medicines, plan, jobs) and writes the SOAP progress note." },
-  { icon: NotebookPen, t: "Revision Notes", d: "Topper-style high-yield notes on any topic with flashcards and questions, brought back for revision after 1, 3, 7, 21 and 45 days." },
-  { icon: BarChart3, t: "Clinic Analytics", d: "Patients per day, waiting times, the busiest hours and the commonest complaints, diagnoses and medicines, from your OPD queue." },
-  { icon: ClipboardPlus, t: "Pre-op Assessment", d: "ASA grade, RCRI, the tests actually needed, what to do with each medicine before surgery, fasting, and a PAC note to print." },
-  { icon: MessageSquareText, t: "Patient Messages", d: "Appointment reminders, reports ready, fasting and medicine instructions in the patient's language, ready for WhatsApp." },
-  { icon: Baby, t: "Pregnancy & Breastfeeding", d: "Is this medicine safe now? By trimester or while breastfeeding, with what to do and a safer alternative." },
-  { icon: Sun, t: "Pill Chart", d: "A prescription as a picture chart with sunrise, sun, sunset and moon, for patients who don't read." },
-  { icon: ListOrdered, t: "OPD Queue", d: "Today's outpatients with token numbers, waiting times, quick vitals and a big token board for the waiting area; one tap to write the prescription." },
-  { icon: Images, t: "Clinical Image Quiz", d: "Turn your own X-rays, ECGs and clinical photos into quiz questions, and send your batch one page that works on any phone." },
-  { icon: Weight, t: "Dose Card by Weight", d: "Every emergency drug dose, the tube size and fluids for a child's weight (or age), on one card to print for the trolley." },
-  { icon: Timer, t: "Subject-wise mock tests", d: "Timed papers of 25, 50 or 100 questions on the subjects you choose, scored +4/−1 like NEET-PG, with your weak topics." },
-  { icon: PhoneCall, t: "On-call Helper", d: "The ward calls at night: whether to go now, what to ask the nurse, what to order, what not to miss and when to call your senior." },
-  { icon: BookOpenText, t: "Journal Club", d: "Attach a paper: CASP appraisal, results with the numbers, biases, relevance to India, discussion questions and slides." },
-  { icon: Sigma, t: "Statistics Test Chooser", d: "Which test for your thesis, with its assumptions, where it is in SPSS and how to report it." },
-  { icon: CalendarRange, t: "Duty Roster", d: "A fair on-call roster for the month in seconds: weekends shared, leave respected, no back-to-back nights; print it or open it in Excel." },
-  { icon: FilePen, t: "Prescription Writer", d: "Give the diagnosis and the patient's details: Cadus drafts the prescription with doses for age, weight and kidneys, checks it against the formulary and for interactions, and writes the advice in the patient's language." },
-  { icon: ChartLine, t: "Lab Trends", d: "Photograph a patient's lab reports: every result is charted over time against its usual range and explained test by test, with what to check next." },
-  { icon: CalendarHeart, t: "Daily Clinical Case", d: "A new case every day with five questions. Keep your streak going and share your score with your batch." },
-  { icon: ScrollText, t: "Letters & Certificates", d: "Referral letters, fitness and leave certificates, and insurance or PM-JAY pre-authorisation, written from your notes and printed on your letterhead." },
-  { icon: ShieldAlert, t: "ADR Report (PvPI)", d: "Describe a suspected drug reaction and Cadus fills the PvPI reporting form, with WHO-UMC causality and how to manage it." },
-  { icon: FileSignature, t: "Cause of Death (MCCD)", d: "The cause-of-death sequence for the MCCD written correctly, with the ICD-10 code; modes of dying and medico-legal deaths are flagged." },
-  { icon: Brain, t: "Mnemonic Maker", d: "Any list for NEET-PG as a classic or new mnemonic, with a memory story and the high-yield facts, saved to your flashcards." },
-  { icon: PillBottle, t: "Generic Finder", d: "Paste a prescription: each brand is matched to its generic, NLEM status, other brands and the usual dose." },
-  { icon: MicVocal, t: "Voice Viva", d: "The examiner asks aloud and you answer by speaking, one question at a time, then a spoken score and a full scorecard in the chat." },
-  { icon: Speech, t: "Voice OSCE and simulator", d: "Take a history by talking to the patient, who answers in a voice that fits their age and sex. In the Case Simulator, say \"examine…\", \"order…\" or \"give…\" and it happens." },
-  { icon: Mic, t: "Your own voice", d: "Read a passage for about a minute and patient audio can speak in your voice. Only you can use it, and you can delete it at any time." },
-  { icon: FileAudio, t: "Patient Audio Library", d: "Spoken explainers on diabetes, ORS, TB treatment, insulin, danger signs in pregnancy and more, in 13 Indian languages, to play in clinic or send on WhatsApp." },
-  { icon: Volume2, t: "Natural voices", d: "Answers, voice mode and the Consult Translator read aloud in natural, human-sounding voices, in English, Hindi and other Indian languages. Choose the voice in Settings." },
-  { icon: AudioLines, t: "Audio for the patient", d: "Discharge advice, the medicines sheet or a leaflet as an MP3 in the patient's language, to play in the clinic or send on WhatsApp; and the Scribe records a consultation and tells doctor and patient apart." },
-  { icon: Headphones, t: "Revision Podcasts", d: "Any topic or flashcard deck as a short two-voice audio lesson, a teacher and a student, for NEET-PG revision on the bus or at the gym." },
-  { icon: Swords, t: "Crew Debate", d: "Two assistants argue opposite sides of a clinical question, such as thrombolyse or not, each rebuts the other, and a neutral judge weighs the evidence." },
-  { icon: Workflow, t: "Crew Playbooks", d: "Chain assistants into a workflow: rough notes become a case presentation, a medicines check and a discharge summary, one step after another." },
-  { icon: Wand2, t: "Assistant Builder", d: "Describe an assistant in one line and Cadus writes its instructions, starter questions and icon, ready to review and save." },
-  { icon: Activity, t: "ECG Reader", d: "Photograph a 12-lead ECG: rate, rhythm, axis, intervals and findings by lead, with STEMI, heart block and hyperkalaemia flagged on top." },
-  { icon: Bug, t: "Antibiotic Guide", d: "Empiric antibiotics for the infection in front of you, following ICMR guidance and your hospital's policy, with doses adjusted for kidneys, allergy and pregnancy." },
-  { icon: ListChecks, t: "Procedure Guide", d: "LP, central line, chest drain, ascitic tap and more, step by step with an equipment checklist, and a consent sheet in the patient's language." },
-  { icon: FlaskRound, t: "Poisoning & Snakebite", d: "Organophosphate, celphos, paracetamol, krait and viper bites: first actions, antidotes and ASV doses for the patient, and how to monitor." },
-  { icon: Syringe, t: "Infusions", d: "Noradrenaline, insulin, heparin and sedation in standard dilutions: dose to mL/h and back, the usual range, and drip rates." },
-  { icon: Wind, t: "ABG Interpreter", d: "Any blood gas worked through step by step: compensation, anion gap with albumin correction, delta ratio, oxygenation and likely causes." },
-  { icon: Scale, t: "Dose Converter", d: "Steroid equivalents and opioid switches through oral morphine equivalents, with the cross-tolerance reduction worked out." },
-  { icon: BookCheck, t: "PG Logbook", d: "Log procedures, surgeries, cases, duties and seminars in seconds; counts by role and a printable logbook or Excel file for your department." },
-  { icon: CalendarClock, t: "Follow-ups", d: "Who to review and when, with what to check; due follow-ups appear on Today." },
-  { icon: FileOutput, t: "Discharge Summary", d: "Paste the notes or photograph the case sheet: a structured discharge summary to print on your letterhead, what the notes are missing, and advice for the patient in their language." },
-  { icon: ArrowRightLeft, t: "Shift Handover", d: "Your ward list as an I-PASS handover for the night team: severity, actions, \u201cif this, then that\u201d plans and what to watch, read back patient by patient." },
-  { icon: Waypoints, t: "Differential Builder", d: "Findings in, a ranked differential out: what fits, what doesn't, the test that decides each one, and the can't-miss diagnoses flagged." },
-  { icon: CalendarCheck, t: "Exam Study Planner", d: "NEET-PG, INI-CET, FMGE or university: a day-by-day plan to the exam with revision and mock days, that ticks off Learn and goes into your calendar." },
-  { icon: CalendarDays, t: "Today", d: "Your day on one screen: ward jobs to tick off, revision due, unfinished pathways and recent chats." },
-  { icon: Bot, t: "Cadus Crew", d: "Thirty ready-made assistants, from Viva Examiner to Cardiology and Nephrology Consults, or your own with its own knowledge files. Type @ in any chat to ask one." },
-  { icon: Users2, t: "Crew Huddle", d: "Ask up to four assistants at once, see their answers side by side, then one combined answer that Cadus has checked." },
-  { icon: ShieldPlus, t: "Rx Safety Check", d: "Type or photograph a prescription: doses, interactions, allergies, pregnancy and kidney checks, with generics and Jan Aushadhi names." },
-  { icon: Pill, t: "Med Reconciliation", d: "Before and after admission or discharge: what was started, stopped or changed, what's unsafe, and a medicine sheet for the patient." },
-  { icon: GitFork, t: "Clinical Pathways", d: "Chest pain, sepsis, fever in India, DKA and more, one guideline-based step at a time to a decision and plan." },
-  { icon: Languages, t: "Consult Translator", d: "Talk with patients in 13 Indian languages, with a translation back to check and the consultation written up as a note." },
-  { icon: FileScan, t: "Report Explainer", d: "Any lab or imaging report as a summary for you and an explanation for the patient in their language." },
-  { icon: History, t: "Compare over time", d: "Two X-rays, ECGs, scans or reports from different dates: what changed, finding by finding." },
-  { icon: BellRing, t: "Guideline Watch", d: "New guidelines, meta-analyses and trials in your specialties, summarised with every paper linked." },
-  { icon: HeartPulse, t: "Case Simulator", d: "A live patient to practise on: history, examination, tests and treatment, then a scored debrief." },
-  { icon: Presentation, t: "Presentation Coach", d: "Present a case as on rounds or in an exam; get a score, what was missing and a model presentation." },
-  { icon: Layers, t: "Flashcards", d: "Turn any answer into flashcards, review them with spaced repetition and export to Anki." },
+/**
+ * What's new in Cadus: the ten biggest additions, each standing for a group of tools, so the page
+ * stays short. The full list of tools is in the app.
+ */
+const NEW_IN_CADUS: { icon: typeof Pill; t: string; d: string; fx: FxKind }[] = [
+  { icon: ListOrdered, fx: "queue", t: "Your OPD, organised", d: "Token queue and waiting-room board, a record for every patient, and clinic analytics." },
+  { icon: FilePen, fx: "write", t: "Prescriptions in seconds", d: "Doses for age, weight and kidneys, interactions checked, advice in the patient's language." },
+  { icon: AudioWaveform, fx: "mic", t: "Ward rounds by voice", d: "Dictate at each bed; progress notes, handover and discharge summaries are written for you." },
+  { icon: Activity, fx: "pulse", t: "Reads ECGs and reports", d: "Photograph an ECG or a lab report: a systematic read, trends charted, urgent findings flagged." },
+  { icon: ScrollText, fx: "envelope", t: "Letters and forms done", d: "Referrals, certificates, PM-JAY pre-auth, ADR reports and the MCCD, on your letterhead." },
+  { icon: ShieldPlus, fx: "shield", t: "Safer at the bedside", d: "Rx safety check, doses by weight, antibiotic, poisoning and pregnancy guides, and night-call help." },
+  { icon: Volume2, fx: "wave", t: "Natural voices, 13 languages", d: "Hands-free voice mode, audio advice for patients on WhatsApp, podcasts, even your own voice." },
+  { icon: Users2, fx: "orbit", t: "Cadus Crew", d: "Specialist assistants that consult, debate a hard case and work together; build your own." },
+  { icon: CalendarHeart, fx: "calendar", t: "Learn a little every day", d: "A daily clinical case, revision notes on a schedule, flashcards and NEET-PG style mocks." },
+  { icon: MicVocal, fx: "chat", t: "Practise like the real exam", d: "Voice viva and OSCE with a patient who answers back, a case simulator and a presentation coach." },
 ];
 
 /** New in the desktop app itself: these need the new installer. */
@@ -608,7 +524,8 @@ export default function Downloads() {
           </div>
           <div className="hood">
             {UNDER_THE_HOOD.map(({ icon: Icon, t, d }, k) => (
-              <article key={t} className={`hood-card rv d${(k % 4) + 1}`}>
+              <article key={t} className={`hood-card fx-card rv d${(k % 4) + 1}`} data-hood={t} data-fx={fxFor(t)}>
+                <LiveFx kind={fxFor(t)} seed={k} />
                 <span className="ic"><Icon size={19} /></span>
                 <h3>{t}</h3>
                 <p>{d}</p>
@@ -652,9 +569,9 @@ export default function Downloads() {
             <p className="sub l">The app shows the live Cadus, so every new tool reaches it the moment it's released. Here is what's arrived lately.</p>
           </div>
           <div className="hood new-grid">
-            {NEW_IN_CADUS.map(({ icon: Icon, t, d }, k) => (
-              <article key={t} className={`hood-card fx-card rv d${(k % 4) + 1}`} data-new={t} data-fx={fxFor(t)}>
-                <CardFx kind={fxFor(t)} seed={k} />
+            {NEW_IN_CADUS.map(({ icon: Icon, t, d, fx }, k) => (
+              <article key={t} className={`hood-card fx-card rv d${(k % 4) + 1}`} data-new={t} data-fx={fx}>
+                <LiveFx kind={fx} seed={k} />
                 <span className="ic"><Icon size={19} /></span>
                 <h3>{t}</h3>
                 <p>{d}</p>
@@ -967,9 +884,10 @@ const CSS = `
 .ax .dl-steps code:not(.dl-cmd){font-family:var(--mono);font-size:14px;color:var(--ink)}
 
 .ax .hood{display:grid;grid-template-columns:repeat(4,1fr);gap:22px;margin-top:64px}
-.ax .new-grid .hood-card{padding:28px 26px}
+.ax .new-grid{grid-template-columns:repeat(5,1fr);gap:16px}
+.ax .new-grid .hood-card{padding:26px 22px}
 .ax .new-grid .hood-card h3{margin:22px 0 10px;font-size:19px}
-.ax .new-grid .hood-card p{font-size:15.5px}
+.ax .new-grid .hood-card p{font-size:15px;line-height:1.55}
 .ax .hood-card{padding:34px 32px;border-radius:20px;border:1px solid var(--line);background:#fff;transition:transform .3s ease,box-shadow .3s ease,border-color .3s,opacity .7s ease}
 .ax .hood-card:hover{transform:translateY(-4px);border-color:#cfe6e0;box-shadow:0 24px 48px -28px rgba(16,24,40,.25);background:radial-gradient(260px circle at 30% 0%,#f3faf8,#fff 70%)}
 .ax .hood-card .ic{display:grid;place-items:center;width:54px;height:54px;border-radius:12px;background:var(--teal-bg);color:var(--teal);transition:transform .35s cubic-bezier(.2,.9,.3,1.4)}
@@ -1035,6 +953,7 @@ const CSS = `
 
 .ax .dl-logo{width:18px;height:18px;flex-shrink:0}
 
+@media (max-width:1100px){.ax .new-grid{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:1100px){
   .ax .nav nav{gap:22px}
   .ax .nav-link{display:none}
@@ -1088,45 +1007,7 @@ const CSS = `
   .ax .sums b{min-width:0}
 }
 
-/* New in Cadus: a quiet live motif behind each card, running only while the section is on screen */
-.ax .fx-card{position:relative;overflow:hidden;isolation:isolate}
-.ax .fx-card>:not(.fx){position:relative;z-index:1}
-.ax .new-grid .fx-card{padding-bottom:92px}
-.ax .fx{position:absolute;inset:auto -1px -1px auto;width:86%;height:96px;z-index:0;pointer-events:none;opacity:.55;color:var(--teal);transition:opacity .4s ease;-webkit-mask-image:linear-gradient(to top left,#000 30%,transparent 85%);mask-image:linear-gradient(to top left,#000 30%,transparent 85%)}
-.ax .fx-card:hover .fx{opacity:.95}
-.ax .fx *{animation-play-state:paused}
-.ax #new.live .fx *{animation-play-state:running}
-.ax .fx svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
-.ax .fx-glow{position:absolute;right:-30%;bottom:-40%;width:90%;height:120%;border-radius:50%;background:radial-gradient(closest-side,rgba(43,122,111,.16),transparent);animation:fxDrift 9s ease-in-out infinite alternate}
-.ax .fx-trace{fill:none;stroke:currentColor;stroke-width:1.6;stroke-linejoin:round;stroke-dasharray:90 400;animation:fxTrace 3.2s linear infinite}
-.ax .fx-trace.ghost{stroke-dasharray:none;opacity:.14;animation:none}
-.ax .fx-bars{position:absolute;inset:auto 16px 16px auto;display:flex;align-items:flex-end;gap:5px;height:62%}
-.ax .fx-bars i{width:4px;height:100%;border-radius:3px;background:currentColor;opacity:.35;transform-origin:bottom;animation:fxEq 1.4s ease-in-out infinite}
-.ax .fx-bars i:nth-child(3n){animation-duration:1.1s}.ax .fx-bars i:nth-child(4n+1){animation-duration:1.7s}
-.ax .fx-grid{position:absolute;inset:0;background-image:radial-gradient(currentColor 1px,transparent 1.4px);background-size:14px 14px;opacity:.22}
-.ax .fx-beam{position:absolute;left:0;right:0;height:34%;background:linear-gradient(to bottom,transparent,rgba(43,122,111,.22),transparent);border-bottom:1px solid rgba(43,122,111,.45);animation:fxScan 3.6s ease-in-out infinite}
-.ax .fx-orbits{position:absolute;right:14%;bottom:-62px;width:150px;height:150px}
-.ax .fx-orbits i{position:absolute;inset:0;border:1px dashed rgba(43,122,111,.3);border-radius:50%;animation:fxSpin 12s linear infinite}
-.ax .fx-orbits i:nth-child(2){inset:22px;animation-duration:8s;animation-direction:reverse}
-.ax .fx-orbits i:nth-child(3){inset:46px;animation-duration:5s}
-.ax .fx-orbits b{position:absolute;top:-4px;left:calc(50% - 4px);width:8px;height:8px;border-radius:50%;background:currentColor;opacity:.7}
-.ax .fx-flow{fill:none;stroke:currentColor;stroke-width:1.4;stroke-dasharray:6 10;opacity:.5;animation:fxDash 2.4s linear infinite}
-.ax .fx-flow.b{opacity:.28;animation-duration:3.4s}
-.ax .fx-dots i{position:absolute;bottom:-8px;border-radius:50%;background:currentColor;opacity:0;animation:fxRise 5s ease-in infinite}
-.ax .fx-dots i:nth-child(2n){animation-duration:6.5s}.ax .fx-dots i:nth-child(3n){animation-duration:4.2s}
-.ax .fx-cols{position:absolute;inset:auto 16px 0 auto;display:flex;align-items:flex-end;gap:7px;height:70%}
-.ax .fx-cols i{width:10px;border-radius:3px 3px 0 0;background:linear-gradient(to top,rgba(43,122,111,.42),rgba(43,122,111,.1));transform-origin:bottom;animation:fxGrow 3s ease-in-out infinite}
-.ax .fx-lines{position:absolute;inset:auto 18px 18px 30%;display:flex;flex-direction:column;gap:9px}
-.ax .fx-lines i{height:5px;border-radius:3px;background:rgba(43,122,111,.28);transform-origin:left;animation:fxWrite 4.8s cubic-bezier(.6,0,.3,1) infinite}
-@keyframes fxTrace{from{stroke-dashoffset:490}to{stroke-dashoffset:0}}
-@keyframes fxEq{0%,100%{transform:scaleY(.18)}50%{transform:scaleY(1)}}
-@keyframes fxScan{0%{top:-34%}100%{top:100%}}
-@keyframes fxSpin{to{transform:rotate(360deg)}}
-@keyframes fxDash{to{stroke-dashoffset:-32}}
-@keyframes fxRise{0%{transform:translateY(0);opacity:0}15%{opacity:.45}100%{transform:translateY(-150px);opacity:0}}
-@keyframes fxGrow{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1)}}
-@keyframes fxWrite{0%{transform:scaleX(0);opacity:.9}55%{transform:scaleX(1);opacity:.9}85%{transform:scaleX(1);opacity:0}100%{transform:scaleX(0);opacity:0}}
-@keyframes fxDrift{from{transform:translate(0,0)}to{transform:translate(-18%,-12%)}}
+${FX_CSS}
 @media (prefers-reduced-motion:reduce){
   .ax *,.ax *::before,.ax *::after{animation:none!important;transition:none!important}
   .ax .rv{opacity:1;transform:none}
