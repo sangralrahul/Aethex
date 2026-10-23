@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 
 const SITE = "https://aethex.in";
-const DEFAULT_IMAGE = `${SITE}/opengraph.jpg`;
+const DEFAULT_IMAGE = `${SITE}/aethex-og.jpg`;
 
 function upsertMeta(selector: string, attr: "name" | "property", key: string, content: string) {
   let el = document.head.querySelector<HTMLMetaElement>(selector);

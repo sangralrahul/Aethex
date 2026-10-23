@@ -279,6 +279,7 @@ export default function CadusQuickConsult() {
           <button
             onClick={sendMessage}
             disabled={!input.trim() || loading}
+            aria-label="Send"
             className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all"
             style={{
               background: input.trim() && !loading

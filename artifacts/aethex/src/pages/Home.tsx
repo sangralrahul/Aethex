@@ -71,6 +71,17 @@ const TOOLS: { href: string; icon: Icon; t: string; d: string }[] = [
 
 /* ------------------------------------------------------------------ pieces */
 
+/** Shown in place of the products when the store can't be reached, instead of grey boxes forever. */
+function StoreDown({ retry }: { retry: () => void }) {
+  return (
+    <div className="ax-h-down" role="status" data-home="store-down">
+      <b>The products didn't load</b>
+      <span>Check your connection, or try again in a moment.</span>
+      <button type="button" className="ax-btn" onClick={retry}>Try again</button>
+    </div>
+  );
+}
+
 function HeroCarousel() {
   const [i, setI] = useState(0);
   const [hold, setHold] = useState(false);
@@ -105,7 +116,7 @@ function HeroCarousel() {
 function ProductRail() {
   const [rail, setRail] = useState<(typeof RAILS)[number]["id"]>("best");
   const cur = RAILS.find((r) => r.id === rail)!;
-  const { data: store, isLoading } = useStore();
+  const { data: store, isLoading, error, refetch } = useStore();
   const products = useMemo(() => {
     if (!store) return [];
     const pool = cur.category ? store.products.filter((p) => p.category === cur.category) : store.products.filter((p) => p.featured && !p.priceOnRequest);
@@ -127,7 +138,8 @@ function ProductRail() {
           </div>
         </div>
         <div className="ax-h-rail" ref={track}>
-          {isLoading || !store
+          {error && !store ? <StoreDown retry={() => void refetch()} />
+            : isLoading || !store
             ? Array.from({ length: 5 }, (_, k) => <div key={k} className="ax-prod sk" />)
             : products.map((p) => <ProductCard key={p.id} product={p} brandName={store.brandName(p.brand)} />)}
         </div>
@@ -139,11 +151,12 @@ function ProductRail() {
 
 /** One tile per category, with the photo of its most popular product. */
 function CategoryTiles() {
-  const { data: store } = useStore();
+  const { data: store, error, refetch } = useStore();
   const tiles = useMemo(() => (store ? store.categories.filter((c) => c.audience !== "institution").map((c) => {
     const best = store.products.filter((p) => p.category === c.slug && p.image).sort((a, b) => rank(b) - rank(a))[0];
     return { ...c, pic: best?.image };
   }) : []), [store]);
+  if (error && !store) return <StoreDown retry={() => void refetch()} />;
   return (
     <div className="ax-h-cats">
       {!store ? Array.from({ length: 14 }, (_, k) => <span key={k} className="ax-h-cat sk"><span className="pic" /><b>&nbsp;</b></span>) : <>
@@ -168,8 +181,8 @@ function CategoryTiles() {
 
 export default function Home() {
   useSeo({
-    title: "Aethex — AI-Powered Medical Education & Clinical Tools in India",
-    description: "Cadus clinical assistant, NEET PG study hub, drug references and genuine medical supplies — one platform built for Indian doctors and medical students.",
+    title: "Aethex: medical supplies, Cadus AI and NEET-PG prep for India",
+    description: "Genuine medical supplies with cash on delivery, the Cadus clinical assistant, and NEET-PG study tools: one platform for India's doctors and medical students.",
     path: "/",
   });
   const [, navigate] = useLocation();
@@ -185,6 +198,7 @@ export default function Home() {
 
   return (
     <div className="ax-home">
+      <h1 className="sr-only">Aethex: genuine medical supplies, the Cadus clinical assistant and NEET-PG study tools for India's doctors and medical students</h1>
       {/* category bar */}
       <nav className="ax-h-catbar" aria-label="Shop categories">
         <div className="ax-wrap">
@@ -311,7 +325,7 @@ export default function Home() {
       </section>
 
       {/* brands */}
-      <section className="ax-h-sec">
+      {(!store || homeBrands.length > 0) && <section className="ax-h-sec">
         <div className="ax-wrap">
           <div className="ax-h-title"><h2>Shop by brand</h2><Link href="/brands" className="ax-link">All brands <ArrowRight size={16} /></Link></div>
           <div className="ax-h-brandgrid">
@@ -320,7 +334,7 @@ export default function Home() {
             ))}
           </div>
         </div>
-      </section>
+      </section>}
 
       {/* testimonials */}
       <section className="ax-h-sec ax-h-quotes-sec">
@@ -339,12 +353,12 @@ export default function Home() {
       </section>
 
       {/* brands strip */}
-      <section className="ax-h-brands">
+      {(store?.brands.length ?? 0) > 0 && <section className="ax-h-brands">
         <div className="ax-wrap">
           <small>Verified brands we stock</small>
           <div>{(store?.brands ?? []).map((b) => <Link key={b.slug} href={`/brand/${b.slug}`}>{b.name}</Link>)}</div>
         </div>
-      </section>
+      </section>}
     </div>
   );
 }
