@@ -26,6 +26,9 @@
 //                         liver, age), with generics, NLEM and Jan Aushadhi names.
 //   watch                 Guideline Watch: the newest PubMed records on a topic (last 7, 30
 //                         or 90 days) and a digest written only from them.
+//   crew-build            Assistant Builder: a one-line description to a full Crew assistant.
+//   debate-turn           Crew Debate: one assistant's opening or rebuttal for its side.
+//   debate-judge          Crew Debate: the neutral verdict on both sides' arguments.
 //   huddle-merge          Crew Huddle: combines 2 to 4 Crew assistants' answers to one question,
 //                         with what they agree on, where they differ and any corrections.
 //   extract-text          Reads a PDF or photo once as plain text, for a Crew assistant's knowledge.
@@ -114,6 +117,7 @@ import {
   TRANSLATE_SYSTEM,
   translateTurn,
 } from "../_shared/studio.ts";
+import { BUILD_SYSTEM, builtAssistant, DEBATE_SYSTEM, debatePrompt, debateVerdict, JUDGE_SYSTEM } from "../_shared/crewplus.ts";
 import { ABX_SYSTEM, abxPlan, ECG_SYSTEM, ecgRead, POISON_SYSTEM, poisonPlan, PROCEDURE_SYSTEM, procGuide } from "../_shared/bedside.ts";
 
 /* ------------------------------------------------------------------ prompts */
@@ -1642,6 +1646,76 @@ Deno.serve(async (req) => {
         provider: r.provider,
         model: r.model,
       });
+    }
+
+    // ---------------------------------------------------------------- Assistant Builder
+    if (action === "crew-build") {
+      const description = String(body.description || "").replace(/\r/g, "").trim().slice(0, 600);
+      if (description.split(/\s+/).length < 2) return jsonResponse({ error: "Describe the assistant in a few words" }, 400);
+      const modes = (Array.isArray(body.modes) ? body.modes : []).slice(0, 60)
+        .map((m: any) => ({ id: cleanLine(m?.id, 30), label: cleanLine(m?.label, 60) })).filter((m: { id: string }) => /^[a-z0-9-]+$/.test(m.id));
+      const r = await callAI({
+        model: answerModel(body.model),
+        messages: [
+          { role: "system", content: BUILD_SYSTEM },
+          { role: "user", content: `CADUS TOOLS (id: name): ${modes.map((m: { id: string; label: string }) => `${m.id}: ${m.label}`).join("; ") || "general: General"}\n\nDESCRIPTION: ${description}` },
+        ],
+        jsonMode: true,
+        effort: "medium",
+        maxTokens: 3000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const assistant = builtAssistant(parseJsonLoose<any>(r.content), modes.map((m: { id: string }) => m.id));
+      if (!assistant) return jsonResponse({ error: "Couldn't build that assistant. Try describing it a little more." }, 502);
+      return jsonResponse({ assistant });
+    }
+
+    // ---------------------------------------------------------------- Crew Debate
+    if (action === "debate-turn") {
+      const crew = crewLine(body.crew);
+      const question = String(body.question || "").replace(/\r/g, "").trim().slice(0, 3000);
+      const position = cleanLine(body.position, 300);
+      const other = cleanLine(body.other, 300);
+      const round = body.round === 2 ? 2 : 1;
+      const opponent = String(body.opponent || "").replace(/\r/g, "").trim().slice(0, 6000);
+      if (!crew) return jsonResponse({ error: "Choose an assistant for each side" }, 400);
+      if (!question || !position || !other) return jsonResponse({ error: "Add the question and both positions" }, 400);
+      if (round === 2 && !opponent) return jsonResponse({ error: "A rebuttal needs the other side's argument" }, 400);
+      const r = await callAI({
+        model: answerModel(body.model),
+        messages: [
+          { role: "system", content: [CORE_SYSTEM, DEBATE_SYSTEM, crew, languageLine(body.language)].filter(Boolean).join("\n\n") },
+          { role: "user", content: debatePrompt({ question, position, other, round, opponent, opponentName: cleanLine(body.opponentName, 60) || "the other side" }) },
+        ],
+        effort: "medium",
+        maxTokens: 1500,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const message = String(r.content || "").trim().slice(0, 8000);
+      if (!message) return jsonResponse({ error: "No argument came back. Please try again." }, 502);
+      return jsonResponse({ message, provider: r.provider, model: r.model });
+    }
+    if (action === "debate-judge") {
+      const question = String(body.question || "").replace(/\r/g, "").trim().slice(0, 3000);
+      const sides = (Array.isArray(body.sides) ? body.sides : []).slice(0, 2).map((x: any) => ({
+        name: cleanLine(x?.name, 60), position: cleanLine(x?.position, 300),
+        opening: String(x?.opening || "").replace(/\r/g, "").trim().slice(0, 6000), rebuttal: String(x?.rebuttal || "").replace(/\r/g, "").trim().slice(0, 6000),
+      }));
+      if (!question || sides.length !== 2 || sides.some((x: { name: string; opening: string }) => !x.name || !x.opening)) return jsonResponse({ error: "Both sides need to have argued first" }, 400);
+      const r = await callAI({
+        model: CLAUDE_REVIEW_MODEL,
+        messages: [
+          { role: "system", content: [JUDGE_SYSTEM, languageLine(body.language)].filter(Boolean).join("\n\n") },
+          { role: "user", content: `QUESTION: ${question}\n\n${sides.map((x: any, i: number) => `<side id="${i === 0 ? "a" : "b"}" assistant="${x.name.replace(/"/g, "'")}">\nPOSITION: ${x.position}\n<opening>\n${x.opening}\n</opening>\n<rebuttal>\n${x.rebuttal || "(none)"}\n</rebuttal>\n</side>`).join("\n\n")}` },
+        ],
+        jsonMode: true,
+        effort: "high",
+        maxTokens: 6000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = debateVerdict(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't reach a verdict this time. Please try again." }, 502);
+      return jsonResponse({ result });
     }
 
     // ---------------------------------------------------------------- Crew knowledge: the text of a PDF, read once

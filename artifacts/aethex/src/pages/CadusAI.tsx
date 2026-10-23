@@ -20,7 +20,7 @@ import {
   Sparkles, Square, SquarePen, Stethoscope, Sun, Syringe, Telescope, Trash2, Users, Volume2, VolumeX, X, Zap, Palette,
   BedDouble, BookMarked, BookOpenText, ChartLine, ClipboardPlus, FileBadge, FileSignature, Microscope, NotebookPen, NotepadText,
   Printer, Scissors, ScrollText, Sigma, PanelRight, EyeOff, Compass, Rows3, WifiOff, Building2, ScanSearch,
-  Bot, GitBranch, HeartPulse, MessageCircle, BellRing, FileScan, ShieldPlus, ScanLine, Shield, Bone, AtSign, Users2, GitFork, CalendarDays, FileOutput, ArrowRightLeft, Waypoints, CalendarCheck, Activity, Bug, ListChecks, FlaskRound, Wind, BookCheck, CalendarClock,
+  Bot, GitBranch, HeartPulse, MessageCircle, BellRing, FileScan, ShieldPlus, ScanLine, Shield, Bone, AtSign, Users2, GitFork, CalendarDays, FileOutput, ArrowRightLeft, Waypoints, CalendarCheck, Activity, Bug, ListChecks, FlaskRound, Wind, BookCheck, CalendarClock, Eye, Ear, Droplets, Swords, Workflow,
   type LucideIcon,
 } from "lucide-react";
 import { invokeAi } from "@/lib/ai-functions";
@@ -63,7 +63,10 @@ import {
 import CrewKnowledge from "@/components/cadus/CrewKnowledge";
 import { CrewImportDialog, CrewPasteImport, CrewShareDialog } from "@/components/cadus/CrewShare";
 import CrewHuddleView from "@/components/cadus/CrewHuddleView";
-import { CADUS_CREW_CSS } from "@/components/cadus/cadus-crew-styles";
+import CrewDebateView from "@/components/cadus/CrewDebateView";
+import CrewPlaybookView from "@/components/cadus/CrewPlaybookView";
+import CrewBuilder from "@/components/cadus/CrewBuilder";
+import { CADUS_CREW_CSS, CADUS_CREWPLUS_CSS } from "@/components/cadus/cadus-crew-styles";
 import TranslatorView from "@/components/cadus/TranslatorView";
 import PathwaysView from "@/components/cadus/PathwaysView";
 import FlashcardsView from "@/components/cadus/FlashcardsView";
@@ -161,7 +164,7 @@ type ModeId =
   | "admission" | "progress" | "opnote" | "death" | "certificate" | "rx" | "evidence";
 /** "groq" only appears in chats saved before Cadus became Claude-only. */
 type Provider = "claude" | "groq" | "library";
-type View = "chat" | "crew" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan" | "ecg" | "abx" | "procedure" | "poison" | "infusions" | "convert" | "abg" | "logbook" | "followups";
+type View = "chat" | "crew" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "debate" | "playbooks" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan" | "ecg" | "abx" | "procedure" | "poison" | "infusions" | "convert" | "abg" | "logbook" | "followups";
 /** Views reached from the Tools hub, so the hub stays highlighted in the sidebar. */
 const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today", "discharge", "handover", "ddx", "studyplan", "ecg", "abx", "procedure", "poison", "infusions", "convert", "abg", "logbook", "followups"]);
 type ToolTab = "all" | "clinical" | "documentation" | "learning";
@@ -456,6 +459,7 @@ const CREW_ICON: Record<CrewIcon, LucideIcon> = {
   stethoscope: Stethoscope, graduation: GraduationCap, pill: Pill, file: FileText, microscope: Microscope, heart: HeartPulse,
   baby: Baby, brain: Brain, users: Users, clipboard: ClipboardList, siren: Siren, book: BookOpen,
   scan: ScanLine, scalpel: Scissors, shield: Shield, bone: Bone,
+  eye: Eye, ear: Ear, droplets: Droplets, zap: Zap, syringe: Syringe, globe: Globe, sun: Sun,
 };
 /** A Crew assistant's badge. */
 function CrewBadge({ c, size = 40 }: { c: Pick<CrewMember, "icon" | "tone">; size?: number }) {
@@ -2636,6 +2640,8 @@ export default function CadusAI() {
       { key: "a:new", label: "New chat", hint: `${MOD} ⇧ O`, icon: SquarePen, run: () => newChat() },
       { key: "a:crew", label: "Cadus Crew: assistants", hint: "Ready-made and your own", icon: Bot, run: () => openCrew() },
       { key: "a:huddle", label: "Crew Huddle: ask several assistants at once", hint: "Side-by-side answers and a checked combined answer", icon: Users2, run: () => openHuddle() },
+      { key: "a:debate", label: "Crew Debate: two assistants argue, a judge decides", hint: "Thrombolyse or not, rate or rhythm, operate or wait", icon: Swords, run: () => openView("debate") },
+      { key: "a:playbooks", label: "Crew Playbooks: chain assistants into a workflow", hint: "Notes to presentation to discharge summary", icon: Workflow, run: () => openView("playbooks") },
       { key: "a:deep", label: prefs.answerMode === "deep" ? "Turn off Deep Dive" : "Deep Dive: a cited research report", hint: "PubMed and guidelines, step by step", icon: Telescope, run: () => { setPrefs((p) => ({ ...p, answerMode: p.answerMode === "deep" ? "auto" : "deep" })); focusComposer(); } },
       ...ANSWER_MODES.filter((am) => am.id !== "deep" && am.id !== prefs.answerMode).map((am) => ({ key: `a:mode:${am.id}`, label: `Mode: ${am.label}`, hint: am.desc, icon: am.icon, run: () => { setPrefs((p) => ({ ...p, answerMode: am.id })); focusComposer(); } })),
       { key: "a:newproj", label: "New project", icon: FolderPlus, run: () => newProject() },
@@ -3380,6 +3386,8 @@ export default function CadusAI() {
         </div>
         <div className="cx-page-acts">
           <button className="cx-btn" onClick={() => openHuddle()} data-crew="huddle"><Users2 size={15} /> Crew Huddle</button>
+          <button className="cx-btn" onClick={() => openView("debate")} data-crew="debate"><Swords size={15} /> Debate</button>
+          <button className="cx-btn" onClick={() => openView("playbooks")} data-crew="playbooks"><Workflow size={15} /> Playbooks</button>
           <button className="cx-btn primary" onClick={() => setCrewEdit(blankCrew())} disabled={crewMine.length >= CREW_MAX}><Plus size={15} /> Create an assistant</button>
         </div>
       </header>
@@ -3387,7 +3395,16 @@ export default function CadusAI() {
         <span><AtSign size={14} /> Type <b>@</b> in any chat to bring in an assistant for one reply</span>
         <span><Users2 size={14} /> <button className="cx-link" onClick={() => openHuddle()}>Huddle</button>: ask up to four at once</span>
         <span><BookOpen size={14} /> Give your own assistants knowledge files</span>
+        <span><Swords size={14} /> <button className="cx-link" onClick={() => openView("debate")}>Debate</button>: two argue, a judge decides</span>
+        <span><Workflow size={14} /> <button className="cx-link" onClick={() => openView("playbooks")}>Playbooks</button>: chain them into a workflow</span>
       </div>
+      <CrewBuilder
+        build={(description) => invokeCadus({ action: "crew-build", description, model: prefs.model, modes: MODES.map((m) => ({ id: m.id, label: m.label })) })}
+        onBuilt={(c) => setCrewEdit(c)}
+        friendlyError={friendlyError}
+        toast={toast}
+        disabled={crewMine.length >= CREW_MAX}
+      />
       <h2 className="cx-crew-sh">Your crew <span>{crewMine.length ? crewMine.length : ""}</span></h2>
       {crewMine.length ? (
         <div className="cx-crew-grid">{crewMine.map((c, i) => crewCard(c, i))}</div>
@@ -3402,7 +3419,7 @@ export default function CadusAI() {
         const group = BUILT_IN_CREW.filter((c) => (c.group ?? "Clinical") === g);
         return group.length ? (
           <div key={g}>
-            <h2 className="cx-crew-sh">{g === "Study" ? "For study and exams" : g === "Clinical" ? "For the wards and OPD" : g === "Writing" ? "For notes and patients" : "For research"} <span>By Cadus</span></h2>
+            <h2 className="cx-crew-sh">{g === "Study" ? "For study and exams" : g === "Clinical" ? "For the wards and OPD" : g === "Specialists" ? "Specialist consults" : g === "Writing" ? "For notes and patients" : "For research"} <span>By Cadus</span></h2>
             <div className="cx-crew-grid">{group.map((c, i) => crewCard(c, i + crewMine.length))}</div>
           </div>
         ) : null;
@@ -4174,7 +4191,7 @@ export default function CadusAI() {
       style={{ ["--acc" as string]: dark ? accent.dark : accent.light, ["--fs" as string]: `${fontSize}px`, ["--fs-u" as string]: `${sansSize}px` }}
       {...dropHandlers}
     >
-      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS}</style>
+      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS + CADUS_CREWPLUS_CSS}</style>
 
       {/* ============================================== sidebar */}
       <div className={`cx-scrim ${sidebarOpen ? "on" : ""}`} onClick={() => setSidebarOpen(false)} />
@@ -4490,6 +4507,8 @@ export default function CadusAI() {
                 view === "tools" ? [LayoutGrid, "Tools"]
                 : view === "crew" ? [Bot, "Cadus Crew"]
                 : view === "huddle" ? [Users2, "Crew Huddle"]
+                : view === "debate" ? [Swords, "Crew Debate"]
+                : view === "playbooks" ? [Workflow, "Crew Playbooks"]
                 : view === "calculators" ? [Calculator, "Calculators"]
                 : view === "practice" ? [GraduationCap, "Learn"]
                 : view === "library" ? [Library, "Library"]
@@ -4977,6 +4996,58 @@ export default function CadusAI() {
             )
             : view === "tools" ? renderTools()
             : view === "crew" ? renderCrew()
+            : view === "debate" ? (
+              <CrewDebateView
+                mine={crewMine}
+                badge={(c, size) => <CrewBadge c={c} size={size} />}
+                turn={async (c, o) => {
+                  const r = await invokeCadus({ action: "debate-turn", crew: crewPayload(c), ...o, model: prefs.model, language: prefs.language });
+                  if (!r?.message) throw new Error("No argument came back");
+                  return String(r.message);
+                }}
+                judge={async (question, sides) => {
+                  const r = await invokeCadus({ action: "debate-judge", question, sides, language: prefs.language });
+                  if (!r?.result) throw new Error("No verdict came back");
+                  return r.result;
+                }}
+                canAsk={(n) => {
+                  if (usage.date === today() && usage.count + n > limits.questionsPerDay) { setUpgrade({ reason: `This uses ${n} of today's ${limits.questionsPerDay} questions on the ${PLAN_BY_ID[plan].name} plan.`, feature: "questions" }); return false; }
+                  setUsage((u) => (u.date === today() ? { ...u, count: u.count + n } : { date: today(), count: n }));
+                  return true;
+                }}
+                friendlyError={friendlyError}
+                toast={toast}
+                onSave={(question, answer) => { setLibrary((l) => [{ id: uid(), sessionId: "", messageId: uid(), question, answer, mode: "general", at: Date.now() }, ...l]); toast("Saved to Library"); }}
+              />
+            )
+            : view === "playbooks" ? (
+              <CrewPlaybookView
+                mine={crewMine}
+                badge={(c, size) => <CrewBadge c={c} size={size} />}
+                ask={async (c, q) => {
+                  const r = await invokeCadus({ action: "chat", message: q, mode: "general", history: [], crew: crewPayload(c), model: prefs.model, language: prefs.language, search: limits.sources && !!c.sources, ...(profilePayload(profile) ? { profile: profilePayload(profile) } : {}) });
+                  if (!r?.message) throw new Error("No answer came back");
+                  return String(r.message);
+                }}
+                canAsk={(n) => {
+                  if (usage.date === today() && usage.count + n > limits.questionsPerDay) { setUpgrade({ reason: `This uses ${n} of today's ${limits.questionsPerDay} questions on the ${PLAN_BY_ID[plan].name} plan.`, feature: "questions" }); return false; }
+                  setUsage((u) => (u.date === today() ? { ...u, count: u.count + n } : { date: today(), count: n }));
+                  return true;
+                }}
+                friendlyError={friendlyError}
+                toast={toast}
+                onSave={(question, answer) => { setLibrary((l) => [{ id: uid(), sessionId: "", messageId: uid(), question, answer, mode: "general", at: Date.now() }, ...l]); toast("Saved to Library"); }}
+                onContinue={(c, q, answer) => {
+                  const sid = uid();
+                  const u: Msg = { id: uid(), role: "user", mode: "general", at: Date.now(), content: q };
+                  const a: Msg = { id: uid(), role: "assistant", mode: "general", at: Date.now(), content: answer, mention: { id: c.id, name: c.name, icon: c.icon, tone: c.tone } };
+                  upsert(sid, () => [u, a], clip(q, 64), undefined, { crewId: c.id });
+                  setActiveId(sid);
+                  setView("chat");
+                  focusComposer();
+                }}
+              />
+            )
             : view === "huddle" ? (
               <CrewHuddleView
                 mine={crewMine}

@@ -113,6 +113,10 @@ It provides an intelligent interface for medical and educational assistance.
 - Poisoning & Snakebite: first actions, antidotes and ASV with doses for the patient, what to avoid and how to monitor, following Indian protocols
 - Infusions, Dose Converter and ABG Interpreter, worked out on the device: ICU infusions (dose to mL/h and back, usual ranges, drip rates), steroid and opioid conversions, and step-by-step blood gas interpretation
 - PG Logbook (procedures, surgeries, cases, duties and academic work with counts by role, printable or CSV) and Follow-ups (who to review and when, shown on Today)
+- Cadus Crew: ten specialist consults (cardiology, nephrology, neurology, diabetes and endocrine, dermatology, eye, ENT, orthopaedics, nurse educator, public health), 30 ready-made assistants in all
+- Assistant Builder: describe an assistant in one line and Cadus writes its name, instructions, starters, icon and tool, opened in the editor to review
+- Crew Debate: two assistants argue opposite positions (openings, then rebuttals) and a neutral judge gives the verdict, the strongest point on each side, corrections and the deciding evidence
+- Crew Playbooks: chain up to five assistants, each getting the input and the previous step's output; four ready-made playbooks (admission to discharge, explain to the patient, learn then get tested, emergency to ICU) and your own
 
 > CADUS is intended as an educational and informational assistant and is not a replacement for qualified medical professionals.
 

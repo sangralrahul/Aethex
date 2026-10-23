@@ -16,7 +16,7 @@ import {
   Search, ShieldCheck, UserRound, WifiOff, X,
   BellRing, Bot, CalendarDays, FileScan, GitFork, HeartPulse, History, Languages, Layers, Pill, Presentation, ShieldPlus, Users2,
   ArrowRightLeft, CalendarCheck, FileOutput, Keyboard, Power, Waypoints, PanelBottom,
-  Activity, Bug, ListChecks, FlaskRound, Syringe, Scale, Wind, BookCheck, CalendarClock,
+  Activity, Bug, ListChecks, FlaskRound, Syringe, Scale, Wind, BookCheck, CalendarClock, Swords, Workflow, Wand2,
 } from "lucide-react";
 import CadusMark from "@/components/cadus/CadusMark";
 import { FONT_FACES } from "@/components/cadus/cadus-styles";
@@ -264,7 +264,7 @@ const TOOLS: [string, string][] = [
   ["Clinical answers", "t"], ["Dose cards", "t"], ["Drug interactions", "r"], ["Rx Safety Check", "r"], ["Med Reconciliation", "r"],
   ["Lab interpretation", "t"], ["Report Explainer", "t"], ["Compare over time", "v"], ["Radiology reads", "v"], ["Clinical Pathways", "t"],
   ["Clinical calculators", "t"], ["Emergency", "r"], ["Paediatrics", "v"], ["Ward list", "t"], ["Consult Translator", "v"],
-  ["Cadus Crew", "y"], ["Crew Huddle", "y"], ["Deep Dive research", "v"], ["Guideline Watch", "v"], ["Case Simulator", "y"],
+  ["Cadus Crew", "y"], ["Crew Huddle", "y"], ["Crew Debate", "y"], ["Crew Playbooks", "y"], ["Deep Dive research", "v"], ["Guideline Watch", "v"], ["Case Simulator", "y"],
   ["Presentation Coach", "y"], ["Flashcards", "y"], ["Exam practice", "y"], ["Patient leaflets", "t"], ["Offline library", "y"],
   ["Discharge Summary", "t"], ["Shift Handover", "r"], ["Differential Builder", "v"], ["Study Planner", "y"],
   ["ECG Reader", "r"], ["Antibiotic Guide", "t"], ["Procedure Guide", "v"], ["Poisoning & Snakebite", "r"], ["Infusions", "t"],
@@ -273,6 +273,9 @@ const TOOLS: [string, string][] = [
 
 /** What's arrived in Cadus lately. The app shows the live Cadus, so all of it is in the app already. */
 const NEW_IN_CADUS: { icon: typeof Pill; t: string; d: string }[] = [
+  { icon: Swords, t: "Crew Debate", d: "Two assistants argue opposite sides of a clinical question, such as thrombolyse or not, each rebuts the other, and a neutral judge weighs the evidence." },
+  { icon: Workflow, t: "Crew Playbooks", d: "Chain assistants into a workflow: rough notes become a case presentation, a medicines check and a discharge summary, one step after another." },
+  { icon: Wand2, t: "Assistant Builder", d: "Describe an assistant in one line and Cadus writes its instructions, starter questions and icon, ready to review and save." },
   { icon: Activity, t: "ECG Reader", d: "Photograph a 12-lead ECG: rate, rhythm, axis, intervals and findings by lead, with STEMI, heart block and hyperkalaemia flagged on top." },
   { icon: Bug, t: "Antibiotic Guide", d: "Empiric antibiotics for the infection in front of you, following ICMR guidance and your hospital's policy, with doses adjusted for kidneys, allergy and pregnancy." },
   { icon: ListChecks, t: "Procedure Guide", d: "LP, central line, chest drain, ascitic tap and more, step by step with an equipment checklist, and a consent sheet in the patient's language." },
@@ -287,7 +290,7 @@ const NEW_IN_CADUS: { icon: typeof Pill; t: string; d: string }[] = [
   { icon: Waypoints, t: "Differential Builder", d: "Findings in, a ranked differential out: what fits, what doesn't, the test that decides each one, and the can't-miss diagnoses flagged." },
   { icon: CalendarCheck, t: "Exam Study Planner", d: "NEET-PG, INI-CET, FMGE or university: a day-by-day plan to the exam with revision and mock days, that ticks off Learn and goes into your calendar." },
   { icon: CalendarDays, t: "Today", d: "Your day on one screen: ward jobs to tick off, revision due, unfinished pathways and recent chats." },
-  { icon: Bot, t: "Cadus Crew", d: "Twenty ready-made assistants, from Viva Examiner to Antibiotic Steward, or your own with its own knowledge files. Type @ in any chat to ask one." },
+  { icon: Bot, t: "Cadus Crew", d: "Thirty ready-made assistants, from Viva Examiner to Cardiology and Nephrology Consults, or your own with its own knowledge files. Type @ in any chat to ask one." },
   { icon: Users2, t: "Crew Huddle", d: "Ask up to four assistants at once, see their answers side by side, then one combined answer that Cadus has checked." },
   { icon: ShieldPlus, t: "Rx Safety Check", d: "Type or photograph a prescription: doses, interactions, allergies, pregnancy and kidney checks, with generics and Jan Aushadhi names." },
   { icon: Pill, t: "Med Reconciliation", d: "Before and after admission or discharge: what was started, stopped or changed, what's unsafe, and a medicine sheet for the patient." },

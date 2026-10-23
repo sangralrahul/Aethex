@@ -106,3 +106,45 @@ button.cx-hd-chip.add{padding:0 12px;border-style:dashed;background:none;color:v
 .cx-hd-recent{display:flex;flex-direction:column;gap:6px;margin-top:22px}
 @media (max-width:900px){.cx-hd-grid,.cx-hd-grid.n3,.cx-hd-grid.n4{grid-template-columns:1fr}.cx-hd-form{flex-direction:column;align-items:stretch}}
 `;
+
+/** Update 16: Assistant Builder, Crew Debate and Crew Playbooks. */
+export const CADUS_CREWPLUS_CSS = `
+.cx-cb{display:flex;flex-direction:column;gap:10px;padding:14px 16px;margin:14px 0 6px;border:1px solid color-mix(in srgb,var(--acc) 35%,var(--line));border-radius:var(--r-lg,12px);background:color-mix(in srgb,var(--acc) 5%,var(--surface))}
+.cx-cb-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cx-cb-h svg{color:var(--acc)}
+.cx-cb-h small{color:var(--t3)}
+.cx-cb-form{display:flex;gap:8px}
+.cx-cb-form .cx-input{flex:1;min-width:0}
+.cx-cb-ideas{display:flex;flex-wrap:wrap;gap:6px}
+.cx-cb-ideas button{padding:5px 11px;border:1px dashed var(--line2);border-radius:999px;background:none;color:var(--t2);font:inherit;font-size:12.5px;cursor:pointer;text-align:left}
+.cx-cb-ideas button:hover{background:var(--hover)}
+.cx-db-setup{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
+.cx-db-pick{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.cx-db-pick .cx-input{grid-column:1/-1}
+.cx-db-tag{display:inline-grid;place-items:center;min-width:24px;height:24px;padding:0 6px;border-radius:7px;background:var(--text);color:var(--bg,#fff);font-style:normal;font-size:12px;font-weight:700}
+.cx-db-side .cx-db-tag{margin-left:auto}
+.cx-db-pos{margin:0 0 6px;font-weight:600;font-size:14px;color:var(--acc)}
+.cx-db-side.won{border-color:color-mix(in srgb,var(--ok) 55%,var(--line));box-shadow:0 0 0 1px color-mix(in srgb,var(--ok) 35%,transparent)}
+.cx-db-reb{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line2)}
+.cx-db-win{display:flex;align-items:center;gap:8px;margin:4px 0;font-weight:700;color:var(--acc)}
+.cx-db-bottom{margin:0 0 8px;font-size:15px}
+.cx-pb-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin-bottom:14px}
+.cx-pb-list button{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-lg,12px);background:var(--surface);color:var(--text);font:inherit;text-align:left;cursor:pointer}
+.cx-pb-list button.on{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+.cx-pb-list small{color:var(--t2);font-size:12.5px;line-height:1.4}
+.cx-pb-chain{display:flex;align-items:center;gap:4px;margin-top:auto}
+.cx-pb-chain>span{display:inline-flex;align-items:center;gap:4px}
+.cx-pb-chain i{font-style:normal;color:var(--t3);font-size:12px}
+.cx-pb-steps{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-direction:column;gap:6px;counter-reset:pb}
+.cx-pb-steps li{display:flex;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.cx-pb-steps li div{display:flex;flex-direction:column;min-width:0}
+.cx-pb-steps small{color:var(--t2);font-size:12.5px}
+.cx-pb-run{list-style:none;margin:10px 0;padding:0;display:flex;flex-direction:column;gap:14px}
+.cx-pb-run>li{position:relative}
+.cx-pb-task{margin:0 0 6px;font-size:13px;color:var(--t3);font-style:italic}
+.cx-pb-arrow{position:absolute;left:50%;bottom:-15px;transform:translateX(-50%);color:var(--t3);background:var(--bg,transparent)}
+.cx-pb-edit{display:flex;flex-direction:column;gap:10px;max-width:760px}
+.cx-pb-step-e{display:grid;grid-template-columns:auto 200px minmax(0,1fr) auto;gap:8px;align-items:center}
+.cx-pb-n{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--s2);font-size:12px;font-weight:700}
+@media (max-width:700px){.cx-db-setup{grid-template-columns:1fr}.cx-pb-step-e{grid-template-columns:auto minmax(0,1fr) auto}.cx-pb-step-e .cx-input{grid-column:2/3}.cx-cb-form{flex-direction:column}}
+`;

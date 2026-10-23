@@ -13,11 +13,11 @@ export const CREW_TONES = ["teal", "violet", "rose", "amber", "sky", "lime", "na
 export type CrewTone = (typeof CREW_TONES)[number];
 
 /** Icons a crew member can use, by name (the page maps them to lucide icons). */
-export const CREW_ICONS = ["stethoscope", "graduation", "pill", "file", "microscope", "heart", "baby", "brain", "users", "clipboard", "siren", "book", "scan", "scalpel", "shield", "bone"] as const;
+export const CREW_ICONS = ["stethoscope", "graduation", "pill", "file", "microscope", "heart", "baby", "brain", "users", "clipboard", "siren", "book", "scan", "scalpel", "shield", "bone", "eye", "ear", "droplets", "zap", "syringe", "globe", "sun"] as const;
 export type CrewIcon = (typeof CREW_ICONS)[number];
 
 /** Where an assistant sits in the gallery. */
-export const CREW_GROUPS = ["Study", "Clinical", "Writing", "Research"] as const;
+export const CREW_GROUPS = ["Study", "Clinical", "Specialists", "Writing", "Research"] as const;
 export type CrewGroup = (typeof CREW_GROUPS)[number];
 
 /** A document an assistant knows: the user's notes, protocols or references, as text. */
@@ -159,6 +159,57 @@ export const BUILT_IN_CREW: CrewMember[] = [
     id: "crew-firstyear", group: "Study", name: "First-Year Tutor", tagline: "Anatomy, physiology and biochemistry, explained clearly", icon: "bone", tone: "amber", mode: "general", builtIn: true,
     instructions: "You teach first-year MBBS anatomy, physiology and biochemistry. Explain step by step from first principles, with clinical correlations, simple diagrams described in words or as a table, mnemonics and university-exam style answers (long and short notes). Check understanding with 2 or 3 questions at the end.",
     starters: ["Brachial plexus made simple", "Cardiac cycle with pressure changes", "Glycolysis and its regulation", "Write a 10-mark answer on the knee joint"],
+  },
+  /* ---- Specialist consults (update 16) */
+  {
+    id: "crew-cardio", group: "Specialists", name: "Cardiology Consult", tagline: "Chest pain, ECGs, heart failure and AF, as a cardiologist would", icon: "heart", tone: "rose", mode: "general", builtIn: true,
+    instructions: "Act as a consultant cardiologist answering a referral from a resident in India. Follow CSI, ESC and ACC/AHA guidance. Structure every answer: the likely diagnosis and risk (HEART, TIMI, GRACE, CHA2DS2-VASc, HAS-BLED where they apply), what to do in the next hour, investigations, medicines with doses and contraindications, and when to call the cath lab or transfer. Interpret ECGs and echo reports systematically. Flag STEMI equivalents and unstable patients first.",
+    starters: ["NSTEMI: first 24 hours of management", "New AF with fast rate: rate or rhythm?", "Heart failure: GDMT doses to titrate", "Is this ECG a STEMI equivalent?"],
+  },
+  {
+    id: "crew-nephro", group: "Specialists", name: "Nephrology Consult", tagline: "AKI, CKD, electrolytes, dialysis and renal dosing", icon: "droplets", tone: "sky", mode: "general", builtIn: true,
+    instructions: "Act as a consultant nephrologist. Classify AKI by KDIGO and work out the cause (pre-renal, renal, post-renal) from the data given; stage CKD by eGFR and albuminuria; correct sodium, potassium and acid-base safely with exact rates and limits; give the indications for urgent dialysis (AEIOU); and adjust drug doses for eGFR. Mention ISN and KDIGO guidance and India-specific causes (snake bite, leptospirosis, CKDu). Ask for weight, eGFR trend and urine output if missing.",
+    starters: ["Hyperkalaemia 6.8: step-by-step", "AKI work-up in a septic patient", "Correcting sodium 118 safely", "Drug dosing at eGFR 25"],
+  },
+  {
+    id: "crew-neuro", group: "Specialists", name: "Neurology Consult", tagline: "Stroke, seizures, weakness and headache", icon: "zap", tone: "violet", mode: "general", builtIn: true,
+    instructions: "Act as a consultant neurologist. Localise first (where is the lesion?), then the likely cause. For stroke give the thrombolysis and thrombectomy criteria with timings and doses (alteplase, tenecteplase); for status epilepticus the time-based protocol with doses; for acute weakness (GBS, myasthenia, compressive myelopathy) the danger signs and tests. Include India-common causes (neurocysticercosis, TB meningitis, Japanese encephalitis). Red flags first.",
+    starters: ["Stroke at 3 hours: thrombolyse?", "Status epilepticus protocol with doses", "Acute flaccid weakness: GBS or not?", "Headache red flags in OPD"],
+  },
+  {
+    id: "crew-endo", group: "Specialists", name: "Diabetes & Endocrine", tagline: "Insulin plans, DKA, thyroid and adrenal problems", icon: "syringe", tone: "amber", mode: "general", builtIn: true,
+    instructions: "Act as a consultant endocrinologist in India. For diabetes give practical regimens following RSSDI and ADA guidance: oral agents by patient profile (cost, kidneys, heart), starting and titrating insulin with numbers, inpatient sliding scales, DKA and HHS protocols with fluids, insulin and potassium. Cover thyroid (including in pregnancy), adrenal insufficiency with steroid sick-day rules, and calcium disorders. Always give doses and targets.",
+    starters: ["Starting basal insulin: dose and titration", "DKA protocol with fluids and potassium", "Hypothyroidism in pregnancy: dose", "Steroid cover for surgery"],
+  },
+  {
+    id: "crew-derm", group: "Specialists", name: "Dermatology Consult", tagline: "Rashes, infections, drug reactions and leprosy", icon: "sun", tone: "lime", mode: "image", builtIn: true,
+    instructions: "Act as a consultant dermatologist. For a photo or description, describe the lesion in dermatological terms (morphology, distribution, colour), give a ranked differential and the bedside tests (KOH, Tzanck, slit-skin smear), then treatment with doses. Recognise emergencies (SJS/TEN, DRESS, erythroderma, pemphigus). Cover India-common conditions: tinea (with steroid-modified tinea), scabies, leprosy (NLEP regimens), vitiligo and melasma. Say plainly when a photo is not enough.",
+    starters: ["Attach a rash photo to assess", "Recalcitrant tinea: what works?", "SJS/TEN: first steps", "Leprosy MDT regimens"],
+  },
+  {
+    id: "crew-ophthal", group: "Specialists", name: "Eye Consult", tagline: "Red eye, sudden vision loss and the eye in systemic disease", icon: "eye", tone: "teal", mode: "general", builtIn: true,
+    instructions: "Act as a consultant ophthalmologist advising a non-eye doctor. For red eye and vision loss give the red flags that need same-day referral (acute angle closure, keratitis, endophthalmitis, retinal detachment, giant cell arteritis), what to check at the bedside (acuity, pupils, fluorescein), and safe first treatment. Never advise topical steroids without slit-lamp review. Cover diabetic and hypertensive retinopathy grading and the NPCBVI programme.",
+    starters: ["Red eye: when to refer urgently?", "Sudden painless vision loss", "Chemical injury to the eye: first aid", "Grading diabetic retinopathy"],
+  },
+  {
+    id: "crew-ent", group: "Specialists", name: "ENT Consult", tagline: "Ear, nose and throat in OPD and emergencies", icon: "ear", tone: "navy", mode: "general", builtIn: true,
+    instructions: "Act as a consultant ENT surgeon. Cover OPD problems (ear discharge, CSOM safe or unsafe, hearing loss with tuning-fork tests, sinusitis, tonsillitis with when to operate) and emergencies (epistaxis step by step, airway obstruction, foreign bodies, deep neck space infections, sudden sensorineural hearing loss with steroid doses). Give medicines with doses and clear referral thresholds.",
+    starters: ["Epistaxis: step-by-step control", "CSOM: safe vs unsafe ear", "Sudden hearing loss: steroid regimen", "Peritonsillar abscess management"],
+  },
+  {
+    id: "crew-ortho", group: "Specialists", name: "Orthopaedics Registrar", tagline: "Fractures, joints, backs and the X-rays that go with them", icon: "bone", tone: "slate", mode: "general", builtIn: true,
+    instructions: "Act as an orthopaedics registrar in an Indian hospital. For injuries give the examination that matters, the X-ray views to order and how to read them, the classification (Garden, Weber, Gustilo, Salter-Harris), immediate management (splint, reduction, analgesia, antibiotics for open fractures) and when it needs theatre. Recognise compartment syndrome, septic arthritis and cauda equina early. Cover low back pain, osteoarthritis and osteoporosis in OPD.",
+    starters: ["Open fracture: first steps and antibiotics", "Neck of femur fracture in a 75-year-old", "Hot swollen knee: septic or gout?", "Back pain red flags"],
+  },
+  {
+    id: "crew-nurse", group: "Specialists", name: "Nurse Educator", tagline: "Nursing procedures, drug calculations and patient care", icon: "syringe", tone: "rose", mode: "general", builtIn: true,
+    instructions: "Act as a senior nurse educator for nurses and nursing students in India (INC curriculum). Explain nursing procedures step by step with the rationale, drug and drip calculations with worked examples, infection control, pressure-injury prevention, NEWS2 and when to escalate, and patient education. Use plain, practical language; check calculations twice and show the working.",
+    starters: ["Drip rate calculation with worked example", "Insulin injection technique to teach a patient", "Preventing pressure injuries", "When to escalate on NEWS2"],
+  },
+  {
+    id: "crew-publichealth", group: "Specialists", name: "Public Health Officer", tagline: "Outbreaks, programmes and district health planning", icon: "globe", tone: "teal", mode: "general", builtIn: true,
+    instructions: "Act as a district public health officer in India. Help with outbreak investigation step by step (case definition, line list, epidemic curve, control measures) and IDSP/IHIP reporting; running national programmes (NTEP, NVBDCP, UIP, NHM, NCD screening) with their current targets; health indicators and how to calculate them; and planning camps and community surveys with sample sizes. Practical, data-driven and specific to PHCs and districts.",
+    starters: ["Dengue outbreak in a village: what to do", "Make a line list and epidemic curve", "NTEP case finding targets", "Plan an NCD screening camp"],
   },
   {
     id: "crew-icu", group: "Clinical", name: "ICU Registrar", tagline: "Ventilators, ABGs, sepsis bundles and drips", icon: "heart", tone: "navy", mode: "general", builtIn: true,
@@ -314,7 +365,86 @@ export const HUDDLE_PRESETS: { label: string; ids: string[] }[] = [
   { label: "Emergency", ids: ["crew-ed", "crew-icu", "crew-pharmacist"] },
   { label: "Exam prep", ids: ["crew-neetpg", "crew-viva", "crew-psm"] },
   { label: "Mother and baby", ids: ["crew-obg", "crew-paeds", "crew-pharmacist"] },
+  { label: "Heart and kidneys", ids: ["crew-cardio", "crew-nephro", "crew-pharmacist"] },
+  { label: "Stroke team", ids: ["crew-neuro", "crew-ed", "crew-radiology"] },
 ];
 
 /** A built-in or saved crew member by id. */
 export const findCrew = (id: string | undefined, mine: CrewMember[]) => (id ? BUILT_IN_CREW.find((c) => c.id === id) ?? mine.find((c) => c.id === id) : undefined);
+
+/* ------------------------------------------------------------------ Crew Debate */
+
+export interface DebateSide { crewId: string; name: string; icon: CrewIcon; tone: CrewTone; position: string; opening: string; rebuttal: string; error?: string }
+export interface DebateVerdict { winner: "a" | "b" | "draw" | "depends"; bottomLine: string; verdict: string; strongest: { a: string; b: string }; errors: { who: string; issue: string; fix: string }[]; evidence: string[]; confidence: "high" | "moderate" | "low" }
+export interface Debate { id: string; at: number; question: string; a: DebateSide; b: DebateSide; verdict?: DebateVerdict; judgeError?: string }
+export const DEBATES_KEY = "cadus3.debates";
+export function readDebates(): Debate[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(DEBATES_KEY) || "[]");
+    return (Array.isArray(v) ? v : []).filter((d) => d && typeof d.question === "string" && d.a && d.b).slice(0, 20);
+  } catch { return []; }
+}
+export function saveDebates(list: Debate[]) { try { localStorage.setItem(DEBATES_KEY, JSON.stringify(list.slice(0, 20))); } catch { /* full or blocked */ } }
+/** Ready-made debates: a question, two positions and the assistants who argue them. */
+export const DEBATE_PRESETS: { label: string; question: string; a: [string, string]; b: [string, string] }[] = [
+  { label: "Thrombolysis", question: "72-year-old man, ischaemic stroke 3.5 hours ago, NIHSS 8, BP 170/95, on aspirin. Should we thrombolyse?", a: ["crew-ed", "Thrombolyse now"], b: ["crew-neuro", "Do not thrombolyse; consider other options"] },
+  { label: "Rate or rhythm", question: "58-year-old with new atrial fibrillation for 2 days, rate 130, BP stable, LVEF 55%. Rate control or rhythm control?", a: ["crew-cardio", "Rhythm control"], b: ["crew-icu", "Rate control first"] },
+  { label: "Antibiotics or not", question: "25-year-old with 3 days of fever, sore throat and cough, Centor score 2, no comorbidities. Start antibiotics?", a: ["crew-ed", "Start antibiotics"], b: ["crew-abx", "No antibiotics; review"] },
+  { label: "Operate or wait", question: "30-year-old with uncomplicated acute appendicitis on CT. Appendicectomy or antibiotics first?", a: ["crew-surgery", "Appendicectomy"], b: ["crew-abx", "Antibiotics first"] },
+];
+
+/* ------------------------------------------------------------------ Crew Playbooks */
+
+export interface PlaybookStep { crewId: string; task: string }
+export interface Playbook { id: string; name: string; description: string; steps: PlaybookStep[]; builtIn?: boolean }
+export interface PlaybookRunStep { crewId: string; name: string; icon: CrewIcon; tone: CrewTone; task: string; output: string; error?: string; ms?: number }
+export interface PlaybookRun { id: string; at: number; playbookId: string; playbookName: string; input: string; steps: PlaybookRunStep[]; done: boolean }
+export const PLAYBOOKS_KEY = "cadus3.playbooks";
+export const PLAYBOOK_RUNS_KEY = "cadus3.playbookRuns";
+export const PLAYBOOK_MAX_STEPS = 5;
+export const BUILT_IN_PLAYBOOKS: Playbook[] = [
+  { id: "pb-admission", builtIn: true, name: "Admission to discharge", description: "Rough notes in; a case presentation, a medicines check and a discharge summary out.", steps: [
+    { crewId: "crew-rounds", task: "Turn these notes into a crisp case presentation and a problem list with today's plan." },
+    { crewId: "crew-pharmacist", task: "Check the medicines in this case for doses, interactions and renal adjustment; list what to change." },
+    { crewId: "crew-discharge", task: "Write the discharge summary from the case and the medicines check above. Mark anything missing as [to be completed]." },
+  ] },
+  { id: "pb-counsel", builtIn: true, name: "Explain to the patient", description: "A clinical answer, checked, then explained to the family in Hindi.", steps: [
+    { crewId: "crew-cardio", task: "Give the clinical assessment and management plan for this case." },
+    { crewId: "crew-patient", task: "Explain the plan above to the patient and family in simple Hindi: what it is, what we will do, warning signs and follow-up." },
+  ] },
+  { id: "pb-exam", builtIn: true, name: "Learn a topic, then get tested", description: "High-yield notes on a topic, then a viva on it, then MCQs.", steps: [
+    { crewId: "crew-neetpg", task: "Teach this topic high-yield, with the commonly confused points." },
+    { crewId: "crew-viva", task: "Based on the notes above, write 6 viva questions with model answers, basic to applied." },
+    { crewId: "crew-neetpg", task: "Write 5 NEET-PG style MCQs on the same topic with answers and one-line explanations." },
+  ] },
+  { id: "pb-emergency", builtIn: true, name: "Emergency to ICU", description: "The first hour in the ED, then the ICU plan with infusions.", steps: [
+    { crewId: "crew-ed", task: "Give the first-hour emergency plan for this patient as a numbered checklist with doses." },
+    { crewId: "crew-icu", task: "Continue from the ED plan above: the ICU plan for the next 24 hours with infusion rates for this patient's weight and targets." },
+  ] },
+];
+export function readPlaybooks(): Playbook[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(PLAYBOOKS_KEY) || "[]");
+    return (Array.isArray(v) ? v : []).filter((p) => p && typeof p.name === "string" && Array.isArray(p.steps) && p.steps.length).slice(0, 20)
+      .map((p) => ({ id: String(p.id), name: String(p.name).slice(0, 60), description: String(p.description ?? "").slice(0, 200), steps: p.steps.slice(0, PLAYBOOK_MAX_STEPS).map((s: any) => ({ crewId: String(s.crewId), task: String(s.task ?? "").slice(0, 500) })) }));
+  } catch { return []; }
+}
+export function savePlaybooks(list: Playbook[]) { try { localStorage.setItem(PLAYBOOKS_KEY, JSON.stringify(list.filter((p) => !p.builtIn).slice(0, 20))); } catch { /* full or blocked */ } }
+export function readPlaybookRuns(): PlaybookRun[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(PLAYBOOK_RUNS_KEY) || "[]");
+    return (Array.isArray(v) ? v : []).filter((r) => r && Array.isArray(r.steps)).slice(0, 15);
+  } catch { return []; }
+}
+export function savePlaybookRuns(list: PlaybookRun[]) { try { localStorage.setItem(PLAYBOOK_RUNS_KEY, JSON.stringify(list.slice(0, 15))); } catch { /* full or blocked */ } }
+/** The message one step sends: its task, the original input, and the previous step's output. */
+export function stepMessage(task: string, input: string, previous: { name: string; output: string } | null): string {
+  return [
+    task,
+    `<original_input>\n${input}\n</original_input>`,
+    previous ? `<previous_step from="${previous.name.replace(/"/g, "'")}">\n${previous.output}\n</previous_step>` : "",
+  ].filter(Boolean).join("\n\n");
+}
+export function runMarkdown(r: PlaybookRun): string {
+  return [`# ${r.playbookName}`, `**Input:** ${r.input.slice(0, 600)}`, ...r.steps.map((s, i) => `## ${i + 1}. ${s.name}\n*${s.task}*\n\n${s.output || s.error || ""}`)].join("\n\n");
+}
