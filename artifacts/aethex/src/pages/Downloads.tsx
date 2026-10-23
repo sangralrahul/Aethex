@@ -65,7 +65,11 @@ function useReveal(root: RefObject<HTMLElement | null>) {
     if (still() || typeof IntersectionObserver === "undefined") { items.forEach((i) => i.classList.add("in")); return; }
     const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { rootMargin: "0px 0px -6% 0px", threshold: 0.06 });
     items.forEach((i) => io.observe(i));
-    return () => io.disconnect();
+    // The live backgrounds of "New in Cadus" run only while that section is on screen.
+    const news = root.current?.querySelector<HTMLElement>("#new");
+    const live = news ? new IntersectionObserver(([e]) => news.classList.toggle("live", e.isIntersecting), { threshold: 0 }) : null;
+    if (news) live!.observe(news);
+    return () => { io.disconnect(); live?.disconnect(); };
   }, [root]);
 }
 
@@ -279,6 +283,38 @@ const TOOLS: [string, string][] = [
 ];
 
 /** What's arrived in Cadus lately. The app shows the live Cadus, so all of it is in the app already. */
+/* ------------------------------------------------------------------ live card backgrounds (New in Cadus) */
+
+type Fx = "pulse" | "wave" | "scan" | "orbit" | "flow" | "spark" | "chart" | "write";
+/** A quiet animated motif behind each "New in Cadus" card, chosen from what the tool does. */
+export function fxFor(title: string): Fx {
+  const t = title.toLowerCase();
+  if (/voice|audio|podcast|viva|osce|message|natural/.test(t)) return "wave";
+  if (/ecg|heart|on-call|emergency|dose|infusion|poison|pre-op|abg|antibiotic|pregnan/.test(t)) return "pulse";
+  if (/analytic|trend|statistic|mock|chart/.test(t)) return "chart";
+  if (/image|photo|reader|compare|scan|lab/.test(t)) return "scan";
+  if (/crew|debate|assistant|huddle|journal/.test(t)) return "orbit";
+  if (/queue|roster|playbook|pathway|handover|round|follow|planner|logbook/.test(t)) return "flow";
+  if (/letter|record|prescription|discharge|mccd|death|adr|summary|scribe|generic|procedure|pill/.test(t)) return "write";
+  return "spark";
+}
+function CardFx({ kind, seed }: { kind: Fx; seed: number }) {
+  const d = (n: number) => ({ animationDelay: `${-((seed * 0.37 + n * 0.53) % 4).toFixed(2)}s` });
+  return (
+    <span className={`fx fx-${kind}`} aria-hidden="true">
+      {kind === "pulse" && <svg viewBox="0 0 240 80" preserveAspectRatio="none"><path className="fx-trace" style={d(0)} d="M0 50 H70 L80 50 L88 30 L96 64 L106 12 L116 58 L124 50 H170 L178 44 L186 50 H240" /><path className="fx-trace ghost" d="M0 50 H70 L80 50 L88 30 L96 64 L106 12 L116 58 L124 50 H170 L178 44 L186 50 H240" /></svg>}
+      {kind === "wave" && <span className="fx-bars">{Array.from({ length: 14 }, (_, i) => <i key={i} style={d(i)} />)}</span>}
+      {kind === "scan" && <><span className="fx-grid" /><span className="fx-beam" style={d(0)} /></>}
+      {kind === "orbit" && <span className="fx-orbits"><i style={d(0)}><b /></i><i style={d(1)}><b /></i><i style={d(2)}><b /></i></span>}
+      {kind === "flow" && <svg viewBox="0 0 240 90" preserveAspectRatio="none"><path className="fx-flow" style={d(0)} d="M-10 70 C 50 70, 60 25, 120 25 S 190 70, 250 40" /><path className="fx-flow b" style={d(2)} d="M-10 82 C 60 82, 80 45, 130 45 S 200 82, 250 62" /></svg>}
+      {kind === "spark" && <span className="fx-dots">{Array.from({ length: 9 }, (_, i) => <i key={i} style={{ ...d(i), left: `${(i * 37 + seed * 13) % 92}%`, width: 4 + (i % 3) * 3, height: 4 + (i % 3) * 3 }} />)}</span>}
+      {kind === "chart" && <span className="fx-cols">{[38, 62, 46, 80, 58, 92, 70].map((h, i) => <i key={i} style={{ ...d(i), height: `${h}%` }} />)}</span>}
+      {kind === "write" && <span className="fx-lines">{[92, 74, 86, 58].map((w, i) => <i key={i} style={{ ...d(i), width: `${w}%`, animationDelay: `${i * 0.6 + (seed % 3) * 0.2}s` }} />)}</span>}
+      <span className="fx-glow" style={d(3)} />
+    </span>
+  );
+}
+
 const NEW_IN_CADUS: { icon: typeof Pill; t: string; d: string }[] = [
   { icon: FolderHeart, t: "Patient Records", d: "A simple file for each patient on your device: allergies, problems, medicines and every visit, vitals charted over time, and a summary before the next visit." },
   { icon: AudioWaveform, t: "Ward Rounds by Voice", d: "Dictate your review at each bed: Cadus updates the ward list (problems, medicines, plan, jobs) and writes the SOAP progress note." },
@@ -617,7 +653,8 @@ export default function Downloads() {
           </div>
           <div className="hood new-grid">
             {NEW_IN_CADUS.map(({ icon: Icon, t, d }, k) => (
-              <article key={t} className={`hood-card rv d${(k % 4) + 1}`} data-new={t}>
+              <article key={t} className={`hood-card fx-card rv d${(k % 4) + 1}`} data-new={t} data-fx={fxFor(t)}>
+                <CardFx kind={fxFor(t)} seed={k} />
                 <span className="ic"><Icon size={19} /></span>
                 <h3>{t}</h3>
                 <p>{d}</p>
@@ -1050,6 +1087,46 @@ const CSS = `
   .ax .qa button{font-size:17px;padding:22px 0}
   .ax .sums b{min-width:0}
 }
+
+/* New in Cadus: a quiet live motif behind each card, running only while the section is on screen */
+.ax .fx-card{position:relative;overflow:hidden;isolation:isolate}
+.ax .fx-card>:not(.fx){position:relative;z-index:1}
+.ax .new-grid .fx-card{padding-bottom:92px}
+.ax .fx{position:absolute;inset:auto -1px -1px auto;width:86%;height:96px;z-index:0;pointer-events:none;opacity:.55;color:var(--teal);transition:opacity .4s ease;-webkit-mask-image:linear-gradient(to top left,#000 30%,transparent 85%);mask-image:linear-gradient(to top left,#000 30%,transparent 85%)}
+.ax .fx-card:hover .fx{opacity:.95}
+.ax .fx *{animation-play-state:paused}
+.ax #new.live .fx *{animation-play-state:running}
+.ax .fx svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.ax .fx-glow{position:absolute;right:-30%;bottom:-40%;width:90%;height:120%;border-radius:50%;background:radial-gradient(closest-side,rgba(43,122,111,.16),transparent);animation:fxDrift 9s ease-in-out infinite alternate}
+.ax .fx-trace{fill:none;stroke:currentColor;stroke-width:1.6;stroke-linejoin:round;stroke-dasharray:90 400;animation:fxTrace 3.2s linear infinite}
+.ax .fx-trace.ghost{stroke-dasharray:none;opacity:.14;animation:none}
+.ax .fx-bars{position:absolute;inset:auto 16px 16px auto;display:flex;align-items:flex-end;gap:5px;height:62%}
+.ax .fx-bars i{width:4px;height:100%;border-radius:3px;background:currentColor;opacity:.35;transform-origin:bottom;animation:fxEq 1.4s ease-in-out infinite}
+.ax .fx-bars i:nth-child(3n){animation-duration:1.1s}.ax .fx-bars i:nth-child(4n+1){animation-duration:1.7s}
+.ax .fx-grid{position:absolute;inset:0;background-image:radial-gradient(currentColor 1px,transparent 1.4px);background-size:14px 14px;opacity:.22}
+.ax .fx-beam{position:absolute;left:0;right:0;height:34%;background:linear-gradient(to bottom,transparent,rgba(43,122,111,.22),transparent);border-bottom:1px solid rgba(43,122,111,.45);animation:fxScan 3.6s ease-in-out infinite}
+.ax .fx-orbits{position:absolute;right:14%;bottom:-62px;width:150px;height:150px}
+.ax .fx-orbits i{position:absolute;inset:0;border:1px dashed rgba(43,122,111,.3);border-radius:50%;animation:fxSpin 12s linear infinite}
+.ax .fx-orbits i:nth-child(2){inset:22px;animation-duration:8s;animation-direction:reverse}
+.ax .fx-orbits i:nth-child(3){inset:46px;animation-duration:5s}
+.ax .fx-orbits b{position:absolute;top:-4px;left:calc(50% - 4px);width:8px;height:8px;border-radius:50%;background:currentColor;opacity:.7}
+.ax .fx-flow{fill:none;stroke:currentColor;stroke-width:1.4;stroke-dasharray:6 10;opacity:.5;animation:fxDash 2.4s linear infinite}
+.ax .fx-flow.b{opacity:.28;animation-duration:3.4s}
+.ax .fx-dots i{position:absolute;bottom:-8px;border-radius:50%;background:currentColor;opacity:0;animation:fxRise 5s ease-in infinite}
+.ax .fx-dots i:nth-child(2n){animation-duration:6.5s}.ax .fx-dots i:nth-child(3n){animation-duration:4.2s}
+.ax .fx-cols{position:absolute;inset:auto 16px 0 auto;display:flex;align-items:flex-end;gap:7px;height:70%}
+.ax .fx-cols i{width:10px;border-radius:3px 3px 0 0;background:linear-gradient(to top,rgba(43,122,111,.42),rgba(43,122,111,.1));transform-origin:bottom;animation:fxGrow 3s ease-in-out infinite}
+.ax .fx-lines{position:absolute;inset:auto 18px 18px 30%;display:flex;flex-direction:column;gap:9px}
+.ax .fx-lines i{height:5px;border-radius:3px;background:rgba(43,122,111,.28);transform-origin:left;animation:fxWrite 4.8s cubic-bezier(.6,0,.3,1) infinite}
+@keyframes fxTrace{from{stroke-dashoffset:490}to{stroke-dashoffset:0}}
+@keyframes fxEq{0%,100%{transform:scaleY(.18)}50%{transform:scaleY(1)}}
+@keyframes fxScan{0%{top:-34%}100%{top:100%}}
+@keyframes fxSpin{to{transform:rotate(360deg)}}
+@keyframes fxDash{to{stroke-dashoffset:-32}}
+@keyframes fxRise{0%{transform:translateY(0);opacity:0}15%{opacity:.45}100%{transform:translateY(-150px);opacity:0}}
+@keyframes fxGrow{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1)}}
+@keyframes fxWrite{0%{transform:scaleX(0);opacity:.9}55%{transform:scaleX(1);opacity:.9}85%{transform:scaleX(1);opacity:0}100%{transform:scaleX(0);opacity:0}}
+@keyframes fxDrift{from{transform:translate(0,0)}to{transform:translate(-18%,-12%)}}
 @media (prefers-reduced-motion:reduce){
   .ax *,.ax *::before,.ax *::after{animation:none!important;transition:none!important}
   .ax .rv{opacity:1;transform:none}
