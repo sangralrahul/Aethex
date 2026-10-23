@@ -266,7 +266,7 @@ const TOOLS: [string, string][] = [
   ["Clinical calculators", "t"], ["Emergency", "r"], ["Paediatrics", "v"], ["Ward list", "t"], ["Consult Translator", "v"],
   ["Cadus Crew", "y"], ["Crew Huddle", "y"], ["Crew Debate", "y"], ["Crew Playbooks", "y"], ["Deep Dive research", "v"], ["Guideline Watch", "v"], ["Case Simulator", "y"],
   ["Presentation Coach", "y"], ["Flashcards", "y"], ["Exam practice", "y"], ["Patient leaflets", "t"], ["Offline library", "y"],
-  ["Discharge Summary", "t"], ["Shift Handover", "r"], ["Differential Builder", "v"], ["Study Planner", "y"],
+  ["Voice typing", "v"], ["Discharge Summary", "t"], ["Shift Handover", "r"], ["Differential Builder", "v"], ["Study Planner", "y"],
   ["ECG Reader", "r"], ["Antibiotic Guide", "t"], ["Procedure Guide", "v"], ["Poisoning & Snakebite", "r"], ["Infusions", "t"],
   ["ABG Interpreter", "v"], ["Dose Converter", "t"], ["PG Logbook", "y"], ["Follow-ups", "y"],
 ];
@@ -324,7 +324,7 @@ const UNDER_THE_HOOD = [
   { icon: ShieldCheck, t: "Safety review", d: "Cadus checks its own answers for doses and red flags before you read them." },
   { icon: LockKeyhole, t: "Private and contained", d: "The window opens only Cadus and Aethex. Every other link opens in your usual browser. No added tracking." },
   { icon: WifiOff, t: "Knows when you're offline", d: "No connection? Cadus says so plainly and reconnects by itself the moment you're back online." },
-  { icon: Mic, t: "Read aloud and exports", d: "Hear answers and translations read aloud, and save letters, notes, PDFs and flashcard decks through the usual Save dialog." },
+  { icon: Mic, t: "Voice typing and read aloud", d: "Dictate questions, notes and presentations, talk in voice mode and speak to patients through the Consult Translator; hear answers read aloud." },
   { icon: Monitor, t: "Runs on what you have", d: "Windows 10 and 11 on x64 or ARM, and Linux. macOS coming soon." },
 ];
 
@@ -337,7 +337,7 @@ const FAQ = [
   { q: "Do I need to reinstall to get the new tools?", a: <>No. The ECG Reader, Antibiotic Guide, Infusions, ABG Interpreter, PG Logbook and every other tool are already in the app, because it shows the live Cadus. Only the app's own features (the tray, the shortcut, starting with Windows and reminders) need version {RELEASE.version}.</> },
   { q: `How do I get version ${RELEASE.version}?`, a: <>Download it above and install it over the old one: your sign-in, chats and settings stay. Cadus also tells you within a day that it's ready, or choose <b>Help › Check for updates</b>.</> },
   { q: "How do I turn off reminders, the tray or starting with Windows?", a: <>Right-click the Cadus icon in the tray, or open the <b>File</b> menu (press <b>Alt</b> if the menu bar is hidden), and untick what you don't want. <b>Quit Cadus</b> in the same menu closes it completely.</> },
-  { q: "Can I use voice typing in the app?", a: <>Not yet: voice typing (dictation, voice mode and speaking to the Consult Translator) needs the speech service built into Chrome and Edge, so use Cadus in one of those for voice. Reading answers and translations aloud works in the app.</> },
+  { q: "Can I use voice typing in the app?", a: <>Yes. Dictation, voice mode, the Scribe, Presentation Coach and the Consult Translator all work in the app, in English, Hindi and 11 more Indian languages. Speak, pause, and your words appear. The first time, allow Cadus to use the microphone (on Windows: Settings › Privacy › Microphone).</> },
   { q: "Where is my data kept?", a: <>Exactly where it is in the browser: chats, cases and settings stay on this computer, and your account is kept by Aethex on Cloudflare.</> },
 ];
 

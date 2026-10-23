@@ -12,7 +12,8 @@
 // Razorpay), coupons, reviews, alerts, requests and admin (worker/store.ts).
 //
 // Secrets and variables (Workers & Pages > aethex > Settings > Variables and Secrets):
-//   ANTHROPIC_API_KEY  Claude, the only AI Cadus uses
+//   ANTHROPIC_API_KEY  Claude, which writes every Cadus answer
+// Bindings (wrangler.jsonc): DB (D1), DOWNLOADS (R2), AI (Workers AI: Whisper for voice typing, POST /api/transcribe)
 //   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET   Google sign-in
 //   BREVO_API_KEY, BREVO_FROM_EMAIL          sign-in codes, cart and order emails
 //   ADMIN_EMAILS, STORE_EMAIL                 the store admin, and where orders are emailed
@@ -22,6 +23,7 @@ import { functionHandler, functionNames, useEnv } from "./deno-shim";
 import { handleAuth, handleCart, handleProfile, runScheduled, type AuthEnv } from "./auth";
 import { serveDownload, type R2Bucket } from "./downloads";
 import { handleStore, runStoreScheduled, type StoreEnv } from "./store";
+import { handleTranscribe, type AiBinding } from "./transcribe";
 import "./names/cadus";
 import "../supabase/functions/cadus/index.ts";
 import "./names/analyze-drug-interactions";
@@ -38,6 +40,8 @@ interface Env extends AuthEnv, StoreEnv {
   ANTHROPIC_API_KEY?: string;
   /** R2 bucket "aethex-downloads": the desktop installers. */
   DOWNLOADS?: R2Bucket;
+  /** Workers AI: speech to text for voice typing. */
+  AI?: AiBinding;
   [key: string]: unknown;
 }
 
@@ -68,7 +72,7 @@ export default {
 
     if (url.pathname === "/api/health") {
       // Shows whether the keys are set (never their values), to check the setup.
-      return json({ ok: true, functions: functionNames(), anthropic: !!env.ANTHROPIC_API_KEY, accounts: !!env.DB, google: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET), email: !!env.BREVO_API_KEY, downloads: !!env.DOWNLOADS, storeAdmin: !!env.ADMIN_EMAILS, onlinePayments: !!(env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET), paymentWebhook: !!env.RAZORPAY_WEBHOOK_SECRET });
+      return json({ ok: true, functions: functionNames(), anthropic: !!env.ANTHROPIC_API_KEY, accounts: !!env.DB, google: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET), email: !!env.BREVO_API_KEY, downloads: !!env.DOWNLOADS, voiceTyping: !!env.AI, storeAdmin: !!env.ADMIN_EMAILS, onlinePayments: !!(env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET), paymentWebhook: !!env.RAZORPAY_WEBHOOK_SECRET });
     }
 
     const account = url.pathname.startsWith("/api/auth/") || url.pathname === "/api/auth" ? handleAuth : url.pathname === "/api/profile" ? handleProfile : url.pathname === "/api/cart" ? handleCart : null;
@@ -100,6 +104,14 @@ export default {
         console.error(`${url.pathname} failed`, e);
         return json({ error: "The store hit an unexpected error. Please try again." }, 500);
       }
+    }
+
+    // Voice typing: a short recording from Cadus to text. Only this site's pages may use it.
+    if (url.pathname === "/api/transcribe") {
+      const origin = request.headers.get("origin");
+      if (origin && !ALLOWED_ORIGIN.test(origin)) return json({ error: "Origin not allowed" }, 403);
+      if (request.method === "POST" && !origin) return json({ error: "Origin required" }, 403);
+      return handleTranscribe(request, env.AI);
     }
 
     const match = /^\/api\/fn\/([a-z0-9-]+)\/?$/.exec(url.pathname);

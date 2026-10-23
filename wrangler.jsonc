@@ -22,6 +22,9 @@
   "d1_databases": [{ "binding": "DB", "database_name": "aethex", "database_id": "d0cf73ca-7f81-4399-b616-97a4f27c46d8", "migrations_dir": "migrations" }],
   // The Cadus desktop installers (uploaded with desktop\upload-r2.cmd).
   "r2_buckets": [{ "binding": "DOWNLOADS", "bucket_name": "aethex-downloads" }],
+  // Workers AI (Whisper) for voice typing in the Cadus desktop app and in browsers without
+  // their own speech service (worker/transcribe.ts). No key needed; billed by Workers AI.
+  "ai": { "binding": "AI" },
   // Store cart reminders and clean-up, every hour.
   "triggers": { "crons": ["17 * * * *"] },
   // The site and its subdomains. Custom domains get their DNS records and

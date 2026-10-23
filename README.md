@@ -117,6 +117,7 @@ It provides an intelligent interface for medical and educational assistance.
 - Assistant Builder: describe an assistant in one line and Cadus writes its name, instructions, starters, icon and tool, opened in the editor to review
 - Crew Debate: two assistants argue opposite positions (openings, then rebuttals) and a neutral judge gives the verdict, the strongest point on each side, corrections and the deciding evidence
 - Crew Playbooks: chain up to five assistants, each getting the input and the previous step's output; four ready-made playbooks (admission to discharge, explain to the patient, learn then get tested, emergency to ICU) and your own
+- Voice typing everywhere: where the browser has no speech service of its own (the Cadus desktop app, Firefox), Cadus records the microphone, cuts it at pauses and transcribes each piece with Workers AI (Whisper) at POST /api/transcribe; dictation, voice mode, the Scribe, Presentation Coach and the Consult Translator all work, in English, Hindi and 11 more Indian languages
 
 > CADUS is intended as an educational and informational assistant and is not a replacement for qualified medical professionals.
 
