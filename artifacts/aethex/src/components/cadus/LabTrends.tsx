@@ -88,8 +88,19 @@ function TrendCard({ s, points }: { s: Series; points: string[] }) {
   );
 }
 
-export default function LabTrends({ onAsk, toast }: { onAsk: (text: string) => void; toast: (t: string) => void }) {
-  const [text, setText] = useState("");
+export default function LabTrends({ onAsk, toast, value, onChange, onExplain, explaining }: {
+  onAsk: (text: string) => void;
+  toast: (t: string) => void;
+  /** Controlled text (Lab Trends page); the calculators keep their own. */
+  value?: string;
+  onChange?: (t: string) => void;
+  /** Explains the trends on the page instead of in the chat. */
+  onExplain?: (table: string) => void;
+  explaining?: boolean;
+}) {
+  const [own, setOwn] = useState("");
+  const text = value ?? own;
+  const setText = onChange ?? setOwn;
   const table: LabTable = useMemo(() => parseLabText(text), [text]);
   const has = table.series.length > 0;
   const abnormal = table.series.filter((s) => { const v = [...s.values].reverse().find((x) => x !== null); return v !== undefined && v !== null && (flag(s, v) === "high" || flag(s, v) === "low"); });
@@ -131,7 +142,8 @@ export default function LabTrends({ onAsk, toast }: { onAsk: (text: string) => v
             <span className={abnormal.length ? "warn" : "ok"}>{abnormal.length ? `${abnormal.length} outside the usual range on the latest result` : "Latest results all within the usual range"}</span>
             <div className="cx-lt-acts">
               <button className="cx-btn" onClick={() => void copyTable()}><Copy size={14} /> Copy table</button>
-              <button className="cx-btn primary" onClick={() => onAsk(`Interpret these serial results (de-identified). Comment on each trend, what it suggests together, and what to check or do next.\n\n${trendTable(table)}`)}><MessageSquare size={14} /> Ask Cadus to interpret</button>
+              {onExplain && <button className="cx-btn primary" onClick={() => onExplain(trendTable(table))} disabled={explaining} data-lt="explain"><MessageSquare size={14} /> {explaining ? "Explaining…" : "Explain the trends"}</button>}
+              <button className={`cx-btn ${onExplain ? "" : "primary"}`} onClick={() => onAsk(`Interpret these serial results (de-identified). Comment on each trend, what it suggests together, and what to check or do next.\n\n${trendTable(table)}`)}><MessageSquare size={14} /> Ask Cadus to interpret</button>
             </div>
           </div>
           {table.unknown.length > 0 && <p className="cx-lt-unknown">Not recognised, so not charted: {table.unknown.join(", ")}</p>}

@@ -17,7 +17,7 @@ import {
   BellRing, Bot, CalendarDays, FileScan, GitFork, HeartPulse, History, Languages, Layers, Pill, Presentation, ShieldPlus, Users2,
   ArrowRightLeft, CalendarCheck, FileOutput, Keyboard, Power, Waypoints, PanelBottom,
   Activity, Bug, ListChecks, FlaskRound, Syringe, Scale, Wind, BookCheck, CalendarClock, Swords, Workflow, Wand2, Headphones, AudioLines, Volume2,
-  MicVocal, Speech, FileAudio,
+  MicVocal, Speech, FileAudio, FilePen, ChartLine, CalendarHeart, ScrollText, ShieldAlert, FileSignature, Brain, PillBottle,
 } from "lucide-react";
 import CadusMark from "@/components/cadus/CadusMark";
 import { FONT_FACES } from "@/components/cadus/cadus-styles";
@@ -271,10 +271,19 @@ const TOOLS: [string, string][] = [
   ["ECG Reader", "r"], ["Antibiotic Guide", "t"], ["Procedure Guide", "v"], ["Poisoning & Snakebite", "r"], ["Infusions", "t"],
   ["ABG Interpreter", "v"], ["Dose Converter", "t"], ["PG Logbook", "y"], ["Follow-ups", "y"],
   ["Voice Viva", "y"], ["Voice OSCE", "y"], ["Your own voice", "v"], ["Patient Audio Library", "t"],
+  ["Prescription Writer", "t"], ["Lab Trends", "v"], ["Daily Clinical Case", "y"], ["Letters & Certificates", "r"], ["ADR Report", "r"], ["Cause of Death (MCCD)", "v"], ["Mnemonic Maker", "y"], ["Generic Finder", "t"],
 ];
 
 /** What's arrived in Cadus lately. The app shows the live Cadus, so all of it is in the app already. */
 const NEW_IN_CADUS: { icon: typeof Pill; t: string; d: string }[] = [
+  { icon: FilePen, t: "Prescription Writer", d: "Give the diagnosis and the patient's details: Cadus drafts the prescription with doses for age, weight and kidneys, checks it against the formulary and for interactions, and writes the advice in the patient's language." },
+  { icon: ChartLine, t: "Lab Trends", d: "Photograph a patient's lab reports: every result is charted over time against its usual range and explained test by test, with what to check next." },
+  { icon: CalendarHeart, t: "Daily Clinical Case", d: "A new case every day with five questions. Keep your streak going and share your score with your batch." },
+  { icon: ScrollText, t: "Letters & Certificates", d: "Referral letters, fitness and leave certificates, and insurance or PM-JAY pre-authorisation, written from your notes and printed on your letterhead." },
+  { icon: ShieldAlert, t: "ADR Report (PvPI)", d: "Describe a suspected drug reaction and Cadus fills the PvPI reporting form, with WHO-UMC causality and how to manage it." },
+  { icon: FileSignature, t: "Cause of Death (MCCD)", d: "The cause-of-death sequence for the MCCD written correctly, with the ICD-10 code; modes of dying and medico-legal deaths are flagged." },
+  { icon: Brain, t: "Mnemonic Maker", d: "Any list for NEET-PG as a classic or new mnemonic, with a memory story and the high-yield facts, saved to your flashcards." },
+  { icon: PillBottle, t: "Generic Finder", d: "Paste a prescription: each brand is matched to its generic, NLEM status, other brands and the usual dose." },
   { icon: MicVocal, t: "Voice Viva", d: "The examiner asks aloud and you answer by speaking, one question at a time, then a spoken score and a full scorecard in the chat." },
   { icon: Speech, t: "Voice OSCE and simulator", d: "Take a history by talking to the patient, who answers in a voice that fits their age and sex. In the Case Simulator, say \"examine…\", \"order…\" or \"give…\" and it happens." },
   { icon: Mic, t: "Your own voice", d: "Read a passage for about a minute and patient audio can speak in your voice. Only you can use it, and you can delete it at any time." },

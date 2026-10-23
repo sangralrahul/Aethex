@@ -29,6 +29,15 @@
 //   audio-script          Patient instructions rewritten as a spoken script in their language (for a natural voice).
 //   podcast-script        A two-voice revision podcast script (teacher and student) on a topic or notes.
 //   audio-topic           A spoken patient explainer on a topic (the patient audio library), in their language.
+//   rx-write              Prescription Writer: a draft prescription from the diagnosis and the patient's details.
+//   lab-extract           Results copied from photos or PDFs of lab reports, for Lab Trends.
+//   lab-explain           What a table of serial results shows, test by test.
+//   daily-case            The Daily Clinical Case: a case with five questions.
+//   letter                Referral letter, fitness or leave certificate, insurance pre-authorisation, or another letter.
+//   adr                   The PvPI suspected adverse drug reaction form, filled from notes.
+//   mccd                  The cause-of-death sequence for the MCCD (Form 4 / 4A).
+//   mnemonic              Mnemonics for a topic or list.
+//   generic-lookup        Generic compositions of brand names not in the formulary.
 //   crew-build            Assistant Builder: a one-line description to a full Crew assistant.
 //   debate-turn           Crew Debate: one assistant's opening or rebuttal for its side.
 //   debate-judge          Crew Debate: the neutral verdict on both sides' arguments.
@@ -122,6 +131,10 @@ import {
 } from "../_shared/studio.ts";
 import { libraryPrompt, LIBRARY_SYSTEM, podcastScript, podcastWords, PODCAST_SYSTEM, spokenScript, SPOKEN_SYSTEM, VOICE_ROLEPLAY } from "../_shared/audio.ts";
 import { BUILD_SYSTEM, builtAssistant, DEBATE_SYSTEM, debatePrompt, debateVerdict, JUDGE_SYSTEM } from "../_shared/crewplus.ts";
+import {
+  ADR_SYSTEM, adrReport, DAILY_CASE_SYSTEM, DAILY_LEVELS, dailyCase, GENERIC_SYSTEM, genericLookup, LAB_EXTRACT_SYSTEM, LAB_TREND_SYSTEM, labExplain, labRows,
+  LETTER_KINDS, letterResult, letterSystem, MCCD_SYSTEM, mccdResult, MNEMONIC_SYSTEM, mnemonicsResult, RX_WRITE_SYSTEM, rxDraft, rxPrompt, type LetterKind,
+} from "../_shared/clinic20.ts";
 import { ABX_SYSTEM, abxPlan, ECG_SYSTEM, ecgRead, POISON_SYSTEM, poisonPlan, PROCEDURE_SYSTEM, procGuide } from "../_shared/bedside.ts";
 
 /* ------------------------------------------------------------------ prompts */
@@ -2013,6 +2026,160 @@ Deno.serve(async (req) => {
       const result = dischargeSummary(parseJsonLoose<any>(r.content));
       if (!result) return jsonResponse({ error: "Couldn't write the summary from those notes. Add more detail and try again." }, 502);
       return jsonResponse({ result });
+    }
+
+    // ---------------------------------------------------------------- Update 20
+    if (action === "rx-write") {
+      if (cleanLine(body.diagnosis, 300).length < 3) return jsonResponse({ error: "Give the diagnosis or problem" }, 400);
+      const r = await callAI({
+        model: CLAUDE_REVIEW_MODEL,
+        messages: [
+          { role: "system", content: [RX_WRITE_SYSTEM, institutionLine(body.institution)].filter(Boolean).join("\n\n") },
+          { role: "user", content: rxPrompt(body as Record<string, unknown>) },
+        ],
+        jsonMode: true,
+        effort: "medium",
+        maxTokens: 6000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = rxDraft(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't draft the prescription this time. Please try again." }, 502);
+      return jsonResponse({ result });
+    }
+
+    if (action === "lab-extract") {
+      const files = attachmentParts(body.files, "");
+      if (!files.images && !files.documents) return jsonResponse({ error: "Add photos or PDFs of the lab reports" }, 400);
+      const r = await callAI({
+        model: CLAUDE_REVIEW_MODEL,
+        messages: [
+          { role: "system", content: LAB_EXTRACT_SYSTEM },
+          { role: "user", content: [...files.parts, { type: "text", text: "Copy out every result with its report date." }] },
+        ],
+        jsonMode: true,
+        effort: "low",
+        maxTokens: 8000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const rows = labRows(parseJsonLoose<any>(r.content));
+      if (!rows.length) return jsonResponse({ error: "No results could be read. Try a straighter, brighter photo." }, 502);
+      return jsonResponse({ rows });
+    }
+
+    if (action === "lab-explain") {
+      const table = String(body.table || "").replace(/\r/g, "").trim().slice(0, 10000);
+      if (table.split("\n").length < 2) return jsonResponse({ error: "Add results from at least one report" }, 400);
+      const context = String(body.context || "").replace(/\r/g, "").trim().slice(0, 1200);
+      const r = await callAI({
+        model: answerModel(body.model),
+        messages: [
+          { role: "system", content: LAB_TREND_SYSTEM },
+          { role: "user", content: `${context ? `CLINICAL CONTEXT: ${context}\n\n` : ""}<results>\n${table}\n</results>` },
+        ],
+        jsonMode: true,
+        effort: "medium",
+        maxTokens: 4000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = labExplain(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't explain these results this time. Please try again." }, 502);
+      return jsonResponse({ result });
+    }
+
+    if (action === "daily-case") {
+      const level = DAILY_LEVELS.includes(String(body.level) as never) ? String(body.level) : "mbbs";
+      const date = /^\d{4}-\d{2}-\d{2}$/.test(String(body.date)) ? String(body.date) : new Date().toISOString().slice(0, 10);
+      const specialty = cleanLine(body.specialty, 60);
+      const avoid = (Array.isArray(body.avoid) ? body.avoid : []).slice(0, 20).map((x: unknown) => cleanLine(x, 80)).filter(Boolean);
+      const r = await callAI({
+        model: CLAUDE_REVIEW_MODEL,
+        messages: [
+          { role: "system", content: DAILY_CASE_SYSTEM },
+          { role: "user", content: [`DATE: ${date}`, `LEARNER: ${level === "pg" ? "postgraduate resident" : level === "intern" ? "intern" : "MBBS student"}`, specialty ? `SPECIALTY: ${specialty}` : "SPECIALTY: any (vary it from day to day)", avoid.length ? `Recent cases (choose a different condition): ${avoid.join("; ")}` : ""].filter(Boolean).join("\n") },
+        ],
+        jsonMode: true,
+        effort: "medium",
+        maxTokens: 6000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = dailyCase(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't write today's case. Please try again." }, 502);
+      return jsonResponse({ result });
+    }
+
+    if (action === "letter") {
+      const kind = (LETTER_KINDS as readonly string[]).includes(String(body.kind)) ? String(body.kind) as LetterKind : "other";
+      const notes = String(body.notes || "").replace(/\r/g, "").trim().slice(0, 12000);
+      if (notes.split(/\s+/).length < 6) return jsonResponse({ error: "Add the clinical notes: a few lines at least" }, 400);
+      const fields = [
+        ["Patient", cleanLine(body.patient, 60)], ["To", cleanLine(body.to, 200)], ["Purpose", cleanLine(body.purpose, 200)],
+        ["Dates", cleanLine(body.dates, 120)], ["Urgency", cleanLine(body.urgency, 40)], ["Scheme or insurer", cleanLine(body.scheme, 120)],
+        ["Doctor", cleanLine(body.doctor, 160)], ["Date of letter", cleanLine(body.today, 30)],
+      ].filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join("\n");
+      const r = await callAI({
+        model: answerModel(body.model),
+        messages: [
+          { role: "system", content: [letterSystem(kind), institutionLine(body.institution)].filter(Boolean).join("\n\n") },
+          { role: "user", content: `${fields}\n<notes>\n${notes}\n</notes>` },
+        ],
+        jsonMode: true,
+        effort: "medium",
+        maxTokens: 5000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = letterResult(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't write the letter this time. Please try again." }, 502);
+      return jsonResponse({ result });
+    }
+
+    if (action === "adr" || action === "mccd") {
+      const notes = String(body.notes || "").replace(/\r/g, "").trim().slice(0, 12000);
+      if (notes.split(/\s+/).length < 8) return jsonResponse({ error: action === "adr" ? "Describe the reaction and the medicines: a few lines at least" : "Add the case summary: a few lines at least" }, 400);
+      const r = await callAI({
+        model: CLAUDE_REVIEW_MODEL,
+        messages: [
+          { role: "system", content: action === "adr" ? ADR_SYSTEM : MCCD_SYSTEM },
+          { role: "user", content: `<notes>\n${notes}\n</notes>` },
+        ],
+        jsonMode: true,
+        effort: action === "mccd" ? "high" : "medium",
+        maxTokens: 5000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const parsed = parseJsonLoose<any>(r.content);
+      const result = action === "adr" ? adrReport(parsed) : mccdResult(parsed);
+      if (!result) return jsonResponse({ error: action === "adr" ? "Couldn't fill the form from those notes. Name the medicine and describe the reaction." : "Couldn't work out the sequence from those notes. Add the illness and its course." }, 502);
+      return jsonResponse({ result });
+    }
+
+    if (action === "mnemonic") {
+      const topic = String(body.topic || "").replace(/\r/g, "").trim().slice(0, 1500);
+      if (topic.length < 3) return jsonResponse({ error: "Give a topic or a list to remember" }, 400);
+      const r = await callAI({
+        model: answerModel(body.model),
+        messages: [{ role: "system", content: MNEMONIC_SYSTEM }, { role: "user", content: topic }],
+        jsonMode: true,
+        effort: "medium",
+        maxTokens: 3000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = mnemonicsResult(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't make a mnemonic for that. Try a list of items." }, 502);
+      return jsonResponse({ result });
+    }
+
+    if (action === "generic-lookup") {
+      const brands = (Array.isArray(body.brands) ? body.brands : []).slice(0, 30).map((b: unknown) => cleanLine(b, 80)).filter(Boolean);
+      if (!brands.length) return jsonResponse({ error: "No brand names" }, 400);
+      const r = await callAI({
+        model: answerModel(body.model),
+        messages: [{ role: "system", content: GENERIC_SYSTEM }, { role: "user", content: brands.join("\n") }],
+        jsonMode: true,
+        effort: "low",
+        maxTokens: 2500,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      return jsonResponse({ items: genericLookup(parseJsonLoose<any>(r.content)) });
     }
 
     // ---------------------------------------------------------------- Shift Handover
