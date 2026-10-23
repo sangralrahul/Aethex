@@ -72,6 +72,11 @@ export default {
       return new Response(null, { status: 301, headers: { location: "https://downloads.aethex.in/", "cache-control": "public, max-age=3600" } });
     }
 
+    if (url.pathname === "/api/health" && url.searchParams.get("live") === "1") {
+      // Tries the Anthropic and ElevenLabs keys for real (a one-token message and a voices list),
+      // reporting only whether each works. Cached for 10 minutes so it can't be used to run up costs.
+      return json(await liveKeyCheck(env));
+    }
     if (url.pathname === "/api/health") {
       // Shows whether the keys are set (never their values), to check the setup.
       return json({ ok: true, functions: functionNames(), anthropic: !!env.ANTHROPIC_API_KEY, accounts: !!env.DB, google: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET), email: !!env.BREVO_API_KEY, downloads: !!env.DOWNLOADS, voiceTyping: !!env.AI || voiceEnabled(env), elevenlabs: voiceEnabled(env), storeAdmin: !!env.ADMIN_EMAILS, onlinePayments: !!(env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET), paymentWebhook: !!env.RAZORPAY_WEBHOOK_SECRET });
@@ -160,3 +165,42 @@ export default {
     ctx.waitUntil(runStoreScheduled(env).then((r) => console.log("store scheduled", r), (e) => console.error("store scheduled failed", e)));
   },
 };
+
+/* ------------------------------------------------------------------ live key check (/api/health?live=1) */
+
+interface KeyCheck { set: boolean; ok: boolean; status?: number; note: string }
+let lastCheck: { at: number; result: { checkedAt: string; anthropic: KeyCheck; elevenlabs: KeyCheck } } | null = null;
+const why = (status: number, body: string) =>
+  status === 401 ? "The key was rejected: it is wrong, revoked or has a typo. Put it again with wrangler secret put."
+  : status === 403 ? "The key works but lacks a permission this needs."
+  : status === 429 ? "Rate-limited right now; try again in a minute."
+  : /credit|balance|billing|quota/i.test(body) ? "The account is out of credit or over its quota."
+  : `Unexpected reply (HTTP ${status}).`;
+
+export async function liveKeyCheck(env: Env): Promise<{ checkedAt: string; anthropic: KeyCheck; elevenlabs: KeyCheck }> {
+  if (lastCheck && Date.now() - lastCheck.at < 10 * 60000) return lastCheck.result;
+  const anthropic = async (): Promise<KeyCheck> => {
+    if (!env.ANTHROPIC_API_KEY) return { set: false, ok: false, note: "ANTHROPIC_API_KEY is not set." };
+    const h = { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" };
+    try {
+      const m = await fetch("https://api.anthropic.com/v1/models?limit=1", { headers: h });
+      if (!m.ok) return { set: true, ok: false, status: m.status, note: why(m.status, await m.text().catch(() => "")) };
+      const model = ((await m.json().catch(() => ({}))) as { data?: { id?: string }[] }).data?.[0]?.id;
+      if (!model) return { set: true, ok: true, status: 200, note: "The key is valid (no model listed to test a reply)." };
+      // A one-token reply shows the account has credit, not just a valid key.
+      const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: h, body: JSON.stringify({ model, max_tokens: 1, messages: [{ role: "user", content: "Hi" }] }) });
+      return r.ok ? { set: true, ok: true, status: 200, note: "The key works and the account can answer." } : { set: true, ok: false, status: r.status, note: why(r.status, await r.text().catch(() => "")) };
+    } catch { return { set: true, ok: false, note: "Couldn't reach Anthropic from the Worker." }; }
+  };
+  const eleven = async (): Promise<KeyCheck> => {
+    if (!voiceEnabled(env)) return { set: false, ok: false, note: "ELEVENLABS_API_KEY is not set: voices fall back to the browser." };
+    try {
+      const r = await fetch("https://api.elevenlabs.io/v1/voices", { headers: { "xi-api-key": String((env as { ELEVENLABS_API_KEY?: string }).ELEVENLABS_API_KEY) } });
+      return r.ok ? { set: true, ok: true, status: 200, note: "The key works (voices can be listed)." } : { set: true, ok: false, status: r.status, note: why(r.status, await r.text().catch(() => "")) };
+    } catch { return { set: true, ok: false, note: "Couldn't reach ElevenLabs from the Worker." }; }
+  };
+  const [a, e] = await Promise.all([anthropic(), eleven()]);
+  const result = { checkedAt: new Date().toISOString(), anthropic: a, elevenlabs: e };
+  lastCheck = { at: Date.now(), result };
+  return result;
+}

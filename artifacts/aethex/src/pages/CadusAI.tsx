@@ -22,7 +22,7 @@ import {
   Printer, Scissors, ScrollText, Sigma, PanelRight, EyeOff, Compass, Rows3, WifiOff, Building2, ScanSearch,
   Bot, GitBranch, HeartPulse, MessageCircle, BellRing, FileScan, ShieldPlus, ScanLine, Shield, Bone, AtSign, Users2, GitFork, CalendarDays, FileOutput, ArrowRightLeft, Waypoints, CalendarCheck, Activity, Bug, ListChecks, FlaskRound, Wind, BookCheck, CalendarClock, Eye, Ear, Droplets, Swords, Workflow, Headphones,
   type LucideIcon,
-  FileAudio, MicVocal, Speech, CalendarHeart, PillBottle, ListOrdered, Images, Weight, Timer, PhoneCall, CalendarRange, FolderHeart, AudioWaveform, BarChart3, MessageSquareText,
+  FileAudio, MicVocal, Speech, CalendarHeart, PillBottle, ListOrdered, Images, Weight, Timer, PhoneCall, CalendarRange, FolderHeart, AudioWaveform, BarChart3, MessageSquareText, Salad, FileCode2, Gavel, Droplet, Pipette,
 } from "lucide-react";
 import { invokeAi } from "@/lib/ai-functions";
 import { useUserAuth } from "@/hooks/use-user-auth";
@@ -75,6 +75,14 @@ import PreopView from "@/components/cadus/PreopView";
 import PatientMessageView from "@/components/cadus/PatientMessageView";
 import PregLactView from "@/components/cadus/PregLactView";
 import PillChartView from "@/components/cadus/PillChartView";
+import VaccinesView from "@/components/cadus/VaccinesView";
+import DietView from "@/components/cadus/DietView";
+import IcdView from "@/components/cadus/IcdView";
+import ConsentView from "@/components/cadus/ConsentView";
+import InsulinView from "@/components/cadus/InsulinView";
+import TransfusionView from "@/components/cadus/TransfusionView";
+import MlcView from "@/components/cadus/MlcView";
+import TbView from "@/components/cadus/TbView";
 import PersonalSettings from "@/components/cadus/PersonalSettings";
 import { CADUS_CHAT_CSS } from "@/components/cadus/cadus-chat-styles";
 import { closePartialMarkdown, createTextStore, streamCadus, StreamUnavailable, type DeepStep } from "@/lib/cadus/stream";
@@ -91,7 +99,7 @@ import CrewPlaybookView from "@/components/cadus/CrewPlaybookView";
 import CrewBuilder from "@/components/cadus/CrewBuilder";
 import PodcastView from "@/components/cadus/PodcastView";
 import { VoiceSettings } from "@/components/cadus/AudioParts";
-import { CADUS_CLINIC20_CSS, CADUS_CLINIC21_CSS, CADUS_CLINIC22_CSS, CADUS_CREW_CSS, CADUS_CREWPLUS_CSS, CADUS_VOICE_CSS } from "@/components/cadus/cadus-crew-styles";
+import { CADUS_CLINIC20_CSS, CADUS_CLINIC21_CSS, CADUS_CLINIC22_CSS, CADUS_CLINIC23_CSS, CADUS_CREW_CSS, CADUS_CREWPLUS_CSS, CADUS_VOICE_CSS } from "@/components/cadus/cadus-crew-styles";
 import TranslatorView from "@/components/cadus/TranslatorView";
 import PathwaysView from "@/components/cadus/PathwaysView";
 import FlashcardsView from "@/components/cadus/FlashcardsView";
@@ -190,9 +198,9 @@ type ModeId =
   | "admission" | "progress" | "opnote" | "death" | "certificate" | "rx" | "evidence";
 /** "groq" only appears in chats saved before Cadus became Claude-only. */
 type Provider = "claude" | "groq" | "library";
-type View = "chat" | "crew" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "debate" | "playbooks" | "podcasts" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan" | "ecg" | "abx" | "procedure" | "poison" | "infusions" | "convert" | "abg" | "logbook" | "followups" | "audiolib" | "rxwrite" | "labtrend" | "daily" | "letters" | "adr" | "mccd" | "mnemonics" | "generics" | "opd" | "imagequiz" | "dosecard" | "oncall" | "journal" | "stats" | "roster" | "records" | "voiceround" | "revnotes" | "analytics" | "preop" | "messages" | "preglact" | "pillchart";
+type View = "chat" | "crew" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "debate" | "playbooks" | "podcasts" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan" | "ecg" | "abx" | "procedure" | "poison" | "infusions" | "convert" | "abg" | "logbook" | "followups" | "audiolib" | "rxwrite" | "labtrend" | "daily" | "letters" | "adr" | "mccd" | "mnemonics" | "generics" | "opd" | "imagequiz" | "dosecard" | "oncall" | "journal" | "stats" | "roster" | "records" | "voiceround" | "revnotes" | "analytics" | "preop" | "messages" | "preglact" | "pillchart" | "vaccines" | "diet" | "icd" | "consent" | "insulin" | "transfusion" | "mlc" | "tb";
 /** Views reached from the Tools hub, so the hub stays highlighted in the sidebar. */
-const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today", "discharge", "handover", "ddx", "studyplan", "podcasts", "ecg", "abx", "procedure", "poison", "infusions", "convert", "abg", "logbook", "followups", "audiolib", "rxwrite", "labtrend", "daily", "letters", "adr", "mccd", "mnemonics", "generics", "opd", "imagequiz", "dosecard", "oncall", "journal", "stats", "roster", "records", "voiceround", "revnotes", "analytics", "preop", "messages", "preglact", "pillchart"]);
+const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today", "discharge", "handover", "ddx", "studyplan", "podcasts", "ecg", "abx", "procedure", "poison", "infusions", "convert", "abg", "logbook", "followups", "audiolib", "rxwrite", "labtrend", "daily", "letters", "adr", "mccd", "mnemonics", "generics", "opd", "imagequiz", "dosecard", "oncall", "journal", "stats", "roster", "records", "voiceround", "revnotes", "analytics", "preop", "messages", "preglact", "pillchart", "vaccines", "diet", "icd", "consent", "insulin", "transfusion", "mlc", "tb"]);
 type ToolTab = "all" | "clinical" | "documentation" | "learning";
 type SettingsTab = "general" | "personal" | "letterhead" | "institution" | "data" | "shortcuts" | "about";
 type StyleId = "concise" | "balanced" | "detailed";
@@ -2762,6 +2770,14 @@ export default function CadusAI() {
       { key: "a:messages", label: "Patient Messages: reminders in the patient's language", hint: "Appointments, reports, fasting, medicines; WhatsApp", icon: MessageSquareText, run: () => openView("messages") },
       { key: "a:preglact", label: "Pregnancy and breastfeeding: is this medicine safe?", hint: "By trimester or while breastfeeding, with alternatives", icon: Baby, run: () => openView("preglact") },
       { key: "a:pillchart", label: "Pill Chart: a picture chart of the medicines", hint: "Sunrise, sun, sunset and moon; for patients who don't read", icon: Sun, run: () => openView("pillchart") },
+      { key: "a:vaccines", label: "Vaccination Scheduler: every child's vaccines", hint: "UIP or IAP from the date of birth; card and reminders", icon: Syringe, run: () => openView("vaccines") },
+      { key: "a:diet", label: "Diet Chart Maker: a diet chart for the patient", hint: "Diabetes, CKD, pregnancy, weight; Indian foods, their language", icon: Salad, run: () => openView("diet") },
+      { key: "a:icd", label: "ICD-10 Coder: codes from a discharge summary", hint: "Principal diagnosis first, for records and PM-JAY claims", icon: FileCode2, run: () => openView("icd") },
+      { key: "a:consent", label: "Consent Form Writer: informed consent in two languages", hint: "Risks with frequencies, alternatives, signatures; refusal forms", icon: FileSignature, run: () => openView("consent") },
+      { key: "a:insulin", label: "Insulin Planner: starting doses by weight", hint: "Basal, basal-bolus or premix; correction scale and chart", icon: Pipette, run: () => openView("insulin") },
+      { key: "a:transfusion", label: "Blood Transfusion: how much, how fast, reactions", hint: "Red cells, platelets, FFP and cryo by weight", icon: Droplet, run: () => openView("transfusion") },
+      { key: "a:mlc", label: "MLC Injury Report: a medico-legal injury report", hint: "Each injury, its age, the weapon and simple or grievous (BNS)", icon: Gavel, run: () => openView("mlc") },
+      { key: "a:tb", label: "TB Treatment (NTEP): tablets and dates", hint: "Weight band, phase dates, sputum checks and a patient card", icon: Microscope, run: () => openView("tb") },
       { key: "a:present", label: "Presentation Coach: practise presenting a case", hint: "Ward round, long case, SBAR; scored with a model answer", icon: Presentation, run: () => openView("present") },
       { key: "a:compare", label: "Compare over time: what changed between two studies", hint: "X-rays, ECGs, scans, reports and wound photos", icon: History, run: () => openView("compare") },
       { key: "a:newcase", label: "New patient case", hint: "Start a de-identified case sheet", icon: ClipboardList, run: () => { const c = newCase(); setCases((l) => [c, ...l]); openCases(c.id); } },
@@ -2949,13 +2965,14 @@ export default function CadusAI() {
       <div className="cx-cbar">
         <div className="cx-cbar-l">
           <button className={`cx-cbtn bordered cx-tip ${pop === "add" ? "open" : ""}`} data-pop="add" data-tip="Add files and more" onClick={() => toggleComposerMenu("add", placement)} aria-label="Add files and more"><Plus size={18} /></button>
-          <button className={`cx-cbtn cx-tools-btn ${pop === "tools" ? "open" : ""}`} data-pop="tools" onClick={() => toggleComposerMenu("tools", placement)} aria-haspopup="menu" aria-expanded={pop === "tools"}>
+          <button className={`cx-cbtn cx-tools-btn ${pop === "tools" ? "open" : ""}`} data-pop="tools" onClick={() => toggleComposerMenu("tools", placement)} aria-label="Tools" aria-haspopup="menu" aria-expanded={pop === "tools"}>
             <SlidersHorizontal size={16} /><span>Tools</span>
           </button>
           <button className="cx-cbtn cx-tip cx-at-btn" data-tip="Ask a Crew assistant (@)" aria-label="Ask a Crew assistant" onClick={() => { const v = input && !/\s$/.test(input) ? `${input} @` : `${input}@`; setInput(v); setAtMenu({ q: "", i: 0 }); focusComposer(); }}><AtSign size={16} /></button>
           <button
             className={`cx-cbtn cx-src cx-tip ${prefs.sources || mode === "research" ? "on" : ""}`}
             data-tip={mode === "research" ? "Deep research always searches sources" : prefs.sources ? "Sources on: cites WHO, NICE, ICMR, PubMed" : "Search trusted medical sources"}
+            aria-label="Sources"
             aria-pressed={prefs.sources || mode === "research"}
             onClick={() => { if (!limits.sources) { setUpgrade({ reason: "Live sources with citations are part of Core and above.", feature: "sources" }); return; } if (mode !== "research") setPrefs((p) => ({ ...p, sources: !p.sources })); }}
           >
@@ -3173,6 +3190,14 @@ export default function CadusAI() {
     { id: "messages", icon: MessageSquareText, tone: "teal", title: "Patient Messages", sub: "Reminders in their language", go: () => openView("messages") },
     { id: "preglact", icon: Baby, tone: "rose", title: "Pregnancy & Breastfeeding", sub: "Is this medicine safe now?", go: () => openView("preglact") },
     { id: "pillchart", icon: Sun, tone: "amber", title: "Pill Chart", sub: "Sun and moon, for any patient", go: () => openView("pillchart") },
+    { id: "vaccines", icon: Syringe, tone: "teal", title: "Vaccination Scheduler", sub: "UIP or IAP, due and overdue", go: () => openView("vaccines") },
+    { id: "diet", icon: Salad, tone: "lime", title: "Diet Chart Maker", sub: "Indian diet in their language", go: () => openView("diet") },
+    { id: "icd", icon: FileCode2, tone: "sky", title: "ICD-10 Coder", sub: "Codes for records and claims", go: () => openView("icd") },
+    { id: "consent", icon: FileSignature, tone: "violet", title: "Consent Form Writer", sub: "Bilingual, procedure-specific", go: () => openView("consent") },
+    { id: "insulin", icon: Pipette, tone: "amber", title: "Insulin Planner", sub: "Starting doses and titration", go: () => openView("insulin") },
+    { id: "transfusion", icon: Droplet, tone: "rose", title: "Blood Transfusion", sub: "Dose, rate, reactions", go: () => openView("transfusion") },
+    { id: "mlc", icon: Gavel, tone: "rose", title: "MLC Injury Report", sub: "Injuries worded for court", go: () => openView("mlc") },
+    { id: "tb", icon: Microscope, tone: "teal", title: "TB Treatment (NTEP)", sub: "Tablets by weight band", go: () => openView("tb") },
   ];
   const workspaceTiles = (compact = false) => (
     <div className={`cx-ws-grid ${compact ? "compact" : ""}`}>
@@ -4302,7 +4327,7 @@ export default function CadusAI() {
       style={{ ["--acc" as string]: dark ? accent.dark : accent.light, ["--fs" as string]: `${fontSize}px`, ["--fs-u" as string]: `${sansSize}px` }}
       {...dropHandlers}
     >
-      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS + CADUS_CREWPLUS_CSS + CADUS_VOICE_CSS + CADUS_CLINIC20_CSS + CADUS_CLINIC21_CSS + CADUS_CLINIC22_CSS}</style>
+      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS + CADUS_CREWPLUS_CSS + CADUS_VOICE_CSS + CADUS_CLINIC20_CSS + CADUS_CLINIC21_CSS + CADUS_CLINIC22_CSS + CADUS_CLINIC23_CSS}</style>
 
       {/* ============================================== sidebar */}
       <div className={`cx-scrim ${sidebarOpen ? "on" : ""}`} onClick={() => setSidebarOpen(false)} />
@@ -4408,6 +4433,14 @@ export default function CadusAI() {
               <button className={`cx-nav-i ${view === "messages" ? "on" : ""}`} onClick={() => openView("messages")} title="Patient Messages"><MessageSquareText size={16} /><span className="cx-nav-l">Patient Messages</span></button>
               <button className={`cx-nav-i ${view === "preglact" ? "on" : ""}`} onClick={() => openView("preglact")} title="Pregnancy & Breastfeeding"><Baby size={16} /><span className="cx-nav-l">Pregnancy &amp; Breastfeeding</span></button>
               <button className={`cx-nav-i ${view === "pillchart" ? "on" : ""}`} onClick={() => openView("pillchart")} title="Pill Chart"><Sun size={16} /><span className="cx-nav-l">Pill Chart</span></button>
+              <button className={`cx-nav-i ${view === "vaccines" ? "on" : ""}`} onClick={() => openView("vaccines")} title="Vaccination Scheduler"><Syringe size={16} /><span className="cx-nav-l">Vaccination Scheduler</span></button>
+              <button className={`cx-nav-i ${view === "diet" ? "on" : ""}`} onClick={() => openView("diet")} title="Diet Chart Maker"><Salad size={16} /><span className="cx-nav-l">Diet Chart Maker</span></button>
+              <button className={`cx-nav-i ${view === "icd" ? "on" : ""}`} onClick={() => openView("icd")} title="ICD-10 Coder"><FileCode2 size={16} /><span className="cx-nav-l">ICD-10 Coder</span></button>
+              <button className={`cx-nav-i ${view === "consent" ? "on" : ""}`} onClick={() => openView("consent")} title="Consent Form Writer"><FileSignature size={16} /><span className="cx-nav-l">Consent Form Writer</span></button>
+              <button className={`cx-nav-i ${view === "insulin" ? "on" : ""}`} onClick={() => openView("insulin")} title="Insulin Planner"><Pipette size={16} /><span className="cx-nav-l">Insulin Planner</span></button>
+              <button className={`cx-nav-i ${view === "transfusion" ? "on" : ""}`} onClick={() => openView("transfusion")} title="Blood Transfusion"><Droplet size={16} /><span className="cx-nav-l">Blood Transfusion</span></button>
+              <button className={`cx-nav-i ${view === "mlc" ? "on" : ""}`} onClick={() => openView("mlc")} title="MLC Injury Report"><Gavel size={16} /><span className="cx-nav-l">MLC Injury Report</span></button>
+              <button className={`cx-nav-i ${view === "tb" ? "on" : ""}`} onClick={() => openView("tb")} title="TB Treatment (NTEP)"><Microscope size={16} /><span className="cx-nav-l">TB Treatment (NTEP)</span></button>
               <button data-tour="calculators" className={`cx-nav-i ${view === "calculators" ? "on" : ""}`} onClick={() => openCalculators()} title="Calculators"><Calculator size={16} /><span className="cx-nav-l">Calculators</span></button>
               <button className={`cx-nav-i ${view === "projects" || view === "project" ? "on" : ""}`} onClick={openProjects} title="Projects"><Folder size={16} /><span className="cx-nav-l">Projects</span>{projects.length > 0 && <em>{projects.length}</em>}</button>
               <button className={`cx-nav-i ${view === "decks" ? "on" : ""}`} onClick={() => { setView("decks"); setSidebarOpen(false); }} title="Decks"><Presentation size={16} /><span className="cx-nav-l">Decks</span>{decks.length > 0 && <em>{decks.length}</em>}</button>
@@ -4712,6 +4745,14 @@ export default function CadusAI() {
                 : view === "messages" ? [MessageSquareText, "Patient Messages"]
                 : view === "preglact" ? [Baby, "Pregnancy & Breastfeeding"]
                 : view === "pillchart" ? [Sun, "Pill Chart"]
+                : view === "vaccines" ? [Syringe, "Vaccination Scheduler"]
+                : view === "diet" ? [Salad, "Diet Chart Maker"]
+                : view === "icd" ? [FileCode2, "ICD-10 Coder"]
+                : view === "consent" ? [FileSignature, "Consent Form Writer"]
+                : view === "insulin" ? [Pipette, "Insulin Planner"]
+                : view === "transfusion" ? [Droplet, "Blood Transfusion"]
+                : view === "mlc" ? [Gavel, "MLC Injury Report"]
+                : view === "tb" ? [Microscope, "TB Treatment (NTEP)"]
                 : view === "project" && project ? [Folder, project.name]
                 : [Folder, "Projects"];
               return <span className="cx-title-btn static"><Icon size={14} /> <span>{label}</span></span>;
@@ -5070,6 +5111,14 @@ export default function CadusAI() {
             : view === "messages" ? <PatientMessageView generate={(body) => invokeCadus({ ...body, model: prefs.model })} friendlyError={friendlyError} toast={toast} defaultLanguage={prefs.language} clinic={lh ? [lh.hospital || lh.name, lh.phone].filter(Boolean).join(", ") : ""} />
             : view === "preglact" ? <PregLactView generate={(body) => invokeCadus({ ...body, model: prefs.model })} friendlyError={friendlyError} toast={toast} />
             : view === "pillchart" ? <PillChartView onPrint={(title, md) => printDoc(title, md, { mode: "leaflet", large: true })} onOpenPrescriber={() => openDrugs({ tab: "prescriber" })} />
+            : view === "vaccines" ? <VaccinesView toast={toast} onPrint={(title, md) => printDoc(title, md, { mode: "" })} clinic={lh ? [lh.hospital || lh.name, lh.phone].filter(Boolean).join(", ") : ""} />
+            : view === "diet" ? <DietView generate={(body) => invokeCadus({ ...body, model: prefs.model })} friendlyError={friendlyError} toast={toast} onPrint={(title, md) => printDoc(title, md, { mode: "leaflet" })} defaultLanguage={prefs.language} />
+            : view === "icd" ? <IcdView generate={(body) => invokeCadus({ ...body, model: prefs.model })} friendlyError={friendlyError} toast={toast} />
+            : view === "consent" ? <ConsentView generate={(body) => invokeCadus({ ...body, model: prefs.model })} friendlyError={friendlyError} toast={toast} onPrint={(title, md) => printDoc(title, md, { mode: "" })} defaultLanguage={prefs.language} hospital={lh ? lh.hospital || "" : ""} />
+            : view === "insulin" ? <InsulinView onPrint={(title, md) => printDoc(title, md, { mode: "leaflet" })} />
+            : view === "transfusion" ? <TransfusionView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
+            : view === "mlc" ? <MlcView generate={(body) => invokeCadus({ ...body, model: prefs.model })} friendlyError={friendlyError} toast={toast} onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
+            : view === "tb" ? <TbView onPrint={(title, md) => printDoc(title, md, { mode: "leaflet" })} />
             : view === "today" ? (
               <TodayView
                 name={firstName}

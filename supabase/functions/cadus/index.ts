@@ -47,6 +47,10 @@
 //   preop                 Pre-anaesthetic check-up: ASA, risks, tests, medicines before surgery, fasting.
 //   patient-message       A WhatsApp or SMS message to a patient in their language.
 //   preg-lact             Medicines in pregnancy and breastfeeding.
+//   diet-chart            A one-day Indian diet chart for the patient's conditions, in their language.
+//   icd-code              WHO ICD-10 codes from diagnoses or a discharge summary.
+//   consent-form          A bilingual informed-consent (or refusal) form with signature blocks.
+//   mlc-report            A medico-legal injury report from the doctor's examination notes.
 //   crew-build            Assistant Builder: a one-line description to a full Crew assistant.
 //   debate-turn           Crew Debate: one assistant's opening or rebuttal for its side.
 //   debate-judge          Crew Debate: the neutral verdict on both sides' arguments.
@@ -148,6 +152,7 @@ import {
   MESSAGE_PURPOSES, PATIENT_MESSAGE_SYSTEM, patientMessage, PREG_LACT_SYSTEM, pregLact, PREOP_SYSTEM, preopResult, RECORD_SUMMARY_SYSTEM, recordSummary,
   REV_NOTE_SYSTEM, REV_STYLES, revNote, ROUND_UPDATE_SYSTEM, roundUpdate,
 } from "../_shared/clinic22.ts";
+import { CONSENT_KINDS, CONSENT_SYSTEM, consentForm, DIET_SYSTEM, DIET_TYPES, dietChart, ICD_SYSTEM, icdResult, MLC_SYSTEM, mlcReport } from "../_shared/clinic23.ts";
 import { APPRAISE_SYSTEM, appraisal, IMAGE_QUIZ_SYSTEM, imageQuiz, ONCALL_CALLS, ONCALL_SYSTEM, oncallPlan } from "../_shared/clinic21.ts";
 import { ABX_SYSTEM, abxPlan, ECG_SYSTEM, ecgRead, POISON_SYSTEM, poisonPlan, PROCEDURE_SYSTEM, procGuide } from "../_shared/bedside.ts";
 
@@ -2358,6 +2363,72 @@ Deno.serve(async (req) => {
       if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
       const result = pregLact(parseJsonLoose<any>(r.content));
       if (!result) return jsonResponse({ error: "Couldn't check those medicines this time. Please try again." }, 502);
+      return jsonResponse({ result });
+    }
+
+    // ---------------------------------------------------------------- Update 23 (1.0.3)
+    if (action === "diet-chart") {
+      const conditions = (Array.isArray(body.conditions) ? body.conditions : String(body.conditions || "").split(/\n|,/)).slice(0, 8).map((c: unknown) => cleanLine(c, 80)).filter(Boolean);
+      const kcal = Math.round(Number(body.kcal));
+      if (!conditions.length && !cleanLine(body.goal, 80)) return jsonResponse({ error: "Add the patient's conditions or goal" }, 400);
+      if (!(kcal >= 800 && kcal <= 4500)) return jsonResponse({ error: "The calories should be between 800 and 4500" }, 400);
+      const protein = Math.round(Number(body.protein));
+      const diet = (DIET_TYPES as readonly string[]).includes(String(body.diet)) ? String(body.diet) : "vegetarian";
+      const language = cleanLine(body.language, 40) || "English";
+      const r = await callAI({
+        model: answerModel(body.model),
+        messages: [{ role: "system", content: DIET_SYSTEM }, { role: "user", content: [`CONDITIONS: ${conditions.join("; ") || "none"}`, cleanLine(body.goal, 80) && `GOAL: ${cleanLine(body.goal, 80)}`, `CALORIES: ${kcal} kcal a day`, protein > 0 && protein < 300 ? `PROTEIN: ${protein} g a day` : "", `DIET: ${diet}`, `REGION: ${cleanLine(body.region, 60) || "North India"}`, cleanLine(body.patient, 120) && `PATIENT: ${cleanLine(body.patient, 120)}`, cleanLine(body.notes, 400) && `NOTES: ${cleanLine(body.notes, 400)}`, `LANGUAGE: ${language}`].filter(Boolean).join("\n") }],
+        jsonMode: true, effort: "medium", maxTokens: 7000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = dietChart(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't make the diet chart this time. Please try again." }, 502);
+      if (language === "English") result.local = "";
+      return jsonResponse({ result });
+    }
+
+    if (action === "icd-code") {
+      const notes = String(body.notes || "").replace(/\r/g, "").trim().slice(0, 16000);
+      if (notes.length < 4) return jsonResponse({ error: "Add the diagnoses or the discharge summary" }, 400);
+      const r = await callAI({
+        model: CLAUDE_REVIEW_MODEL,
+        messages: [{ role: "system", content: ICD_SYSTEM }, { role: "user", content: `${cleanLine(body.setting, 40) ? `SETTING: ${cleanLine(body.setting, 40)}\n` : ""}<document>\n${notes}\n</document>` }],
+        jsonMode: true, effort: "medium", maxTokens: 4000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = icdResult(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't find codes for that. Add the diagnoses in more detail and try again." }, 502);
+      return jsonResponse({ result });
+    }
+
+    if (action === "consent-form") {
+      const procedure = cleanLine(body.procedure, 200);
+      if (procedure.length < 3) return jsonResponse({ error: "Name the procedure" }, 400);
+      const kind = (CONSENT_KINDS as readonly string[]).includes(String(body.kind)) ? String(body.kind) : "procedure";
+      const language = cleanLine(body.language, 40) || "Hindi";
+      const r = await callAI({
+        model: CLAUDE_REVIEW_MODEL,
+        messages: [{ role: "system", content: CONSENT_SYSTEM }, { role: "user", content: [`KIND: ${kind}`, `PROCEDURE: ${procedure}`, cleanLine(body.anaesthesia, 60) && `ANAESTHESIA: ${cleanLine(body.anaesthesia, 60)}`, cleanLine(body.patient, 300) && `PATIENT DETAILS (no names): ${cleanLine(body.patient, 300)}`, body.guardian === true ? "SIGNED BY: a guardian (minor or lacks capacity)" : "", cleanLine(body.hospital, 120) && `HOSPITAL: ${cleanLine(body.hospital, 120)}`, `PATIENT'S LANGUAGE: ${language}`].filter(Boolean).join("\n") }],
+        jsonMode: true, effort: "medium", maxTokens: 14000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = consentForm(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't write the consent form this time. Please try again." }, 502);
+      if (language === "English") result.local = "";
+      return jsonResponse({ result });
+    }
+
+    if (action === "mlc-report") {
+      const notes = String(body.notes || "").replace(/\r/g, "").trim().slice(0, 12000);
+      if (notes.split(/\s+/).length < 6) return jsonResponse({ error: "Add your examination notes" }, 400);
+      const r = await callAI({
+        model: CLAUDE_REVIEW_MODEL,
+        messages: [{ role: "system", content: MLC_SYSTEM }, { role: "user", content: [cleanLine(body.history, 600) && `HISTORY AS GIVEN: ${cleanLine(body.history, 600)}`, cleanLine(body.when, 80) && `TIME OF INCIDENT: ${cleanLine(body.when, 80)}`, cleanLine(body.examined, 80) && `TIME OF EXAMINATION: ${cleanLine(body.examined, 80)}`, `<examination>\n${notes}\n</examination>`].filter(Boolean).join("\n") }],
+        jsonMode: true, effort: "high", maxTokens: 9000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = mlcReport(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't write the report from those notes. Add the injuries with sizes and sites and try again." }, 502);
       return jsonResponse({ result });
     }
 

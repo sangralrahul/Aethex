@@ -437,3 +437,47 @@ export const CADUS_CLINIC22_CSS = `
 .cx-pill-chart td,.cx-pill-chart th{font-size:15px}
 @media (max-width:640px){.cx-an-grid{grid-template-columns:1fr}}
 `;
+
+export const CADUS_CLINIC23_CSS = `
+.cx-c23-scroll{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:10px 0}
+.cx-c23-table{width:100%;border-collapse:collapse;font-size:13.5px}
+.cx-c23-table th,.cx-c23-table td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.cx-c23-table th{color:var(--t2);font-weight:600;font-size:12.5px;white-space:nowrap;background:var(--s2)}
+.cx-c23-table td small{display:block;color:var(--t3);font-size:12px;margin-top:2px}
+.cx-c23-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0}
+.cx-c23-row{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin:12px 0}
+.cx-c23-row .cx-field{flex:1 1 160px;min-width:0}
+.cx-c23-two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cx-c23-two h4,.cx-cmp-out h4{margin:12px 0 4px;font-size:13.5px}
+.cx-c23-doc{padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-lg,12px);background:var(--surface);margin:10px 0;overflow-x:auto}
+.cx-c23-local{margin-top:12px;padding-top:8px;border-top:1px dashed var(--line)}
+.cx-c23-past{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:4px}
+.cx-c23-past li{display:flex;align-items:center;gap:8px;min-width:0}
+.cx-c23-past .cx-link{flex:1;min-width:0;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cx-c23-past small{color:var(--t3)}
+.cx-c23-steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.cx-search-l{display:flex;align-items:center;gap:8px;margin:4px 0 10px;color:var(--t3)}
+.cx-search-l .cx-input{flex:1}
+.cx-vax-dob{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--t2)}
+.cx-vax-next{display:flex;align-items:center;gap:6px;margin:8px 0;font-weight:600}
+.cx-vax-table tr.s-given td{color:var(--t2)}
+.cx-vax-st{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;font-weight:600;background:var(--s2);white-space:nowrap}
+.cx-vax-st.s-due{background:color-mix(in srgb,var(--acc) 15%,var(--surface));color:var(--acc)}
+.cx-vax-st.s-overdue{background:color-mix(in srgb,var(--danger) 12%,var(--surface));color:var(--danger)}
+.cx-vax-st.s-given{background:color-mix(in srgb,var(--ok,#15803d) 12%,var(--surface));color:var(--ok,#15803d)}
+.cx-vax-st.s-missed{color:var(--t3)}
+.cx-vax-given{display:flex;align-items:center;gap:6px}
+.cx-vax-given input[type=checkbox]{width:18px;height:18px}
+.cx-vax-given .cx-input{width:150px}
+.cx-diet-energy{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--s2);font-size:13.5px;margin:10px 0}
+.cx-diet-energy label{display:inline-flex;align-items:center;gap:6px;margin-left:auto}
+.cx-diet-energy .cx-input{width:90px}
+.cx-icd-table tr.principal td{background:color-mix(in srgb,var(--acc) 7%,transparent)}
+.cx-icd-code{font:600 13.5px var(--mono,ui-monospace,monospace);padding:3px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer;white-space:nowrap}
+.cx-icd-conf.medium{color:#a16207!important}.cx-icd-conf.low{color:var(--danger)!important}
+.cx-mlc-n{text-transform:capitalize}
+.cx-mlc-n.n-grievous,.cx-mlc-n.n-dangerous-to-life{color:var(--danger)}
+.cx-mlc-n.n-under-observation{color:#a16207}
+@media (max-width:900px){.cx-c23-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){.cx-c23-two{grid-template-columns:1fr}.cx-diet-energy label{margin-left:0}.cx-c23-table{font-size:13px}}
+`;

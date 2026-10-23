@@ -275,6 +275,7 @@ const TOOLS: [string, string][] = [
   ["Prescription Writer", "t"], ["Lab Trends", "v"], ["Daily Clinical Case", "y"], ["Letters & Certificates", "r"], ["ADR Report", "r"], ["Cause of Death (MCCD)", "v"], ["Mnemonic Maker", "y"], ["Generic Finder", "t"],
   ["OPD Queue", "t"], ["Clinical Image Quiz", "y"], ["Dose Card by Weight", "r"], ["Mock Tests", "y"], ["On-call Helper", "r"], ["Journal Club", "v"], ["Statistics Test Chooser", "v"], ["Duty Roster", "t"],
   ["Patient Records", "t"], ["Ward Rounds by Voice", "v"], ["Revision Notes", "y"], ["Clinic Analytics", "v"], ["Pre-op Assessment", "r"], ["Patient Messages", "t"], ["Pregnancy & Breastfeeding", "r"], ["Pill Chart", "y"],
+  ["Vaccination Scheduler", "t"], ["Diet Chart Maker", "y"], ["ICD-10 Coder", "v"], ["Consent Form Writer", "r"], ["Insulin Planner", "t"], ["Blood Transfusion", "r"], ["MLC Injury Report", "v"], ["TB Treatment (NTEP)", "t"],
 ];
 
 /**
@@ -282,12 +283,12 @@ const TOOLS: [string, string][] = [
  * stays short. The full list of tools is in the app.
  */
 const NEW_IN_CADUS: { icon: typeof Pill; t: string; d: string; fx: FxKind }[] = [
-  { icon: ListOrdered, fx: "queue", t: "Your OPD, organised", d: "Token queue and waiting-room board, a record for every patient, and clinic analytics." },
-  { icon: FilePen, fx: "write", t: "Prescriptions in seconds", d: "Doses for age, weight and kidneys, interactions checked, advice in the patient's language." },
+  { icon: ListOrdered, fx: "queue", t: "Your OPD, organised", d: "Token queue and waiting-room board, a record for every patient, vaccination schedules and clinic analytics." },
+  { icon: FilePen, fx: "write", t: "Prescriptions in seconds", d: "Doses for age, weight and kidneys, interactions checked, advice and diet charts in the patient's language." },
   { icon: AudioWaveform, fx: "mic", t: "Ward rounds by voice", d: "Dictate at each bed; progress notes, handover and discharge summaries are written for you." },
   { icon: Activity, fx: "pulse", t: "Reads ECGs and reports", d: "Photograph an ECG or a lab report: a systematic read, trends charted, urgent findings flagged." },
-  { icon: ScrollText, fx: "envelope", t: "Letters and forms done", d: "Referrals, certificates, PM-JAY pre-auth, ADR reports and the MCCD, on your letterhead." },
-  { icon: ShieldPlus, fx: "shield", t: "Safer at the bedside", d: "Rx safety check, doses by weight, antibiotic, poisoning and pregnancy guides, and night-call help." },
+  { icon: ScrollText, fx: "envelope", t: "Letters and forms done", d: "Referrals, bilingual consent forms, MLC injury reports, ICD-10 codes, PM-JAY pre-auth and the MCCD." },
+  { icon: ShieldPlus, fx: "shield", t: "Safer at the bedside", d: "Rx safety check, insulin plans, transfusion doses, TB regimens, poisoning and pregnancy guides." },
   { icon: Volume2, fx: "wave", t: "Natural voices, 13 languages", d: "Hands-free voice mode, audio advice for patients on WhatsApp, podcasts, even your own voice." },
   { icon: Users2, fx: "orbit", t: "Cadus Crew", d: "Specialist assistants that consult, debate a hard case and work together; build your own." },
   { icon: CalendarHeart, fx: "calendar", t: "Learn a little every day", d: "A daily clinical case, revision notes on a schedule, flashcards and NEET-PG style mocks." },
@@ -296,6 +297,7 @@ const NEW_IN_CADUS: { icon: typeof Pill; t: string; d: string; fx: FxKind }[] = 
 
 /** New in the desktop app itself: these need the new installer. */
 const NEW_IN_APP = [
+  { icon: ListOrdered, t: "Clinic tools menu", d: "New in 1.0.3: OPD Queue, Prescription Writer, Patient Records, Vaccination Scheduler, ICD-10 Coder and Emergencies, straight from the tray or the File menu." },
   { icon: Keyboard, t: "Quick-open shortcut", d: "Press Ctrl+Shift+Space in any app, even mid-note in the hospital system, and Cadus comes up with a new chat, ready to type." },
   { icon: PanelBottom, t: "Tray icon", d: "Close the window and Cadus waits in the tray: New chat, Today, Calculators, Flashcards and your study plan are one click away." },
   { icon: Power, t: "Start with Windows", d: "Turn it on and Cadus opens quietly in the tray when you sign in to your computer. Off unless you choose it." },
@@ -304,6 +306,7 @@ const NEW_IN_APP = [
 
 /** Notes from earlier versions, newest first (the current version's notes come from release.json). */
 const EARLIER = [
+  { v: "1.0.2", notes: ["Tray icon: Cadus keeps running when you close its window, with New chat, Today, Calculators, Flashcards and your study plan one click away.", "Quick-open shortcut: press Ctrl+Shift+Space in any app to bring Cadus up with a new chat, ready to type.", "Start with Windows (or with your Linux desktop): an option to open Cadus quietly in the tray when the computer starts.", "Reminders: a desktop notification when flashcards are due, ward jobs are still open or your study plan has work for today, at most every 3 hours, 8 am to 9 pm."] },
   { v: "1.0.1", notes: ["Continue with Google opens in your usual browser, then brings you back to Cadus signed in.", "Cadus in its own window, with your sign-in, chats and settings kept on this computer.", "Checks once a day for a newer version."] },
 ];
 
@@ -553,7 +556,7 @@ export default function Downloads() {
               ))}
               <div className="tray-mock" aria-hidden="true">
                 <p className="tm-h"><span className="tile"><CadusMark size={13} variant="mono" color="currentColor" /></span> Cadus</p>
-                <span>Open Cadus</span><span>New chat <kbd>Ctrl+Shift+Space</kbd></span><span>Today</span><span>Study plan</span>
+                <span>Open Cadus</span><span>New chat <kbd>Ctrl+Shift+Space</kbd></span><span>Today</span><span>Study plan</span><span>Clinic tools <b aria-hidden="true">›</b></span>
                 <i /><span className="muted">2 ward jobs open · 12 flashcards due</span><i />
                 <span className="chk">Start with Windows</span><span className="chk on">Reminders</span>
               </div>
@@ -899,6 +902,7 @@ const CSS = `
 .ax .keys{display:flex;align-items:center;gap:8px;margin:28px 0;color:var(--t3);font-weight:600}
 .ax kbd{display:inline-block;padding:7px 12px;border-radius:9px;border:1px solid var(--line2);border-bottom-width:3px;background:#fff;color:var(--ink);font:650 15px/1 var(--sans)}
 .ax .app-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.ax .app-grid>.app-card:first-child:nth-last-child(even){grid-column:1/-1}
 .ax .app-card{display:flex;gap:16px;padding:24px;border-radius:18px;border:1px solid var(--line);background:#fff}
 .ax .app-card .ic{flex:none;display:grid;place-items:center;width:44px;height:44px;border-radius:11px;background:var(--teal-bg);color:var(--teal)}
 .ax .app-card h3{margin:2px 0 8px;font-size:18px;font-weight:650}

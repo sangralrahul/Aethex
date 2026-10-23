@@ -1,55 +1,54 @@
 {
   "product": "Cadus",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "released": "2026-10-23",
   "electron": "44.5.1",
-  "title": "tray, quick-open shortcut and reminders",
+  "title": "clinic tools menu and eight new tools",
   "files": [
     {
       "id": "win-x64",
       "os": "windows",
       "arch": "x64",
       "kind": "Installer (.exe)",
-      "file": "Cadus-Setup-1.0.2-x64.exe",
-      "url": "https://downloads.aethex.in/cadus/1.0.2/Cadus-Setup-1.0.2-x64.exe",
-      "size": 110942728,
-      "sha256": "e8013eb9a12951c14093d3c603282b663c8ce34f9905978ed3e6a9c02ec725ab"
+      "file": "Cadus-Setup-1.0.3-x64.exe",
+      "url": "https://downloads.aethex.in/cadus/1.0.3/Cadus-Setup-1.0.3-x64.exe",
+      "size": 110942896,
+      "sha256": "9af5e0209a01553ee0aed701d4661015866702582ffdeb61acc956e0c8d81210"
     },
     {
       "id": "win-arm64",
       "os": "windows",
       "arch": "arm64",
       "kind": "Installer (.exe)",
-      "file": "Cadus-Setup-1.0.2-arm64.exe",
-      "url": "https://downloads.aethex.in/cadus/1.0.2/Cadus-Setup-1.0.2-arm64.exe",
-      "size": 105589230,
-      "sha256": "c05ec7d5925ea2f97aaa861a009daed811eb3147da171bd8a368494a5d68ac83"
+      "file": "Cadus-Setup-1.0.3-arm64.exe",
+      "url": "https://downloads.aethex.in/cadus/1.0.3/Cadus-Setup-1.0.3-arm64.exe",
+      "size": 105589441,
+      "sha256": "8d9d373f573f786f90b75c2fec8797d900a5266a28f1b36c6d80287dc00cd932"
     },
     {
       "id": "linux-appimage",
       "os": "linux",
       "arch": "x64",
       "kind": "AppImage",
-      "file": "Cadus-1.0.2-x86_64.AppImage",
-      "url": "https://downloads.aethex.in/cadus/1.0.2/Cadus-1.0.2-x86_64.AppImage",
-      "size": 97329221,
-      "sha256": "dab7063f4e1b4c89a6ae1a3fecfcb1063d9ec56fc2c92c35525a1dad27c7afd1"
+      "file": "Cadus-1.0.3-x86_64.AppImage",
+      "url": "https://downloads.aethex.in/cadus/1.0.3/Cadus-1.0.3-x86_64.AppImage",
+      "size": 97329199,
+      "sha256": "2accaecb7f71eee249a32be1a33fa15b341b2d8de78b337e901c50803b6cee0e"
     },
     {
       "id": "linux-deb",
       "os": "linux",
       "arch": "x64",
       "kind": "Debian / Ubuntu (.deb)",
-      "file": "Cadus-1.0.2-amd64.deb",
-      "url": "https://downloads.aethex.in/cadus/1.0.2/Cadus-1.0.2-amd64.deb",
-      "size": 97173200,
-      "sha256": "097a46db35d954eb7481cf2690cb89edaf56e1c1b863b9f3281c9c881be58ef3"
+      "file": "Cadus-1.0.3-amd64.deb",
+      "url": "https://downloads.aethex.in/cadus/1.0.3/Cadus-1.0.3-amd64.deb",
+      "size": 97173440,
+      "sha256": "68639b17d25eb15e4ff07e58a707a06df3592bdea254a02b3b77d08018312a04"
     }
   ],
   "notes": [
-    "Tray icon: Cadus keeps running when you close its window, with New chat, Today, Calculators, Flashcards and your study plan one click away.",
-    "Quick-open shortcut: press Ctrl+Shift+Space in any app to bring Cadus up with a new chat, ready to type.",
-    "Start with Windows (or with your Linux desktop): an option to open Cadus quietly in the tray when the computer starts.",
-    "Reminders: a desktop notification when flashcards are due, ward jobs are still open or your study plan has work for today, at most every 3 hours, 8 am to 9 pm."
+    "Clinic tools menu: OPD Queue, Prescription Writer, Patient Records, Vaccination Scheduler, ICD-10 Coder and Emergencies, one click away in the tray and the File menu.",
+    "Eight new tools in Cadus: Vaccination Scheduler, Diet Chart Maker, ICD-10 Coder, Consent Form Writer, Insulin Planner, Blood Transfusion, MLC Injury Report and TB Treatment (NTEP).",
+    "Fixes from a check of every Cadus tool on computers and phones."
   ]
 }

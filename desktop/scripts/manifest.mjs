@@ -33,13 +33,12 @@ const manifest = {
   version,
   released: new Date().toISOString().slice(0, 10),
   electron: pkg.devDependencies.electron,
-  title: "tray, quick-open shortcut and reminders",
+  title: "clinic tools menu and eight new tools",
   files,
   notes: [
-    "Tray icon: Cadus keeps running when you close its window, with New chat, Today, Calculators, Flashcards and your study plan one click away.",
-    "Quick-open shortcut: press Ctrl+Shift+Space in any app to bring Cadus up with a new chat, ready to type.",
-    "Start with Windows (or with your Linux desktop): an option to open Cadus quietly in the tray when the computer starts.",
-    "Reminders: a desktop notification when flashcards are due, ward jobs are still open or your study plan has work for today, at most every 3 hours, 8 am to 9 pm.",
+    "Clinic tools menu: OPD Queue, Prescription Writer, Patient Records, Vaccination Scheduler, ICD-10 Coder and Emergencies, one click away in the tray and the File menu.",
+    "Eight new tools in Cadus: Vaccination Scheduler, Diet Chart Maker, ICD-10 Coder, Consent Form Writer, Insulin Planner, Blood Transfusion, MLC Injury Report and TB Treatment (NTEP).",
+    "Fixes from a check of every Cadus tool on computers and phones.",
   ],
 };
 

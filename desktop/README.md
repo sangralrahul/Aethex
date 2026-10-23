@@ -13,6 +13,12 @@ The download page is https://aethex.in/downloads
 (`artifacts/aethex/src/pages/Downloads.tsx`). The installers are served from
 Cloudflare R2 at https://downloads.aethex.in/cadus/<version>/.
 
+## Clinic tools menu (1.0.3)
+
+The tray and the File menu have a "Clinic tools" submenu (OPD Queue, Prescription Writer, Patient
+Records, Vaccination Scheduler, ICD-10 Coder, Emergencies), opened with the same `cadus:open`
+targets as the rest of the menu (`OPEN_TARGETS` in `artifacts/aethex/src/lib/cadus/desktop.ts`).
+
 ## Tray, shortcut and reminders (1.0.2)
 
 Closing the window keeps Cadus in the tray (unless turned off). Ctrl+Shift+Space

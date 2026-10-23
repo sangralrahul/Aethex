@@ -28,7 +28,7 @@ export function desktopStatus(): DesktopStatus {
 }
 
 /** The parts of Cadus the app and ?open= links can open. */
-export const OPEN_TARGETS = ["new-chat", "today", "calculators", "flashcards", "ward", "studyplan", "handover", "discharge", "ddx", "practice", "followups", "logbook", "ecg", "abx", "infusions", "abg"] as const;
+export const OPEN_TARGETS = ["new-chat", "today", "calculators", "flashcards", "ward", "studyplan", "handover", "discharge", "ddx", "practice", "followups", "logbook", "ecg", "abx", "infusions", "abg", "opd", "rxwrite", "records", "vaccines", "icd", "emergency"] as const;
 export type OpenTarget = (typeof OPEN_TARGETS)[number];
 export const isOpenTarget = (v: unknown): v is OpenTarget => (OPEN_TARGETS as readonly string[]).includes(String(v));
 

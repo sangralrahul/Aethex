@@ -11,6 +11,8 @@
 // (worker/auth.ts, /api/auth/desktop). A code alone is useless without the secret.
 // When there is no connection, a local page explains and retries.
 //
+// 1.0.3: a "Clinic tools" menu in the tray and File menu (OPD Queue, Prescription Writer,
+// Patient Records, Vaccination Scheduler, ICD-10 Coder, Emergencies).
 // Since 1.0.2: a tray icon (Cadus keeps running when its window is closed), a
 // quick-open shortcut (Ctrl+Shift+Space) from any app, an option to start with
 // the computer, and reminders when flashcards are due or ward jobs are open. The
@@ -207,6 +209,7 @@ function buildMenu() {
       submenu: [
         { label: `New chat (${shortcutLabel()})`, click: () => openTarget("new-chat") },
         { label: "Today", click: () => openTarget("today") },
+        clinicMenu(),
         { type: "separator" },
         ...settingsItems(),
         { type: "separator" },
@@ -325,7 +328,7 @@ function applyStartAtLogin() {
 
 /* ------------------------------------------------------------------ opening parts of Cadus */
 
-const TARGETS = new Set(["new-chat", "today", "calculators", "flashcards", "ward", "studyplan", "handover", "discharge", "ddx", "practice"]);
+const TARGETS = new Set(["new-chat", "today", "calculators", "flashcards", "ward", "studyplan", "handover", "discharge", "ddx", "practice", "opd", "rxwrite", "records", "vaccines", "icd", "emergency"]);
 function showWindow() {
   if (!win || win.isDestroyed()) createWindow();
   if (win.isMinimized()) win.restore();
@@ -393,6 +396,10 @@ function makeTray() {
   tray.on("click", () => { if (win && win.isVisible() && win.isFocused()) win.hide(); else showWindow(); });
   refreshTray();
 }
+/** Clinic tools in the tray and the File menu (1.0.3). */
+const CLINIC_TOOLS = [["OPD Queue", "opd"], ["Prescription Writer", "rxwrite"], ["Patient Records", "records"], ["Vaccination Scheduler", "vaccines"], ["ICD-10 Coder", "icd"], ["Emergencies", "emergency"]];
+const clinicMenu = () => ({ label: "Clinic tools", submenu: CLINIC_TOOLS.map(([label, t]) => ({ label, click: () => openTarget(t) })) });
+
 function refreshTray() {
   if (!tray) return;
   const parts = statusParts(lastStatus);
@@ -404,6 +411,7 @@ function refreshTray() {
     { label: "Calculators", click: () => openTarget("calculators") },
     { label: "Flashcards", click: () => openTarget("flashcards") },
     { label: "Study plan", click: () => openTarget("studyplan") },
+    clinicMenu(),
     ...(parts.length ? [{ type: "separator" }, ...parts.map((p) => ({ label: p, enabled: false }))] : []),
     { type: "separator" },
     ...settingsItems(),
