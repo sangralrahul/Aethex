@@ -5,6 +5,7 @@
  */
 import { CRASH_DRUGS, childDose, estimatedWeight } from "./emergency";
 import { allChildDoses } from "./paeds";
+import { archiveOpdDay } from "./clinic22";
 
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 const load = <T,>(key: string, fallback: T): T => { try { const v = JSON.parse(localStorage.getItem(key) || "null"); return v ?? fallback; } catch { return fallback; } };
@@ -23,7 +24,10 @@ export const EMPTY_VITALS: OpdVitals = { bp: "", pulse: "", temp: "", spo2: "", 
 /** Today's queue; a new day starts a new queue (token 1 again). */
 export function readOpd(today = localDate()): OpdDay {
   const d = load<OpdDay | null>(OPD_KEY, null);
-  return d && d.date === today && Array.isArray(d.patients) ? d : { date: today, patients: [] };
+  if (d && d.date === today && Array.isArray(d.patients)) return d;
+  // A new day: yesterday's queue goes to the history (for the clinic analytics) and a fresh one starts.
+  if (d && Array.isArray(d.patients) && d.patients.length && d.date !== today) { archiveOpdDay(d); keep(OPD_KEY, { date: today, patients: [] }); }
+  return { date: today, patients: [] };
 }
 export const saveOpd = (d: OpdDay) => keep(OPD_KEY, d);
 export const nextToken = (d: OpdDay) => d.patients.reduce((m, p) => Math.max(m, p.token), 0) + 1;

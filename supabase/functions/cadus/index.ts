@@ -41,6 +41,12 @@
 //   image-quiz            Quiz questions from the user's own clinical images.
 //   oncall                On-call Helper: the first minutes of a call from the ward.
 //   appraise              Journal Club: critical appraisal of a paper (text or PDF) with a slide outline.
+//   record-summary        A patient record summarised for the doctor before the next visit.
+//   round-update          Ward rounds by voice: a dictated review applied to the ward list, with a SOAP note.
+//   rev-note              High-yield revision notes with flashcards and questions.
+//   preop                 Pre-anaesthetic check-up: ASA, risks, tests, medicines before surgery, fasting.
+//   patient-message       A WhatsApp or SMS message to a patient in their language.
+//   preg-lact             Medicines in pregnancy and breastfeeding.
 //   crew-build            Assistant Builder: a one-line description to a full Crew assistant.
 //   debate-turn           Crew Debate: one assistant's opening or rebuttal for its side.
 //   debate-judge          Crew Debate: the neutral verdict on both sides' arguments.
@@ -138,6 +144,10 @@ import {
   ADR_SYSTEM, adrReport, DAILY_CASE_SYSTEM, DAILY_LEVELS, dailyCase, GENERIC_SYSTEM, genericLookup, LAB_EXTRACT_SYSTEM, LAB_TREND_SYSTEM, labExplain, labRows,
   LETTER_KINDS, letterResult, letterSystem, MCCD_SYSTEM, mccdResult, MNEMONIC_SYSTEM, mnemonicsResult, RX_WRITE_SYSTEM, rxDraft, rxPrompt, type LetterKind,
 } from "../_shared/clinic20.ts";
+import {
+  MESSAGE_PURPOSES, PATIENT_MESSAGE_SYSTEM, patientMessage, PREG_LACT_SYSTEM, pregLact, PREOP_SYSTEM, preopResult, RECORD_SUMMARY_SYSTEM, recordSummary,
+  REV_NOTE_SYSTEM, REV_STYLES, revNote, ROUND_UPDATE_SYSTEM, roundUpdate,
+} from "../_shared/clinic22.ts";
 import { APPRAISE_SYSTEM, appraisal, IMAGE_QUIZ_SYSTEM, imageQuiz, ONCALL_CALLS, ONCALL_SYSTEM, oncallPlan } from "../_shared/clinic21.ts";
 import { ABX_SYSTEM, abxPlan, ECG_SYSTEM, ecgRead, POISON_SYSTEM, poisonPlan, PROCEDURE_SYSTEM, procGuide } from "../_shared/bedside.ts";
 
@@ -2251,6 +2261,103 @@ Deno.serve(async (req) => {
       if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
       const result = appraisal(parseJsonLoose<any>(r.content));
       if (!result) return jsonResponse({ error: "Couldn't appraise that. Paste more of the paper, or attach the PDF." }, 502);
+      return jsonResponse({ result });
+    }
+
+    // ---------------------------------------------------------------- Update 22
+    if (action === "record-summary") {
+      const record = String(body.record || "").replace(/\r/g, "").trim().slice(0, 20000);
+      if (record.split(/\s+/).length < 10) return jsonResponse({ error: "The record has too little in it to summarise" }, 400);
+      const r = await callAI({
+        model: answerModel(body.model),
+        messages: [{ role: "system", content: RECORD_SUMMARY_SYSTEM }, { role: "user", content: `<record>\n${record}\n</record>` }],
+        jsonMode: true, effort: "medium", maxTokens: 3000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = recordSummary(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't summarise the record this time. Please try again." }, 502);
+      return jsonResponse({ result });
+    }
+
+    if (action === "round-update") {
+      const said = String(body.said || "").replace(/\r/g, "").trim().slice(0, 8000);
+      if (said.split(/\s+/).length < 4) return jsonResponse({ error: "Dictate the review first" }, 400);
+      const p = body.patient ?? {};
+      const current = [
+        `Bed ${cleanLine(p.bed, 20) || "?"} · ${cleanLine(p.label, 40) || "?"}`, `Diagnosis: ${cleanLine(p.diagnosis, 200) || "not given"}`, `Status: ${cleanLine(p.status, 10) || "stable"}`,
+        `Problems: ${String(p.problems || "").slice(0, 2000)}`, `Medicines: ${String(p.meds || "").slice(0, 2000)}`, `Plan: ${String(p.plan || "").slice(0, 2000)}`,
+        `Open jobs: ${(Array.isArray(p.jobs) ? p.jobs : []).slice(0, 20).map((j: unknown) => cleanLine(j, 200)).filter(Boolean).join("; ") || "none"}`,
+      ].join("\n");
+      const r = await callAI({
+        model: answerModel(body.model),
+        messages: [{ role: "system", content: ROUND_UPDATE_SYSTEM }, { role: "user", content: `<ward_list_entry>\n${current}\n</ward_list_entry>\n<dictation>\n${said}\n</dictation>` }],
+        jsonMode: true, effort: "medium", maxTokens: 4000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = roundUpdate(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't update from that dictation. Please try again." }, 502);
+      return jsonResponse({ result });
+    }
+
+    if (action === "rev-note") {
+      const topic = cleanLine(body.topic, 200);
+      if (topic.length < 3) return jsonResponse({ error: "Give a topic" }, 400);
+      const style = (REV_STYLES as readonly string[]).includes(String(body.style)) ? String(body.style) : "short";
+      const exam = cleanLine(body.exam, 30) || "NEET-PG";
+      const r = await callAI({
+        model: CLAUDE_REVIEW_MODEL,
+        messages: [{ role: "system", content: REV_NOTE_SYSTEM }, { role: "user", content: `TOPIC: ${topic}\nEXAM: ${exam}\nSTYLE: ${style}${cleanLine(body.subject, 60) ? `\nSUBJECT: ${cleanLine(body.subject, 60)}` : ""}` }],
+        jsonMode: true, effort: "medium", maxTokens: 9000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = revNote(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't write the note this time. Please try again." }, 502);
+      return jsonResponse({ result });
+    }
+
+    if (action === "preop") {
+      const notes = String(body.notes || "").replace(/\r/g, "").trim().slice(0, 10000);
+      const surgery = cleanLine(body.surgery, 200);
+      if (!surgery || notes.split(/\s+/).length < 6) return jsonResponse({ error: "Give the surgery and the patient's details" }, 400);
+      const r = await callAI({
+        model: CLAUDE_REVIEW_MODEL,
+        messages: [{ role: "system", content: PREOP_SYSTEM }, { role: "user", content: [`SURGERY: ${surgery}${body.urgency === "emergency" ? " (EMERGENCY)" : ""}`, cleanLine(body.anaesthesia, 60) && `PLANNED ANAESTHESIA: ${cleanLine(body.anaesthesia, 60)}`, Number.isFinite(Number(body.rcri)) ? `RCRI: ${Number(body.rcri)}` : "", `<notes>\n${notes}\n</notes>`].filter(Boolean).join("\n") }],
+        jsonMode: true, effort: "high", maxTokens: 7000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = preopResult(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't complete the assessment. Add more detail and try again." }, 502);
+      return jsonResponse({ result });
+    }
+
+    if (action === "patient-message") {
+      const purpose = (MESSAGE_PURPOSES as readonly string[]).includes(String(body.purpose)) ? String(body.purpose) : "custom";
+      const details = String(body.details || "").replace(/\r/g, "").trim().slice(0, 1500);
+      if (details.length < 4) return jsonResponse({ error: "Add the details for the message" }, 400);
+      const language = cleanLine(body.language, 40) || "Hindi";
+      const r = await callAI({
+        model: answerModel(body.model),
+        messages: [{ role: "system", content: PATIENT_MESSAGE_SYSTEM }, { role: "user", content: [`PURPOSE: ${purpose}`, `LANGUAGE: ${language}`, cleanLine(body.clinic, 120) && `CLINIC: ${cleanLine(body.clinic, 120)}`, cleanLine(body.tone, 30) && `TONE: ${cleanLine(body.tone, 30)}`, `DETAILS: ${details}`].filter(Boolean).join("\n") }],
+        jsonMode: true, effort: "low", maxTokens: 1500,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = patientMessage(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't write the message this time. Please try again." }, 502);
+      return jsonResponse({ result });
+    }
+
+    if (action === "preg-lact") {
+      const drugs = (Array.isArray(body.drugs) ? body.drugs : String(body.drugs || "").split(/\n|,/)).slice(0, 20).map((d: unknown) => cleanLine(d, 100)).filter(Boolean);
+      if (!drugs.length) return jsonResponse({ error: "Add the medicines" }, 400);
+      const stage = cleanLine(body.stage, 60) || "pregnancy, trimester not given";
+      const r = await callAI({
+        model: CLAUDE_REVIEW_MODEL,
+        messages: [{ role: "system", content: PREG_LACT_SYSTEM }, { role: "user", content: `SITUATION: ${stage}${cleanLine(body.context, 300) ? `\nCONTEXT: ${cleanLine(body.context, 300)}` : ""}\nMEDICINES:\n- ${drugs.join("\n- ")}` }],
+        jsonMode: true, effort: "medium", maxTokens: 5000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = pregLact(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't check those medicines this time. Please try again." }, 502);
       return jsonResponse({ result });
     }
 

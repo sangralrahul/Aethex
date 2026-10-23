@@ -19,6 +19,7 @@ import {
   Activity, Bug, ListChecks, FlaskRound, Syringe, Scale, Wind, BookCheck, CalendarClock, Swords, Workflow, Wand2, Headphones, AudioLines, Volume2,
   MicVocal, Speech, FileAudio, FilePen, ChartLine, CalendarHeart, ScrollText, ShieldAlert, FileSignature, Brain, PillBottle,
   ListOrdered, Images, Weight, Timer, PhoneCall, BookOpenText, Sigma, CalendarRange,
+  FolderHeart, AudioWaveform, NotebookPen, BarChart3, ClipboardPlus, MessageSquareText, Baby, Sun,
 } from "lucide-react";
 import CadusMark from "@/components/cadus/CadusMark";
 import { FONT_FACES } from "@/components/cadus/cadus-styles";
@@ -274,10 +275,19 @@ const TOOLS: [string, string][] = [
   ["Voice Viva", "y"], ["Voice OSCE", "y"], ["Your own voice", "v"], ["Patient Audio Library", "t"],
   ["Prescription Writer", "t"], ["Lab Trends", "v"], ["Daily Clinical Case", "y"], ["Letters & Certificates", "r"], ["ADR Report", "r"], ["Cause of Death (MCCD)", "v"], ["Mnemonic Maker", "y"], ["Generic Finder", "t"],
   ["OPD Queue", "t"], ["Clinical Image Quiz", "y"], ["Dose Card by Weight", "r"], ["Mock Tests", "y"], ["On-call Helper", "r"], ["Journal Club", "v"], ["Statistics Test Chooser", "v"], ["Duty Roster", "t"],
+  ["Patient Records", "t"], ["Ward Rounds by Voice", "v"], ["Revision Notes", "y"], ["Clinic Analytics", "v"], ["Pre-op Assessment", "r"], ["Patient Messages", "t"], ["Pregnancy & Breastfeeding", "r"], ["Pill Chart", "y"],
 ];
 
 /** What's arrived in Cadus lately. The app shows the live Cadus, so all of it is in the app already. */
 const NEW_IN_CADUS: { icon: typeof Pill; t: string; d: string }[] = [
+  { icon: FolderHeart, t: "Patient Records", d: "A simple file for each patient on your device: allergies, problems, medicines and every visit, vitals charted over time, and a summary before the next visit." },
+  { icon: AudioWaveform, t: "Ward Rounds by Voice", d: "Dictate your review at each bed: Cadus updates the ward list (problems, medicines, plan, jobs) and writes the SOAP progress note." },
+  { icon: NotebookPen, t: "Revision Notes", d: "Topper-style high-yield notes on any topic with flashcards and questions, brought back for revision after 1, 3, 7, 21 and 45 days." },
+  { icon: BarChart3, t: "Clinic Analytics", d: "Patients per day, waiting times, the busiest hours and the commonest complaints, diagnoses and medicines, from your OPD queue." },
+  { icon: ClipboardPlus, t: "Pre-op Assessment", d: "ASA grade, RCRI, the tests actually needed, what to do with each medicine before surgery, fasting, and a PAC note to print." },
+  { icon: MessageSquareText, t: "Patient Messages", d: "Appointment reminders, reports ready, fasting and medicine instructions in the patient's language, ready for WhatsApp." },
+  { icon: Baby, t: "Pregnancy & Breastfeeding", d: "Is this medicine safe now? By trimester or while breastfeeding, with what to do and a safer alternative." },
+  { icon: Sun, t: "Pill Chart", d: "A prescription as a picture chart with sunrise, sun, sunset and moon, for patients who don't read." },
   { icon: ListOrdered, t: "OPD Queue", d: "Today's outpatients with token numbers, waiting times, quick vitals and a big token board for the waiting area; one tap to write the prescription." },
   { icon: Images, t: "Clinical Image Quiz", d: "Turn your own X-rays, ECGs and clinical photos into quiz questions, and send your batch one page that works on any phone." },
   { icon: Weight, t: "Dose Card by Weight", d: "Every emergency drug dose, the tube size and fluids for a child's weight (or age), on one card to print for the trolley." },

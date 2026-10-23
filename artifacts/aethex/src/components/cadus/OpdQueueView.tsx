@@ -4,7 +4,7 @@
  * Writer or the Scribe for the patient who is in.
  */
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Check, Clock, FilePen, Megaphone, Mic, Monitor, Plus, Printer, Star, UserX, Users, X } from "lucide-react";
+import { ArrowRight, Check, Clock, FilePen, FolderHeart, Megaphone, Mic, Monitor, Plus, Printer, Star, UserX, Users, X } from "lucide-react";
 import { addPatient, callNext, opdStats, readOpd, saveOpd, setStatus, waiting, type OpdDay, type OpdPatient, type OpdVitals } from "@/lib/cadus/clinic21";
 
 const VITALS: { key: keyof OpdVitals; label: string; ph: string }[] = [
@@ -13,8 +13,10 @@ const VITALS: { key: keyof OpdVitals; label: string; ph: string }[] = [
 ];
 const mins = (ms: number) => Math.max(0, Math.round(ms / 60000));
 
-export default function OpdQueueView({ toast, onPrescribe, onScribe, onPrint }: {
+export default function OpdQueueView({ toast, onPrescribe, onScribe, onPrint, onRecord }: {
   toast: (t: string) => void;
+  /** Opens the patient's record with today's visit started. */
+  onRecord?: (p: { code: string; age: string; sex: string; complaint: string; vitals: OpdVitals }) => void;
   onPrescribe: (p: { age: string; sex: string; weight: string; complaint: string }) => void;
   onScribe: () => void;
   onPrint: (title: string, md: string) => void;
@@ -77,6 +79,7 @@ export default function OpdQueueView({ toast, onPrescribe, onScribe, onPrint }: 
               {p.status !== "in" && p.status !== "done" && <button className="cx-btn" onClick={() => setDay(setStatus(day, p.id, "in"))}><ArrowRight size={14} /> Call in</button>}
               {p.status === "in" && <button className="cx-btn" onClick={() => setDay(setStatus(day, p.id, "done"))} data-opd="done"><Check size={14} /> Seen</button>}
               <button className="cx-btn primary" onClick={() => onPrescribe({ age: p.age, sex: p.sex === "F" ? "female" : p.sex === "M" ? "male" : "", weight: p.vitals.weight, complaint: p.complaint })} data-opd="rx"><FilePen size={14} /> Prescription</button>
+              {onRecord && <button className="cx-btn" onClick={() => onRecord({ code: p.label, age: p.age, sex: p.sex, complaint: p.complaint, vitals: p.vitals })} data-opd="record"><FolderHeart size={14} /> Record</button>}
               <button className="cx-btn" onClick={onScribe}><Mic size={14} /> Scribe</button>
               <button className="cx-btn" onClick={() => slip(p)}><Printer size={14} /> Token slip</button>
               {p.status === "waiting" && <button className="cx-btn" onClick={() => setDay((d) => ({ ...d, patients: d.patients.map((x) => (x.id === p.id ? { ...x, priority: !x.priority } : x)) }))}><Star size={14} /> {p.priority ? "Not priority" : "Priority"}</button>}
