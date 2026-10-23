@@ -28,3 +28,24 @@ export function podcastScript(raw: any, maxLines = 60): PodcastScript | null {
 }
 /** Words for a podcast of this length (about 150 spoken words a minute). */
 export const podcastWords = (minutes: number) => Math.round(Math.max(2, Math.min(10, minutes)) * 150);
+
+// Update 19: the patient audio library: a short spoken explainer on a common topic, in the patient's
+// language, for the doctor to play in clinic or send on WhatsApp.
+export const LIBRARY_SYSTEM = `You write short spoken health explainers for patients and families in India, to be read aloud by a natural voice and sent from a doctor's clinic on WhatsApp. Many listeners do not read well.
+Write in the language asked for, in its own script, in warm, simple spoken words (respectful "aap" forms where the language has them), as a kind doctor would explain. Keep medicine names in English, said clearly.
+Cover only what a patient needs: what it is in one or two sentences, what to do at home step by step, what not to do (including common local myths where relevant), and the warning signs that mean they must come back or go to hospital at once. Follow current Indian and WHO guidance; never invent numbers, and never give a medicine dose unless the doctor's notes give it. If the doctor's notes are given, follow them exactly and include them (clinic name, follow-up day, their instructions); they override general advice.
+No markdown, no symbols, no headings, no emoji, no stage directions. About 250 to 350 words. Reply with the script only.`;
+
+export function libraryPrompt(topic: string, language: string, notes: string, audience: string): string {
+  return [
+    `TOPIC: ${topic}`,
+    `LANGUAGE: ${language}${language !== "English" ? " (its own script; medicine names in English)" : ""}`,
+    audience ? `LISTENER: ${audience}` : "",
+    notes ? `DOCTOR'S NOTES (follow exactly):\n<notes>\n${notes}\n</notes>` : "",
+  ].filter(Boolean).join("\n");
+}
+
+// Spoken role-play (voice viva, voice OSCE): turns are read aloud and the user answers by speaking.
+export const VOICE_ROLEPLAY = `VOICE: This role-play is spoken. Each of your turns is read aloud by a natural voice, and the user's turns are a speech transcript that may contain recognition errors (be fair about misheard drug names and numbers; judge what they meant). Keep every turn to plain spoken sentences under about 60 words, with no headings, lists, bold text or citations.
+When you play a patient, begin your FIRST turn only with a stage line in square brackets giving age and sex, for example "[Patient: 54-year-old man]", so the right voice is chosen (it is not read aloud); for a child, give the child's age and sex even if a parent is speaking for them.
+The one exception is the final "## Scorecard" or "## Examiner feedback": keep its heading and its full structure (it is also shown on screen), and put a spoken summary of two sentences, with the score, as the first paragraph right after the heading.`;

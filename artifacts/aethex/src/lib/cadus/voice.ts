@@ -13,8 +13,10 @@ export interface VoicePrefs {
   voice: string;
   /** The second voice (the podcast student). */
   second: string;
+  /** The user's own (cloned) voice, when they have made one. */
+  own?: { id: string; name: string } | null;
 }
-const DEFAULTS: VoicePrefs = { natural: true, voice: "", second: "EXAVITQu4vr4xnSDxMaL" };
+const DEFAULTS: VoicePrefs = { natural: true, voice: "", second: "EXAVITQu4vr4xnSDxMaL", own: null };
 export function readVoicePrefs(): VoicePrefs {
   try { return { ...DEFAULTS, ...(JSON.parse(localStorage.getItem(VOICE_PREF_KEY) || "{}") as Partial<VoicePrefs>) }; } catch { return { ...DEFAULTS }; }
 }
@@ -29,11 +31,91 @@ export function serverHasVoices(): Promise<boolean> {
 /** Natural voices are on for this user. */
 export async function naturalVoices(): Promise<boolean> { return readVoicePrefs().natural && (await serverHasVoices()); }
 
-export interface VoiceInfo { id: string; name: string; gender: string; accent: string; age: string; description: string; category: string; preview: string }
-export async function listVoices(): Promise<{ voices: VoiceInfo[]; default: string }> {
-  const r = await fetch("/api/voice/voices");
+export interface VoiceInfo { id: string; name: string; gender: string; accent: string; age: string; description: string; category: string; preview: string; own?: boolean }
+let voiceCache: VoiceInfo[] = [];
+/** The voices from the last listVoices() (empty until then). */
+export const cachedVoices = () => voiceCache;
+export async function listVoices(fresh = false): Promise<{ voices: VoiceInfo[]; default: string; signedIn?: boolean }> {
+  const r = await fetch(fresh ? `/api/voice/voices?t=${Date.now()}` : "/api/voice/voices");
   if (!r.ok) throw new Error("Couldn't load the voices");
-  return r.json();
+  const j = await r.json();
+  if (Array.isArray(j?.voices)) voiceCache = j.voices;
+  return j;
+}
+/** Loads the voices if natural voices are on (for choosing a character's voice); never throws. */
+export async function preloadVoices(): Promise<VoiceInfo[]> {
+  if (voiceCache.length || !(await naturalVoices())) return voiceCache;
+  try { await listVoices(); } catch { /* the default voice is used */ }
+  return voiceCache;
+}
+
+/** "[Patient: 54-year-old man]" at the start of a role-play turn: who is speaking. */
+export function characterFromText(text: string): { sex: string; age: number | null } | null {
+  const m = /^\s*\[(?:patient|character)?:?\s*([^\]]{3,80})\]/i.exec(text);
+  const s = m ? m[1] : "";
+  if (!s) return null;
+  const age = /(\d{1,3})\s*(?:-|\s)?\s*(?:year|yr|y\b|month)/i.exec(s);
+  const months = /month/i.test(age?.[0] ?? "");
+  const sex = /\b(woman|female|girl|lady|mother|wife|f)\b/i.test(s) ? "F" : /\b(man|male|boy|father|husband|m)\b/i.test(s) ? "M" : "";
+  return { sex, age: age ? (months ? 0 : Number(age[1])) : null };
+}
+/** A role-play turn without its stage line. */
+export const withoutStageLine = (text: string) => text.replace(/^\s*\[[^\]]{3,80}\]\s*/, "");
+
+/**
+ * A voice for a character: by sex ("M"/"F") and age in years. Children and teenagers get a young
+ * voice, older adults an older one where the account has it. "" when nothing fits (the default is used).
+ */
+export function pickVoice(voices: VoiceInfo[], sex: string, age: number | null | undefined, avoid = ""): string {
+  const want = /^f/i.test(sex) ? "female" : /^m/i.test(sex) ? "male" : "";
+  const band = age == null ? "" : age < 18 ? "young" : age >= 55 ? "old" : "middle";
+  const pool = voices.filter((v) => !v.own && v.id !== avoid);
+  const score = (v: VoiceInfo) => {
+    let n = 0;
+    const g = v.gender.toLowerCase(), a = `${v.age} ${v.description}`.toLowerCase(), acc = v.accent.toLowerCase();
+    if (want && g === want) n += 10; else if (want && g && g !== want) n -= 20;
+    if (band === "young" && /young|child|teen/.test(a)) n += 4;
+    if (band === "old" && /\bold\b|elder|senior|mature/.test(a)) n += 4;
+    if (band === "middle" && /middle/.test(a)) n += 3;
+    if (/indian|hindi/.test(acc)) n += 2;
+    return n;
+  };
+  const best = [...pool].sort((x, y) => score(y) - score(x))[0];
+  return best && score(best) > 0 ? best.id : "";
+}
+
+/** A recording (webm, ogg, mp4…) as 16-bit mono WAV at its own sample rate: what voice cloning reads best. */
+export async function toWav(blob: Blob): Promise<Blob> {
+  const AC = (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext);
+  const ctx = new AC();
+  try {
+    const buf = await ctx.decodeAudioData(await blob.arrayBuffer());
+    const rate = buf.sampleRate, n = buf.length;
+    const mono = new Float32Array(n);
+    for (let c = 0; c < buf.numberOfChannels; c++) { const d = buf.getChannelData(c); for (let i = 0; i < n; i++) mono[i] += d[i] / buf.numberOfChannels; }
+    const out = new DataView(new ArrayBuffer(44 + n * 2));
+    const w = (o: number, t: string) => { for (let i = 0; i < t.length; i++) out.setUint8(o + i, t.charCodeAt(i)); };
+    w(0, "RIFF"); out.setUint32(4, 36 + n * 2, true); w(8, "WAVE"); w(12, "fmt "); out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 1, true);
+    out.setUint32(24, rate, true); out.setUint32(28, rate * 2, true); out.setUint16(32, 2, true); out.setUint16(34, 16, true); w(36, "data"); out.setUint32(40, n * 2, true);
+    for (let i = 0; i < n; i++) { const x = Math.max(-1, Math.min(1, mono[i])); out.setInt16(44 + i * 2, x < 0 ? x * 0x8000 : x * 0x7fff, true); }
+    return new Blob([out.buffer], { type: "audio/wav" });
+  } finally { void ctx.close().catch(() => {}); }
+}
+
+/** Makes the user's own voice from their recordings (they must be signed in and have agreed). */
+export async function cloneVoice(samples: Blob[], name: string): Promise<{ id: string; name: string }> {
+  const fd = new FormData();
+  fd.append("name", name);
+  fd.append("consent", "yes");
+  samples.forEach((b, i) => fd.append("audio", b, `sample-${i + 1}.${b.type.includes("wav") ? "wav" : (b.type.split("/")[1] || "webm").split(";")[0]}`));
+  const r = await fetch("/api/voice/clone", { method: "POST", body: fd });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j?.error || "Couldn't make your voice");
+  return { id: String(j.id), name: String(j.name || name) };
+}
+export async function deleteClonedVoice(id: string): Promise<void> {
+  const r = await fetch(`/api/voice/clone?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+  if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j?.error || "Couldn't delete the voice"); }
 }
 
 const NAME_TO_CODE: Record<string, string> = { english: "en", hindi: "hi", hinglish: "", bengali: "bn", marathi: "mr", telugu: "te", tamil: "ta", gujarati: "gu", kannada: "kn", malayalam: "ml", punjabi: "pa", odia: "or", urdu: "ur", assamese: "as", nepali: "ne" };
@@ -145,7 +227,7 @@ export function speak(text: string, o: SpeakOpts = {}): Speaker {
 
 /* ------------------------------------------------------------------ saved audio (IndexedDB) */
 
-export interface SavedAudio { id: string; at: number; kind: "podcast" | "patient"; title: string; meta: Record<string, unknown>; mp3: Blob }
+export interface SavedAudio { id: string; at: number; kind: "podcast" | "patient" | "library"; title: string; meta: Record<string, unknown>; mp3: Blob }
 const DB_NAME = "cadus-audio";
 function db(): Promise<IDBDatabase> {
   return new Promise((res, rej) => {
@@ -158,9 +240,9 @@ function db(): Promise<IDBDatabase> {
 export async function saveAudio(a: SavedAudio) {
   const d = await db();
   await new Promise<void>((res, rej) => { const t = d.transaction("audio", "readwrite"); t.objectStore("audio").put(a); t.oncomplete = () => res(); t.onerror = () => rej(t.error); });
-  // Keep the newest 20.
+  // Keep the newest 20 (60 in the patient audio library).
   const all = await listAudio(a.kind);
-  for (const old of all.slice(20)) await deleteAudio(old.id);
+  for (const old of all.slice(a.kind === "library" ? 60 : 20)) await deleteAudio(old.id);
 }
 export async function listAudio(kind?: SavedAudio["kind"]): Promise<SavedAudio[]> {
   try {

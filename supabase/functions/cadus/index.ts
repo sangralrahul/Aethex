@@ -28,6 +28,7 @@
 //                         or 90 days) and a digest written only from them.
 //   audio-script          Patient instructions rewritten as a spoken script in their language (for a natural voice).
 //   podcast-script        A two-voice revision podcast script (teacher and student) on a topic or notes.
+//   audio-topic           A spoken patient explainer on a topic (the patient audio library), in their language.
 //   crew-build            Assistant Builder: a one-line description to a full Crew assistant.
 //   debate-turn           Crew Debate: one assistant's opening or rebuttal for its side.
 //   debate-judge          Crew Debate: the neutral verdict on both sides' arguments.
@@ -119,7 +120,7 @@ import {
   TRANSLATE_SYSTEM,
   translateTurn,
 } from "../_shared/studio.ts";
-import { podcastScript, podcastWords, PODCAST_SYSTEM, spokenScript, SPOKEN_SYSTEM } from "../_shared/audio.ts";
+import { libraryPrompt, LIBRARY_SYSTEM, podcastScript, podcastWords, PODCAST_SYSTEM, spokenScript, SPOKEN_SYSTEM, VOICE_ROLEPLAY } from "../_shared/audio.ts";
 import { BUILD_SYSTEM, builtAssistant, DEBATE_SYSTEM, debatePrompt, debateVerdict, JUDGE_SYSTEM } from "../_shared/crewplus.ts";
 import { ABX_SYSTEM, abxPlan, ECG_SYSTEM, ecgRead, POISON_SYSTEM, poisonPlan, PROCEDURE_SYSTEM, procGuide } from "../_shared/bedside.ts";
 
@@ -1068,7 +1069,7 @@ Deno.serve(async (req) => {
         !imageRead && attached.images ? IMAGES_NOTE : "",
         attached.documents ? DOCUMENT_NOTE : "",
         earlier ? EARLIER_FILES_NOTE : "",
-        STYLE_PROMPTS[style] ?? "",
+        style === "voice" && roleplay ? VOICE_ROLEPLAY : STYLE_PROMPTS[style] ?? "",
         // Cadus modes and tone: not for voice answers or role-play turns.
         style !== "voice" && !roleplay ? ANSWER_MODE_PROMPTS[String(body.answerMode)] ?? "" : "",
         style !== "voice" && !roleplay ? TONE_PROMPTS[String(body.tone)] ?? "" : "",
@@ -1668,6 +1669,28 @@ Deno.serve(async (req) => {
       if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
       const script = spokenScript(r.content);
       if (script.length < 20) return jsonResponse({ error: "Couldn't write the spoken version. Please try again." }, 502);
+      return jsonResponse({ script });
+    }
+
+    // ---------------------------------------------------------------- Audio: patient audio library
+    if (action === "audio-topic") {
+      const topic = cleanLine(body.topic, 160);
+      if (topic.length < 3) return jsonResponse({ error: "Choose or type a topic" }, 400);
+      const language = cleanLine(body.language, 40) || "English";
+      const notes = String(body.notes || "").replace(/\r/g, "").trim().slice(0, 1500);
+      const audience = cleanLine(body.audience, 80);
+      const r = await callAI({
+        model: answerModel(body.model),
+        messages: [
+          { role: "system", content: LIBRARY_SYSTEM },
+          { role: "user", content: libraryPrompt(topic, language, notes, audience) },
+        ],
+        effort: "low",
+        maxTokens: 3000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const script = spokenScript(r.content);
+      if (script.length < 40) return jsonResponse({ error: "Couldn't write the explainer. Please try again." }, 502);
       return jsonResponse({ script });
     }
 

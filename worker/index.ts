@@ -120,7 +120,7 @@ export default {
     if (url.pathname.startsWith("/api/voice/")) {
       const origin = request.headers.get("origin");
       if (origin && !ALLOWED_ORIGIN.test(origin)) return json({ error: "Origin not allowed" }, 403);
-      if (request.method === "POST" && !origin) return json({ error: "Origin required" }, 403);
+      if (request.method !== "GET" && !origin) return json({ error: "Origin required" }, 403);
       try {
         const r = await handleVoice(request, env);
         if (r) return r;

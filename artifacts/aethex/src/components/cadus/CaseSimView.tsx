@@ -5,10 +5,12 @@
  * dying) gives a scored debrief with the diagnosis, what was missed and teaching points.
  */
 import { useEffect, useRef, useState } from "react";
-import { Activity, Check, Clock, Flag, HeartPulse, MessageCircle, RotateCcw, Send, Sparkles, Stethoscope, Trophy, TriangleAlert, UserRound, X } from "lucide-react";
+import { Activity, AudioLines, Check, Clock, Flag, HeartPulse, MessageCircle, RotateCcw, Send, Sparkles, Stethoscope, Trophy, TriangleAlert, UserRound, X } from "lucide-react";
 import { MdBlock } from "./LiveAnswer";
+import VoiceMode, { voiceSupported } from "./VoiceMode";
+import { pickVoice, preloadVoices } from "@/lib/cadus/voice";
 import {
-  readSims, saveSims, SIM_ACTION_DEFS, SIM_DIFFICULTIES, SIM_LEVELS, SIM_SPECIALTIES, uid, vitalFlag,
+  readSims, saveSims, SIM_ACTION_DEFS, SIM_DIFFICULTIES, SIM_LEVELS, SIM_SPECIALTIES, simKindFromSpeech, uid, vitalFlag,
   type SimAction, type SimCase, type SimDebrief, type SimEntry, type SimRecord, type SimStatus, type SimVitals,
 } from "@/lib/cadus/labs";
 
@@ -44,6 +46,7 @@ export default function CaseSimView({ generate, friendlyError, toast, onAsk }: {
   const [plan, setPlan] = useState("");
   const [debrief, setDebrief] = useState<(SimDebrief & { diagnosis: string }) | null>(null);
   const [records, setRecords] = useState<SimRecord[]>(readSims);
+  const [talking, setTalking] = useState<{ voice: string } | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   useEffect(() => saveSims(records), [records]);
   useEffect(() => { endRef.current?.scrollIntoView?.({ block: "end", behavior: "smooth" }); }, [log.length, finishing]);
@@ -63,10 +66,11 @@ export default function CaseSimView({ generate, friendlyError, toast, onAsk }: {
     } finally { setBusy(""); }
   };
 
-  const act = async (k: SimAction, text: string) => {
-    if (!sim || busy || over) return;
+  /** Does it, and resolves with the reply ("" if nothing happened). */
+  const act = async (k: SimAction, text: string): Promise<string> => {
+    if (!sim || busy || over) return "";
     const what = text.trim();
-    if (!what && k !== "wait") { toast(`Type what you want to ${def.label.toLowerCase()}`); return; }
+    if (!what && k !== "wait") { toast(`Type what you want to ${def.label.toLowerCase()}`); return ""; }
     setBusy("act");
     try {
       const r = await generate({ action: "case-sim", step: "act", case: sim, log: log.map(({ kind: kk, text: t, reply, minute: m }) => ({ kind: kk, text: t, reply, minute: m })), minute, kind: k, text: what, vitals });
@@ -76,9 +80,21 @@ export default function CaseSimView({ generate, friendlyError, toast, onAsk }: {
       setLog((l) => [...l, { id: uid(), kind: k, text: k === "wait" ? "Waited and observed" : what, reply: t.reply, minute: at, event: t.event || undefined, status: t.status }]);
       setVitals(t.vitals); setMinute(at); setStatus(t.status); setInput("");
       if (t.status === "died") { toast("The patient has died. Finish the case for your debrief."); setFinishing(true); }
+      return String(t.reply);
     } catch (e) {
       toast(friendlyError(e instanceof Error ? e.message : String(e)));
+      return "";
     } finally { setBusy(""); }
+  };
+  const actRef = useRef(act);
+  actRef.current = act;
+
+  /** Talk to the patient by voice: what you say is sorted into ask, examine, test, treat or call; the patient answers in a voice that fits their age and sex. */
+  const startTalking = async () => {
+    if (!sim) return;
+    if (!voiceSupported()) { toast("Talking needs a microphone and speech recognition"); return; }
+    const voices = await preloadVoices();
+    setTalking({ voice: pickVoice(voices, sim.sex, sim.age) });
   };
 
   const finish = async () => {
@@ -222,9 +238,23 @@ export default function CaseSimView({ generate, friendlyError, toast, onAsk }: {
           <form className="cx-sim-input" onSubmit={(e) => { e.preventDefault(); void act(kind, input); }}>
             <input className="cx-input" value={input} onChange={(e) => setInput(e.target.value)} placeholder={def.placeholder} maxLength={400} aria-label={def.label} disabled={!!busy} />
             <button className="cx-btn primary" type="submit" disabled={!!busy || !input.trim()} aria-label="Do it"><Send size={14} /></button>
+            <button className="cx-btn" type="button" onClick={() => void startTalking()} disabled={!!busy} data-sim="talk" title="Talk to the patient by voice"><AudioLines size={14} /> Talk</button>
             <button className="cx-btn" type="button" onClick={() => setFinishing(true)} disabled={!!busy} data-sim="finish-btn"><Flag size={14} /> Finish</button>
           </form>
         </div>
+      )}
+      {talking && (
+        <VoiceMode
+          language="English"
+          ask={(text) => actRef.current(simKindFromSpeech(text), text)}
+          onClose={() => setTalking(null)}
+          persona={{
+            name: `${sim.age !== null ? `${sim.age} y ` : ""}${sim.sex === "F" ? "female" : "male"} patient`,
+            voice: talking.voice || undefined,
+            listenHint: "Talk to the patient. Say \"examine…\", \"order…\" or \"give…\" for other actions",
+            note: "Everything you say is added to the case log. Close this to finish the case and get your score.",
+          }}
+        />
       )}
     </section>
   );

@@ -166,7 +166,7 @@ export const CADUS_VOICE_CSS = `
 .cx-vs-v.on{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 10%,transparent)}
 .cx-pa{display:flex;flex-direction:column;gap:8px;margin:12px 0;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-lg,12px);background:var(--surface)}
 .cx-pa>.cx-btn{align-self:flex-start}
-.cx-pa:has(>.cx-btn:only-child){padding:0;border:0;background:none}
+.cx-pa:has(>.cx-btn:only-child),.cx-pa:has(>.cx-pa-go:only-child){padding:0;border:0;background:none}
 .cx-pa-h{display:flex;align-items:center;gap:8px}
 .cx-pa-h small{color:var(--t3)}
 .cx-pa audio,.cx-pod-out audio{width:100%}
@@ -184,4 +184,41 @@ export const CADUS_VOICE_CSS = `
 .cx-pod-script li.w-student{margin-left:28px;background:color-mix(in srgb,var(--acc) 6%,var(--surface))}
 .cx-pod-script b{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--t3)}
 @media (max-width:640px){.cx-vs-pick{grid-template-columns:1fr}.cx-pod-script li.w-student{margin-left:12px}}
+/* Update 19: your own voice, voice role-play, the patient audio library */
+.cx-pa-go{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.cx-pa-mine{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--t2);cursor:pointer}
+.cx-ov{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-lg,12px);background:var(--surface);text-align:left;font:inherit;color:var(--text)}
+.cx-ov>div:not(.cx-ov-acts){display:flex;flex-direction:column;min-width:0;flex:1}
+.cx-ov small{color:var(--t3);font-size:12.5px}
+.cx-ov-start{cursor:pointer;width:100%}
+.cx-ov-start:hover{border-color:var(--acc)}
+.cx-ov-ic{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc)}
+.cx-ov-acts{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.cx-btn.on{border-color:var(--acc);color:var(--acc)}
+.cx-ov-make{display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid var(--line);border-radius:var(--r-lg,12px);background:var(--surface)}
+.cx-ov-h{display:flex;justify-content:space-between;align-items:center}
+.cx-ov-passage{margin:0;padding:12px 14px;border-left:3px solid var(--acc);background:color-mix(in srgb,var(--acc) 5%,transparent);border-radius:0 10px 10px 0;font-size:15px;line-height:1.7;max-height:220px;overflow:auto}
+.cx-ov-takes{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:13px}
+.cx-ov-takes li{display:flex;align-items:center;gap:8px}
+.cx-ov-takes small{color:var(--t3)}
+.cx-voice-who{margin:4px 0 0;font-size:13px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--acc)}
+.cx-voice-end.fin{display:inline-flex;align-items:center;gap:6px;background:color-mix(in srgb,var(--acc) 13%,transparent);color:var(--acc)}
+.cx-voice-end.fin:hover{background:color-mix(in srgb,var(--acc) 20%,transparent)}
+.cx-alib-bar{display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin-bottom:10px}
+.cx-alib-notes{margin:0 0 12px}
+.cx-alib-notes summary{cursor:pointer;font-size:13.5px;color:var(--t2);margin-bottom:8px}
+.cx-alib-notes textarea{width:100%}
+.cx-alib-groups{flex-wrap:wrap;margin-bottom:10px}
+.cx-alib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.cx-alib-topic{display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid var(--line);border-radius:var(--r-lg,12px);background:var(--surface);color:var(--text);font:inherit;text-align:left;cursor:pointer}
+.cx-alib-topic:hover:not(:disabled){border-color:var(--acc)}
+.cx-alib-topic:disabled{opacity:.6;cursor:default}
+.cx-alib-topic>svg{flex:none;margin-top:2px;color:var(--acc)}
+.cx-alib-topic span{display:flex;flex-direction:column;min-width:0}
+.cx-alib-topic b{font-size:14px;font-weight:600;line-height:1.35}
+.cx-alib-topic small{color:var(--t3);font-size:12px;margin-top:2px}
+.cx-alib-topic.have{border-color:color-mix(in srgb,var(--acc) 40%,var(--line))}
+.cx-alib-custom{display:flex;gap:8px;margin:12px 0}
+.cx-alib-custom .cx-input{flex:1;min-width:0}
+@media (max-width:640px){.cx-ov{flex-wrap:wrap}.cx-alib-grid{grid-template-columns:1fr}}
 `;

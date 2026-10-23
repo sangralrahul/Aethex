@@ -6,6 +6,10 @@
 //   GET  /api/voice/voices      the account's voices (id, name, gender, accent, preview)
 //   POST /api/voice/speak       { text, voice?, lang?, quality? } -> audio/mpeg
 //   POST /api/voice/scribe      multipart: audio (webm, ogg, mp4 or wav), language? -> speaker-separated transcript
+//   POST /api/voice/clone       multipart: name, consent=yes, audio (1 to 3 samples) -> { id, name }: the
+//                               signed-in user's own voice (ElevenLabs instant voice cloning; key needs Voices: Write)
+//   DELETE /api/voice/clone?id= deletes that voice (only its owner can)
+//   Cloned voices are labelled with their owner and listed only to that owner.
 //   speechToText()              used by POST /api/transcribe for voice typing (Whisper is the fallback)
 //
 // Secret: ELEVENLABS_API_KEY (npx wrangler secret put ELEVENLABS_API_KEY).
@@ -42,9 +46,9 @@ const num = (v: unknown, d: number) => { const n = Number(v); return Number.isFi
 export const voiceEnabled = (env: VoiceEnv) => typeof env.ELEVENLABS_API_KEY === "string" && env.ELEVENLABS_API_KEY.length > 10;
 
 /** Daily allowance per signed-in account (or per network address when signed out): protects the credits. */
-async function withinDaily(request: Request, env: VoiceEnv, kind: "speak" | "stt"): Promise<boolean> {
+async function withinDaily(request: Request, env: VoiceEnv, kind: "speak" | "stt", known?: { id: unknown } | null): Promise<boolean> {
   if (!env.DB) return true;
-  const user = await currentUser(request, env).catch(() => null);
+  const user = known !== undefined ? known : await currentUser(request, env).catch(() => null);
   const base = kind === "speak" ? num(env.ELEVENLABS_DAILY_SPEAK, 400) : num(env.ELEVENLABS_DAILY_STT, 300);
   const limit = user ? base : Math.max(10, Math.round(base / 8));
   return allow(env as AuthEnv & { DB: NonNullable<AuthEnv["DB"]> }, `el:${kind}:${user ? `u:${user.id}` : `ip:${clientIp(request)}`}`, limit, 86400_000).catch(() => true);
@@ -63,12 +67,18 @@ async function speak(request: Request, env: VoiceEnv): Promise<Response> {
   const text = typeof body?.text === "string" ? body.text.replace(/\s+/g, " ").trim() : "";
   if (!text) return json({ error: "No text" }, 400);
   if (text.length > SPEAK_MAX) return json({ error: `At most ${SPEAK_MAX} characters at a time` }, 413);
-  const voice = VOICE_ID.test(String(body?.voice)) ? String(body.voice) : VOICE_ID.test(String(env.ELEVENLABS_VOICE)) ? String(env.ELEVENLABS_VOICE) : DEFAULT_VOICE;
+  let voice = VOICE_ID.test(String(body?.voice)) ? String(body.voice) : VOICE_ID.test(String(env.ELEVENLABS_VOICE)) ? String(env.ELEVENLABS_VOICE) : DEFAULT_VOICE;
   const lang = LANGS.has(String(body?.lang)) ? String(body.lang) : "";
   const quality = body?.quality === "best" ? "best" : "fast";
-  if (!(await withinDaily(request, env, "speak"))) return json({ error: "Today's natural-voice allowance is used up. The computer's own voice is used until tomorrow." }, 429);
+  const user = await currentUser(request, env).catch(() => null);
+  if (!(await withinDaily(request, env, "speak", user))) return json({ error: "Today's natural-voice allowance is used up. The computer's own voice is used until tomorrow." }, 429);
   const pick = ttsModel(env, lang, quality);
   const fallbackVoice = VOICE_ID.test(String(env.ELEVENLABS_VOICE)) ? String(env.ELEVENLABS_VOICE) : DEFAULT_VOICE;
+  // Someone's own (cloned) voice speaks only for them.
+  if (voice !== fallbackVoice) {
+    const owner = await voiceOwner(env, voice);
+    if (owner && owner !== (user ? String(user.id) : "")) voice = fallbackVoice;
+  }
   const attempt = (model: string, withLanguage: boolean, v = voice) => fetch(`${API}/text-to-speech/${v}?output_format=mp3_44100_128`, {
     method: "POST",
     headers: { "xi-api-key": String(env.ELEVENLABS_API_KEY), "content-type": "application/json", accept: "audio/mpeg" },
@@ -87,17 +97,44 @@ async function speak(request: Request, env: VoiceEnv): Promise<Response> {
   return new Response(r.body, { status: 200, headers: { "content-type": "audio/mpeg", "cache-control": "private, max-age=3600" } });
 }
 
-async function voices(env: VoiceEnv): Promise<Response> {
+/** Voices cloned in Cadus carry their owner's id; other cloned voices in the account are never listed. */
+const OWNER_LABEL = "cadus_owner";
+const ownerOf = (v: any) => String(v?.labels?.[OWNER_LABEL] ?? "");
+const visibleTo = (v: any, userId: string) => (v?.category === "cloned" || v?.category === "professional" || ownerOf(v) ? !!userId && ownerOf(v) === userId : true);
+
+/** Owner of each cloned voice in the account, cached for a few minutes in this Worker instance. */
+let owners: { at: number; map: Map<string, string> } | null = null;
+async function voiceOwner(env: VoiceEnv, id: string): Promise<string> {
+  const fresh = owners && Date.now() - owners.at < 300_000;
+  // A voice this instance hasn't seen (made a moment ago) refreshes the list, at most every 20 seconds.
+  if (!fresh || (!owners!.map.has(id) && Date.now() - owners!.at > 20_000)) {
+    try {
+      const r = await fetch(`${API}/voices`, { headers: { "xi-api-key": String(env.ELEVENLABS_API_KEY) } });
+      if (r.ok) {
+        const j: any = await r.json();
+        const map = new Map<string, string>();
+        for (const v of Array.isArray(j?.voices) ? j.voices : []) map.set(String(v?.voice_id), v?.category === "cloned" || v?.category === "professional" || ownerOf(v) ? ownerOf(v) || "-" : "");
+        owners = { at: Date.now(), map };
+      }
+    } catch { /* keep the old list */ }
+  }
+  return owners?.map.get(id) ?? "";
+}
+
+async function voices(request: Request, env: VoiceEnv): Promise<Response> {
+  const user = await currentUser(request, env).catch(() => null);
   const r = await fetch(`${API}/voices`, { headers: { "xi-api-key": String(env.ELEVENLABS_API_KEY) } });
   if (!r.ok) return json({ error: "Couldn't list the voices" }, 502);
   const j: any = await r.json().catch(() => ({}));
-  const list = (Array.isArray(j?.voices) ? j.voices : []).slice(0, 120).map((v: any) => ({
+  const uid = user ? String(user.id) : "";
+  const list = (Array.isArray(j?.voices) ? j.voices : []).filter((v: any) => visibleTo(v, uid)).slice(0, 120).map((v: any) => ({
     id: String(v?.voice_id ?? ""), name: String(v?.name ?? "").slice(0, 60),
     gender: String(v?.labels?.gender ?? "").slice(0, 20), accent: String(v?.labels?.accent ?? "").slice(0, 40), age: String(v?.labels?.age ?? "").slice(0, 20),
     description: String(v?.labels?.description ?? v?.description ?? "").slice(0, 80), category: String(v?.category ?? "").slice(0, 20),
     preview: typeof v?.preview_url === "string" && v.preview_url.startsWith("https://") ? v.preview_url : "",
+    own: !!uid && ownerOf(v) === uid,
   })).filter((v: { id: string }) => VOICE_ID.test(v.id));
-  return json({ voices: list, default: VOICE_ID.test(String(env.ELEVENLABS_VOICE)) ? env.ELEVENLABS_VOICE : DEFAULT_VOICE }, 200, { "cache-control": "private, max-age=600" });
+  return json({ voices: list, default: VOICE_ID.test(String(env.ELEVENLABS_VOICE)) ? env.ELEVENLABS_VOICE : DEFAULT_VOICE, signedIn: !!user }, 200, { "cache-control": "private, max-age=120" });
 }
 
 export interface SttWord { text: string; start?: number; end?: number; type?: string; speaker_id?: string }
@@ -159,13 +196,63 @@ async function scribe(request: Request, env: VoiceEnv): Promise<Response> {
   }
 }
 
+/** Your own voice: instant voice cloning from 1 to 3 short recordings, for the signed-in user only. */
+const CLONE_TYPES = /^audio\/(?:webm|ogg|mp4|mpeg|wav|x-wav|wave|aac|x-m4a)(?:;|$)/;
+async function clone(request: Request, env: VoiceEnv): Promise<Response> {
+  const user = await currentUser(request, env).catch(() => null);
+  if (!user) return json({ error: "Sign in to make your own voice" }, 401);
+  const uid = String(user.id);
+  if (request.method === "DELETE") {
+    const id = new URL(request.url).searchParams.get("id") || "";
+    if (!VOICE_ID.test(id)) return json({ error: "Which voice?" }, 400);
+    const g = await fetch(`${API}/voices/${id}`, { headers: { "xi-api-key": String(env.ELEVENLABS_API_KEY) } });
+    if (g.status === 404) return json({ ok: true, gone: true });
+    const v: any = g.ok ? await g.json().catch(() => null) : null;
+    if (!v || ownerOf(v) !== uid) return json({ error: "That voice isn't yours to delete" }, 403);
+    const d = await fetch(`${API}/voices/${id}`, { method: "DELETE", headers: { "xi-api-key": String(env.ELEVENLABS_API_KEY) } });
+    if (!d.ok && d.status !== 404) return json({ error: "Couldn't delete the voice this time" }, 502);
+    return json({ ok: true });
+  }
+  if (request.method !== "POST") return json({ error: "Use POST or DELETE" }, 405);
+  if (Number(request.headers.get("content-length") || 0) > 32_000_000) return json({ error: "The recordings are too large. Two minutes is plenty." }, 413);
+  let form: FormData;
+  try { form = await request.formData(); } catch { return json({ error: "Send the recording as a form" }, 400); }
+  if (form.get("consent") !== "yes") return json({ error: "Confirm that this is your own voice and that you agree to it being cloned" }, 400);
+  const name = String(form.get("name") || "").replace(/[^\p{L}\p{N} .'-]/gu, "").replace(/\s+/g, " ").trim().slice(0, 40) || "My voice";
+  const files = form.getAll("audio").filter((f): f is File => typeof f !== "string").slice(0, 3);
+  if (!files.length) return json({ error: "No recording" }, 400);
+  for (const f of files) {
+    if (!CLONE_TYPES.test(f.type || "")) return json({ error: "Send audio (wav, webm, ogg, mp3 or m4a)" }, 400);
+    if (f.size < 50_000) return json({ error: "That recording is too short. Read for at least 30 seconds." }, 400);
+    if (f.size > 11_000_000) return json({ error: "Each recording can be up to 10 MB" }, 413);
+  }
+  if (env.DB && !(await allow(env as AuthEnv & { DB: NonNullable<AuthEnv["DB"]> }, `el:clone:u:${uid}`, 3, 86400_000).catch(() => true))) return json({ error: "You can make up to 3 voices a day. Try again tomorrow." }, 429);
+  const fd = new FormData();
+  fd.append("name", `${name} · Cadus`);
+  for (const f of files) fd.append("files", f, f.name || `sample.${(f.type.split("/")[1] || "wav").split(";")[0]}`);
+  fd.append("remove_background_noise", "true");
+  fd.append("description", "The user's own voice, cloned in Cadus with their consent.");
+  fd.append("labels", JSON.stringify({ [OWNER_LABEL]: uid }));
+  const r = await fetch(`${API}/voices/add`, { method: "POST", headers: { "xi-api-key": String(env.ELEVENLABS_API_KEY) }, body: fd });
+  if (!r.ok) {
+    const detail = await r.text().catch(() => "");
+    console.error("elevenlabs clone failed", r.status, detail.slice(0, 300));
+    return json({ error: r.status === 401 ? "The ElevenLabs key can't make voices. Give it Voices: Write access." : /voice_limit|limit_reached|too many voices/i.test(detail) ? "The voice slots on the ElevenLabs plan are full. Delete a voice there first." : r.status === 400 || r.status === 422 ? "ElevenLabs couldn't use that recording. Record again in a quiet room." : "Couldn't make the voice this time" }, r.status === 401 ? 503 : 502);
+  }
+  const j: any = await r.json().catch(() => ({}));
+  const id = String(j?.voice_id ?? "");
+  if (!VOICE_ID.test(id)) return json({ error: "Couldn't make the voice this time" }, 502);
+  return json({ id, name });
+}
+
 /** /api/voice/*: null when the path isn't one of these. */
 export async function handleVoice(request: Request, env: VoiceEnv): Promise<Response | null> {
   const path = new URL(request.url).pathname.replace(/\/+$/, "");
   if (!path.startsWith("/api/voice")) return null;
   if (path === "/api/voice/status") return json({ enabled: voiceEnabled(env) });
   if (!voiceEnabled(env)) return json({ error: "Natural voices aren't set up on the server" }, 503);
-  if (path === "/api/voice/voices") return request.method === "GET" ? voices(env) : json({ error: "Use GET" }, 405);
+  if (path === "/api/voice/voices") return request.method === "GET" ? voices(request, env) : json({ error: "Use GET" }, 405);
+  if (path === "/api/voice/clone") return clone(request, env);
   if (request.method !== "POST") return json({ error: "Use POST" }, 405);
   if (path === "/api/voice/speak") return speak(request, env);
   if (path === "/api/voice/scribe") return scribe(request, env);

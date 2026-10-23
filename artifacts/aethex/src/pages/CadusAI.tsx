@@ -22,6 +22,7 @@ import {
   Printer, Scissors, ScrollText, Sigma, PanelRight, EyeOff, Compass, Rows3, WifiOff, Building2, ScanSearch,
   Bot, GitBranch, HeartPulse, MessageCircle, BellRing, FileScan, ShieldPlus, ScanLine, Shield, Bone, AtSign, Users2, GitFork, CalendarDays, FileOutput, ArrowRightLeft, Waypoints, CalendarCheck, Activity, Bug, ListChecks, FlaskRound, Wind, BookCheck, CalendarClock, Eye, Ear, Droplets, Swords, Workflow, Headphones,
   type LucideIcon,
+  FileAudio, MicVocal, Speech,
 } from "lucide-react";
 import { invokeAi } from "@/lib/ai-functions";
 import { useUserAuth } from "@/hooks/use-user-auth";
@@ -51,7 +52,8 @@ import {
 import { CASE_MODES, looksLikeCase, WARD_ACTIONS } from "@/lib/cadus/ward";
 import { LiveAnswer, MdBlock } from "@/components/cadus/LiveAnswer";
 import CanvasPanel, { type CanvasDoc } from "@/components/cadus/CanvasPanel";
-import VoiceMode, { voiceSupported } from "@/components/cadus/VoiceMode";
+import VoiceMode, { speakable, voiceSupported, type VoicePersona } from "@/components/cadus/VoiceMode";
+import AudioLibraryView from "@/components/cadus/AudioLibraryView";
 import PersonalSettings from "@/components/cadus/PersonalSettings";
 import { CADUS_CHAT_CSS } from "@/components/cadus/cadus-chat-styles";
 import { closePartialMarkdown, createTextStore, streamCadus, StreamUnavailable, type DeepStep } from "@/lib/cadus/stream";
@@ -93,7 +95,7 @@ import FollowUpView from "@/components/cadus/FollowUpView";
 import { ABX_KEY, ECG_KEY, POISON_KEY, PROC_KEY } from "@/lib/cadus/clinicalAi";
 import { FOLLOWUP_KEY, LOG_KEY } from "@/lib/cadus/records";
 import { STUDYPLAN_KEY } from "@/lib/cadus/studyplan";
-import { speak as speakAloud, stopSpeaking } from "@/lib/cadus/voice";
+import { cachedVoices, characterFromText, pickVoice, preloadVoices, speak as speakAloud, stopSpeaking, withoutStageLine } from "@/lib/cadus/voice";
 import { installDesktopBridge, isOpenTarget, type OpenTarget } from "@/lib/cadus/desktop";
 import { cardStats } from "@/lib/cadus/learn";
 import { COMPARES_KEY, DDX_KEY, DECKS_KEY, DISCHARGE_KEY, HANDOVER_KEY, MEDREC_KEY, PATHWAYS_KEY, PRESENT_KEY, TRANSLATOR_KEY } from "@/lib/cadus/studio";
@@ -167,9 +169,9 @@ type ModeId =
   | "admission" | "progress" | "opnote" | "death" | "certificate" | "rx" | "evidence";
 /** "groq" only appears in chats saved before Cadus became Claude-only. */
 type Provider = "claude" | "groq" | "library";
-type View = "chat" | "crew" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "debate" | "playbooks" | "podcasts" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan" | "ecg" | "abx" | "procedure" | "poison" | "infusions" | "convert" | "abg" | "logbook" | "followups";
+type View = "chat" | "crew" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "debate" | "playbooks" | "podcasts" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan" | "ecg" | "abx" | "procedure" | "poison" | "infusions" | "convert" | "abg" | "logbook" | "followups" | "audiolib";
 /** Views reached from the Tools hub, so the hub stays highlighted in the sidebar. */
-const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today", "discharge", "handover", "ddx", "studyplan", "podcasts", "ecg", "abx", "procedure", "poison", "infusions", "convert", "abg", "logbook", "followups"]);
+const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today", "discharge", "handover", "ddx", "studyplan", "podcasts", "ecg", "abx", "procedure", "poison", "infusions", "convert", "abg", "logbook", "followups", "audiolib"]);
 type ToolTab = "all" | "clinical" | "documentation" | "learning";
 type SettingsTab = "general" | "personal" | "letterhead" | "institution" | "data" | "shortcuts" | "about";
 type StyleId = "concise" | "balanced" | "detailed";
@@ -1048,6 +1050,7 @@ export default function CadusAI() {
   );
   const [canvasId, setCanvasId] = useState("");
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const [voicePersona, setVoicePersona] = useState<VoicePersona | undefined>(undefined);
   const [dragDepth, setDragDepth] = useState(0);
   const [archivedOpen, setArchivedOpen] = useState(false);
   const [libTab, setLibTab] = useState<"saved" | "docs">("saved");
@@ -2486,13 +2489,43 @@ export default function CadusAI() {
     return reply && !reply.error ? reply.content : "";
   }, []);
   const canVoice = voiceSupported();
-  const startVoice = () => {
+  /** Spoken role-play: the viva examiner, or the OSCE patient in a voice that fits their age and sex. */
+  const rolePersona = (m: ModeId, fresh: boolean): VoicePersona | undefined => {
+    const isFinal = (r: string) => /##\s*(Scorecard|Examiner feedback)/i.test(r);
+    if (m === "viva") return {
+      name: "Viva examiner",
+      voice: pickVoice(cachedVoices(), "M", 60) || undefined,
+      intro: fresh ? "Hello, I'm your examiner today. Which topic would you like your viva on?" : undefined,
+      finishText: "Finish and score",
+      isFinal,
+      listenHint: "Answer the examiner",
+      note: "Eight questions, then a scorecard. Everything is written in the chat too.",
+    };
+    if (m === "osce") return {
+      name: "OSCE patient",
+      voice: (r) => { const c = characterFromText(r); return c ? pickVoice(cachedVoices(), c.sex, c.age) || undefined : undefined; },
+      intro: fresh ? "Welcome to the station. Which history would you like to take? For example chest pain or fever. Or say: any station." : undefined,
+      finishText: "Finish and score",
+      isFinal,
+      spoken: (r) => speakable(withoutStageLine(r)),
+      listenHint: "Take the history. Introduce yourself to the patient",
+      note: "Say \"Finish and score\" or tap the button when you're done. Everything is written in the chat too.",
+    };
+    return undefined;
+  };
+  const startVoice = async (asMode?: ModeId) => {
     if (!voiceSupported()) { toast(IN_DESKTOP_APP ? NO_DICTATION : "Voice mode needs a browser with speech recognition, such as Chrome, Edge or Safari"); return; }
     if (pending) { toast("Wait for the current answer to finish"); return; }
-    if (view !== "chat") setView("chat");
-    if (mode === "slides" || mode === "image") setMode("general");
+    const m = asMode ?? mode;
+    if (asMode) newChat(asMode);
+    else if (view !== "chat") setView("chat");
+    if (m === "slides" || m === "image") setMode("general");
     setPop(null);
     setSidebarOpen(false);
+    if (ROLEPLAY.has(m)) {
+      await preloadVoices();
+      setVoicePersona(rolePersona(m, !!asMode || !sim));
+    } else setVoicePersona(undefined);
     setVoiceOpen(true);
   };
 
@@ -2676,6 +2709,9 @@ export default function CadusAI() {
       { key: "a:abg", label: "ABG Interpreter", hint: "Step by step: compensation, anion gap, delta ratio", icon: Wind, run: () => openView("abg") },
       { key: "a:logbook", label: "PG Logbook", hint: "Log procedures, cases and duties; print or export", icon: BookCheck, run: () => openView("logbook") },
       { key: "a:followups", label: "Follow-ups", hint: "Patients to review on a date", icon: CalendarClock, run: () => openView("followups") },
+      { key: "a:voiceviva", label: "Voice Viva: an examiner asks aloud, you answer by speaking", hint: "Scored at the end", icon: MicVocal, run: () => void startVoice("viva") },
+      { key: "a:voiceosce", label: "Voice OSCE: take a history by talking to the patient", hint: "The patient answers in their own voice; examiner feedback at the end", icon: Speech, run: () => void startVoice("osce") },
+      { key: "a:audiolib", label: "Patient Audio Library: spoken explainers in 13 languages", hint: "Diabetes, ORS, TB, insulin, pregnancy danger signs; WhatsApp", icon: FileAudio, run: () => openView("audiolib") },
       { key: "a:present", label: "Presentation Coach: practise presenting a case", hint: "Ward round, long case, SBAR; scored with a model answer", icon: Presentation, run: () => openView("present") },
       { key: "a:compare", label: "Compare over time: what changed between two studies", hint: "X-rays, ECGs, scans, reports and wound photos", icon: History, run: () => openView("compare") },
       { key: "a:newcase", label: "New patient case", hint: "Start a de-identified case sheet", icon: ClipboardList, run: () => { const c = newCase(); setCases((l) => [c, ...l]); openCases(c.id); } },
@@ -2904,7 +2940,7 @@ export default function CadusAI() {
           {pending ? (
             <button className="cx-send cx-tip" data-tip="Stop" onClick={stop} aria-label="Stop response"><Square size={12} fill="currentColor" /></button>
           ) : !input.trim() && !attachments.length && canVoice ? (
-            <button className="cx-send voice cx-tip" data-tip="Voice mode" onClick={startVoice} aria-label="Start voice mode"><AudioLines size={18} /></button>
+            <button className="cx-send voice cx-tip" data-tip="Voice mode" onClick={() => void startVoice()} aria-label="Start voice mode"><AudioLines size={18} /></button>
           ) : (
             <button className="cx-send" onClick={() => send()} disabled={!input.trim() && !attachments.length} aria-label="Send"><ArrowUp size={18} /></button>
           )}
@@ -3060,6 +3096,9 @@ export default function CadusAI() {
     { id: "abg", icon: Wind, tone: "sky", title: "ABG Interpreter", sub: "Step by step", go: () => openView("abg") },
     { id: "logbook", icon: BookCheck, tone: "amber", title: "PG Logbook", sub: "Procedures, cases, duties", go: () => openView("logbook") },
     { id: "followups", icon: CalendarClock, tone: "violet", title: "Follow-ups", sub: "Who to review and when", go: () => openView("followups") },
+    { id: "voiceviva", icon: MicVocal, tone: "violet", title: "Voice Viva", sub: "Asked aloud, answered aloud", go: () => void startVoice("viva") },
+    { id: "voiceosce", icon: Speech, tone: "teal", title: "Voice OSCE", sub: "Talk to the patient, get scored", go: () => void startVoice("osce") },
+    { id: "audiolib", icon: FileAudio, tone: "amber", title: "Patient Audio Library", sub: "Spoken explainers, 13 languages", go: () => openView("audiolib") },
   ];
   const workspaceTiles = (compact = false) => (
     <div className={`cx-ws-grid ${compact ? "compact" : ""}`}>
@@ -4268,6 +4307,9 @@ export default function CadusAI() {
               <button className={`cx-nav-i ${view === "abg" ? "on" : ""}`} onClick={() => openView("abg")} title="ABG Interpreter"><Wind size={16} /><span className="cx-nav-l">ABG Interpreter</span></button>
               <button className={`cx-nav-i ${view === "logbook" ? "on" : ""}`} onClick={() => openView("logbook")} title="PG Logbook"><BookCheck size={16} /><span className="cx-nav-l">PG Logbook</span></button>
               <button className={`cx-nav-i ${view === "followups" ? "on" : ""}`} onClick={() => openView("followups")} title="Follow-ups"><CalendarClock size={16} /><span className="cx-nav-l">Follow-ups</span></button>
+              <button className="cx-nav-i" onClick={() => void startVoice("viva")} title="Voice Viva"><MicVocal size={16} /><span className="cx-nav-l">Voice Viva</span></button>
+              <button className="cx-nav-i" onClick={() => void startVoice("osce")} title="Voice OSCE"><Speech size={16} /><span className="cx-nav-l">Voice OSCE</span></button>
+              <button className={`cx-nav-i ${view === "audiolib" ? "on" : ""}`} onClick={() => openView("audiolib")} title="Patient Audio Library"><FileAudio size={16} /><span className="cx-nav-l">Patient Audio Library</span></button>
               <button data-tour="calculators" className={`cx-nav-i ${view === "calculators" ? "on" : ""}`} onClick={() => openCalculators()} title="Calculators"><Calculator size={16} /><span className="cx-nav-l">Calculators</span></button>
               <button className={`cx-nav-i ${view === "projects" || view === "project" ? "on" : ""}`} onClick={openProjects} title="Projects"><Folder size={16} /><span className="cx-nav-l">Projects</span>{projects.length > 0 && <em>{projects.length}</em>}</button>
               <button className={`cx-nav-i ${view === "decks" ? "on" : ""}`} onClick={() => { setView("decks"); setSidebarOpen(false); }} title="Decks"><Presentation size={16} /><span className="cx-nav-l">Decks</span>{decks.length > 0 && <em>{decks.length}</em>}</button>
@@ -4548,6 +4590,7 @@ export default function CadusAI() {
                 : view === "abg" ? [Wind, "ABG Interpreter"]
                 : view === "logbook" ? [BookCheck, "PG Logbook"]
                 : view === "followups" ? [CalendarClock, "Follow-ups"]
+                : view === "audiolib" ? [FileAudio, "Patient Audio Library"]
                 : view === "project" && project ? [Folder, project.name]
                 : [Folder, "Projects"];
               return <span className="cx-title-btn static"><Icon size={14} /> <span>{label}</span></span>;
@@ -4882,6 +4925,7 @@ export default function CadusAI() {
               <LogbookView toast={toast} onPrint={(title, md) => printDoc(title, md, { mode: "note" })} name={profile?.fullName ?? ""} department={institution.department || profile?.specialty || ""} />
             )
             : view === "followups" ? <FollowUpView toast={toast} />
+            : view === "audiolib" ? <AudioLibraryView generate={(body) => invokeCadus({ ...body, model: prefs.model })} friendlyError={friendlyError} toast={toast} defaultLanguage={prefs.language} />
             : view === "today" ? (
               <TodayView
                 name={firstName}
@@ -5701,7 +5745,7 @@ export default function CadusAI() {
       )}
       {cameraOpen && <CameraModal onClose={() => setCameraOpen(false)} onCapture={(f) => { setCameraOpen(false); void onFile(f); }} />}
       {deck && <PresentationViewer data={deck} onClose={() => setDeck(null)} />}
-      {voiceOpen && <VoiceMode language={prefs.language} ask={voiceAsk} onClose={() => setVoiceOpen(false)} />}
+      {voiceOpen && <VoiceMode language={prefs.language} ask={voiceAsk} onClose={() => setVoiceOpen(false)} persona={voicePersona} />}
       {lightbox && (
         <div className="cx-lightbox" onClick={() => setLightbox("")} role="dialog" aria-modal="true" aria-label="Image preview">
           <img src={lightbox} alt="Attached image, enlarged" />

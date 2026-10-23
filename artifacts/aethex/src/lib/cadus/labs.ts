@@ -23,6 +23,16 @@ function saveKey(key: string, value: unknown) {
 /* ------------------------------------------------------------------ Case Simulator */
 
 export type SimAction = "history" | "exam" | "test" | "treat" | "consult" | "wait";
+/** What a spoken instruction in the Case Simulator is: a question for the patient unless it sounds like an examination, a test, a treatment or a call. */
+export function simKindFromSpeech(text: string): SimAction {
+  const t = text.trim().toLowerCase();
+  if (/^(?:(?:i(?:'ll| will| would like to)?|let me|let's|please)\s+)?(?:call|page|phone|ring)\b.*\b(senior|consultant|registrar|resident|icu|surgeon|team|pg)\b/.test(t)) return "consult";
+  if (/^(?:(?:i(?:'ll| will| would like to)?|let me|let's|please)\s+)?(?:wait|observe)\b/.test(t)) return "wait";
+  if (/^(?:(?:i(?:'ll| will| would like to)?|let me|let's|please)\s+)?(?:give|start|administer|put (?:him|her|them|the patient) on|insert|intubate|transfuse|nebuli[sz]e|load|bolus|shift|catheteri[sz]e|prepare|begin)\b/.test(t)) return "treat";
+  if (/^(?:(?:i(?:'ll| will| would like to)?|let me|let's|please)\s+)?(?:order|send|get|do|request|arrange|check)\b.*\b(test|cbc|blood|ecg|x-?ray|ultrasound|usg|ct|mri|abg|culture|electrolytes|sugar|rbs|lft|kft|rft|urine|echo|troponin|scan|smear|panel|profile)\b/.test(t)) return "test";
+  if (/^(?:(?:i(?:'ll| will| would like to)?|let me|let's|please)\s+)?(?:examine|check (?:the |his |her )?(?:pulse|bp|blood pressure|pupils|chest|abdomen|heart|reflexes|temperature|saturation|spo2|jvp|pedal|eyes|throat)|look at|palpate|auscultate|percuss|listen to (?:the |his |her )?(?:chest|heart|lungs|abdomen))\b/.test(t)) return "exam";
+  return "history";
+}
 export interface SimVitals { hr: number | null; sbp: number | null; dbp: number | null; rr: number | null; spo2: number | null; temp: number | null }
 export interface SimCase {
   title: string; specialty: string; level: "mbbs" | "intern" | "pg"; difficulty: "easy" | "medium" | "hard"; setting: string;

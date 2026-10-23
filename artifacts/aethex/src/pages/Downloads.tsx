@@ -17,6 +17,7 @@ import {
   BellRing, Bot, CalendarDays, FileScan, GitFork, HeartPulse, History, Languages, Layers, Pill, Presentation, ShieldPlus, Users2,
   ArrowRightLeft, CalendarCheck, FileOutput, Keyboard, Power, Waypoints, PanelBottom,
   Activity, Bug, ListChecks, FlaskRound, Syringe, Scale, Wind, BookCheck, CalendarClock, Swords, Workflow, Wand2, Headphones, AudioLines, Volume2,
+  MicVocal, Speech, FileAudio,
 } from "lucide-react";
 import CadusMark from "@/components/cadus/CadusMark";
 import { FONT_FACES } from "@/components/cadus/cadus-styles";
@@ -269,10 +270,15 @@ const TOOLS: [string, string][] = [
   ["Voice typing", "v"], ["Natural voices", "y"], ["Revision Podcasts", "y"], ["Discharge Summary", "t"], ["Shift Handover", "r"], ["Differential Builder", "v"], ["Study Planner", "y"],
   ["ECG Reader", "r"], ["Antibiotic Guide", "t"], ["Procedure Guide", "v"], ["Poisoning & Snakebite", "r"], ["Infusions", "t"],
   ["ABG Interpreter", "v"], ["Dose Converter", "t"], ["PG Logbook", "y"], ["Follow-ups", "y"],
+  ["Voice Viva", "y"], ["Voice OSCE", "y"], ["Your own voice", "v"], ["Patient Audio Library", "t"],
 ];
 
 /** What's arrived in Cadus lately. The app shows the live Cadus, so all of it is in the app already. */
 const NEW_IN_CADUS: { icon: typeof Pill; t: string; d: string }[] = [
+  { icon: MicVocal, t: "Voice Viva", d: "The examiner asks aloud and you answer by speaking, one question at a time, then a spoken score and a full scorecard in the chat." },
+  { icon: Speech, t: "Voice OSCE and simulator", d: "Take a history by talking to the patient, who answers in a voice that fits their age and sex. In the Case Simulator, say \"examine…\", \"order…\" or \"give…\" and it happens." },
+  { icon: Mic, t: "Your own voice", d: "Read a passage for about a minute and patient audio can speak in your voice. Only you can use it, and you can delete it at any time." },
+  { icon: FileAudio, t: "Patient Audio Library", d: "Spoken explainers on diabetes, ORS, TB treatment, insulin, danger signs in pregnancy and more, in 13 Indian languages, to play in clinic or send on WhatsApp." },
   { icon: Volume2, t: "Natural voices", d: "Answers, voice mode and the Consult Translator read aloud in natural, human-sounding voices, in English, Hindi and other Indian languages. Choose the voice in Settings." },
   { icon: AudioLines, t: "Audio for the patient", d: "Discharge advice, the medicines sheet or a leaflet as an MP3 in the patient's language, to play in the clinic or send on WhatsApp; and the Scribe records a consultation and tells doctor and patient apart." },
   { icon: Headphones, t: "Revision Podcasts", d: "Any topic or flashcard deck as a short two-voice audio lesson, a teacher and a student, for NEET-PG revision on the bus or at the gym." },
