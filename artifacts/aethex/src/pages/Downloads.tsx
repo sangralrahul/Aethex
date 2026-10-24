@@ -278,6 +278,7 @@ const TOOLS: [string, string][] = [
   ["Vaccination Scheduler", "t"], ["Diet Chart Maker", "y"], ["ICD-10 Coder", "v"], ["Consent Form Writer", "r"], ["Insulin Planner", "t"], ["Blood Transfusion", "r"], ["MLC Injury Report", "v"], ["TB Treatment (NTEP)", "t"],
   ["Antenatal Care Tracker", "r"], ["Ventilator Helper", "v"], ["Teleconsultation Note", "t"], ["Clinic Bills & Receipts", "y"], ["Animal Bite (Rabies PEP)", "r"], ["Needle-stick Injury", "v"], ["IMNCI Sick Child", "t"], ["CME Credits", "y"],
   ["Appointments", "t"], ["Pharmacy Stock & Expiry", "y"], ["Mental Health Screening", "v"], ["Kidney Dose Adjuster", "r"], ["Malnutrition (SAM) Helper", "t"], ["Referral Contacts", "y"], ["Clinic Accounts", "v"], ["Thyroid Dose Helper", "r"],
+  ["Backup & Restore", "t"], ["BP & Sugar Protocols", "r"], ["Anaemia & Iron", "r"], ["Dengue Helper", "y"], ["Electrolyte Replacement", "v"], ["Obstetric Emergencies", "r"], ["Infection Control & Waste", "t"],
 ];
 
 /**

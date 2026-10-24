@@ -6,6 +6,7 @@
 import { useState } from "react";
 import { Printer, TriangleAlert, Wind } from "lucide-react";
 import { OXYGEN_DEVICES, PEEP_TABLE, ventAdjust, ventStart, type VentLung } from "@/lib/cadus/clinic24";
+import { cylinderMinutes, psiToBar } from "@/lib/cadus/clinic26";
 
 const LUNGS: [VentLung, string][] = [["normal", "Normal lungs"], ["ards", "ARDS / pneumonia"], ["obstructive", "Asthma / COPD"]];
 const n = (v: string) => (v.trim() === "" ? undefined : Number(v));
@@ -19,6 +20,8 @@ export default function VentilatorView({ onPrint }: { onPrint: (title: string, m
   const s = ventStart(sex, Number(height), lung);
   const adv = ventAdjust({ ph: n(abg.ph), paco2: n(abg.paco2), pao2: n(abg.pao2), fio2: n(abg.fio2), peep: n(abg.peep), rr: n(abg.rr), vt: n(abg.vt), plateau: n(abg.plateau), pbw: s?.pbw, lung });
   const abgFilled = !!(abg.ph || abg.pao2);
+  const [cyl, setCyl] = useState({ water: "46.7", pressure: "", unit: "bar" as "bar" | "psi", flow: "" });
+  const cylMin = cylinderMinutes(Number(cyl.water), cyl.unit === "psi" ? psiToBar(Number(cyl.pressure)) : Number(cyl.pressure), Number(cyl.flow), 10);
 
   return (
     <section className="cx-page cx-lab cx-vent">
@@ -63,6 +66,19 @@ export default function VentilatorView({ onPrint }: { onPrint: (title: string, m
       )}
       {tab === "oxygen" && (
         <div className="cx-c23-scroll"><table className="cx-c23-table" data-vent="oxygen"><thead><tr><th>Device</th><th>Flow</th><th>Approximate FiO₂</th></tr></thead><tbody>{OXYGEN_DEVICES.map((d) => <tr key={d.device}><td><b>{d.device}</b></td><td>{d.flow}</td><td>{d.fio2}</td></tr>)}</tbody></table></div>
+      )}
+      {tab === "oxygen" && (
+        <div className="cx-rec-visit" data-vent="cylinder">
+          <h3 className="cx-lab-h3">How long will the cylinder last?</h3>
+          <div className="cx-c23-row">
+            <label className="cx-field"><span>Water capacity (litres, on the cylinder)</span><input className="cx-input" inputMode="decimal" value={cyl.water} onChange={(e) => setCyl({ ...cyl, water: e.target.value.replace(/[^\d.]/g, "").slice(0, 5) })} placeholder="46.7" data-vent-cyl="water" /></label>
+            <label className="cx-field"><span>Gauge pressure</span><input className="cx-input" inputMode="decimal" value={cyl.pressure} onChange={(e) => setCyl({ ...cyl, pressure: e.target.value.replace(/[^\d.]/g, "").slice(0, 5) })} placeholder={cyl.unit === "bar" ? "150" : "2000"} data-vent-cyl="pressure" /></label>
+            <div className="cx-field"><span>Unit</span><div className="cx-seg" role="radiogroup" aria-label="Pressure unit">{(["bar", "psi"] as const).map((u) => <button key={u} role="radio" aria-checked={cyl.unit === u} className={cyl.unit === u ? "on" : ""} onClick={() => setCyl({ ...cyl, unit: u })}>{u}</button>)}</div></div>
+            <label className="cx-field"><span>Flow (L/min)</span><input className="cx-input" inputMode="decimal" value={cyl.flow} onChange={(e) => setCyl({ ...cyl, flow: e.target.value.replace(/[^\d.]/g, "").slice(0, 4) })} placeholder="5" data-vent-cyl="flow" /></label>
+          </div>
+          {cylMin !== null && <p data-vent="cyl-out"><b>About {Math.floor(cylMin / 60)} h {cylMin % 60} min</b> at {cyl.flow} L/min, keeping 10 bar in reserve. Change the cylinder before it runs out, and check again as the gauge falls.</p>}
+          <p className="cx-set-hint">Gas volume ≈ water capacity × pressure (bar). A large (D-type, 46.7 L) cylinder at 150 bar holds about 7,000 L.</p>
+        </div>
       )}
       <p className="cx-rs-foot"><TriangleAlert size={13} /> Starting points from ARDSnet and critical-care practice; the patient at the bedside, with the intensivist, decides. Recheck the ABG 20–30 minutes after each change.</p>
     </section>

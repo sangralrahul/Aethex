@@ -583,3 +583,27 @@ export const CADUS_CLINIC25_CSS = `
 .cx-acc-neg{color:var(--danger)}
 @media (max-width:640px){.cx-acc-bars div{grid-template-columns:110px minmax(0,1fr) 80px}.cx-appt-t{width:44px}}
 `;
+
+export const CADUS_CLINIC26_CSS = `
+.cx-c23-row .cx-search-l{flex:1 1 220px;margin:0;min-width:0}
+.cx-nav-i em.cx-bk-due{background:#f59e0b;color:#fff}
+.cx-bk-err{color:var(--danger);font-weight:600;margin:6px 0}
+.cx-bk-keys{display:flex;flex-wrap:wrap;gap:6px}
+.cx-bk-keys span{padding:3px 9px;border-radius:99px;background:var(--s2);font-size:12.5px}
+.cx-ncd-on td{background:color-mix(in srgb,var(--acc) 10%,transparent);font-weight:600}
+.cx-an-iv{margin-top:10px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-lg,12px);background:var(--surface)}
+.cx-an-iv h4{display:flex;align-items:center;gap:6px;margin:0 0 6px}
+.cx-dg-C{border-color:var(--danger)}
+.cx-obs-steps{margin:8px 0;padding-left:22px;display:flex;flex-direction:column;gap:8px;font-size:14.5px}
+.cx-obs-steps label{display:flex;gap:8px;align-items:flex-start;cursor:pointer}
+.cx-obs-steps input{margin-top:3px;width:17px;height:17px;flex:none}
+.cx-obs-steps li.done{color:var(--t3);text-decoration:line-through}
+.cx-obs-timer{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:10px 0;padding:10px 12px;border-radius:10px;background:var(--s2)}
+.cx-obs-timer p{flex:1;min-width:220px;margin:0;display:flex;gap:6px;align-items:flex-start}
+.cx-bmw{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0}
+.cx-bmw-bin{padding:12px 14px;border-radius:var(--r-lg,12px);border:1px solid var(--line);border-top:6px solid;background:var(--surface)}
+.cx-bmw-bin ul{margin:6px 0;padding-left:18px;font-size:13.5px}
+.cx-bmw-bin small{color:var(--t2)}
+.cx-bmw-bin.c-yellow{border-top-color:#eab308}.cx-bmw-bin.c-red{border-top-color:#dc2626}.cx-bmw-bin.c-white{border-top-color:#cbd5e1}.cx-bmw-bin.c-blue{border-top-color:#2563eb}
+@media (max-width:640px){.cx-bmw{grid-template-columns:1fr}}
+`;

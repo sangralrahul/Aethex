@@ -22,7 +22,7 @@ import {
   Printer, Scissors, ScrollText, Sigma, PanelRight, EyeOff, Compass, Rows3, WifiOff, Building2, ScanSearch,
   Bot, GitBranch, HeartPulse, MessageCircle, BellRing, FileScan, ShieldPlus, ScanLine, Shield, Bone, AtSign, Users2, GitFork, CalendarDays, FileOutput, ArrowRightLeft, Waypoints, CalendarCheck, Activity, Bug, ListChecks, FlaskRound, Wind, BookCheck, CalendarClock, Eye, Ear, Droplets, Swords, Workflow, Headphones,
   type LucideIcon,
-  FileAudio, MicVocal, Speech, CalendarHeart, PillBottle, ListOrdered, Images, Weight, Timer, PhoneCall, CalendarRange, FolderHeart, AudioWaveform, BarChart3, MessageSquareText, Salad, FileCode2, Gavel, Droplet, Pipette, Heart, Fan, Video, ReceiptIndianRupee, Dog, Bandage, Thermometer, Award, CalendarPlus, Warehouse, HeartHandshake, Bean, Ruler, ContactRound, Wallet, BriefcaseMedical,
+  FileAudio, MicVocal, Speech, CalendarHeart, PillBottle, ListOrdered, Images, Weight, Timer, PhoneCall, CalendarRange, FolderHeart, AudioWaveform, BarChart3, MessageSquareText, Salad, FileCode2, Gavel, Droplet, Pipette, Heart, Fan, Video, ReceiptIndianRupee, Dog, Bandage, Thermometer, Award, CalendarPlus, Warehouse, HeartHandshake, Bean, Ruler, ContactRound, Wallet, BriefcaseMedical, DatabaseBackup, TrendingUp, BugOff, Ambulance, Biohazard,
 } from "lucide-react";
 import { invokeAi } from "@/lib/ai-functions";
 import { useUserAuth } from "@/hooks/use-user-auth";
@@ -99,6 +99,14 @@ import SamView from "@/components/cadus/SamView";
 import ContactsView from "@/components/cadus/ContactsView";
 import AccountsView from "@/components/cadus/AccountsView";
 import ThyroidView from "@/components/cadus/ThyroidView";
+import BackupView from "@/components/cadus/BackupView";
+import NcdView from "@/components/cadus/NcdView";
+import AnaemiaView from "@/components/cadus/AnaemiaView";
+import DengueView from "@/components/cadus/DengueView";
+import ElectrolytesView from "@/components/cadus/ElectrolytesView";
+import ObsEmergencyView from "@/components/cadus/ObsEmergencyView";
+import InfectionView from "@/components/cadus/InfectionView";
+import { backupDue } from "@/lib/cadus/clinic26";
 import PersonalSettings from "@/components/cadus/PersonalSettings";
 import { CADUS_CHAT_CSS } from "@/components/cadus/cadus-chat-styles";
 import { closePartialMarkdown, createTextStore, streamCadus, StreamUnavailable, type DeepStep } from "@/lib/cadus/stream";
@@ -115,7 +123,7 @@ import CrewPlaybookView from "@/components/cadus/CrewPlaybookView";
 import CrewBuilder from "@/components/cadus/CrewBuilder";
 import PodcastView from "@/components/cadus/PodcastView";
 import { VoiceSettings } from "@/components/cadus/AudioParts";
-import { CADUS_CLINIC20_CSS, CADUS_CLINIC21_CSS, CADUS_CLINIC22_CSS, CADUS_CLINIC23_CSS, CADUS_CLINIC24_CSS, CADUS_CLINIC25_CSS, CADUS_CREW_CSS, CADUS_CREWPLUS_CSS, CADUS_VOICE_CSS } from "@/components/cadus/cadus-crew-styles";
+import { CADUS_CLINIC20_CSS, CADUS_CLINIC21_CSS, CADUS_CLINIC22_CSS, CADUS_CLINIC23_CSS, CADUS_CLINIC24_CSS, CADUS_CLINIC25_CSS, CADUS_CLINIC26_CSS, CADUS_CREW_CSS, CADUS_CREWPLUS_CSS, CADUS_VOICE_CSS } from "@/components/cadus/cadus-crew-styles";
 import TranslatorView from "@/components/cadus/TranslatorView";
 import PathwaysView from "@/components/cadus/PathwaysView";
 import FlashcardsView from "@/components/cadus/FlashcardsView";
@@ -214,9 +222,9 @@ type ModeId =
   | "admission" | "progress" | "opnote" | "death" | "certificate" | "rx" | "evidence";
 /** "groq" only appears in chats saved before Cadus became Claude-only. */
 type Provider = "claude" | "groq" | "library";
-type View = "chat" | "crew" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "debate" | "playbooks" | "podcasts" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan" | "ecg" | "abx" | "procedure" | "poison" | "infusions" | "convert" | "abg" | "logbook" | "followups" | "audiolib" | "rxwrite" | "labtrend" | "daily" | "letters" | "adr" | "mccd" | "mnemonics" | "generics" | "opd" | "imagequiz" | "dosecard" | "oncall" | "journal" | "stats" | "roster" | "records" | "voiceround" | "revnotes" | "analytics" | "preop" | "messages" | "preglact" | "pillchart" | "vaccines" | "diet" | "icd" | "consent" | "insulin" | "transfusion" | "mlc" | "tb" | "antenatal" | "ventilator" | "teleconsult" | "bills" | "bite" | "needlestick" | "imnci" | "cme" | "appointments" | "stock" | "screening" | "kidney" | "sam" | "contacts" | "accounts" | "thyroid";
+type View = "chat" | "crew" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "debate" | "playbooks" | "podcasts" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan" | "ecg" | "abx" | "procedure" | "poison" | "infusions" | "convert" | "abg" | "logbook" | "followups" | "audiolib" | "rxwrite" | "labtrend" | "daily" | "letters" | "adr" | "mccd" | "mnemonics" | "generics" | "opd" | "imagequiz" | "dosecard" | "oncall" | "journal" | "stats" | "roster" | "records" | "voiceround" | "revnotes" | "analytics" | "preop" | "messages" | "preglact" | "pillchart" | "vaccines" | "diet" | "icd" | "consent" | "insulin" | "transfusion" | "mlc" | "tb" | "antenatal" | "ventilator" | "teleconsult" | "bills" | "bite" | "needlestick" | "imnci" | "cme" | "appointments" | "stock" | "screening" | "kidney" | "sam" | "contacts" | "accounts" | "thyroid" | "backup" | "ncd" | "anaemia" | "dengue" | "electrolytes" | "obsemergency" | "infection";
 /** Views reached from the Tools hub, so the hub stays highlighted in the sidebar. */
-const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today", "discharge", "handover", "ddx", "studyplan", "podcasts", "ecg", "abx", "procedure", "poison", "infusions", "convert", "abg", "logbook", "followups", "audiolib", "rxwrite", "labtrend", "daily", "letters", "adr", "mccd", "mnemonics", "generics", "opd", "imagequiz", "dosecard", "oncall", "journal", "stats", "roster", "records", "voiceround", "revnotes", "analytics", "preop", "messages", "preglact", "pillchart", "vaccines", "diet", "icd", "consent", "insulin", "transfusion", "mlc", "tb", "antenatal", "ventilator", "teleconsult", "bills", "bite", "needlestick", "imnci", "cme", "appointments", "stock", "screening", "kidney", "sam", "contacts", "accounts", "thyroid"]);
+const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today", "discharge", "handover", "ddx", "studyplan", "podcasts", "ecg", "abx", "procedure", "poison", "infusions", "convert", "abg", "logbook", "followups", "audiolib", "rxwrite", "labtrend", "daily", "letters", "adr", "mccd", "mnemonics", "generics", "opd", "imagequiz", "dosecard", "oncall", "journal", "stats", "roster", "records", "voiceround", "revnotes", "analytics", "preop", "messages", "preglact", "pillchart", "vaccines", "diet", "icd", "consent", "insulin", "transfusion", "mlc", "tb", "antenatal", "ventilator", "teleconsult", "bills", "bite", "needlestick", "imnci", "cme", "appointments", "stock", "screening", "kidney", "sam", "contacts", "accounts", "thyroid", "backup", "ncd", "anaemia", "dengue", "electrolytes", "obsemergency", "infection"]);
 type ToolTab = "all" | "clinical" | "documentation" | "learning";
 type SettingsTab = "general" | "personal" | "letterhead" | "institution" | "data" | "shortcuts" | "about";
 type StyleId = "concise" | "balanced" | "detailed";
@@ -2813,6 +2821,13 @@ export default function CadusAI() {
       { key: "a:contacts", label: "Referral Contacts: who you refer to", hint: "Specialists, hospitals, labs and ambulances; one-tap call", icon: ContactRound, run: () => openView("contacts") },
       { key: "a:accounts", label: "Clinic Accounts: the month's income and expenses", hint: "Receipts in, expenses out, the net and the biggest costs", icon: Wallet, run: () => openView("accounts") },
       { key: "a:thyroid", label: "Thyroid Dose Helper: levothyroxine", hint: "Starting dose, change by TSH, pregnancy targets", icon: Gauge, run: () => openView("thyroid") },
+      { key: "a:backup", label: "Backup & Restore: all your Cadus data", hint: "One file for chats, records, receipts, stock; optional passphrase", icon: DatabaseBackup, run: () => openView("backup") },
+      { key: "a:ncd", label: "BP & Sugar Protocols: hypertension and diabetes steps", hint: "IHCI hypertension steps, diabetes add-ons by comorbidity, targets", icon: TrendingUp, run: () => openView("ncd") },
+      { key: "a:anaemia", label: "Anaemia & Iron: grade and iron dose", hint: "WHO grades, oral iron, Ganzoni deficit, FCM and iron sucrose", icon: Droplets, run: () => openView("anaemia") },
+      { key: "a:dengue", label: "Dengue Helper: group and fluids", hint: "Warning signs, WHO groups, crystalloid rates by weight", icon: BugOff, run: () => openView("dengue") },
+      { key: "a:electrolytes", label: "Electrolyte Replacement: K, Na, Mg, Ca", hint: "How much, how fast, safe sodium correction limits", icon: FlaskConical, run: () => openView("electrolytes") },
+      { key: "a:obsemergency", label: "Obstetric Emergencies: eclampsia, PPH and more", hint: "Magnesium sulphate with a timer, severe BP, PPH, cord, dystocia", icon: Ambulance, run: () => openView("obsemergency") },
+      { key: "a:infection", label: "Infection Control & Waste: bins and isolation", hint: "BMW Rules 2016 colour coding, isolation by disease", icon: Biohazard, run: () => openView("infection") },
       { key: "a:present", label: "Presentation Coach: practise presenting a case", hint: "Ward round, long case, SBAR; scored with a model answer", icon: Presentation, run: () => openView("present") },
       { key: "a:compare", label: "Compare over time: what changed between two studies", hint: "X-rays, ECGs, scans, reports and wound photos", icon: History, run: () => openView("compare") },
       { key: "a:newcase", label: "New patient case", hint: "Start a de-identified case sheet", icon: ClipboardList, run: () => { const c = newCase(); setCases((l) => [c, ...l]); openCases(c.id); } },
@@ -3249,7 +3264,15 @@ export default function CadusAI() {
     { id: "contacts", icon: ContactRound, tone: "teal", title: "Referral Contacts", sub: "Call or WhatsApp in one tap", go: () => openView("contacts") },
     { id: "accounts", icon: Wallet, tone: "amber", title: "Clinic Accounts", sub: "Income, expenses, net", go: () => openView("accounts") },
     { id: "thyroid", icon: Gauge, tone: "rose", title: "Thyroid Dose Helper", sub: "Levothyroxine by TSH", go: () => openView("thyroid") },
+    { id: "backup", icon: DatabaseBackup, tone: "sky", title: "Backup & Restore", sub: "Everything on this device, locked", go: () => openView("backup") },
+    { id: "ncd", icon: TrendingUp, tone: "rose", title: "BP & Sugar Protocols", sub: "Step up BP and diabetes", go: () => openView("ncd") },
+    { id: "anaemia", icon: Droplets, tone: "rose", title: "Anaemia & Iron", sub: "Grade, oral and IV iron", go: () => openView("anaemia") },
+    { id: "dengue", icon: BugOff, tone: "lime", title: "Dengue Helper", sub: "Group A, B, C and fluids", go: () => openView("dengue") },
+    { id: "electrolytes", icon: FlaskConical, tone: "sky", title: "Electrolyte Replacement", sub: "K, Na, Mg, Ca", go: () => openView("electrolytes") },
+    { id: "obsemergency", icon: Ambulance, tone: "rose", title: "Obstetric Emergencies", sub: "Eclampsia, PPH, dystocia", go: () => openView("obsemergency") },
+    { id: "infection", icon: Biohazard, tone: "amber", title: "Infection Control & Waste", sub: "Which bin, which isolation", go: () => openView("infection") },
   ];
+  const backupNeeded = view !== "backup" && backupDue();
   /** The More drawer: every tool, grouped by what it is for (update 24). */
   type MoreItem = { label: string; title: string; icon: LucideIcon; on: boolean; go: () => void; tour?: string; badge?: ReactNode };
   const moreGroups: { id: string; label: string; icon: LucideIcon; items: MoreItem[] }[] = [
@@ -3266,6 +3289,7 @@ export default function CadusAI() {
         { label: "Pill Chart", title: "Pill Chart", icon: Sun, on: view === "pillchart", go: () => openView("pillchart") },
         { label: "Diet Chart Maker", title: "Diet Chart Maker", icon: Salad, on: view === "diet", go: () => openView("diet") },
         { label: "Consult Translator", title: "Consult Translator", icon: Languages, on: view === "translate", go: () => openView("translate") },
+        { label: "BP & Sugar Protocols", title: "BP & Sugar Protocols", icon: TrendingUp, on: view === "ncd", go: () => openView("ncd") },
       ] },
     { id: "practice", label: "Practice", icon: BriefcaseMedical, items: [
         { label: "Appointments", title: "Appointments", icon: CalendarPlus, on: view === "appointments", go: () => openView("appointments") },
@@ -3276,6 +3300,7 @@ export default function CadusAI() {
         { label: "Referral Contacts", title: "Referral Contacts", icon: ContactRound, on: view === "contacts", go: () => openView("contacts") },
         { label: "Duty Roster", title: "Duty Roster", icon: CalendarRange, on: view === "roster", go: () => openView("roster") },
         { label: "CME Credits", title: "CME Credits", icon: Award, on: view === "cme", go: () => openView("cme") },
+        { label: "Infection Control & Waste", title: "Infection Control & Waste", icon: Biohazard, on: view === "infection", go: () => openView("infection") },
       ] },
     { id: "ward", label: "Ward & On-call", icon: BedDouble, items: [
         { label: "Ward round", title: "Ward round", icon: BedDouble, on: view === "ward", go: openWard, tour: "ward", badge: wardInfo.patients.length > 0 && <em>{wardInfo.patients.length}</em> },
@@ -3285,6 +3310,7 @@ export default function CadusAI() {
         { label: "On-call Helper", title: "On-call Helper", icon: PhoneCall, on: view === "oncall", go: () => openView("oncall") },
         { label: "Pre-op Assessment", title: "Pre-op Assessment", icon: ClipboardPlus, on: view === "preop", go: () => openView("preop") },
         { label: "Procedure Guide", title: "Procedure Guide", icon: ListChecks, on: view === "procedure", go: () => openView("procedure") },
+        { label: "Electrolyte Replacement", title: "Electrolyte Replacement", icon: FlaskConical, on: view === "electrolytes", go: () => openView("electrolytes") },
       ] },
     { id: "emergency", label: "Emergency & ICU", icon: Siren, items: [
         { label: "Emergencies", title: "Emergency protocols", icon: Siren, on: view === "emergency", go: () => openView("emergency") },
@@ -3298,6 +3324,7 @@ export default function CadusAI() {
         { label: "Poisoning & Snakebite", title: "Poisoning & Snakebite", icon: FlaskRound, on: view === "poison", go: () => openView("poison") },
         { label: "Animal Bite (Rabies PEP)", title: "Animal Bite (Rabies PEP)", icon: Dog, on: view === "bite", go: () => openView("bite") },
         { label: "Needle-stick Injury", title: "Needle-stick Injury", icon: Bandage, on: view === "needlestick", go: () => openView("needlestick") },
+        { label: "Dengue Helper", title: "Dengue Helper", icon: BugOff, on: view === "dengue", go: () => openView("dengue") },
       ] },
     { id: "drugs", label: "Drugs & Prescribing", icon: Pill, items: [
         { label: "Drugs", title: "Drugs and prescriber", icon: Pill, on: view === "drugs", go: () => openDrugs() },
@@ -3309,6 +3336,7 @@ export default function CadusAI() {
         { label: "TB Treatment (NTEP)", title: "TB Treatment (NTEP)", icon: Microscope, on: view === "tb", go: () => openView("tb") },
         { label: "Kidney Dose Adjuster", title: "Kidney Dose Adjuster", icon: Bean, on: view === "kidney", go: () => openView("kidney") },
         { label: "Thyroid Dose Helper", title: "Thyroid Dose Helper", icon: Gauge, on: view === "thyroid", go: () => openView("thyroid") },
+        { label: "Anaemia & Iron", title: "Anaemia & Iron", icon: Droplets, on: view === "anaemia", go: () => openView("anaemia") },
       ] },
     { id: "mother", label: "Mother & Child", icon: Baby, items: [
         { label: "Paeds and obstetrics", title: "Paediatrics and obstetrics", icon: Baby, on: view === "paeds", go: () => openView("paeds") },
@@ -3317,6 +3345,7 @@ export default function CadusAI() {
         { label: "Vaccination Scheduler", title: "Vaccination Scheduler", icon: Syringe, on: view === "vaccines", go: () => openView("vaccines") },
         { label: "IMNCI Sick Child", title: "IMNCI Sick Child", icon: Thermometer, on: view === "imnci", go: () => openView("imnci") },
         { label: "Malnutrition (SAM) Helper", title: "Malnutrition (SAM) Helper", icon: Ruler, on: view === "sam", go: () => openView("sam") },
+        { label: "Obstetric Emergencies", title: "Obstetric Emergencies", icon: Ambulance, on: view === "obsemergency", go: () => openView("obsemergency") },
       ] },
     { id: "diagnosis", label: "Diagnosis & Evidence", icon: Microscope, items: [
         { label: "Research", title: "Research", icon: Microscope, on: view === "research", go: () => openResearch(), tour: "research" },
@@ -3358,6 +3387,7 @@ export default function CadusAI() {
     { id: "work", label: "My work", icon: Folder, items: [
         { label: "Projects", title: "Projects", icon: Folder, on: view === "projects" || view === "project", go: openProjects, badge: projects.length > 0 && <em>{projects.length}</em> },
         { label: "Decks", title: "Decks", icon: Presentation, on: view === "decks", go: () => { setView("decks"); setSidebarOpen(false); }, badge: decks.length > 0 && <em>{decks.length}</em> },
+        { label: "Backup & Restore", title: "Backup & Restore", icon: DatabaseBackup, on: view === "backup", go: () => openView("backup"), badge: backupNeeded ? <em className="cx-bk-due" title="Back up your data">!</em> : undefined },
       ] },
   ];
   const moreItemButton = (i: MoreItem) => (
@@ -4495,7 +4525,7 @@ export default function CadusAI() {
       style={{ ["--acc" as string]: dark ? accent.dark : accent.light, ["--fs" as string]: `${fontSize}px`, ["--fs-u" as string]: `${sansSize}px` }}
       {...dropHandlers}
     >
-      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS + CADUS_CREWPLUS_CSS + CADUS_VOICE_CSS + CADUS_CLINIC20_CSS + CADUS_CLINIC21_CSS + CADUS_CLINIC22_CSS + CADUS_CLINIC23_CSS + CADUS_CLINIC24_CSS + CADUS_CLINIC25_CSS}</style>
+      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS + CADUS_CREWPLUS_CSS + CADUS_VOICE_CSS + CADUS_CLINIC20_CSS + CADUS_CLINIC21_CSS + CADUS_CLINIC22_CSS + CADUS_CLINIC23_CSS + CADUS_CLINIC24_CSS + CADUS_CLINIC25_CSS + CADUS_CLINIC26_CSS}</style>
 
       {/* ============================================== sidebar */}
       <div className={`cx-scrim ${sidebarOpen ? "on" : ""}`} onClick={() => setSidebarOpen(false)} />
@@ -4878,6 +4908,13 @@ export default function CadusAI() {
                 : view === "contacts" ? [ContactRound, "Referral Contacts"]
                 : view === "accounts" ? [Wallet, "Clinic Accounts"]
                 : view === "thyroid" ? [Gauge, "Thyroid Dose Helper"]
+                : view === "backup" ? [DatabaseBackup, "Backup & Restore"]
+                : view === "ncd" ? [TrendingUp, "BP & Sugar Protocols"]
+                : view === "anaemia" ? [Droplets, "Anaemia & Iron"]
+                : view === "dengue" ? [BugOff, "Dengue Helper"]
+                : view === "electrolytes" ? [FlaskConical, "Electrolyte Replacement"]
+                : view === "obsemergency" ? [Ambulance, "Obstetric Emergencies"]
+                : view === "infection" ? [Biohazard, "Infection Control & Waste"]
                 : view === "project" && project ? [Folder, project.name]
                 : [Folder, "Projects"];
               return <span className="cx-title-btn static"><Icon size={14} /> <span>{label}</span></span>;
@@ -5260,6 +5297,13 @@ export default function CadusAI() {
             : view === "contacts" ? <ContactsView />
             : view === "accounts" ? <AccountsView />
             : view === "thyroid" ? <ThyroidView />
+            : view === "backup" ? <BackupView toast={toast} />
+            : view === "ncd" ? <NcdView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
+            : view === "anaemia" ? <AnaemiaView />
+            : view === "dengue" ? <DengueView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
+            : view === "electrolytes" ? <ElectrolytesView />
+            : view === "obsemergency" ? <ObsEmergencyView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
+            : view === "infection" ? <InfectionView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
             : view === "today" ? (
               <TodayView
                 name={firstName}
@@ -5968,6 +6012,10 @@ export default function CadusAI() {
                         )}
                       </div>
                     )}
+                    <div className="cx-set-row">
+                      <div><b>Back up everything on this device</b><small>Chats and every tool's data (patient records, receipts, stock, appointments) in one file, optionally locked with a passphrase; restore here or on another computer</small></div>
+                      <button className="cx-btn" onClick={() => { setSettingsOpen(false); openView("backup"); }} data-set="backup"><Download size={14} /> Backup &amp; Restore</button>
+                    </div>
                     <div className="cx-set-row">
                       <div><b>Export all chats</b><small>{listed.length + archivedList.length} chats, {projects.length} projects, {docs.length} documents and {library.length} saved answers, with your memory, custom instructions, reading list and letterhead, as a JSON file</small></div>
                       <button
