@@ -282,6 +282,7 @@ const TOOLS: [string, string][] = [
   ["Asthma & COPD Plans", "v"], ["Developmental Milestones", "y"], ["Contraception Advisor", "r"], ["Palliative Care Helper", "r"], ["Imaging Decision Rules", "v"], ["IV Fluids Planner", "t"], ["Sick-Day Rules", "y"], ["Lab Reference Ranges", "t"],
   ["Burns Helper", "r"], ["Neonatal Jaundice", "y"], ["Stroke & Thrombolysis", "v"], ["Sepsis & DKA Bundles", "r"], ["Alcohol Withdrawal", "v"], ["Diabetic Foot", "t"], ["Heat Illness", "y"], ["Wound & Suture Care", "t"],
   ["Warfarin & Anticoagulation", "r"], ["Tropical Fevers", "y"], ["Elderly Care", "t"], ["Quit Smoking Helper", "v"], ["Croup & Child Asthma", "t"], ["Rheumatic Fever", "r"], ["Weight Management", "y"], ["Hypoglycaemia", "v"],
+  ["Gestational Diabetes", "r"], ["Infant Feeding", "y"], ["Antidepressant Switcher", "v"], ["Eye & ENT Triage", "t"], ["VTE Prophylaxis", "r"], ["Headache & Migraine", "v"], ["Skin Infections", "y"], ["Gout & Uric Acid", "t"],
 ];
 
 /**

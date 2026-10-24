@@ -665,3 +665,9 @@ export const CADUS_CLINIC29_CSS = `
 .cx-c23-table tr.no td{color:var(--danger)}
 @media (max-width:760px){.cx-cfs{grid-template-columns:1fr}}
 `;
+
+export const CADUS_CLINIC30_CSS = `
+.cx-lab ul:not([class]){list-style:disc;padding-left:1.25em;margin:6px 0}
+.cx-lab ul:not([class])>li{margin:3px 0;padding-left:2px}
+.cx-lab ul:not([class])>li::marker{color:var(--t3)}
+`;
