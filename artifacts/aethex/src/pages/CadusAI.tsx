@@ -5,7 +5,7 @@
  */
 import {
   useCallback, useEffect, useMemo, useRef, useState,
-  type DragEvent as ReactDragEvent, type FocusEvent as ReactFocusEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent,
+  type ReactNode, type DragEvent as ReactDragEvent, type FocusEvent as ReactFocusEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent,
 } from "react";
 import {
   AlertTriangle, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ArrowUpRight, Bookmark, BookmarkCheck, BookOpen, BookOpenCheck, Brain, Gauge,
@@ -22,7 +22,7 @@ import {
   Printer, Scissors, ScrollText, Sigma, PanelRight, EyeOff, Compass, Rows3, WifiOff, Building2, ScanSearch,
   Bot, GitBranch, HeartPulse, MessageCircle, BellRing, FileScan, ShieldPlus, ScanLine, Shield, Bone, AtSign, Users2, GitFork, CalendarDays, FileOutput, ArrowRightLeft, Waypoints, CalendarCheck, Activity, Bug, ListChecks, FlaskRound, Wind, BookCheck, CalendarClock, Eye, Ear, Droplets, Swords, Workflow, Headphones,
   type LucideIcon,
-  FileAudio, MicVocal, Speech, CalendarHeart, PillBottle, ListOrdered, Images, Weight, Timer, PhoneCall, CalendarRange, FolderHeart, AudioWaveform, BarChart3, MessageSquareText, Salad, FileCode2, Gavel, Droplet, Pipette,
+  FileAudio, MicVocal, Speech, CalendarHeart, PillBottle, ListOrdered, Images, Weight, Timer, PhoneCall, CalendarRange, FolderHeart, AudioWaveform, BarChart3, MessageSquareText, Salad, FileCode2, Gavel, Droplet, Pipette, Heart, Fan, Video, ReceiptIndianRupee, Dog, Bandage, Thermometer, Award,
 } from "lucide-react";
 import { invokeAi } from "@/lib/ai-functions";
 import { useUserAuth } from "@/hooks/use-user-auth";
@@ -83,6 +83,14 @@ import InsulinView from "@/components/cadus/InsulinView";
 import TransfusionView from "@/components/cadus/TransfusionView";
 import MlcView from "@/components/cadus/MlcView";
 import TbView from "@/components/cadus/TbView";
+import AntenatalView from "@/components/cadus/AntenatalView";
+import VentilatorView from "@/components/cadus/VentilatorView";
+import TeleconsultView from "@/components/cadus/TeleconsultView";
+import BillsView from "@/components/cadus/BillsView";
+import AnimalBiteView from "@/components/cadus/AnimalBiteView";
+import NeedlestickView from "@/components/cadus/NeedlestickView";
+import ImnciView from "@/components/cadus/ImnciView";
+import CmeView from "@/components/cadus/CmeView";
 import PersonalSettings from "@/components/cadus/PersonalSettings";
 import { CADUS_CHAT_CSS } from "@/components/cadus/cadus-chat-styles";
 import { closePartialMarkdown, createTextStore, streamCadus, StreamUnavailable, type DeepStep } from "@/lib/cadus/stream";
@@ -99,7 +107,7 @@ import CrewPlaybookView from "@/components/cadus/CrewPlaybookView";
 import CrewBuilder from "@/components/cadus/CrewBuilder";
 import PodcastView from "@/components/cadus/PodcastView";
 import { VoiceSettings } from "@/components/cadus/AudioParts";
-import { CADUS_CLINIC20_CSS, CADUS_CLINIC21_CSS, CADUS_CLINIC22_CSS, CADUS_CLINIC23_CSS, CADUS_CREW_CSS, CADUS_CREWPLUS_CSS, CADUS_VOICE_CSS } from "@/components/cadus/cadus-crew-styles";
+import { CADUS_CLINIC20_CSS, CADUS_CLINIC21_CSS, CADUS_CLINIC22_CSS, CADUS_CLINIC23_CSS, CADUS_CLINIC24_CSS, CADUS_CREW_CSS, CADUS_CREWPLUS_CSS, CADUS_VOICE_CSS } from "@/components/cadus/cadus-crew-styles";
 import TranslatorView from "@/components/cadus/TranslatorView";
 import PathwaysView from "@/components/cadus/PathwaysView";
 import FlashcardsView from "@/components/cadus/FlashcardsView";
@@ -198,9 +206,9 @@ type ModeId =
   | "admission" | "progress" | "opnote" | "death" | "certificate" | "rx" | "evidence";
 /** "groq" only appears in chats saved before Cadus became Claude-only. */
 type Provider = "claude" | "groq" | "library";
-type View = "chat" | "crew" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "debate" | "playbooks" | "podcasts" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan" | "ecg" | "abx" | "procedure" | "poison" | "infusions" | "convert" | "abg" | "logbook" | "followups" | "audiolib" | "rxwrite" | "labtrend" | "daily" | "letters" | "adr" | "mccd" | "mnemonics" | "generics" | "opd" | "imagequiz" | "dosecard" | "oncall" | "journal" | "stats" | "roster" | "records" | "voiceround" | "revnotes" | "analytics" | "preop" | "messages" | "preglact" | "pillchart" | "vaccines" | "diet" | "icd" | "consent" | "insulin" | "transfusion" | "mlc" | "tb";
+type View = "chat" | "crew" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "debate" | "playbooks" | "podcasts" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan" | "ecg" | "abx" | "procedure" | "poison" | "infusions" | "convert" | "abg" | "logbook" | "followups" | "audiolib" | "rxwrite" | "labtrend" | "daily" | "letters" | "adr" | "mccd" | "mnemonics" | "generics" | "opd" | "imagequiz" | "dosecard" | "oncall" | "journal" | "stats" | "roster" | "records" | "voiceround" | "revnotes" | "analytics" | "preop" | "messages" | "preglact" | "pillchart" | "vaccines" | "diet" | "icd" | "consent" | "insulin" | "transfusion" | "mlc" | "tb" | "antenatal" | "ventilator" | "teleconsult" | "bills" | "bite" | "needlestick" | "imnci" | "cme";
 /** Views reached from the Tools hub, so the hub stays highlighted in the sidebar. */
-const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today", "discharge", "handover", "ddx", "studyplan", "podcasts", "ecg", "abx", "procedure", "poison", "infusions", "convert", "abg", "logbook", "followups", "audiolib", "rxwrite", "labtrend", "daily", "letters", "adr", "mccd", "mnemonics", "generics", "opd", "imagequiz", "dosecard", "oncall", "journal", "stats", "roster", "records", "voiceround", "revnotes", "analytics", "preop", "messages", "preglact", "pillchart", "vaccines", "diet", "icd", "consent", "insulin", "transfusion", "mlc", "tb"]);
+const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today", "discharge", "handover", "ddx", "studyplan", "podcasts", "ecg", "abx", "procedure", "poison", "infusions", "convert", "abg", "logbook", "followups", "audiolib", "rxwrite", "labtrend", "daily", "letters", "adr", "mccd", "mnemonics", "generics", "opd", "imagequiz", "dosecard", "oncall", "journal", "stats", "roster", "records", "voiceround", "revnotes", "analytics", "preop", "messages", "preglact", "pillchart", "vaccines", "diet", "icd", "consent", "insulin", "transfusion", "mlc", "tb", "antenatal", "ventilator", "teleconsult", "bills", "bite", "needlestick", "imnci", "cme"]);
 type ToolTab = "all" | "clinical" | "documentation" | "learning";
 type SettingsTab = "general" | "personal" | "letterhead" | "institution" | "data" | "shortcuts" | "about";
 type StyleId = "concise" | "balanced" | "detailed";
@@ -996,6 +1004,8 @@ export default function CadusAI() {
   );
   const [collapsed, setCollapsed] = useState<boolean>(() => !!readJSON<{ collapsed?: boolean }>(UI_KEY, {}).collapsed);
   const [moreOpen, setMoreOpen] = useState<boolean>(() => !!readJSON<{ moreOpen?: boolean }>(UI_KEY, {}).moreOpen);
+  const [openGroups, setOpenGroups] = useState<string[]>(() => { const g = readJSON<{ groups?: unknown }>(UI_KEY, {}).groups; return Array.isArray(g) ? g.filter((x): x is string => typeof x === "string").slice(0, 1) : []; });
+  const [moreQ, setMoreQ] = useState("");
   const [view, setView] = useState<View>("chat");
   const [projectId, setProjectId] = useState("");
   const [chatFilter, setChatFilter] = useState<ToolTab>("all");
@@ -1259,7 +1269,7 @@ export default function CadusAI() {
   useEffect(() => writeJSON(USAGE_KEY, usage), [usage]);
   useEffect(() => writeJSON(PROJECTS_KEY, projects), [projects]);
   useEffect(() => saveCrew(crewMine), [crewMine]);
-  useEffect(() => writeJSON(UI_KEY, { collapsed: autoCollapsed.current ? false : collapsed, moreOpen }), [collapsed, moreOpen]);
+  useEffect(() => writeJSON(UI_KEY, { collapsed: autoCollapsed.current ? false : collapsed, moreOpen, groups: openGroups }), [collapsed, moreOpen, openGroups]);
   // Canvas needs room: on smaller desktop screens the sidebar folds away while it is open.
   useEffect(() => {
     if (canvasId && isDesktop && narrowDesk && !collapsed) {
@@ -2232,7 +2242,7 @@ export default function CadusAI() {
       void pushRemoteProfile(merged);
     }
     setPrefs((p) => ({ ...p, units: r.units, nlem: r.nlem, language: r.language }));
-    if (r.tour) { setMoreOpen(true); window.setTimeout(() => setTourOpen(true), 300); }
+    if (r.tour) { setMoreOpen(true); setOpenGroups(["ward", "diagnosis"]); window.setTimeout(() => setTourOpen(true), 300); }
     else focusComposer();
   };
   const startTour = () => {
@@ -2243,6 +2253,7 @@ export default function CadusAI() {
     setPop(null);
     setSidebarOpen(false);
     setMoreOpen(true); // the ward, research and calculator steps point into the More drawer
+    setOpenGroups(["ward", "diagnosis"]); // and into these two groups
     window.setTimeout(() => setTourOpen(true), 250);
   };
   const endTour = () => {
@@ -2778,6 +2789,14 @@ export default function CadusAI() {
       { key: "a:transfusion", label: "Blood Transfusion: how much, how fast, reactions", hint: "Red cells, platelets, FFP and cryo by weight", icon: Droplet, run: () => openView("transfusion") },
       { key: "a:mlc", label: "MLC Injury Report: a medico-legal injury report", hint: "Each injury, its age, the weapon and simple or grievous (BNS)", icon: Gavel, run: () => openView("mlc") },
       { key: "a:tb", label: "TB Treatment (NTEP): tablets and dates", hint: "Weight band, phase dates, sputum checks and a patient card", icon: Microscope, run: () => openView("tb") },
+      { key: "a:antenatal", label: "Antenatal Care Tracker: every pregnancy you follow", hint: "EDD, visits, BP and Hb, risk flags, what is due; a card", icon: Heart, run: () => openView("antenatal") },
+      { key: "a:ventilator", label: "Ventilator Helper: starting settings and ABG changes", hint: "Tidal volume by height, FiO₂/PEEP table, what to change", icon: Fan, run: () => openView("ventilator") },
+      { key: "a:teleconsult", label: "Teleconsultation Note: record and e-prescription", hint: "Telemedicine Practice Guidelines 2020; medicine lists checked", icon: Video, run: () => openView("teleconsult") },
+      { key: "a:bills", label: "Clinic Bills & Receipts: OPD receipts", hint: "Numbered receipts, cash/UPI/card, the day's total, CSV", icon: ReceiptIndianRupee, run: () => openView("bills") },
+      { key: "a:bite", label: "Animal Bite: rabies post-exposure prophylaxis", hint: "Category, wound care, vaccine dates and immunoglobulin dose", icon: Dog, run: () => openView("bite") },
+      { key: "a:needlestick", label: "Needle-stick Injury: what to do now", hint: "First aid, HIV PEP, hepatitis B by immunity, follow-up tests", icon: Bandage, run: () => openView("needlestick") },
+      { key: "a:imnci", label: "IMNCI Sick Child: classify and treat", hint: "Danger signs, pneumonia, diarrhoea, fever; doses by weight", icon: Thermometer, run: () => openView("imnci") },
+      { key: "a:cme", label: "CME Credits: hours towards renewal", hint: "Every CME with certificates; progress for your council", icon: Award, run: () => openView("cme") },
       { key: "a:present", label: "Presentation Coach: practise presenting a case", hint: "Ward round, long case, SBAR; scored with a model answer", icon: Presentation, run: () => openView("present") },
       { key: "a:compare", label: "Compare over time: what changed between two studies", hint: "X-rays, ECGs, scans, reports and wound photos", icon: History, run: () => openView("compare") },
       { key: "a:newcase", label: "New patient case", hint: "Start a de-identified case sheet", icon: ClipboardList, run: () => { const c = newCase(); setCases((l) => [c, ...l]); openCases(c.id); } },
@@ -3198,7 +3217,122 @@ export default function CadusAI() {
     { id: "transfusion", icon: Droplet, tone: "rose", title: "Blood Transfusion", sub: "Dose, rate, reactions", go: () => openView("transfusion") },
     { id: "mlc", icon: Gavel, tone: "rose", title: "MLC Injury Report", sub: "Injuries worded for court", go: () => openView("mlc") },
     { id: "tb", icon: Microscope, tone: "teal", title: "TB Treatment (NTEP)", sub: "Tablets by weight band", go: () => openView("tb") },
+    { id: "antenatal", icon: Heart, tone: "rose", title: "Antenatal Care Tracker", sub: "Visits, risks and the EDD", go: () => openView("antenatal") },
+    { id: "ventilator", icon: Fan, tone: "sky", title: "Ventilator Helper", sub: "ARDSnet settings and ABG", go: () => openView("ventilator") },
+    { id: "teleconsult", icon: Video, tone: "teal", title: "Teleconsultation Note", sub: "Record and e-prescription", go: () => openView("teleconsult") },
+    { id: "bills", icon: ReceiptIndianRupee, tone: "amber", title: "Clinic Bills & Receipts", sub: "Receipts and the day's takings", go: () => openView("bills") },
+    { id: "bite", icon: Dog, tone: "rose", title: "Animal Bite (Rabies PEP)", sub: "Category, vaccine dates, RIG", go: () => openView("bite") },
+    { id: "needlestick", icon: Bandage, tone: "violet", title: "Needle-stick Injury", sub: "HIV PEP, hepatitis B and C", go: () => openView("needlestick") },
+    { id: "imnci", icon: Thermometer, tone: "lime", title: "IMNCI Sick Child", sub: "Pink, yellow or green", go: () => openView("imnci") },
+    { id: "cme", icon: Award, tone: "sky", title: "CME Credits", sub: "Hours towards renewal", go: () => openView("cme") },
   ];
+  /** The More drawer: every tool, grouped by what it is for (update 24). */
+  type MoreItem = { label: string; title: string; icon: LucideIcon; on: boolean; go: () => void; tour?: string; badge?: ReactNode };
+  const moreGroups: { id: string; label: string; icon: LucideIcon; items: MoreItem[] }[] = [
+    { id: "clinic", label: "Clinic & OPD", icon: Stethoscope, items: [
+        { label: "Today", title: "Today", icon: CalendarDays, on: view === "today", go: () => openView("today") },
+        { label: "OPD Queue", title: "OPD Queue", icon: ListOrdered, on: view === "opd", go: () => openView("opd") },
+        { label: "Patient Records", title: "Patient Records", icon: FolderHeart, on: view === "records", go: () => openView("records") },
+        { label: "Prescription Writer", title: "Prescription Writer", icon: FilePen, on: view === "rxwrite", go: () => openView("rxwrite") },
+        { label: "Teleconsultation Note", title: "Teleconsultation Note", icon: Video, on: view === "teleconsult", go: () => openView("teleconsult") },
+        { label: "Clinic Bills & Receipts", title: "Clinic Bills & Receipts", icon: ReceiptIndianRupee, on: view === "bills", go: () => openView("bills") },
+        { label: "Follow-ups", title: "Follow-ups", icon: CalendarClock, on: view === "followups", go: () => openView("followups") },
+        { label: "Patient Messages", title: "Patient Messages", icon: MessageSquareText, on: view === "messages", go: () => openView("messages") },
+        { label: "Leaflets", title: "Patient leaflets and consent", icon: FileText, on: view === "leaflets", go: () => openView("leaflets") },
+        { label: "Patient Audio Library", title: "Patient Audio Library", icon: FileAudio, on: view === "audiolib", go: () => openView("audiolib") },
+        { label: "Pill Chart", title: "Pill Chart", icon: Sun, on: view === "pillchart", go: () => openView("pillchart") },
+        { label: "Diet Chart Maker", title: "Diet Chart Maker", icon: Salad, on: view === "diet", go: () => openView("diet") },
+        { label: "Consult Translator", title: "Consult Translator", icon: Languages, on: view === "translate", go: () => openView("translate") },
+        { label: "Clinic Analytics", title: "Clinic Analytics", icon: BarChart3, on: view === "analytics", go: () => openView("analytics") },
+      ] },
+    { id: "ward", label: "Ward & On-call", icon: BedDouble, items: [
+        { label: "Ward round", title: "Ward round", icon: BedDouble, on: view === "ward", go: openWard, tour: "ward", badge: wardInfo.patients.length > 0 && <em>{wardInfo.patients.length}</em> },
+        { label: "Ward Rounds by Voice", title: "Ward Rounds by Voice", icon: AudioWaveform, on: view === "voiceround", go: () => openView("voiceround") },
+        { label: "Shift Handover", title: "Shift Handover", icon: ArrowRightLeft, on: view === "handover", go: () => openView("handover") },
+        { label: "Discharge Summary", title: "Discharge Summary", icon: FileOutput, on: view === "discharge", go: () => openView("discharge") },
+        { label: "On-call Helper", title: "On-call Helper", icon: PhoneCall, on: view === "oncall", go: () => openView("oncall") },
+        { label: "Pre-op Assessment", title: "Pre-op Assessment", icon: ClipboardPlus, on: view === "preop", go: () => openView("preop") },
+        { label: "Procedure Guide", title: "Procedure Guide", icon: ListChecks, on: view === "procedure", go: () => openView("procedure") },
+        { label: "Duty Roster", title: "Duty Roster", icon: CalendarRange, on: view === "roster", go: () => openView("roster") },
+      ] },
+    { id: "emergency", label: "Emergency & ICU", icon: Siren, items: [
+        { label: "Emergencies", title: "Emergency protocols", icon: Siren, on: view === "emergency", go: () => openView("emergency") },
+        { label: "Dose Card by Weight", title: "Dose Card by Weight", icon: Weight, on: view === "dosecard", go: () => openView("dosecard") },
+        { label: "Infusions", title: "Infusions", icon: Syringe, on: view === "infusions", go: () => openView("infusions") },
+        { label: "Ventilator Helper", title: "Ventilator Helper", icon: Fan, on: view === "ventilator", go: () => openView("ventilator") },
+        { label: "ABG Interpreter", title: "ABG Interpreter", icon: Wind, on: view === "abg", go: () => openView("abg") },
+        { label: "ECG Reader", title: "ECG Reader", icon: Activity, on: view === "ecg", go: () => openView("ecg") },
+        { label: "Blood Transfusion", title: "Blood Transfusion", icon: Droplet, on: view === "transfusion", go: () => openView("transfusion") },
+        { label: "Insulin Planner", title: "Insulin Planner", icon: Pipette, on: view === "insulin", go: () => openView("insulin") },
+        { label: "Poisoning & Snakebite", title: "Poisoning & Snakebite", icon: FlaskRound, on: view === "poison", go: () => openView("poison") },
+        { label: "Animal Bite (Rabies PEP)", title: "Animal Bite (Rabies PEP)", icon: Dog, on: view === "bite", go: () => openView("bite") },
+        { label: "Needle-stick Injury", title: "Needle-stick Injury", icon: Bandage, on: view === "needlestick", go: () => openView("needlestick") },
+      ] },
+    { id: "drugs", label: "Drugs & Prescribing", icon: Pill, items: [
+        { label: "Drugs", title: "Drugs and prescriber", icon: Pill, on: view === "drugs", go: () => openDrugs() },
+        { label: "Rx Safety Check", title: "Rx Safety Check", icon: ShieldPlus, on: view === "rxcheck", go: () => openView("rxcheck") },
+        { label: "Med Reconciliation", title: "Med Reconciliation", icon: Pill, on: view === "medrec", go: () => openView("medrec") },
+        { label: "Generic Finder", title: "Generic Finder", icon: PillBottle, on: view === "generics", go: () => openView("generics") },
+        { label: "Antibiotic Guide", title: "Antibiotic Guide", icon: Bug, on: view === "abx", go: () => openView("abx") },
+        { label: "Dose Converter", title: "Dose Converter", icon: Scale, on: view === "convert", go: () => openView("convert") },
+        { label: "TB Treatment (NTEP)", title: "TB Treatment (NTEP)", icon: Microscope, on: view === "tb", go: () => openView("tb") },
+      ] },
+    { id: "mother", label: "Mother & Child", icon: Baby, items: [
+        { label: "Paeds and obstetrics", title: "Paediatrics and obstetrics", icon: Baby, on: view === "paeds", go: () => openView("paeds") },
+        { label: "Antenatal Care Tracker", title: "Antenatal Care Tracker", icon: Heart, on: view === "antenatal", go: () => openView("antenatal") },
+        { label: "Pregnancy & Breastfeeding", title: "Pregnancy & Breastfeeding", icon: Baby, on: view === "preglact", go: () => openView("preglact") },
+        { label: "Vaccination Scheduler", title: "Vaccination Scheduler", icon: Syringe, on: view === "vaccines", go: () => openView("vaccines") },
+        { label: "IMNCI Sick Child", title: "IMNCI Sick Child", icon: Thermometer, on: view === "imnci", go: () => openView("imnci") },
+      ] },
+    { id: "diagnosis", label: "Diagnosis & Evidence", icon: Microscope, items: [
+        { label: "Research", title: "Research", icon: Microscope, on: view === "research", go: () => openResearch(), tour: "research" },
+        { label: "Differential Builder", title: "Differential Builder", icon: Waypoints, on: view === "ddx", go: () => openView("ddx") },
+        { label: "Report Explainer", title: "Report Explainer", icon: FileScan, on: view === "explain", go: () => openView("explain") },
+        { label: "Lab Trends", title: "Lab Trends", icon: ChartLine, on: view === "labtrend", go: () => openView("labtrend") },
+        { label: "Compare over time", title: "Compare over time", icon: History, on: view === "compare", go: () => openView("compare") },
+        { label: "Clinical Pathways", title: "Clinical Pathways", icon: GitFork, on: view === "pathways", go: () => openView("pathways") },
+        { label: "Guideline Watch", title: "Guideline Watch", icon: BellRing, on: view === "watch", go: () => openView("watch") },
+        { label: "Calculators", title: "Calculators", icon: Calculator, on: view === "calculators", go: () => openCalculators(), tour: "calculators" },
+        { label: "Journal Club", title: "Journal Club", icon: BookOpenText, on: view === "journal", go: () => openView("journal") },
+        { label: "Statistics Test Chooser", title: "Statistics Test Chooser", icon: Sigma, on: view === "stats", go: () => openView("stats") },
+      ] },
+    { id: "documents", label: "Documents & Legal", icon: ScrollText, items: [
+        { label: "Scribe", title: "Scribe: dictated notes", icon: Mic, on: view === "scribe", go: () => openView("scribe") },
+        { label: "Letters & Certificates", title: "Letters & Certificates", icon: ScrollText, on: view === "letters", go: () => openView("letters") },
+        { label: "Consent Form Writer", title: "Consent Form Writer", icon: FileSignature, on: view === "consent", go: () => openView("consent") },
+        { label: "MLC Injury Report", title: "MLC Injury Report", icon: Gavel, on: view === "mlc", go: () => openView("mlc") },
+        { label: "Cause of Death (MCCD)", title: "Cause of Death (MCCD)", icon: FileSignature, on: view === "mccd", go: () => openView("mccd") },
+        { label: "ADR Report (PvPI)", title: "ADR Report (PvPI)", icon: ShieldAlert, on: view === "adr", go: () => openView("adr") },
+        { label: "ICD-10 Coder", title: "ICD-10 Coder", icon: FileCode2, on: view === "icd", go: () => openView("icd") },
+      ] },
+    { id: "learn", label: "Learn & Exams", icon: GraduationCap, items: [
+        { label: "Daily Clinical Case", title: "Daily Clinical Case", icon: CalendarHeart, on: view === "daily", go: () => openView("daily") },
+        { label: "Mock Tests", title: "Mock Tests", icon: Timer, on: false, go: () => openPractice("mock") },
+        { label: "Revision Notes", title: "Revision Notes", icon: NotebookPen, on: view === "revnotes", go: () => openView("revnotes") },
+        { label: "Flashcards", title: "Flashcards", icon: Layers, on: view === "flashcards", go: () => openView("flashcards") },
+        { label: "Clinical Image Quiz", title: "Clinical Image Quiz", icon: Images, on: view === "imagequiz", go: () => openView("imagequiz") },
+        { label: "Case Simulator", title: "Case Simulator", icon: HeartPulse, on: view === "simulator", go: () => openView("simulator") },
+        { label: "Voice Viva", title: "Voice Viva", icon: MicVocal, on: false, go: () => void startVoice("viva") },
+        { label: "Voice OSCE", title: "Voice OSCE", icon: Speech, on: false, go: () => void startVoice("osce") },
+        { label: "Presentation Coach", title: "Presentation Coach", icon: Presentation, on: view === "present", go: () => openView("present") },
+        { label: "Revision Podcasts", title: "Revision Podcasts", icon: Headphones, on: view === "podcasts", go: () => openView("podcasts") },
+        { label: "Mnemonic Maker", title: "Mnemonic Maker", icon: Brain, on: view === "mnemonics", go: () => openView("mnemonics") },
+        { label: "Study Planner", title: "Study Planner", icon: CalendarCheck, on: view === "studyplan", go: () => openView("studyplan") },
+        { label: "PG Logbook", title: "PG Logbook", icon: BookCheck, on: view === "logbook", go: () => openView("logbook") },
+        { label: "CME Credits", title: "CME Credits", icon: Award, on: view === "cme", go: () => openView("cme") },
+      ] },
+    { id: "work", label: "My work", icon: Folder, items: [
+        { label: "Projects", title: "Projects", icon: Folder, on: view === "projects" || view === "project", go: openProjects, badge: projects.length > 0 && <em>{projects.length}</em> },
+        { label: "Decks", title: "Decks", icon: Presentation, on: view === "decks", go: () => { setView("decks"); setSidebarOpen(false); }, badge: decks.length > 0 && <em>{decks.length}</em> },
+      ] },
+  ];
+  const moreItemButton = (i: MoreItem) => (
+    <button key={i.label} data-tour={i.tour} className={`cx-nav-i ${i.on ? "on" : ""}`} onClick={() => { setMoreQ(""); i.go(); }} title={i.title}><i.icon size={16} /><span className="cx-nav-l">{i.label}</span>{i.badge}</button>
+  );
+  const moreFound = moreQ.trim() ? moreGroups.flatMap((g) => g.items).filter((i) => `${i.label} ${i.title}`.toLowerCase().includes(moreQ.trim().toLowerCase())) : [];
+  const activeGroup = moreGroups.find((g) => g.items.some((i) => i.on))?.id ?? "";
+  // Opening a tool from anywhere (a tile, search, the desktop menu) opens its group in the sidebar.
+  useEffect(() => { if (activeGroup) setOpenGroups([activeGroup]); }, [activeGroup]);
   const workspaceTiles = (compact = false) => (
     <div className={`cx-ws-grid ${compact ? "compact" : ""}`}>
       {WORKSPACES.map((w, i) => (
@@ -4327,7 +4461,7 @@ export default function CadusAI() {
       style={{ ["--acc" as string]: dark ? accent.dark : accent.light, ["--fs" as string]: `${fontSize}px`, ["--fs-u" as string]: `${sansSize}px` }}
       {...dropHandlers}
     >
-      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS + CADUS_CREWPLUS_CSS + CADUS_VOICE_CSS + CADUS_CLINIC20_CSS + CADUS_CLINIC21_CSS + CADUS_CLINIC22_CSS + CADUS_CLINIC23_CSS}</style>
+      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS + CADUS_CREWPLUS_CSS + CADUS_VOICE_CSS + CADUS_CLINIC20_CSS + CADUS_CLINIC21_CSS + CADUS_CLINIC22_CSS + CADUS_CLINIC23_CSS + CADUS_CLINIC24_CSS}</style>
 
       {/* ============================================== sidebar */}
       <div className={`cx-scrim ${sidebarOpen ? "on" : ""}`} onClick={() => setSidebarOpen(false)} />
@@ -4373,77 +4507,18 @@ export default function CadusAI() {
           </button>
           {moreOpen && (
             <div className="cx-more">
-              <p className="cx-more-gl">Workspaces</p>
-              <button className={`cx-nav-i ${view === "today" ? "on" : ""}`} onClick={() => openView("today")} title="Today"><CalendarDays size={16} /><span className="cx-nav-l">Today</span></button>
-              <button data-tour="ward" className={`cx-nav-i ${view === "ward" ? "on" : ""}`} onClick={openWard} title="Ward round"><BedDouble size={16} /><span className="cx-nav-l">Ward round</span>{wardInfo.patients.length > 0 && <em>{wardInfo.patients.length}</em>}</button>
-              <button data-tour="research" className={`cx-nav-i ${view === "research" ? "on" : ""}`} onClick={() => openResearch()} title="Research"><Microscope size={16} /><span className="cx-nav-l">Research</span></button>
-              <button className={`cx-nav-i ${view === "drugs" ? "on" : ""}`} onClick={() => openDrugs()} title="Drugs and prescriber"><Pill size={16} /><span className="cx-nav-l">Drugs</span></button>
-              <button className={`cx-nav-i ${view === "scribe" ? "on" : ""}`} onClick={() => openView("scribe")} title="Scribe: dictated notes"><Mic size={16} /><span className="cx-nav-l">Scribe</span></button>
-              <button className={`cx-nav-i ${view === "emergency" ? "on" : ""}`} onClick={() => openView("emergency")} title="Emergency protocols"><Siren size={16} /><span className="cx-nav-l">Emergencies</span></button>
-              <button className={`cx-nav-i ${view === "paeds" ? "on" : ""}`} onClick={() => openView("paeds")} title="Paediatrics and obstetrics"><Baby size={16} /><span className="cx-nav-l">Paeds and obstetrics</span></button>
-              <button className={`cx-nav-i ${view === "leaflets" ? "on" : ""}`} onClick={() => openView("leaflets")} title="Patient leaflets and consent"><FileText size={16} /><span className="cx-nav-l">Leaflets</span></button>
-              <button className={`cx-nav-i ${view === "simulator" ? "on" : ""}`} onClick={() => openView("simulator")} title="Case Simulator"><HeartPulse size={16} /><span className="cx-nav-l">Case Simulator</span></button>
-              <button className={`cx-nav-i ${view === "rxcheck" ? "on" : ""}`} onClick={() => openView("rxcheck")} title="Rx Safety Check"><ShieldPlus size={16} /><span className="cx-nav-l">Rx Safety Check</span></button>
-              <button className={`cx-nav-i ${view === "watch" ? "on" : ""}`} onClick={() => openView("watch")} title="Guideline Watch"><BellRing size={16} /><span className="cx-nav-l">Guideline Watch</span></button>
-              <button className={`cx-nav-i ${view === "explain" ? "on" : ""}`} onClick={() => openView("explain")} title="Report Explainer"><FileScan size={16} /><span className="cx-nav-l">Report Explainer</span></button>
-              <button className={`cx-nav-i ${view === "translate" ? "on" : ""}`} onClick={() => openView("translate")} title="Consult Translator"><Languages size={16} /><span className="cx-nav-l">Consult Translator</span></button>
-              <button className={`cx-nav-i ${view === "pathways" ? "on" : ""}`} onClick={() => openView("pathways")} title="Clinical Pathways"><GitFork size={16} /><span className="cx-nav-l">Clinical Pathways</span></button>
-              <button className={`cx-nav-i ${view === "flashcards" ? "on" : ""}`} onClick={() => openView("flashcards")} title="Flashcards"><Layers size={16} /><span className="cx-nav-l">Flashcards</span></button>
-              <button className={`cx-nav-i ${view === "compare" ? "on" : ""}`} onClick={() => openView("compare")} title="Compare over time"><History size={16} /><span className="cx-nav-l">Compare over time</span></button>
-              <button className={`cx-nav-i ${view === "medrec" ? "on" : ""}`} onClick={() => openView("medrec")} title="Med Reconciliation"><Pill size={16} /><span className="cx-nav-l">Med Reconciliation</span></button>
-              <button className={`cx-nav-i ${view === "present" ? "on" : ""}`} onClick={() => openView("present")} title="Presentation Coach"><Presentation size={16} /><span className="cx-nav-l">Presentation Coach</span></button>
-              <button className={`cx-nav-i ${view === "discharge" ? "on" : ""}`} onClick={() => openView("discharge")} title="Discharge Summary"><FileOutput size={16} /><span className="cx-nav-l">Discharge Summary</span></button>
-              <button className={`cx-nav-i ${view === "handover" ? "on" : ""}`} onClick={() => openView("handover")} title="Shift Handover"><ArrowRightLeft size={16} /><span className="cx-nav-l">Shift Handover</span></button>
-              <button className={`cx-nav-i ${view === "ddx" ? "on" : ""}`} onClick={() => openView("ddx")} title="Differential Builder"><Waypoints size={16} /><span className="cx-nav-l">Differential Builder</span></button>
-              <button className={`cx-nav-i ${view === "studyplan" ? "on" : ""}`} onClick={() => openView("studyplan")} title="Study Planner"><CalendarCheck size={16} /><span className="cx-nav-l">Study Planner</span></button>
-              <button className={`cx-nav-i ${view === "podcasts" ? "on" : ""}`} onClick={() => openView("podcasts")} title="Revision Podcasts"><Headphones size={16} /><span className="cx-nav-l">Revision Podcasts</span></button>
-              <button className={`cx-nav-i ${view === "ecg" ? "on" : ""}`} onClick={() => openView("ecg")} title="ECG Reader"><Activity size={16} /><span className="cx-nav-l">ECG Reader</span></button>
-              <button className={`cx-nav-i ${view === "abx" ? "on" : ""}`} onClick={() => openView("abx")} title="Antibiotic Guide"><Bug size={16} /><span className="cx-nav-l">Antibiotic Guide</span></button>
-              <button className={`cx-nav-i ${view === "procedure" ? "on" : ""}`} onClick={() => openView("procedure")} title="Procedure Guide"><ListChecks size={16} /><span className="cx-nav-l">Procedure Guide</span></button>
-              <button className={`cx-nav-i ${view === "poison" ? "on" : ""}`} onClick={() => openView("poison")} title="Poisoning & Snakebite"><FlaskRound size={16} /><span className="cx-nav-l">Poisoning &amp; Snakebite</span></button>
-              <button className={`cx-nav-i ${view === "infusions" ? "on" : ""}`} onClick={() => openView("infusions")} title="Infusions"><Syringe size={16} /><span className="cx-nav-l">Infusions</span></button>
-              <button className={`cx-nav-i ${view === "convert" ? "on" : ""}`} onClick={() => openView("convert")} title="Dose Converter"><Scale size={16} /><span className="cx-nav-l">Dose Converter</span></button>
-              <button className={`cx-nav-i ${view === "abg" ? "on" : ""}`} onClick={() => openView("abg")} title="ABG Interpreter"><Wind size={16} /><span className="cx-nav-l">ABG Interpreter</span></button>
-              <button className={`cx-nav-i ${view === "logbook" ? "on" : ""}`} onClick={() => openView("logbook")} title="PG Logbook"><BookCheck size={16} /><span className="cx-nav-l">PG Logbook</span></button>
-              <button className={`cx-nav-i ${view === "followups" ? "on" : ""}`} onClick={() => openView("followups")} title="Follow-ups"><CalendarClock size={16} /><span className="cx-nav-l">Follow-ups</span></button>
-              <button className="cx-nav-i" onClick={() => void startVoice("viva")} title="Voice Viva"><MicVocal size={16} /><span className="cx-nav-l">Voice Viva</span></button>
-              <button className="cx-nav-i" onClick={() => void startVoice("osce")} title="Voice OSCE"><Speech size={16} /><span className="cx-nav-l">Voice OSCE</span></button>
-              <button className={`cx-nav-i ${view === "audiolib" ? "on" : ""}`} onClick={() => openView("audiolib")} title="Patient Audio Library"><FileAudio size={16} /><span className="cx-nav-l">Patient Audio Library</span></button>
-              <button className={`cx-nav-i ${view === "rxwrite" ? "on" : ""}`} onClick={() => openView("rxwrite")} title="Prescription Writer"><FilePen size={16} /><span className="cx-nav-l">Prescription Writer</span></button>
-              <button className={`cx-nav-i ${view === "labtrend" ? "on" : ""}`} onClick={() => openView("labtrend")} title="Lab Trends"><ChartLine size={16} /><span className="cx-nav-l">Lab Trends</span></button>
-              <button className={`cx-nav-i ${view === "daily" ? "on" : ""}`} onClick={() => openView("daily")} title="Daily Clinical Case"><CalendarHeart size={16} /><span className="cx-nav-l">Daily Clinical Case</span></button>
-              <button className={`cx-nav-i ${view === "letters" ? "on" : ""}`} onClick={() => openView("letters")} title="Letters & Certificates"><ScrollText size={16} /><span className="cx-nav-l">Letters &amp; Certificates</span></button>
-              <button className={`cx-nav-i ${view === "adr" ? "on" : ""}`} onClick={() => openView("adr")} title="ADR Report (PvPI)"><ShieldAlert size={16} /><span className="cx-nav-l">ADR Report (PvPI)</span></button>
-              <button className={`cx-nav-i ${view === "mccd" ? "on" : ""}`} onClick={() => openView("mccd")} title="Cause of Death (MCCD)"><FileSignature size={16} /><span className="cx-nav-l">Cause of Death (MCCD)</span></button>
-              <button className={`cx-nav-i ${view === "mnemonics" ? "on" : ""}`} onClick={() => openView("mnemonics")} title="Mnemonic Maker"><Brain size={16} /><span className="cx-nav-l">Mnemonic Maker</span></button>
-              <button className={`cx-nav-i ${view === "generics" ? "on" : ""}`} onClick={() => openView("generics")} title="Generic Finder"><PillBottle size={16} /><span className="cx-nav-l">Generic Finder</span></button>
-              <button className={`cx-nav-i ${view === "opd" ? "on" : ""}`} onClick={() => openView("opd")} title="OPD Queue"><ListOrdered size={16} /><span className="cx-nav-l">OPD Queue</span></button>
-              <button className={`cx-nav-i ${view === "imagequiz" ? "on" : ""}`} onClick={() => openView("imagequiz")} title="Clinical Image Quiz"><Images size={16} /><span className="cx-nav-l">Clinical Image Quiz</span></button>
-              <button className={`cx-nav-i ${view === "dosecard" ? "on" : ""}`} onClick={() => openView("dosecard")} title="Dose Card by Weight"><Weight size={16} /><span className="cx-nav-l">Dose Card by Weight</span></button>
-              <button className="cx-nav-i" onClick={() => openPractice("mock")} title="Mock Tests"><Timer size={16} /><span className="cx-nav-l">Mock Tests</span></button>
-              <button className={`cx-nav-i ${view === "oncall" ? "on" : ""}`} onClick={() => openView("oncall")} title="On-call Helper"><PhoneCall size={16} /><span className="cx-nav-l">On-call Helper</span></button>
-              <button className={`cx-nav-i ${view === "journal" ? "on" : ""}`} onClick={() => openView("journal")} title="Journal Club"><BookOpenText size={16} /><span className="cx-nav-l">Journal Club</span></button>
-              <button className={`cx-nav-i ${view === "stats" ? "on" : ""}`} onClick={() => openView("stats")} title="Statistics Test Chooser"><Sigma size={16} /><span className="cx-nav-l">Statistics Test Chooser</span></button>
-              <button className={`cx-nav-i ${view === "roster" ? "on" : ""}`} onClick={() => openView("roster")} title="Duty Roster"><CalendarRange size={16} /><span className="cx-nav-l">Duty Roster</span></button>
-              <button className={`cx-nav-i ${view === "records" ? "on" : ""}`} onClick={() => openView("records")} title="Patient Records"><FolderHeart size={16} /><span className="cx-nav-l">Patient Records</span></button>
-              <button className={`cx-nav-i ${view === "voiceround" ? "on" : ""}`} onClick={() => openView("voiceround")} title="Ward Rounds by Voice"><AudioWaveform size={16} /><span className="cx-nav-l">Ward Rounds by Voice</span></button>
-              <button className={`cx-nav-i ${view === "revnotes" ? "on" : ""}`} onClick={() => openView("revnotes")} title="Revision Notes"><NotebookPen size={16} /><span className="cx-nav-l">Revision Notes</span></button>
-              <button className={`cx-nav-i ${view === "analytics" ? "on" : ""}`} onClick={() => openView("analytics")} title="Clinic Analytics"><BarChart3 size={16} /><span className="cx-nav-l">Clinic Analytics</span></button>
-              <button className={`cx-nav-i ${view === "preop" ? "on" : ""}`} onClick={() => openView("preop")} title="Pre-op Assessment"><ClipboardPlus size={16} /><span className="cx-nav-l">Pre-op Assessment</span></button>
-              <button className={`cx-nav-i ${view === "messages" ? "on" : ""}`} onClick={() => openView("messages")} title="Patient Messages"><MessageSquareText size={16} /><span className="cx-nav-l">Patient Messages</span></button>
-              <button className={`cx-nav-i ${view === "preglact" ? "on" : ""}`} onClick={() => openView("preglact")} title="Pregnancy & Breastfeeding"><Baby size={16} /><span className="cx-nav-l">Pregnancy &amp; Breastfeeding</span></button>
-              <button className={`cx-nav-i ${view === "pillchart" ? "on" : ""}`} onClick={() => openView("pillchart")} title="Pill Chart"><Sun size={16} /><span className="cx-nav-l">Pill Chart</span></button>
-              <button className={`cx-nav-i ${view === "vaccines" ? "on" : ""}`} onClick={() => openView("vaccines")} title="Vaccination Scheduler"><Syringe size={16} /><span className="cx-nav-l">Vaccination Scheduler</span></button>
-              <button className={`cx-nav-i ${view === "diet" ? "on" : ""}`} onClick={() => openView("diet")} title="Diet Chart Maker"><Salad size={16} /><span className="cx-nav-l">Diet Chart Maker</span></button>
-              <button className={`cx-nav-i ${view === "icd" ? "on" : ""}`} onClick={() => openView("icd")} title="ICD-10 Coder"><FileCode2 size={16} /><span className="cx-nav-l">ICD-10 Coder</span></button>
-              <button className={`cx-nav-i ${view === "consent" ? "on" : ""}`} onClick={() => openView("consent")} title="Consent Form Writer"><FileSignature size={16} /><span className="cx-nav-l">Consent Form Writer</span></button>
-              <button className={`cx-nav-i ${view === "insulin" ? "on" : ""}`} onClick={() => openView("insulin")} title="Insulin Planner"><Pipette size={16} /><span className="cx-nav-l">Insulin Planner</span></button>
-              <button className={`cx-nav-i ${view === "transfusion" ? "on" : ""}`} onClick={() => openView("transfusion")} title="Blood Transfusion"><Droplet size={16} /><span className="cx-nav-l">Blood Transfusion</span></button>
-              <button className={`cx-nav-i ${view === "mlc" ? "on" : ""}`} onClick={() => openView("mlc")} title="MLC Injury Report"><Gavel size={16} /><span className="cx-nav-l">MLC Injury Report</span></button>
-              <button className={`cx-nav-i ${view === "tb" ? "on" : ""}`} onClick={() => openView("tb")} title="TB Treatment (NTEP)"><Microscope size={16} /><span className="cx-nav-l">TB Treatment (NTEP)</span></button>
-              <button data-tour="calculators" className={`cx-nav-i ${view === "calculators" ? "on" : ""}`} onClick={() => openCalculators()} title="Calculators"><Calculator size={16} /><span className="cx-nav-l">Calculators</span></button>
-              <button className={`cx-nav-i ${view === "projects" || view === "project" ? "on" : ""}`} onClick={openProjects} title="Projects"><Folder size={16} /><span className="cx-nav-l">Projects</span>{projects.length > 0 && <em>{projects.length}</em>}</button>
-              <button className={`cx-nav-i ${view === "decks" ? "on" : ""}`} onClick={() => { setView("decks"); setSidebarOpen(false); }} title="Decks"><Presentation size={16} /><span className="cx-nav-l">Decks</span>{decks.length > 0 && <em>{decks.length}</em>}</button>
+              <label className="cx-more-find"><Search size={14} /><input value={moreQ} onChange={(e) => setMoreQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Escape") setMoreQ(""); if (e.key === "Enter" && moreFound[0]) { setMoreQ(""); moreFound[0].go(); } }} placeholder={`Find a tool (${moreGroups.reduce((n, g) => n + g.items.length, 0)})`} aria-label="Find a tool" />{moreQ && <button className="cx-more-clear" onClick={() => setMoreQ("")} aria-label="Clear"><X size={13} /></button>}</label>
+              {moreQ.trim() ? (
+                moreFound.length ? <div className="cx-grp-b found">{moreFound.map(moreItemButton)}</div> : <p className="cx-more-none">No tool matches "{moreQ.trim()}"</p>
+              ) : moreGroups.map((g) => {
+                const open = openGroups.includes(g.id) || (tourOpen && g.items.some((i) => i.tour)); // the tour points at items inside these groups
+                return (
+                  <div key={g.id} className={`cx-grp ${open ? "open" : ""}`} data-group={g.id}>
+                    <button className="cx-grp-h" onClick={() => setOpenGroups((l) => (l.includes(g.id) ? [] : [g.id]))} aria-expanded={open} title={g.label}><g.icon size={16} /><span className="cx-nav-l">{g.label}</span><em>{g.items.length}</em><ChevronDown size={14} className="cx-chev" /></button>
+                    {open && <div className="cx-grp-b">{g.items.map(moreItemButton)}</div>}
+                  </div>
+                );
+              })}
               <p className="cx-more-gl">Trust</p>
               <button className={`cx-nav-i ${view === "safety" ? "on" : ""}`} onClick={() => { setView("safety"); setSidebarOpen(false); }} title="Clinical safety"><ShieldCheck size={16} /><span className="cx-nav-l">Clinical safety</span></button>
               <button className={`cx-nav-i ${view === "history" ? "on" : ""}`} onClick={() => { setView("history"); setSidebarOpen(false); }} title="Answer history"><History size={16} /><span className="cx-nav-l">Answer history</span></button>
@@ -4753,6 +4828,14 @@ export default function CadusAI() {
                 : view === "transfusion" ? [Droplet, "Blood Transfusion"]
                 : view === "mlc" ? [Gavel, "MLC Injury Report"]
                 : view === "tb" ? [Microscope, "TB Treatment (NTEP)"]
+                : view === "antenatal" ? [Heart, "Antenatal Care Tracker"]
+                : view === "ventilator" ? [Fan, "Ventilator Helper"]
+                : view === "teleconsult" ? [Video, "Teleconsultation Note"]
+                : view === "bills" ? [ReceiptIndianRupee, "Clinic Bills & Receipts"]
+                : view === "bite" ? [Dog, "Animal Bite (Rabies PEP)"]
+                : view === "needlestick" ? [Bandage, "Needle-stick Injury"]
+                : view === "imnci" ? [Thermometer, "IMNCI Sick Child"]
+                : view === "cme" ? [Award, "CME Credits"]
                 : view === "project" && project ? [Folder, project.name]
                 : [Folder, "Projects"];
               return <span className="cx-title-btn static"><Icon size={14} /> <span>{label}</span></span>;
@@ -5119,6 +5202,14 @@ export default function CadusAI() {
             : view === "transfusion" ? <TransfusionView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
             : view === "mlc" ? <MlcView generate={(body) => invokeCadus({ ...body, model: prefs.model })} friendlyError={friendlyError} toast={toast} onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
             : view === "tb" ? <TbView onPrint={(title, md) => printDoc(title, md, { mode: "leaflet" })} />
+            : view === "antenatal" ? <AntenatalView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
+            : view === "ventilator" ? <VentilatorView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
+            : view === "teleconsult" ? <TeleconsultView generate={(body) => invokeCadus({ ...body, model: prefs.model })} friendlyError={friendlyError} toast={toast} onPrint={(title, md) => printDoc(title, md, { mode: "rx" })} doctor={lh ? [lh.name, lh.qualifications, lh.registration].filter(Boolean).join(", ") : ""} language={prefs.language} />
+            : view === "bills" ? <BillsView toast={toast} onPrint={(title, md) => printDoc(title, md, { mode: "" })} clinic={lh ? [lh.hospital || lh.name, lh.address, lh.phone].filter(Boolean).join(" · ") : ""} />
+            : view === "bite" ? <AnimalBiteView onPrint={(title, md) => printDoc(title, md, { mode: "leaflet" })} />
+            : view === "needlestick" ? <NeedlestickView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
+            : view === "imnci" ? <ImnciView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
+            : view === "cme" ? <CmeView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
             : view === "today" ? (
               <TodayView
                 name={firstName}

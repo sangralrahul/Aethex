@@ -276,6 +276,7 @@ const TOOLS: [string, string][] = [
   ["OPD Queue", "t"], ["Clinical Image Quiz", "y"], ["Dose Card by Weight", "r"], ["Mock Tests", "y"], ["On-call Helper", "r"], ["Journal Club", "v"], ["Statistics Test Chooser", "v"], ["Duty Roster", "t"],
   ["Patient Records", "t"], ["Ward Rounds by Voice", "v"], ["Revision Notes", "y"], ["Clinic Analytics", "v"], ["Pre-op Assessment", "r"], ["Patient Messages", "t"], ["Pregnancy & Breastfeeding", "r"], ["Pill Chart", "y"],
   ["Vaccination Scheduler", "t"], ["Diet Chart Maker", "y"], ["ICD-10 Coder", "v"], ["Consent Form Writer", "r"], ["Insulin Planner", "t"], ["Blood Transfusion", "r"], ["MLC Injury Report", "v"], ["TB Treatment (NTEP)", "t"],
+  ["Antenatal Care Tracker", "r"], ["Ventilator Helper", "v"], ["Teleconsultation Note", "t"], ["Clinic Bills & Receipts", "y"], ["Animal Bite (Rabies PEP)", "r"], ["Needle-stick Injury", "v"], ["IMNCI Sick Child", "t"], ["CME Credits", "y"],
 ];
 
 /**
@@ -283,12 +284,12 @@ const TOOLS: [string, string][] = [
  * stays short. The full list of tools is in the app.
  */
 const NEW_IN_CADUS: { icon: typeof Pill; t: string; d: string; fx: FxKind }[] = [
-  { icon: ListOrdered, fx: "queue", t: "Your OPD, organised", d: "Token queue and waiting-room board, a record for every patient, vaccination schedules and clinic analytics." },
+  { icon: ListOrdered, fx: "queue", t: "Your OPD, organised", d: "Token queue, a record for every patient, teleconsultations, receipts and the day's takings, and clinic analytics." },
   { icon: FilePen, fx: "write", t: "Prescriptions in seconds", d: "Doses for age, weight and kidneys, interactions checked, advice and diet charts in the patient's language." },
   { icon: AudioWaveform, fx: "mic", t: "Ward rounds by voice", d: "Dictate at each bed; progress notes, handover and discharge summaries are written for you." },
   { icon: Activity, fx: "pulse", t: "Reads ECGs and reports", d: "Photograph an ECG or a lab report: a systematic read, trends charted, urgent findings flagged." },
   { icon: ScrollText, fx: "envelope", t: "Letters and forms done", d: "Referrals, bilingual consent forms, MLC injury reports, ICD-10 codes, PM-JAY pre-auth and the MCCD." },
-  { icon: ShieldPlus, fx: "shield", t: "Safer at the bedside", d: "Rx safety check, insulin plans, transfusion doses, TB regimens, poisoning and pregnancy guides." },
+  { icon: ShieldPlus, fx: "shield", t: "Safer at the bedside", d: "Rx safety check, ventilator and insulin plans, transfusion, rabies and needle-stick PEP, poisoning guides." },
   { icon: Volume2, fx: "wave", t: "Natural voices, 13 languages", d: "Hands-free voice mode, audio advice for patients on WhatsApp, podcasts, even your own voice." },
   { icon: Users2, fx: "orbit", t: "Cadus Crew", d: "Specialist assistants that consult, debate a hard case and work together; build your own." },
   { icon: CalendarHeart, fx: "calendar", t: "Learn a little every day", d: "A daily clinical case, revision notes on a schedule, flashcards and NEET-PG style mocks." },

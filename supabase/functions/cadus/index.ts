@@ -51,6 +51,7 @@
 //   icd-code              WHO ICD-10 codes from diagnoses or a discharge summary.
 //   consent-form          A bilingual informed-consent (or refusal) form with signature blocks.
 //   mlc-report            A medico-legal injury report from the doctor's examination notes.
+//   teleconsult           A teleconsultation record and e-prescription under the Telemedicine Practice Guidelines.
 //   crew-build            Assistant Builder: a one-line description to a full Crew assistant.
 //   debate-turn           Crew Debate: one assistant's opening or rebuttal for its side.
 //   debate-judge          Crew Debate: the neutral verdict on both sides' arguments.
@@ -152,6 +153,7 @@ import {
   MESSAGE_PURPOSES, PATIENT_MESSAGE_SYSTEM, patientMessage, PREG_LACT_SYSTEM, pregLact, PREOP_SYSTEM, preopResult, RECORD_SUMMARY_SYSTEM, recordSummary,
   REV_NOTE_SYSTEM, REV_STYLES, revNote, ROUND_UPDATE_SYSTEM, roundUpdate,
 } from "../_shared/clinic22.ts";
+import { TELE_KINDS, TELE_MODES, TELECONSULT_SYSTEM, teleconsult, type TeleKind, type TeleMode } from "../_shared/clinic24.ts";
 import { CONSENT_KINDS, CONSENT_SYSTEM, consentForm, DIET_SYSTEM, DIET_TYPES, dietChart, ICD_SYSTEM, icdResult, MLC_SYSTEM, mlcReport } from "../_shared/clinic23.ts";
 import { APPRAISE_SYSTEM, appraisal, IMAGE_QUIZ_SYSTEM, imageQuiz, ONCALL_CALLS, ONCALL_SYSTEM, oncallPlan } from "../_shared/clinic21.ts";
 import { ABX_SYSTEM, abxPlan, ECG_SYSTEM, ecgRead, POISON_SYSTEM, poisonPlan, PROCEDURE_SYSTEM, procGuide } from "../_shared/bedside.ts";
@@ -2429,6 +2431,24 @@ Deno.serve(async (req) => {
       if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
       const result = mlcReport(parseJsonLoose<any>(r.content));
       if (!result) return jsonResponse({ error: "Couldn't write the report from those notes. Add the injuries with sizes and sites and try again." }, 502);
+      return jsonResponse({ result });
+    }
+
+    // ---------------------------------------------------------------- Update 24
+    if (action === "teleconsult") {
+      const notes = String(body.notes || "").replace(/\r/g, "").trim().slice(0, 10000);
+      if (notes.split(/\s+/).length < 6) return jsonResponse({ error: "Add your consultation notes" }, 400);
+      const mode = ((TELE_MODES as readonly string[]).includes(String(body.mode)) ? String(body.mode) : "video") as TeleMode;
+      const kind = ((TELE_KINDS as readonly string[]).includes(String(body.kind)) ? String(body.kind) : "first") as TeleKind;
+      const initiated = body.initiated === "doctor" ? "the doctor or a health worker" : "the patient";
+      const r = await callAI({
+        model: CLAUDE_REVIEW_MODEL,
+        messages: [{ role: "system", content: TELECONSULT_SYSTEM }, { role: "user", content: [`MODE: ${mode}`, `CONSULTATION: ${kind === "first" ? "first consultation" : "follow-up"}`, `INITIATED BY: ${initiated}`, cleanLine(body.patient, 200) && `PATIENT (as identified): ${cleanLine(body.patient, 200)}`, cleanLine(body.caregiver, 120) && `CAREGIVER: ${cleanLine(body.caregiver, 120)}`, body.consent === true ? "CONSENT: explicit consent recorded" : "", `<notes>\n${notes}\n</notes>`].filter(Boolean).join("\n") }],
+        jsonMode: true, effort: "medium", maxTokens: 7000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = teleconsult(parseJsonLoose<any>(r.content), mode, kind);
+      if (!result) return jsonResponse({ error: "Couldn't write the consultation record. Please try again." }, 502);
       return jsonResponse({ result });
     }
 

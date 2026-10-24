@@ -262,7 +262,7 @@ export function energyNeeds(e: EnergyIn): { kcal: number; protein: number; bmi: 
 
 /* ------------------------------------------------------------------ saved drafts (ICD-10, consent, MLC, diet) */
 
-export type Draft23Kind = "icd" | "consent" | "mlc" | "diet";
+export type Draft23Kind = "icd" | "consent" | "mlc" | "diet" | "tele";
 export interface Draft23 { id: string; kind: Draft23Kind; title: string; at: number; data: unknown }
 const DRAFTS_KEY = "cadus3.drafts23";
 export const readDrafts23 = (kind?: Draft23Kind): Draft23[] => (load<Draft23[]>(DRAFTS_KEY, []) || []).filter((d) => d && typeof d.id === "string" && (!kind || d.kind === kind));
