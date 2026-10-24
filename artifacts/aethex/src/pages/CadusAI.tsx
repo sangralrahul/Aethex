@@ -22,7 +22,7 @@ import {
   Printer, Scissors, ScrollText, Sigma, PanelRight, EyeOff, Compass, Rows3, WifiOff, Building2, ScanSearch,
   Bot, GitBranch, HeartPulse, MessageCircle, BellRing, FileScan, ShieldPlus, ScanLine, Shield, Bone, AtSign, Users2, GitFork, CalendarDays, FileOutput, ArrowRightLeft, Waypoints, CalendarCheck, Activity, Bug, ListChecks, FlaskRound, Wind, BookCheck, CalendarClock, Eye, Ear, Droplets, Swords, Workflow, Headphones,
   type LucideIcon,
-  FileAudio, MicVocal, Speech, CalendarHeart, PillBottle, ListOrdered, Images, Weight, Timer, PhoneCall, CalendarRange, FolderHeart, AudioWaveform, BarChart3, MessageSquareText, Salad, FileCode2, Gavel, Droplet, Pipette, Heart, Fan, Video, ReceiptIndianRupee, Dog, Bandage, Thermometer, Award,
+  FileAudio, MicVocal, Speech, CalendarHeart, PillBottle, ListOrdered, Images, Weight, Timer, PhoneCall, CalendarRange, FolderHeart, AudioWaveform, BarChart3, MessageSquareText, Salad, FileCode2, Gavel, Droplet, Pipette, Heart, Fan, Video, ReceiptIndianRupee, Dog, Bandage, Thermometer, Award, CalendarPlus, Warehouse, HeartHandshake, Bean, Ruler, ContactRound, Wallet, BriefcaseMedical,
 } from "lucide-react";
 import { invokeAi } from "@/lib/ai-functions";
 import { useUserAuth } from "@/hooks/use-user-auth";
@@ -91,6 +91,14 @@ import AnimalBiteView from "@/components/cadus/AnimalBiteView";
 import NeedlestickView from "@/components/cadus/NeedlestickView";
 import ImnciView from "@/components/cadus/ImnciView";
 import CmeView from "@/components/cadus/CmeView";
+import AppointmentsView from "@/components/cadus/AppointmentsView";
+import StockView from "@/components/cadus/StockView";
+import ScreeningView from "@/components/cadus/ScreeningView";
+import KidneyDoseView from "@/components/cadus/KidneyDoseView";
+import SamView from "@/components/cadus/SamView";
+import ContactsView from "@/components/cadus/ContactsView";
+import AccountsView from "@/components/cadus/AccountsView";
+import ThyroidView from "@/components/cadus/ThyroidView";
 import PersonalSettings from "@/components/cadus/PersonalSettings";
 import { CADUS_CHAT_CSS } from "@/components/cadus/cadus-chat-styles";
 import { closePartialMarkdown, createTextStore, streamCadus, StreamUnavailable, type DeepStep } from "@/lib/cadus/stream";
@@ -107,7 +115,7 @@ import CrewPlaybookView from "@/components/cadus/CrewPlaybookView";
 import CrewBuilder from "@/components/cadus/CrewBuilder";
 import PodcastView from "@/components/cadus/PodcastView";
 import { VoiceSettings } from "@/components/cadus/AudioParts";
-import { CADUS_CLINIC20_CSS, CADUS_CLINIC21_CSS, CADUS_CLINIC22_CSS, CADUS_CLINIC23_CSS, CADUS_CLINIC24_CSS, CADUS_CREW_CSS, CADUS_CREWPLUS_CSS, CADUS_VOICE_CSS } from "@/components/cadus/cadus-crew-styles";
+import { CADUS_CLINIC20_CSS, CADUS_CLINIC21_CSS, CADUS_CLINIC22_CSS, CADUS_CLINIC23_CSS, CADUS_CLINIC24_CSS, CADUS_CLINIC25_CSS, CADUS_CREW_CSS, CADUS_CREWPLUS_CSS, CADUS_VOICE_CSS } from "@/components/cadus/cadus-crew-styles";
 import TranslatorView from "@/components/cadus/TranslatorView";
 import PathwaysView from "@/components/cadus/PathwaysView";
 import FlashcardsView from "@/components/cadus/FlashcardsView";
@@ -206,9 +214,9 @@ type ModeId =
   | "admission" | "progress" | "opnote" | "death" | "certificate" | "rx" | "evidence";
 /** "groq" only appears in chats saved before Cadus became Claude-only. */
 type Provider = "claude" | "groq" | "library";
-type View = "chat" | "crew" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "debate" | "playbooks" | "podcasts" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan" | "ecg" | "abx" | "procedure" | "poison" | "infusions" | "convert" | "abg" | "logbook" | "followups" | "audiolib" | "rxwrite" | "labtrend" | "daily" | "letters" | "adr" | "mccd" | "mnemonics" | "generics" | "opd" | "imagequiz" | "dosecard" | "oncall" | "journal" | "stats" | "roster" | "records" | "voiceround" | "revnotes" | "analytics" | "preop" | "messages" | "preglact" | "pillchart" | "vaccines" | "diet" | "icd" | "consent" | "insulin" | "transfusion" | "mlc" | "tb" | "antenatal" | "ventilator" | "teleconsult" | "bills" | "bite" | "needlestick" | "imnci" | "cme";
+type View = "chat" | "crew" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "debate" | "playbooks" | "podcasts" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan" | "ecg" | "abx" | "procedure" | "poison" | "infusions" | "convert" | "abg" | "logbook" | "followups" | "audiolib" | "rxwrite" | "labtrend" | "daily" | "letters" | "adr" | "mccd" | "mnemonics" | "generics" | "opd" | "imagequiz" | "dosecard" | "oncall" | "journal" | "stats" | "roster" | "records" | "voiceround" | "revnotes" | "analytics" | "preop" | "messages" | "preglact" | "pillchart" | "vaccines" | "diet" | "icd" | "consent" | "insulin" | "transfusion" | "mlc" | "tb" | "antenatal" | "ventilator" | "teleconsult" | "bills" | "bite" | "needlestick" | "imnci" | "cme" | "appointments" | "stock" | "screening" | "kidney" | "sam" | "contacts" | "accounts" | "thyroid";
 /** Views reached from the Tools hub, so the hub stays highlighted in the sidebar. */
-const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today", "discharge", "handover", "ddx", "studyplan", "podcasts", "ecg", "abx", "procedure", "poison", "infusions", "convert", "abg", "logbook", "followups", "audiolib", "rxwrite", "labtrend", "daily", "letters", "adr", "mccd", "mnemonics", "generics", "opd", "imagequiz", "dosecard", "oncall", "journal", "stats", "roster", "records", "voiceround", "revnotes", "analytics", "preop", "messages", "preglact", "pillchart", "vaccines", "diet", "icd", "consent", "insulin", "transfusion", "mlc", "tb", "antenatal", "ventilator", "teleconsult", "bills", "bite", "needlestick", "imnci", "cme"]);
+const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today", "discharge", "handover", "ddx", "studyplan", "podcasts", "ecg", "abx", "procedure", "poison", "infusions", "convert", "abg", "logbook", "followups", "audiolib", "rxwrite", "labtrend", "daily", "letters", "adr", "mccd", "mnemonics", "generics", "opd", "imagequiz", "dosecard", "oncall", "journal", "stats", "roster", "records", "voiceround", "revnotes", "analytics", "preop", "messages", "preglact", "pillchart", "vaccines", "diet", "icd", "consent", "insulin", "transfusion", "mlc", "tb", "antenatal", "ventilator", "teleconsult", "bills", "bite", "needlestick", "imnci", "cme", "appointments", "stock", "screening", "kidney", "sam", "contacts", "accounts", "thyroid"]);
 type ToolTab = "all" | "clinical" | "documentation" | "learning";
 type SettingsTab = "general" | "personal" | "letterhead" | "institution" | "data" | "shortcuts" | "about";
 type StyleId = "concise" | "balanced" | "detailed";
@@ -2797,6 +2805,14 @@ export default function CadusAI() {
       { key: "a:needlestick", label: "Needle-stick Injury: what to do now", hint: "First aid, HIV PEP, hepatitis B by immunity, follow-up tests", icon: Bandage, run: () => openView("needlestick") },
       { key: "a:imnci", label: "IMNCI Sick Child: classify and treat", hint: "Danger signs, pneumonia, diarrhoea, fever; doses by weight", icon: Thermometer, run: () => openView("imnci") },
       { key: "a:cme", label: "CME Credits: hours towards renewal", hint: "Every CME with certificates; progress for your council", icon: Award, run: () => openView("cme") },
+      { key: "a:appointments", label: "Appointments: the clinic's booking book", hint: "Slots from your hours, WhatsApp reminders, arrivals into the OPD queue", icon: CalendarPlus, run: () => openView("appointments") },
+      { key: "a:stock", label: "Pharmacy Stock: medicines and expiry", hint: "Stock in and out, low and near-expiry alerts, reorder list", icon: Warehouse, run: () => openView("stock") },
+      { key: "a:screening", label: "Mental Health Screening: PHQ-9, GAD-7, AUDIT-C", hint: "Scores, severity, next steps and a safety check", icon: HeartHandshake, run: () => openView("screening") },
+      { key: "a:kidney", label: "Kidney Dose Adjuster: doses in CKD", hint: "Cockcroft-Gault, common medicines by band, Cadus for others", icon: Bean, run: () => openView("kidney") },
+      { key: "a:sam", label: "Malnutrition (SAM): classify and treat", hint: "MUAC, oedema, appetite test, F-75 and F-100 by weight", icon: Ruler, run: () => openView("sam") },
+      { key: "a:contacts", label: "Referral Contacts: who you refer to", hint: "Specialists, hospitals, labs and ambulances; one-tap call", icon: ContactRound, run: () => openView("contacts") },
+      { key: "a:accounts", label: "Clinic Accounts: the month's income and expenses", hint: "Receipts in, expenses out, the net and the biggest costs", icon: Wallet, run: () => openView("accounts") },
+      { key: "a:thyroid", label: "Thyroid Dose Helper: levothyroxine", hint: "Starting dose, change by TSH, pregnancy targets", icon: Gauge, run: () => openView("thyroid") },
       { key: "a:present", label: "Presentation Coach: practise presenting a case", hint: "Ward round, long case, SBAR; scored with a model answer", icon: Presentation, run: () => openView("present") },
       { key: "a:compare", label: "Compare over time: what changed between two studies", hint: "X-rays, ECGs, scans, reports and wound photos", icon: History, run: () => openView("compare") },
       { key: "a:newcase", label: "New patient case", hint: "Start a de-identified case sheet", icon: ClipboardList, run: () => { const c = newCase(); setCases((l) => [c, ...l]); openCases(c.id); } },
@@ -3225,6 +3241,14 @@ export default function CadusAI() {
     { id: "needlestick", icon: Bandage, tone: "violet", title: "Needle-stick Injury", sub: "HIV PEP, hepatitis B and C", go: () => openView("needlestick") },
     { id: "imnci", icon: Thermometer, tone: "lime", title: "IMNCI Sick Child", sub: "Pink, yellow or green", go: () => openView("imnci") },
     { id: "cme", icon: Award, tone: "sky", title: "CME Credits", sub: "Hours towards renewal", go: () => openView("cme") },
+    { id: "appointments", icon: CalendarPlus, tone: "teal", title: "Appointments", sub: "Slots, reminders, arrivals", go: () => openView("appointments") },
+    { id: "stock", icon: Warehouse, tone: "amber", title: "Pharmacy Stock & Expiry", sub: "Low stock and expiry alerts", go: () => openView("stock") },
+    { id: "screening", icon: HeartHandshake, tone: "violet", title: "Mental Health Screening", sub: "PHQ-9, GAD-7, AUDIT-C", go: () => openView("screening") },
+    { id: "kidney", icon: Bean, tone: "sky", title: "Kidney Dose Adjuster", sub: "Doses for CrCl or dialysis", go: () => openView("kidney") },
+    { id: "sam", icon: Ruler, tone: "lime", title: "Malnutrition (SAM) Helper", sub: "MUAC, NRC, F-75 volumes", go: () => openView("sam") },
+    { id: "contacts", icon: ContactRound, tone: "teal", title: "Referral Contacts", sub: "Call or WhatsApp in one tap", go: () => openView("contacts") },
+    { id: "accounts", icon: Wallet, tone: "amber", title: "Clinic Accounts", sub: "Income, expenses, net", go: () => openView("accounts") },
+    { id: "thyroid", icon: Gauge, tone: "rose", title: "Thyroid Dose Helper", sub: "Levothyroxine by TSH", go: () => openView("thyroid") },
   ];
   /** The More drawer: every tool, grouped by what it is for (update 24). */
   type MoreItem = { label: string; title: string; icon: LucideIcon; on: boolean; go: () => void; tour?: string; badge?: ReactNode };
@@ -3235,7 +3259,6 @@ export default function CadusAI() {
         { label: "Patient Records", title: "Patient Records", icon: FolderHeart, on: view === "records", go: () => openView("records") },
         { label: "Prescription Writer", title: "Prescription Writer", icon: FilePen, on: view === "rxwrite", go: () => openView("rxwrite") },
         { label: "Teleconsultation Note", title: "Teleconsultation Note", icon: Video, on: view === "teleconsult", go: () => openView("teleconsult") },
-        { label: "Clinic Bills & Receipts", title: "Clinic Bills & Receipts", icon: ReceiptIndianRupee, on: view === "bills", go: () => openView("bills") },
         { label: "Follow-ups", title: "Follow-ups", icon: CalendarClock, on: view === "followups", go: () => openView("followups") },
         { label: "Patient Messages", title: "Patient Messages", icon: MessageSquareText, on: view === "messages", go: () => openView("messages") },
         { label: "Leaflets", title: "Patient leaflets and consent", icon: FileText, on: view === "leaflets", go: () => openView("leaflets") },
@@ -3243,7 +3266,16 @@ export default function CadusAI() {
         { label: "Pill Chart", title: "Pill Chart", icon: Sun, on: view === "pillchart", go: () => openView("pillchart") },
         { label: "Diet Chart Maker", title: "Diet Chart Maker", icon: Salad, on: view === "diet", go: () => openView("diet") },
         { label: "Consult Translator", title: "Consult Translator", icon: Languages, on: view === "translate", go: () => openView("translate") },
+      ] },
+    { id: "practice", label: "Practice", icon: BriefcaseMedical, items: [
+        { label: "Appointments", title: "Appointments", icon: CalendarPlus, on: view === "appointments", go: () => openView("appointments") },
+        { label: "Clinic Bills & Receipts", title: "Clinic Bills & Receipts", icon: ReceiptIndianRupee, on: view === "bills", go: () => openView("bills") },
+        { label: "Clinic Accounts", title: "Clinic Accounts", icon: Wallet, on: view === "accounts", go: () => openView("accounts") },
+        { label: "Pharmacy Stock & Expiry", title: "Pharmacy Stock & Expiry", icon: Warehouse, on: view === "stock", go: () => openView("stock") },
         { label: "Clinic Analytics", title: "Clinic Analytics", icon: BarChart3, on: view === "analytics", go: () => openView("analytics") },
+        { label: "Referral Contacts", title: "Referral Contacts", icon: ContactRound, on: view === "contacts", go: () => openView("contacts") },
+        { label: "Duty Roster", title: "Duty Roster", icon: CalendarRange, on: view === "roster", go: () => openView("roster") },
+        { label: "CME Credits", title: "CME Credits", icon: Award, on: view === "cme", go: () => openView("cme") },
       ] },
     { id: "ward", label: "Ward & On-call", icon: BedDouble, items: [
         { label: "Ward round", title: "Ward round", icon: BedDouble, on: view === "ward", go: openWard, tour: "ward", badge: wardInfo.patients.length > 0 && <em>{wardInfo.patients.length}</em> },
@@ -3253,7 +3285,6 @@ export default function CadusAI() {
         { label: "On-call Helper", title: "On-call Helper", icon: PhoneCall, on: view === "oncall", go: () => openView("oncall") },
         { label: "Pre-op Assessment", title: "Pre-op Assessment", icon: ClipboardPlus, on: view === "preop", go: () => openView("preop") },
         { label: "Procedure Guide", title: "Procedure Guide", icon: ListChecks, on: view === "procedure", go: () => openView("procedure") },
-        { label: "Duty Roster", title: "Duty Roster", icon: CalendarRange, on: view === "roster", go: () => openView("roster") },
       ] },
     { id: "emergency", label: "Emergency & ICU", icon: Siren, items: [
         { label: "Emergencies", title: "Emergency protocols", icon: Siren, on: view === "emergency", go: () => openView("emergency") },
@@ -3276,6 +3307,8 @@ export default function CadusAI() {
         { label: "Antibiotic Guide", title: "Antibiotic Guide", icon: Bug, on: view === "abx", go: () => openView("abx") },
         { label: "Dose Converter", title: "Dose Converter", icon: Scale, on: view === "convert", go: () => openView("convert") },
         { label: "TB Treatment (NTEP)", title: "TB Treatment (NTEP)", icon: Microscope, on: view === "tb", go: () => openView("tb") },
+        { label: "Kidney Dose Adjuster", title: "Kidney Dose Adjuster", icon: Bean, on: view === "kidney", go: () => openView("kidney") },
+        { label: "Thyroid Dose Helper", title: "Thyroid Dose Helper", icon: Gauge, on: view === "thyroid", go: () => openView("thyroid") },
       ] },
     { id: "mother", label: "Mother & Child", icon: Baby, items: [
         { label: "Paeds and obstetrics", title: "Paediatrics and obstetrics", icon: Baby, on: view === "paeds", go: () => openView("paeds") },
@@ -3283,6 +3316,7 @@ export default function CadusAI() {
         { label: "Pregnancy & Breastfeeding", title: "Pregnancy & Breastfeeding", icon: Baby, on: view === "preglact", go: () => openView("preglact") },
         { label: "Vaccination Scheduler", title: "Vaccination Scheduler", icon: Syringe, on: view === "vaccines", go: () => openView("vaccines") },
         { label: "IMNCI Sick Child", title: "IMNCI Sick Child", icon: Thermometer, on: view === "imnci", go: () => openView("imnci") },
+        { label: "Malnutrition (SAM) Helper", title: "Malnutrition (SAM) Helper", icon: Ruler, on: view === "sam", go: () => openView("sam") },
       ] },
     { id: "diagnosis", label: "Diagnosis & Evidence", icon: Microscope, items: [
         { label: "Research", title: "Research", icon: Microscope, on: view === "research", go: () => openResearch(), tour: "research" },
@@ -3295,6 +3329,7 @@ export default function CadusAI() {
         { label: "Calculators", title: "Calculators", icon: Calculator, on: view === "calculators", go: () => openCalculators(), tour: "calculators" },
         { label: "Journal Club", title: "Journal Club", icon: BookOpenText, on: view === "journal", go: () => openView("journal") },
         { label: "Statistics Test Chooser", title: "Statistics Test Chooser", icon: Sigma, on: view === "stats", go: () => openView("stats") },
+        { label: "Mental Health Screening", title: "Mental Health Screening", icon: HeartHandshake, on: view === "screening", go: () => openView("screening") },
       ] },
     { id: "documents", label: "Documents & Legal", icon: ScrollText, items: [
         { label: "Scribe", title: "Scribe: dictated notes", icon: Mic, on: view === "scribe", go: () => openView("scribe") },
@@ -3319,7 +3354,6 @@ export default function CadusAI() {
         { label: "Mnemonic Maker", title: "Mnemonic Maker", icon: Brain, on: view === "mnemonics", go: () => openView("mnemonics") },
         { label: "Study Planner", title: "Study Planner", icon: CalendarCheck, on: view === "studyplan", go: () => openView("studyplan") },
         { label: "PG Logbook", title: "PG Logbook", icon: BookCheck, on: view === "logbook", go: () => openView("logbook") },
-        { label: "CME Credits", title: "CME Credits", icon: Award, on: view === "cme", go: () => openView("cme") },
       ] },
     { id: "work", label: "My work", icon: Folder, items: [
         { label: "Projects", title: "Projects", icon: Folder, on: view === "projects" || view === "project", go: openProjects, badge: projects.length > 0 && <em>{projects.length}</em> },
@@ -4461,7 +4495,7 @@ export default function CadusAI() {
       style={{ ["--acc" as string]: dark ? accent.dark : accent.light, ["--fs" as string]: `${fontSize}px`, ["--fs-u" as string]: `${sansSize}px` }}
       {...dropHandlers}
     >
-      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS + CADUS_CREWPLUS_CSS + CADUS_VOICE_CSS + CADUS_CLINIC20_CSS + CADUS_CLINIC21_CSS + CADUS_CLINIC22_CSS + CADUS_CLINIC23_CSS + CADUS_CLINIC24_CSS}</style>
+      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS + CADUS_CREWPLUS_CSS + CADUS_VOICE_CSS + CADUS_CLINIC20_CSS + CADUS_CLINIC21_CSS + CADUS_CLINIC22_CSS + CADUS_CLINIC23_CSS + CADUS_CLINIC24_CSS + CADUS_CLINIC25_CSS}</style>
 
       {/* ============================================== sidebar */}
       <div className={`cx-scrim ${sidebarOpen ? "on" : ""}`} onClick={() => setSidebarOpen(false)} />
@@ -4836,6 +4870,14 @@ export default function CadusAI() {
                 : view === "needlestick" ? [Bandage, "Needle-stick Injury"]
                 : view === "imnci" ? [Thermometer, "IMNCI Sick Child"]
                 : view === "cme" ? [Award, "CME Credits"]
+                : view === "appointments" ? [CalendarPlus, "Appointments"]
+                : view === "stock" ? [Warehouse, "Pharmacy Stock & Expiry"]
+                : view === "screening" ? [HeartHandshake, "Mental Health Screening"]
+                : view === "kidney" ? [Bean, "Kidney Dose Adjuster"]
+                : view === "sam" ? [Ruler, "Malnutrition (SAM) Helper"]
+                : view === "contacts" ? [ContactRound, "Referral Contacts"]
+                : view === "accounts" ? [Wallet, "Clinic Accounts"]
+                : view === "thyroid" ? [Gauge, "Thyroid Dose Helper"]
                 : view === "project" && project ? [Folder, project.name]
                 : [Folder, "Projects"];
               return <span className="cx-title-btn static"><Icon size={14} /> <span>{label}</span></span>;
@@ -5210,6 +5252,14 @@ export default function CadusAI() {
             : view === "needlestick" ? <NeedlestickView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
             : view === "imnci" ? <ImnciView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
             : view === "cme" ? <CmeView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
+            : view === "appointments" ? <AppointmentsView toast={toast} clinic={lh ? [lh.hospital || lh.name, lh.phone].filter(Boolean).join(", ") : ""} onOpenOpd={() => openView("opd")} />
+            : view === "stock" ? <StockView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
+            : view === "screening" ? <ScreeningView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
+            : view === "kidney" ? <KidneyDoseView generate={(body) => invokeCadus({ ...body, model: prefs.model })} friendlyError={friendlyError} toast={toast} />
+            : view === "sam" ? <SamView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
+            : view === "contacts" ? <ContactsView />
+            : view === "accounts" ? <AccountsView />
+            : view === "thyroid" ? <ThyroidView />
             : view === "today" ? (
               <TodayView
                 name={firstName}

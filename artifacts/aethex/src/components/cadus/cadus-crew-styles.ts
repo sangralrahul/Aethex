@@ -531,3 +531,55 @@ export const CADUS_CLINIC24_CSS = `
 .cx.is-collapsed .cx-more-find,.cx.is-collapsed .cx-grp-h em,.cx.is-collapsed .cx-grp-h .cx-chev{display:none}
 .cx.is-collapsed .cx-grp-b{margin:0;padding:0;border:0}
 `;
+
+export const CADUS_CLINIC25_CSS = `
+.cx-c23-row .cx-field:has(>.cx-seg){flex:0 1 auto;max-width:100%}
+.cx-c23-row .cx-field>.cx-seg{max-width:100%;overflow-x:auto}
+.cx-appt-nav{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:6px 0 12px}
+.cx-appt-nav>b{margin-right:auto}
+.cx-appt-list{list-style:none;margin:12px 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.cx-appt-list li{display:flex;align-items:flex-start;gap:12px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.cx-appt-list li.free{background:transparent;border-style:dashed}
+.cx-appt-t{flex:none;width:52px;font-weight:700;font-variant-numeric:tabular-nums;padding-top:4px}
+.cx-appt-b{flex:1;min-width:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cx-appt-b>span{flex:1;min-width:140px;display:flex;flex-direction:column}
+.cx-appt-b small{color:var(--t2)}
+.cx-appt-b em{font-style:normal;font-size:12px;padding:2px 8px;border-radius:99px;background:var(--s2);text-transform:capitalize}
+.cx-appt-b.s-arrived em,.cx-appt-b.s-seen em{background:color-mix(in srgb,var(--ok,#15803d) 14%,var(--surface));color:var(--ok,#15803d)}
+.cx-appt-b.s-no-show em{background:color-mix(in srgb,var(--danger) 12%,var(--surface));color:var(--danger)}
+.cx-appt-b.s-cancelled{opacity:.55}
+.cx-appt-free{color:var(--t3);font:inherit;font-size:13px;padding:4px 0}
+.cx-appt-free:hover{color:var(--acc)}
+.cx-stock-f{display:inline-block;margin:0 4px 2px 0;padding:2px 8px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap;background:color-mix(in srgb,#ca8a04 14%,var(--surface));color:#a16207}
+.cx-stock-f.f-expired,.cx-stock-f.f-out{background:color-mix(in srgb,var(--danger) 12%,var(--surface));color:var(--danger)}
+.cx-stock-adj{display:inline-flex;align-items:center;gap:4px}
+.cx-stock-adj .cx-input{width:64px}
+.cx-screen-q{margin:10px 0;padding-left:22px;display:flex;flex-direction:column;gap:12px}
+.cx-screen-q li p{margin:0 0 6px;font-weight:500}
+.cx-screen-q li.q9 p{color:var(--danger)}
+.cx-screen-opts{display:flex;flex-wrap:wrap;gap:6px}
+.cx-screen-opts button{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:13px;cursor:pointer}
+.cx-screen-opts button small{color:var(--t3)}
+.cx-screen-opts button.on{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 12%,var(--surface))}
+.cx-screen-urgent{padding:12px 14px;border:1px solid var(--danger);border-radius:var(--r-lg,12px);background:color-mix(in srgb,var(--danger) 8%,var(--surface));margin:10px 0}
+.cx-screen-urgent b{display:flex;align-items:center;gap:6px;color:var(--danger)}
+.cx-screen-urgent p{margin:6px 0 0;font-size:14px}
+.cx-screen-urgent a{font-weight:700}
+.cx-seg button small{color:var(--t3);font-weight:400}
+.cx-kd-table td.on{font-weight:600}
+.cx-kd-table td.avoid{color:var(--danger)}
+.cx-kd-ai{display:flex;flex-direction:column;gap:2px;padding:10px 0;border-bottom:1px solid var(--line)}
+.cx-kd-ai small{color:var(--t2)}
+.cx-kd-ai p{margin:2px 0;font-size:14px}
+.cx-ct-list{list-style:none;margin:12px 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.cx-ct-list li{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);flex-wrap:wrap}
+.cx-ct-who{flex:1;min-width:160px;display:flex;flex-direction:column}
+.cx-ct-who small{color:var(--t2)}
+.cx-ct-list .cx-ib.on{color:#ca8a04}
+.cx-acc-bars{display:flex;flex-direction:column;gap:6px;margin:12px 0}
+.cx-acc-bars div{display:grid;grid-template-columns:180px minmax(0,1fr) 100px;gap:10px;align-items:center;font-size:13.5px}
+.cx-acc-bars i{display:block;height:10px;border-radius:99px;background:var(--acc)}
+.cx-acc-bars b{text-align:right;font-variant-numeric:tabular-nums}
+.cx-acc-neg{color:var(--danger)}
+@media (max-width:640px){.cx-acc-bars div{grid-template-columns:110px minmax(0,1fr) 80px}.cx-appt-t{width:44px}}
+`;

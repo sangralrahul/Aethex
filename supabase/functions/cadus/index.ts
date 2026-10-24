@@ -52,6 +52,7 @@
 //   consent-form          A bilingual informed-consent (or refusal) form with signature blocks.
 //   mlc-report            A medico-legal injury report from the doctor's examination notes.
 //   teleconsult           A teleconsultation record and e-prescription under the Telemedicine Practice Guidelines.
+//   renal-dose            Dose adjustment in kidney disease for medicines not in the on-device table.
 //   crew-build            Assistant Builder: a one-line description to a full Crew assistant.
 //   debate-turn           Crew Debate: one assistant's opening or rebuttal for its side.
 //   debate-judge          Crew Debate: the neutral verdict on both sides' arguments.
@@ -153,6 +154,7 @@ import {
   MESSAGE_PURPOSES, PATIENT_MESSAGE_SYSTEM, patientMessage, PREG_LACT_SYSTEM, pregLact, PREOP_SYSTEM, preopResult, RECORD_SUMMARY_SYSTEM, recordSummary,
   REV_NOTE_SYSTEM, REV_STYLES, revNote, ROUND_UPDATE_SYSTEM, roundUpdate,
 } from "../_shared/clinic22.ts";
+import { RENAL_SYSTEM, renalAi, renalDrugs } from "../_shared/clinic25.ts";
 import { TELE_KINDS, TELE_MODES, TELECONSULT_SYSTEM, teleconsult, type TeleKind, type TeleMode } from "../_shared/clinic24.ts";
 import { CONSENT_KINDS, CONSENT_SYSTEM, consentForm, DIET_SYSTEM, DIET_TYPES, dietChart, ICD_SYSTEM, icdResult, MLC_SYSTEM, mlcReport } from "../_shared/clinic23.ts";
 import { APPRAISE_SYSTEM, appraisal, IMAGE_QUIZ_SYSTEM, imageQuiz, ONCALL_CALLS, ONCALL_SYSTEM, oncallPlan } from "../_shared/clinic21.ts";
@@ -2449,6 +2451,22 @@ Deno.serve(async (req) => {
       if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
       const result = teleconsult(parseJsonLoose<any>(r.content), mode, kind);
       if (!result) return jsonResponse({ error: "Couldn't write the consultation record. Please try again." }, 502);
+      return jsonResponse({ result });
+    }
+
+    // ---------------------------------------------------------------- Update 25
+    if (action === "renal-dose") {
+      const drugs = renalDrugs(body.drugs);
+      if (!drugs.length) return jsonResponse({ error: "Add the medicines" }, 400);
+      const crcl = Number(body.crcl);
+      const r = await callAI({
+        model: CLAUDE_REVIEW_MODEL,
+        messages: [{ role: "system", content: RENAL_SYSTEM }, { role: "user", content: [`MEDICINES:\n- ${drugs.join("\n- ")}`, Number.isFinite(crcl) && crcl > 0 && crcl < 200 ? `PATIENT'S CREATININE CLEARANCE: ${Math.round(crcl)} ml/min` : "", body.dialysis === true ? "ON HAEMODIALYSIS" : ""].filter(Boolean).join("\n") }],
+        jsonMode: true, effort: "medium", maxTokens: 4000,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = renalAi(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't find kidney dosing for those medicines. Check the spelling and try again." }, 502);
       return jsonResponse({ result });
     }
 
