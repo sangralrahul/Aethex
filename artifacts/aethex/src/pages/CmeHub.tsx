@@ -579,7 +579,7 @@ export default function CmeHub() {
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
-                Starting at ₹299/month · Cancel anytime
+                Starter free · Core $10/month · Professional $35/month · Enterprise on request
               </p>
             </div>
           </div>

@@ -113,7 +113,7 @@ export const CADUS_CLINIC_CSS = `
 .cx-gate{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg);color:var(--text)}
 .cx-gate-in{display:flex;flex-direction:column;align-items:center;gap:14px;font-size:14px;color:var(--t2)}
 .cx-upgrade{max-width:460px}
-.cx-up-now{font-size:13.5px;color:var(--t2);margin-bottom:10px}
+.cx-up-now,.cx-up-price{font-size:13.5px;color:var(--t2);margin-bottom:10px}
 .cx-up-list{margin:0 0 14px;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
 .cx-up-list li{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;line-height:1.45}
 .cx-up-list li svg{flex-shrink:0;margin-top:3px;color:var(--ok)}

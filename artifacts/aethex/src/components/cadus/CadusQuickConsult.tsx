@@ -261,7 +261,7 @@ export default function CadusQuickConsult() {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKey}
-            placeholder="Ask a medical question…"
+            placeholder="Ask a medical question…" aria-label="Ask a medical question"
             rows={1}
             className="flex-1 text-sm resize-none outline-none rounded-xl px-3 py-2.5"
             style={{

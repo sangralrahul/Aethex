@@ -1,7 +1,7 @@
 /**
  * Cadus plans: Starter (free), Core, Professional, and Enterprise for medical
  * colleges and institutions. The plan lives on the Aethex account; limits are
- * applied in the app. Core and Professional are requested by invoice until the
+ * applied in the app. Prices are in US dollars. Core and Professional are requested by invoice until the
  * payment gateway is switched on; Enterprise is quoted.
  */
 import { SUPPORT_EMAIL } from "./legal";
@@ -30,8 +30,9 @@ export interface Plan {
   name: string;
   tagline: string;
   audience: string;
-  /** Rupees a month and a year per user; null when quoted. */
+  /** US dollars a month per user; null when quoted. */
   monthly: number | null;
+  /** Yearly price in US dollars; null when only monthly billing is offered. */
   yearly: number | null;
   limits: PlanLimits;
   /** What the plan includes, in order, for the plans page. */
@@ -51,14 +52,14 @@ export const PLANS: Plan[] = [
   },
   {
     id: "core", name: "Core", tagline: "For the wards and the exam.", audience: "Residents, interns and aspirants",
-    monthly: 299, yearly: 2499,
+    monthly: 10, yearly: null,
     limits: { questionsPerDay: 100, sources: true, magnus: false, reading: true, prescriber: false, institution: false, mocks: true },
     includes: ["100 questions a day", "Everything in Starter", "Live sources: WHO, ICMR, NICE and PubMed, cited", "Image and report reading: X-ray, ECG, CT, labs and more", "Learn: timed mock tests with NEET-style marks", "Research: PubMed search, reading list and the thesis kit"],
     cta: "Most residents choose Core", popular: true,
   },
   {
     id: "professional", name: "Professional", tagline: "For practising doctors.", audience: "Consultants, GPs and clinics",
-    monthly: 799, yearly: 6999,
+    monthly: 35, yearly: null,
     limits: { questionsPerDay: Infinity, sources: true, magnus: true, reading: true, prescriber: true, institution: false, mocks: true },
     includes: ["Unlimited questions", "Everything in Core", "Cadus Magnus 3.6 as the drafting model", "Prescriber with your letterhead, Word export and interaction checks", "Letters, certificates and discharge summaries on your letterhead", "Priority answers at busy hours"],
     cta: "Everything a clinic needs",
@@ -67,7 +68,7 @@ export const PLANS: Plan[] = [
     id: "enterprise", name: "Enterprise", tagline: "For medical colleges and institutions.", audience: "Colleges, hospitals and departments",
     monthly: null, yearly: null,
     limits: { questionsPerDay: Infinity, sources: true, magnus: true, reading: true, prescriber: true, institution: true, mocks: true },
-    includes: ["Professional for every seat, from 25 seats", "Institution protocols and formulary in every answer", "Team packs: shared cases, decks and question banks", "College or hospital email sign-in, admin console and usage reports", "Invoice billing, a signed data-processing agreement and GST invoice", "On-campus onboarding and a named support contact"],
+    includes: ["Professional for every seat, from 25 seats", "Institution protocols and formulary in every answer", "Team packs: shared cases, decks and question banks", "College or hospital email sign-in, admin console and usage reports", "Invoice billing and a signed data-processing agreement", "On-campus onboarding and a named support contact"],
     cta: "Quoted per institution",
   },
 ];
@@ -91,7 +92,10 @@ export function planFor(feature: keyof Omit<PlanLimits, "questionsPerDay">): Pla
   return PLANS.find((p) => p.limits[feature]) ?? PLAN_BY_ID.enterprise;
 }
 
-export const rupees = (n: number) => `₹${n.toLocaleString("en-IN")}`;
+export const dollars = (n: number) => `$${n.toLocaleString("en-US", { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
+
+/** The price as words for a plan: "Free", "$10 a month" or "Price on request". */
+export const priceText = (p: Plan) => (p.monthly === null ? "Price on request" : p.monthly === 0 ? "Free" : `${dollars(p.monthly)} a month`);
 
 /* ------------------------------------------------------------------ plan requests (invoice) */
 
@@ -121,14 +125,14 @@ export function savePlanRequest(r: PlanRequest | null) {
 /** The request as an email, ready to send to Aethex. */
 export function planRequestMail(r: PlanRequest): { to: string; subject: string; body: string } {
   const p = PLAN_BY_ID[r.plan];
-  const price = p.monthly === null ? "quote requested" : r.cycle === "yearly" ? `${rupees(p.yearly!)} a year` : `${rupees(p.monthly)} a month`;
+  const price = p.monthly === null ? "quote requested" : `${dollars(p.monthly)} a month per user`;
   const body = [
     `Plan request: Cadus ${p.name}`,
     "",
     `Name: ${r.name}`,
     `Email: ${r.email}`,
     r.organisation ? `Organisation: ${r.organisation}` : "",
-    `Billing: ${r.cycle === "yearly" ? "Yearly" : "Monthly"} (${price})`,
+    `Billing: Monthly (${price})`,
     r.plan === "enterprise" ? `Seats: ${r.seats}` : "",
     r.note ? `\n${r.note}` : "",
     "",

@@ -5,6 +5,7 @@ import { useUserAuth } from "@/hooks/use-user-auth";
 import { SavedAddresses } from "@/components/shop/SavedAddresses";
 import { formatINR } from "@/lib/utils";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
+import { PLANS, priceText } from "@/lib/cadus/plans";
 import { ReferralProgram } from "@/components/ReferralProgram";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -461,45 +462,25 @@ export default function Account() {
 
                 {!user.isPro && (
                   <>
-                    <p className="text-sm text-[#3c3c43]">Upgrade to Cadus Pro for unlimited AI queries, advanced features, and priority access.</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {[
-                        { plan: "monthly" as const, label: "Monthly", price: 299, period: "/month", saving: null },
-                        { plan: "annual" as const, label: "Annual", price: 1999, period: "/year", saving: "Save ₹1,589" },
-                      ].map(option => (
-                        <div key={option.plan} className={`p-6 border rounded-2xl ${option.plan === "annual" ? "border-[#00C2A8]/40 bg-[#00C2A8]/5 relative" : "border-black/[0.08] bg-white"}`}>
-                          {option.plan === "annual" && (
-                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-[#00C2A8] text-[#F5F3EE] text-xs font-bold rounded-full whitespace-nowrap">
-                              Best Value
-                            </div>
-                          )}
-                          <h4 className="font-bold text-[#1c1c1e] mb-1">{option.label}</h4>
-                          <div className="flex items-end gap-1 mb-1">
-                            <span className="text-3xl font-display font-extrabold text-[#1c1c1e]">₹{option.price.toLocaleString()}</span>
-                            <span className="text-sm text-[#6c6c70] mb-1">{option.period}</span>
-                          </div>
-                          {option.saving && <p className="text-xs text-[#00C2A8] mb-4">{option.saving}</p>}
-                          {!option.saving && <p className="text-xs text-[#6c6c70] mb-4">Cancel anytime</p>}
+                    <p className="text-sm text-[#3c3c43]">Move up when you need more: prices in US dollars per user.</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" data-account="plans">
+                      {PLANS.map((p) => (
+                        <div key={p.id} className={`p-6 border rounded-2xl ${p.popular ? "border-[#00C2A8]/40 bg-[#00C2A8]/5" : "border-black/[0.08] bg-white"}`}>
+                          <h4 className="font-bold text-[#1c1c1e] mb-1">{p.name}</h4>
+                          <div className="text-2xl font-display font-extrabold text-[#1c1c1e] mb-1">{priceText(p)}</div>
+                          <p className="text-xs text-[#6c6c70] mb-3">{p.audience}</p>
                           <ul className="space-y-2 mb-5">
-                            {["Unlimited Cadus queries", "Image & lab analysis", "PDF export", "Drug interaction checker", "SOAP notes generator", "MCQ generator"].map((feat, i) => (
-                              <li key={i} className="flex items-center gap-2 text-xs text-[#3c3c43]">
+                            {p.includes.map((feat) => (
+                              <li key={feat} className="flex items-center gap-2 text-xs text-[#3c3c43]">
                                 <CheckCircle2 className="w-3.5 h-3.5 text-[#00C2A8] shrink-0" />
                                 {feat}
                               </li>
                             ))}
                           </ul>
-                          <button onClick={() => handleActivatePro(option.plan)} disabled={proLoading}
-                            className={`w-full py-3 font-bold rounded-xl transition-all text-sm disabled:opacity-60 ${
-                              option.plan === "annual"
-                                ? "bg-[#00C2A8] text-[#F5F3EE] hover:bg-[#00D4B8]"
-                                : "bg-black/10 border border-black/15 text-[#1c1c1e] hover:bg-white/20"
-                            }`}>
-                            {proLoading ? "Processing..." : `Subscribe ${option.label} — ₹${option.price.toLocaleString()}`}
-                          </button>
-                          <p className="text-center text-xs text-[#aeaeb2] mt-2">Demo: no real payment</p>
                         </div>
                       ))}
                     </div>
+                    <Link href="/ai-assistant/plans" className="inline-flex items-center gap-1 text-sm font-bold text-[#007AFF]">See plans and request one <ChevronRight className="w-4 h-4" /></Link>
                   </>
                 )}
               </div>

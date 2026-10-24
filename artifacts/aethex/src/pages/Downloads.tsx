@@ -279,6 +279,7 @@ const TOOLS: [string, string][] = [
   ["Antenatal Care Tracker", "r"], ["Ventilator Helper", "v"], ["Teleconsultation Note", "t"], ["Clinic Bills & Receipts", "y"], ["Animal Bite (Rabies PEP)", "r"], ["Needle-stick Injury", "v"], ["IMNCI Sick Child", "t"], ["CME Credits", "y"],
   ["Appointments", "t"], ["Pharmacy Stock & Expiry", "y"], ["Mental Health Screening", "v"], ["Kidney Dose Adjuster", "r"], ["Malnutrition (SAM) Helper", "t"], ["Referral Contacts", "y"], ["Clinic Accounts", "v"], ["Thyroid Dose Helper", "r"],
   ["Backup & Restore", "t"], ["BP & Sugar Protocols", "r"], ["Anaemia & Iron", "r"], ["Dengue Helper", "y"], ["Electrolyte Replacement", "v"], ["Obstetric Emergencies", "r"], ["Infection Control & Waste", "t"],
+  ["Asthma & COPD Plans", "v"], ["Developmental Milestones", "y"], ["Contraception Advisor", "r"], ["Palliative Care Helper", "r"], ["Imaging Decision Rules", "v"], ["IV Fluids Planner", "t"], ["Sick-Day Rules", "y"], ["Lab Reference Ranges", "t"],
 ];
 
 /**

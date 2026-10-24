@@ -607,3 +607,26 @@ export const CADUS_CLINIC26_CSS = `
 .cx-bmw-bin.c-yellow{border-top-color:#eab308}.cx-bmw-bin.c-red{border-top-color:#dc2626}.cx-bmw-bin.c-white{border-top-color:#cbd5e1}.cx-bmw-bin.c-blue{border-top-color:#2563eb}
 @media (max-width:640px){.cx-bmw{grid-template-columns:1fr}}
 `;
+
+export const CADUS_CLINIC27_CSS = `
+.cx-handout{margin-top:10px}
+.cx-asthma-zones{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}
+.cx-asthma-zones>div{padding:12px 14px;border-radius:var(--r-lg,12px);border:1px solid var(--line);border-top:6px solid}
+.cx-asthma-zones p{margin:6px 0 0;font-size:13.5px}
+.cx-asthma-zones .z-green{border-top-color:#16a34a}.cx-asthma-zones .z-yellow{border-top-color:#eab308}.cx-asthma-zones .z-red{border-top-color:#dc2626}
+.cx-mile-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0;align-items:start}
+.cx-mile-grid fieldset{display:flex;flex-direction:column;gap:6px;margin:0;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-lg,12px);background:var(--surface);min-width:0}
+.cx-mile-grid legend{padding:0 6px;font-weight:600}
+.cx-mile-grid small{color:var(--t3)}
+.cx-cc-ticks .cx-pa-mine{flex:1 1 240px}
+.cx-cc-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}
+.cx-cc-m{padding:12px 14px;border-radius:var(--r-lg,12px);border:1px solid var(--line);border-left:5px solid #16a34a;background:var(--surface)}
+.cx-cc-m.c3{border-left-color:#ca8a04}.cx-cc-m.c4{border-left-color:var(--danger);opacity:.8}
+.cx-cc-h{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.cx-cc-h span{font-size:12.5px;font-weight:700;color:#15803d;white-space:nowrap}
+.cx-cc-m.c3 .cx-cc-h span{color:#a16207}.cx-cc-m.c4 .cx-cc-h span{color:var(--danger)}
+.cx-cc-m p{margin:6px 0 0;font-size:13.5px}
+.cx-cc-why{color:var(--t2)}
+.cx-imaging-ticks{display:flex;flex-direction:column;gap:8px;margin:12px 0}
+@media (max-width:640px){.cx-asthma-zones,.cx-mile-grid,.cx-cc-list{grid-template-columns:1fr}}
+`;
