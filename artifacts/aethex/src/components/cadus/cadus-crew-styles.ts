@@ -630,3 +630,25 @@ export const CADUS_CLINIC27_CSS = `
 .cx-imaging-ticks{display:flex;flex-direction:column;gap:8px;margin:12px 0}
 @media (max-width:640px){.cx-asthma-zones,.cx-mile-grid,.cx-cc-list{grid-template-columns:1fr}}
 `;
+
+export const CADUS_CLINIC28_CSS = `
+.cx-burn-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}
+.cx-burn-r{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:var(--r-md,10px);background:var(--surface);min-width:0}
+.cx-burn-r span{font-size:13.5px;min-width:0}
+.cx-burn-r small{color:var(--t3)}
+.cx-nihss{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}
+.cx-nihss .cx-field small{color:var(--t3);font-size:12px;line-height:1.35}
+.cx-sp-clock{margin:10px 0;padding:10px 14px;border-radius:var(--r-lg,12px);background:var(--surface);border:1px solid var(--line);font-size:14.5px}
+.cx-sp-clock b{font-size:20px;margin-right:6px}
+.cx-sp-clock.late{border-color:var(--danger);color:var(--danger)}
+.cx-sp-steps{display:flex;flex-direction:column;gap:8px;margin:10px 0}
+.cx-sp-steps .cx-pa-mine{align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md,10px);background:var(--surface)}
+.cx-sp-steps .cx-pa-mine.done{border-color:#16a34a}
+.cx-sp-steps em{font-style:normal;color:#15803d;font-size:12.5px;margin-left:6px}
+.cx-sp-steps small{color:var(--t2)}
+.cx-nnj-photo,.cx-df-l2,.cx-ht-l2{border-left:5px solid #ca8a04}
+.cx-nnj-intensive,.cx-nnj-exchange,.cx-df-l3,.cx-df-l4,.cx-ht-l3,.cx-st-out{border-left:5px solid var(--danger)}
+.cx-nnj-recheck{border-left:5px solid #2563eb}
+@media (max-width:760px){.cx-burn-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cx-nihss{grid-template-columns:1fr}}
+@media (max-width:460px){.cx-burn-grid{grid-template-columns:1fr}}
+`;

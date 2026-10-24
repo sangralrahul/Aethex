@@ -280,6 +280,7 @@ const TOOLS: [string, string][] = [
   ["Appointments", "t"], ["Pharmacy Stock & Expiry", "y"], ["Mental Health Screening", "v"], ["Kidney Dose Adjuster", "r"], ["Malnutrition (SAM) Helper", "t"], ["Referral Contacts", "y"], ["Clinic Accounts", "v"], ["Thyroid Dose Helper", "r"],
   ["Backup & Restore", "t"], ["BP & Sugar Protocols", "r"], ["Anaemia & Iron", "r"], ["Dengue Helper", "y"], ["Electrolyte Replacement", "v"], ["Obstetric Emergencies", "r"], ["Infection Control & Waste", "t"],
   ["Asthma & COPD Plans", "v"], ["Developmental Milestones", "y"], ["Contraception Advisor", "r"], ["Palliative Care Helper", "r"], ["Imaging Decision Rules", "v"], ["IV Fluids Planner", "t"], ["Sick-Day Rules", "y"], ["Lab Reference Ranges", "t"],
+  ["Burns Helper", "r"], ["Neonatal Jaundice", "y"], ["Stroke & Thrombolysis", "v"], ["Sepsis & DKA Bundles", "r"], ["Alcohol Withdrawal", "v"], ["Diabetic Foot", "t"], ["Heat Illness", "y"], ["Wound & Suture Care", "t"],
 ];
 
 /**
