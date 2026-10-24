@@ -652,3 +652,16 @@ export const CADUS_CLINIC28_CSS = `
 @media (max-width:760px){.cx-burn-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cx-nihss{grid-template-columns:1fr}}
 @media (max-width:460px){.cx-burn-grid{grid-template-columns:1fr}}
 `;
+
+export const CADUS_CLINIC29_CSS = `
+.cx-cfs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}
+.cx-cfs-b{display:flex;gap:10px;align-items:flex-start;text-align:left;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md,10px);background:var(--surface);color:inherit;font:inherit;cursor:pointer;min-width:0}
+.cx-cfs-b>b{font-size:20px;line-height:1;min-width:20px}
+.cx-cfs-b span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.cx-cfs-b small{color:var(--t2);font-size:12.5px;line-height:1.35}
+.cx-cfs-b.on{border-color:var(--accent,#2563eb);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent,#2563eb) 25%,transparent)}
+.cx-ac-low{border-left:5px solid #2563eb}.cx-ac-in{border-left:5px solid #16a34a}.cx-ac-high{border-left:5px solid #ca8a04}.cx-ac-danger,.cx-pa-life,.cx-pa-severe{border-left:5px solid var(--danger)}
+.cx-pa-moderate{border-left:5px solid #ca8a04}
+.cx-c23-table tr.no td{color:var(--danger)}
+@media (max-width:760px){.cx-cfs{grid-template-columns:1fr}}
+`;
