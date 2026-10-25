@@ -1170,3 +1170,134 @@ export function crewLevel(earned: number): { title: string; next: number | null 
   const nxt = levels.find(([n]) => n > earned);
   return { title: cur[1], next: nxt ? nxt[0] : null };
 }
+
+/* ------------------------------------------------------------------ Update 38: compare assistants */
+
+const sentences = (t: string) => t.replace(/[#*_`>|]/g, " ").split(/(?<=[.!?])\s+|\n+/).map((s) => s.replace(/^\s*[-•\d.)]+\s*/, "").trim()).filter((s) => s.split(/\s+/).length >= 4);
+const words = (s: string) => new Set(s.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((w) => w.length > 3));
+const jaccard = (a: Set<string>, b: Set<string>) => { let i = 0; a.forEach((w) => { if (b.has(w)) i++; }); return a.size + b.size - i ? i / (a.size + b.size - i) : 0; };
+/** Doses and numbers with units in a text (e.g. "500 mg", "2 g", "10 mg/kg"). */
+export function dosesIn(text: string): string[] {
+  const m = text.match(/\b\d+(?:\.\d+)?\s?(?:mg\/kg|micrograms?|mcg|mg|g|ml\/kg|ml|units?\/kg|units?|mmol)\b/gi) ?? [];
+  return [...new Set(m.map((x) => x.replace(/\s+/g, " ").toLowerCase()))].slice(0, 20);
+}
+export interface CompareRow { name: string; shared: string[]; unique: string[]; doses: string[] }
+/** Which points each answer shares with the others, which only it makes, and its doses. */
+export function compareAnswers(answers: { name: string; text: string }[], threshold = 0.3): { rows: CompareRow[]; doseOnlyIn: { dose: string; names: string[] }[] } {
+  const sets = answers.map((a) => sentences(a.text).map((s) => ({ s, w: words(s) })));
+  const rows = answers.map((a, i) => {
+    const others = sets.filter((_, j) => j !== i).flat();
+    const shared: string[] = [], unique: string[] = [];
+    for (const x of sets[i]) (others.some((o) => jaccard(x.w, o.w) >= threshold) ? shared : unique).push(x.s);
+    return { name: a.name, shared: shared.slice(0, 8), unique: unique.slice(0, 8), doses: dosesIn(a.text) };
+  });
+  const all = [...new Set(rows.flatMap((r) => r.doses))];
+  const doseOnlyIn = all.map((d) => ({ dose: d, names: rows.filter((r) => r.doses.includes(d)).map((r) => r.name) })).filter((x) => x.names.length < rows.length);
+  return { rows, doseOnlyIn };
+}
+
+/* ------------------------------------------------------------------ Update 38: voice chat */
+
+export const VOICE_LANGS: { code: string; label: string }[] = [
+  { code: "en-IN", label: "English (India)" }, { code: "hi-IN", label: "Hindi" }, { code: "ta-IN", label: "Tamil" }, { code: "te-IN", label: "Telugu" },
+  { code: "bn-IN", label: "Bengali" }, { code: "mr-IN", label: "Marathi" }, { code: "kn-IN", label: "Kannada" }, { code: "ml-IN", label: "Malayalam" },
+  { code: "gu-IN", label: "Gujarati" }, { code: "pa-IN", label: "Punjabi" }, { code: "en-GB", label: "English (UK)" }, { code: "en-US", label: "English (US)" },
+];
+/** Markdown made readable aloud: no symbols, tables or links. */
+export function speakable(md: string): string {
+  return String(md ?? "")
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/^\s*\|.*\|\s*$/gm, " ")
+    .replace(/^#{1,6}\s*/gm, "")
+    .replace(/[*_`>#|]/g, "")
+    .replace(/^\s*[-•]\s+/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+/** Pieces short enough for speech engines (split at sentence ends). */
+export function speechChunks(text: string, max = 180): string[] {
+  const out: string[] = [];
+  let cur = "";
+  for (const s of text.split(/(?<=[.!?।])\s+/)) {
+    if ((cur + " " + s).trim().length > max && cur) { out.push(cur.trim()); cur = ""; }
+    if (s.length > max) { for (let i = 0; i < s.length; i += max) out.push(s.slice(i, i + max)); continue; }
+    cur = `${cur} ${s}`;
+  }
+  if (cur.trim()) out.push(cur.trim());
+  return out;
+}
+export function voiceMessage(turns: { role: "user" | "crew"; text: string }[], text: string, language: string): string {
+  const recent = turns.slice(-6).map((t) => `${t.role === "user" ? "User" : "You"}: ${t.text.slice(0, 500)}`).join("\n");
+  return [
+    `This is a spoken conversation. Reply in ${language}, in natural spoken sentences: no tables, headings, bullet symbols or links; under 120 words unless asked for more; give doses in words a listener can follow.`,
+    recent ? `<conversation>\n${recent}\n</conversation>` : "",
+    `User said: ${text}`,
+  ].filter(Boolean).join("\n\n");
+}
+
+/* ------------------------------------------------------------------ Update 38: prompt templates */
+
+export interface PromptTemplate { id: string; crewId: string; title: string; text: string; builtIn?: boolean }
+export const TEMPLATES_KEY = "cadus3.crewTemplates";
+export const BUILT_IN_TEMPLATES: PromptTemplate[] = [
+  { id: "tpl-rounds", builtIn: true, crewId: "crew-rounds", title: "Case summary for rounds", text: "Turn these notes into a 60-second case presentation with a problem list and today's plan:\n{notes}" },
+  { id: "tpl-discharge", builtIn: true, crewId: "crew-discharge", title: "Discharge summary", text: "Write a discharge summary for a {age}-year-old admitted with {diagnosis}. Notes:\n{notes}" },
+  { id: "tpl-drugcheck", builtIn: true, crewId: "crew-pharmacist", title: "Medicine check", text: "Check these medicines for interactions, doses and kidney adjustment (eGFR {egfr}):\n{medicines}" },
+  { id: "tpl-mcq", builtIn: true, crewId: "crew-neetpg", title: "10 MCQs on a topic", text: "Write 10 NEET-PG style MCQs on {topic} with answers and one-line explanations." },
+  { id: "tpl-viva", builtIn: true, crewId: "crew-viva", title: "Viva on a topic", text: "Take a viva on {topic}: one question at a time, then score me out of 10." },
+  { id: "tpl-explain", builtIn: true, crewId: "crew-patient", title: "Explain to a patient", text: "Explain {condition} and its treatment to a patient in simple {language}, with warning signs and follow-up." },
+  { id: "tpl-ddx", builtIn: true, crewId: "", title: "Differential diagnosis", text: "A {age}-year-old {sex} with {complaint}. Give the top differential diagnoses with the key features for and against each, and the first investigations." },
+  { id: "tpl-abstract", builtIn: true, crewId: "crew-thesis", title: "Structured abstract", text: "Write a 250-word structured abstract (background, methods, results, conclusion) from:\n{text}" },
+];
+export function readTemplates(): PromptTemplate[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(TEMPLATES_KEY) || "[]");
+    return (Array.isArray(v) ? v : []).filter((t) => t && typeof t.title === "string" && typeof t.text === "string").slice(0, 50)
+      .map((t) => ({ id: String(t.id), crewId: String(t.crewId ?? ""), title: clip(t.title, 60), text: clip(t.text, 3000) }));
+  } catch { return []; }
+}
+export function saveTemplates(list: PromptTemplate[]) { try { localStorage.setItem(TEMPLATES_KEY, JSON.stringify(list.filter((t) => !t.builtIn).slice(0, 50))); } catch { /* blocked */ } }
+export function newTemplate(crewId: string, title: string, text: string): PromptTemplate | null {
+  const t = clip(title, 60), x = clip(text, 3000);
+  if (!t || !x) return null;
+  return { id: `tpl-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, crewId, title: t, text: x };
+}
+/** The {placeholders} in a template, in order, without repeats. */
+export const templateFields = (text: string) => [...new Set([...text.matchAll(/\{([a-z][a-z0-9 _-]{0,30})\}/gi)].map((m) => m[1]))];
+export const fillTemplate = (text: string, values: Record<string, string>) => text.replace(/\{([a-z][a-z0-9 _-]{0,30})\}/gi, (all, k: string) => (values[k]?.trim() ? values[k].trim() : all));
+
+/* ------------------------------------------------------------------ Update 38: Crew timeline */
+
+export type TimelineKind = "chat" | "huddle" | "debate" | "playbook" | "quiz" | "drill" | "caseround" | "room" | "note" | "checkin";
+export interface TimelineEvent { at: number; kind: TimelineKind; title: string; detail: string }
+export const TIMELINE_LABELS: Record<TimelineKind, string> = { chat: "Chat", huddle: "Huddle", debate: "Debate", playbook: "Playbook", quiz: "Quiz Battle", drill: "Daily drill", caseround: "Case round", room: "Chat room", note: "Note", checkin: "Check-in" };
+const dayStart = (key: string) => { const [y, m, d] = key.split("-").map(Number); return new Date(y, m - 1, d, 12).getTime(); };
+export function buildTimeline(src: {
+  chats?: { at: number; title: string; crew: string }[];
+  huddles?: Huddle[]; debates?: Debate[]; runs?: PlaybookRun[]; quiz?: QuizResult[]; drill?: DrillState; rounds?: CaseRound[]; rooms?: CrewRoom[]; notes?: CrewNote[]; checkins?: CheckInEntry[];
+  crewName?: (id: string) => string;
+}): TimelineEvent[] {
+  const nm = src.crewName ?? ((id: string) => id);
+  const ev: TimelineEvent[] = [
+    ...(src.chats ?? []).map((c) => ({ at: c.at, kind: "chat" as const, title: c.title || "Chat", detail: `with ${c.crew}` })),
+    ...(src.huddles ?? []).map((h) => ({ at: h.at, kind: "huddle" as const, title: h.question.slice(0, 120), detail: `${h.answers.length} assistants` })),
+    ...(src.debates ?? []).map((d) => ({ at: d.at, kind: "debate" as const, title: d.question.slice(0, 120), detail: `${d.a.name} vs ${d.b.name}${d.verdict ? `: ${d.verdict.bottomLine.slice(0, 120)}` : ""}` })),
+    ...(src.runs ?? []).map((r) => ({ at: r.at, kind: "playbook" as const, title: r.playbookName, detail: r.input.slice(0, 120) })),
+    ...(src.quiz ?? []).map((q) => ({ at: q.at, kind: "quiz" as const, title: q.topic || "Quiz", detail: q.players.map((p) => `${p.name} ${p.score} (${p.correct}/${p.total})`).join(" vs ") })),
+    ...Object.entries(src.drill?.days ?? {}).map(([k, d]) => ({ at: dayStart(k), kind: "drill" as const, title: d.topic, detail: `${d.correct}/${d.total} right` })),
+    ...(src.rounds ?? []).map((r) => ({ at: r.at, kind: "caseround" as const, title: r.caseText.slice(0, 120), detail: r.steps.map((s) => s.name).join(", ") })),
+    ...(src.rooms ?? []).filter((r) => r.messages.length).map((r) => ({ at: r.updatedAt, kind: "room" as const, title: r.name, detail: `${r.messages.length} messages` })),
+    ...(src.notes ?? []).map((n) => ({ at: n.at, kind: "note" as const, title: n.title, detail: `from ${nm(n.crewId)}${n.cards?.length ? `, ${n.cards.length} flashcards` : ""}` })),
+    ...(src.checkins ?? []).map((c) => ({ at: dayStart(c.date), kind: "checkin" as const, title: `Check-in from ${nm(c.crewId)}`, detail: c.text.replace(/\s+/g, " ").slice(0, 140) })),
+  ];
+  return ev.filter((e) => Number.isFinite(e.at)).sort((a, b) => b.at - a.at);
+}
+export function filterTimeline(ev: TimelineEvent[], kinds: TimelineKind[], days: number | null, now = Date.now()): TimelineEvent[] {
+  return ev.filter((e) => (!kinds.length || kinds.includes(e.kind)) && (days === null || e.at >= now - days * 86400000));
+}
+export function timelineMd(ev: TimelineEvent[]): string {
+  const groups = new Map<string, TimelineEvent[]>();
+  for (const e of ev) { const k = dateKey(new Date(e.at)); groups.set(k, [...(groups.get(k) ?? []), e]); }
+  return ["# My Cadus Crew timeline", "", ...[...groups.entries()].flatMap(([k, list]) => [`## ${k}`, ...list.map((e) => `- **${TIMELINE_LABELS[e.kind]}:** ${e.title}${e.detail ? ` — ${e.detail}` : ""}`), ""])].join("\n");
+}

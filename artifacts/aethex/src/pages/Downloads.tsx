@@ -290,6 +290,7 @@ const TOOLS: [string, string][] = [
   ["Chest Pain & ACS", "r"], ["Child Fluids & Dehydration", "t"], ["Agitation & Rapid Tranquillisation", "y"], ["Suicide Risk & Safety Plan", "v"], ["Head Injury & CT Rules", "v"], ["Acute Abdomen & Appendicitis", "t"], ["Febrile Neutropenia", "y"], ["Meningitis & Encephalitis", "r"],
   ["Status Epilepticus", "r"], ["Hyponatraemia & Sodium", "t"], ["Asthma & COPD Attack", "t"], ["Pre-op Risk & Anticoagulant Bridging", "v"], ["Oncology Emergencies", "y"], ["Spirometry Interpreter", "t"], ["Thyroid Storm & Myxoedema Coma", "v"], ["Sickle Cell & Thalassaemia", "r"],
   ["Hyperkalaemia & ECG", "r"], ["Acute Pancreatitis Plan", "y"], ["Paediatric Sepsis & Shock", "r"], ["Upper Airway & Stridor", "v"], ["Rhabdomyolysis & CK", "y"], ["Hypothermia & Drowning", "t"], ["Paediatric DKA", "v"], ["Acute Urinary Retention", "t"],
+  ["Hypertension in Pregnancy & Postpartum", "r"], ["Kidney Stones & Colic", "t"], ["Children's Antibiotics by Weight", "y"], ["Opioid Conversion & Palliative Infusions", "v"], ["Cellulitis & Necrotising Fasciitis", "r"], ["Kawasaki Disease", "y"], ["Infective Endocarditis", "v"], ["Bell's Palsy & Facial Weakness", "t"],
 ];
 
 /**

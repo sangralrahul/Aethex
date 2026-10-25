@@ -817,3 +817,23 @@ export const CADUS_CLINIC37_CSS = `
 .cx-crewbar button[data-crew="handoff"]+button{margin-left:0}
 .cx-lab h4:has(> svg){display:flex;align-items:center;gap:6px}
 `;
+
+/** Update 38: Crew toolbox, compare columns, timeline. */
+export const CADUS_CLINIC38_CSS = `
+.cx-crew-box{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:14px 0 4px}
+.cx-crew-boxi{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--text);font:inherit;text-align:left;cursor:pointer;transition:border-color .15s,transform .15s}
+.cx-crew-boxi:hover{border-color:var(--primary);transform:translateY(-1px)}
+.cx-crew-boxi svg{color:var(--primary)}
+.cx-crew-boxi small{font-size:12px;color:var(--t2);line-height:1.35}
+.cx-cc-cols{display:grid;grid-template-columns:repeat(var(--n,2),minmax(0,1fr));gap:10px;margin-top:12px}
+.cx-cc-cols>.cx-cmp-out{margin:0;overflow-wrap:anywhere}
+@media (max-width:760px){.cx-cc-cols{grid-template-columns:1fr}}
+.cx-tl-day{margin:12px 0}
+.cx-tl-list{list-style:none;padding:0;margin:6px 0;display:grid;gap:6px}
+.cx-tl-list li{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow-wrap:anywhere}
+.cx-tl-list small{flex-basis:100%;color:var(--t2);font-size:12px}
+.cx-tl-tag{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:2px 6px;border-radius:6px;background:var(--line2,rgba(0,0,0,.06));color:var(--t2)}
+.cx-rm-card.on{border-color:var(--primary)}
+.cx-crewvoice .cx-rm-compose{align-items:center}
+@media (max-width:760px){.cx-crew-h>div:first-child{flex-basis:auto}}
+`;
