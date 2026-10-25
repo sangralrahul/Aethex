@@ -753,3 +753,41 @@ export const CADUS_CLINIC35_CSS = `
 .cx-caseround [data-cr-step]{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface)}
 .cx-caseround [data-cr="out"]>.cx-sc-acts{margin:12px 0 18px}
 `;
+
+/** Update 36: status epilepticus clock, chat rooms, daily drill, memory and ratings. */
+export const CADUS_CLINIC36_CSS = `
+.cx-se-clock{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.cx-se-clock .t{display:inline-flex;align-items:center;gap:6px;font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;margin-right:8px}
+.cx-se-log{list-style:none;padding:0;margin:6px 0;display:flex;flex-wrap:wrap;gap:6px}
+.cx-se-log li{padding:4px 8px;border-radius:8px;background:var(--line2,rgba(0,0,0,.05));font-size:13px}
+.cx-se-steps{list-style:none;padding:0;margin:10px 0;display:grid;gap:8px}
+.cx-se-steps>li{padding:10px 14px;border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;background:var(--surface)}
+.cx-se-steps>li h4{margin:0 0 4px}
+.cx-se-steps>li.now{border-left-color:var(--danger);box-shadow:0 0 0 2px color-mix(in srgb,var(--danger) 25%,transparent)}
+.cx-se-steps>li.past{opacity:.6}
+.cx-rm-members{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.cx-rm-members .cx-chip{display:inline-flex;align-items:center;gap:6px}
+.cx-rm-log{display:flex;flex-direction:column;gap:10px;margin:12px 0;max-height:min(60vh,640px);overflow:auto;padding:4px}
+.cx-rm-msg{max-width:min(720px,92%);padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);overflow-wrap:anywhere}
+.cx-rm-msg.user{align-self:flex-end;background:var(--text);color:var(--bg);border-color:var(--text)}
+.cx-rm-msg.user p{margin:0;white-space:pre-wrap}
+.cx-rm-msg.err{border-color:var(--danger)}
+.cx-rm-who{display:flex;align-items:center;gap:6px;margin-bottom:4px;font-size:13px}
+.cx-rm-compose{display:flex;gap:8px;align-items:flex-end}
+.cx-rm-compose textarea{flex:1;min-width:0}
+.cx-rm-list{display:grid;gap:8px}
+.cx-rm-card{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.cx-rm-open{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;background:none;border:0;padding:0;color:var(--text);font:inherit;text-align:left;cursor:pointer}
+.cx-rm-open small{color:var(--t2);font-size:12px}
+.cx-dr-cal{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:4px;max-width:420px;margin:10px 0}
+.cx-dr-cal span{aspect-ratio:1;border-radius:4px;background:var(--line2,rgba(0,0,0,.06))}
+.cx-dr-cal span.on{background:color-mix(in srgb,var(--ok) 45%,transparent)}
+.cx-dr-cal span.hi{background:var(--ok)}
+.cx-drill [data-dr="streak"]{display:inline-flex;align-items:center;gap:4px;color:var(--warn)}
+.cx-drill .cx-chip .cx-ib{width:18px;height:18px;margin-left:2px}
+.cx-mem-list{list-style:none;padding:0;margin:4px 0 8px;display:grid;gap:4px}
+.cx-mem-list li{display:flex;align-items:center;gap:6px;justify-content:space-between;padding:6px 8px;border-radius:8px;background:var(--line2,rgba(0,0,0,.04));font-size:13px}
+.cx-imp-list{list-style:none;padding:0;margin:8px 0;display:grid;gap:4px;font-size:13px}
+.cx-imp-list small{color:var(--t2)}
+.cx-lab>.cx-seg,.cx-lab .cx-nihss .cx-field>.cx-seg{max-width:100%;flex-wrap:wrap}
+`;

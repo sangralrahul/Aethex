@@ -3,11 +3,13 @@
  * collections it is in, and a private note. Works for Cadus's own assistants too; stays on this device.
  */
 import { useState, type ReactNode } from "react";
-import { FolderPlus, Languages, StickyNote, X } from "lucide-react";
-import { addCollection, CREW_FORMATS, CREW_LANGS, CREW_LENGTHS, NOTE_MAX, setNote, styleLine, toggleInCollection, type CrewMember, type CrewOrg, type CrewStyle } from "@/lib/cadus/crew";
+import { Brain, FolderPlus, Languages, StickyNote, Trash2, X } from "lucide-react";
+import { addFact, MEMORY_MAX, removeFact, type CrewFact, addCollection, CREW_FORMATS, CREW_LANGS, CREW_LENGTHS, NOTE_MAX, setNote, styleLine, toggleInCollection, type CrewMember, type CrewOrg, type CrewStyle } from "@/lib/cadus/crew";
 
-export default function CrewCardSettings({ c, style, org, badge, onStyle, onOrg, onClose }: {
+export default function CrewCardSettings({ c, style, org, memory, badge, onStyle, onOrg, onMemory, onClose }: {
   c: CrewMember;
+  memory: Record<string, CrewFact[]>;
+  onMemory: (m: Record<string, CrewFact[]>) => void;
   style: CrewStyle | undefined;
   org: CrewOrg;
   badge: ReactNode;
@@ -18,6 +20,8 @@ export default function CrewCardSettings({ c, style, org, badge, onStyle, onOrg,
   const [s, setS] = useState<CrewStyle>({ length: style?.length ?? "standard", format: style?.format ?? "default", language: style?.language ?? "English" });
   const [note, setNoteText] = useState(org.notes[c.id] ?? "");
   const [newCol, setNewCol] = useState("");
+  const [fact, setFact] = useState("");
+  const facts = memory[c.id] ?? [];
   const done = () => { onStyle(s); onOrg(setNote(org, c.id, note)); onClose(); };
   const preview = styleLine(s);
 
@@ -41,6 +45,13 @@ export default function CrewCardSettings({ c, style, org, badge, onStyle, onOrg,
           <div className="cx-c23-row">
             <label className="cx-field"><span>New collection</span><input className="cx-input" value={newCol} onChange={(e) => setNewCol(e.target.value.slice(0, 40))} placeholder="e.g. Surgery posting" data-cs="newcol" onKeyDown={(e) => { if (e.key === "Enter" && newCol.trim()) { onOrg(addCollection(org, newCol, [c.id])); setNewCol(""); } }} /></label>
             <button className="cx-btn" disabled={!newCol.trim()} onClick={() => { onOrg(addCollection(org, newCol, [c.id])); setNewCol(""); }} data-cs="addcol"><FolderPlus size={14} /> Add with this assistant</button>
+          </div>
+          <h4><Brain size={14} /> Memory</h4>
+          <p className="cx-set-hint">Facts this assistant keeps in mind in every chat (your rotation, exam date, preferences). You can also type "Remember: …" in a chat with it.</p>
+          {facts.length > 0 && <ul className="cx-mem-list" data-cs="facts">{facts.map((f) => <li key={f.id}>{f.text}<button className="cx-ib" onClick={() => onMemory(removeFact(memory, c.id, f.id))} aria-label={`Forget: ${f.text}`} data-cs-forget={f.text}><Trash2 size={13} /></button></li>)}</ul>}
+          <div className="cx-c23-row">
+            <label className="cx-field"><span>Add a fact ({facts.length}/{MEMORY_MAX})</span><input className="cx-input" value={fact} onChange={(e) => setFact(e.target.value.slice(0, 200))} placeholder="e.g. I'm a 2nd-year surgery resident; exam in March" onKeyDown={(e) => { if (e.key === "Enter" && fact.trim()) { onMemory(addFact(memory, c.id, fact)); setFact(""); } }} data-cs="fact" /></label>
+            <button className="cx-btn" disabled={!fact.trim()} onClick={() => { onMemory(addFact(memory, c.id, fact)); setFact(""); }} data-cs="addfact"><Brain size={14} /> Remember</button>
           </div>
           <h4><StickyNote size={14} /> Private note</h4>
           <label className="cx-field"><span>Shown on the card; never sent to the assistant</span><textarea className="cx-input" rows={3} value={note} onChange={(e) => setNoteText(e.target.value.slice(0, NOTE_MAX))} placeholder="e.g. Best for viva prep; ask it for tables" data-cs="note" /></label>

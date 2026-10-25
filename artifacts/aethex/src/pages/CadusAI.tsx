@@ -8,7 +8,7 @@ import {
   type ReactNode, type DragEvent as ReactDragEvent, type FocusEvent as ReactFocusEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent,
 } from "react";
 import {
-  AlertTriangle, GlassWater, LifeBuoy, Trophy, Package, StickyNote, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ArrowUpRight, Bookmark, BookmarkCheck, BookOpen, BookOpenCheck, Brain, Gauge,
+  AlertTriangle, MessagesSquare, GlassWater, LifeBuoy, Trophy, Package, StickyNote, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ArrowUpRight, Bookmark, BookmarkCheck, BookOpen, BookOpenCheck, Brain, Gauge,
   Calculator, Camera, Check, ChevronDown, ChevronRight, ChevronsUpDown, CircleQuestionMark, ClipboardCheck, ClipboardList, Copy, CornerDownRight,
   Flame, Languages, Mail, MessageCircleQuestion, Target, UserCog, UserRound,
   Archive, ArchiveRestore, AudioLines, Bell, ChevronLeft, Ellipsis, FileDown, FilePen, Lightbulb, MessageSquareDashed, Paperclip, Share2,
@@ -184,6 +184,17 @@ import HeadInjuryView from "@/components/cadus/HeadInjuryView";
 import AbdomenView from "@/components/cadus/AbdomenView";
 import FneutroView from "@/components/cadus/FneutroView";
 import MeningitisView from "@/components/cadus/MeningitisView";
+import StatusEpiView from "@/components/cadus/StatusEpiView";
+import SodiumView from "@/components/cadus/SodiumView";
+import AttackView from "@/components/cadus/AttackView";
+import BridgingView from "@/components/cadus/BridgingView";
+import OncoEmergView from "@/components/cadus/OncoEmergView";
+import SpirometryView from "@/components/cadus/SpirometryView";
+import ThyroidStormView from "@/components/cadus/ThyroidStormView";
+import SickleView from "@/components/cadus/SickleView";
+import CrewRoomsView from "@/components/cadus/CrewRoomsView";
+import CrewDrillView from "@/components/cadus/CrewDrillView";
+import CrewImproveDialog from "@/components/cadus/CrewImproveDialog";
 import CrewQuizView from "@/components/cadus/CrewQuizView";
 import CrewCaseRoundView from "@/components/cadus/CrewCaseRoundView";
 import CrewCardSettings from "@/components/cadus/CrewCardSettings";
@@ -200,6 +211,7 @@ import {
   CREW_GROUPS, matchCrew, readShareCode, type HuddleResult,
   readFav, saveFav, readUse, saveUse, recordUse, recentCrew, filterCrew, CREW_TEMPLATES, instructionScore, exportCrewFile, importCrewFile, crewInsights, suggestCrew, type CrewSort, type CrewFilter,
   readStyles, saveStyles, setStyle, styleSummary, readOrg, saveOrg, addCollection, deleteCollection, readPack, type CrewOrg, type ReadPack,
+  readMemory, saveMemory, addFact, rememberFrom as crewRememberFrom, readRatings, saveRatings, rateCrew, unrateCrew, ratingSummary, type CrewFact, type CrewRating,
 } from "@/lib/cadus/crew";
 import CrewSecondOpinionView from "@/components/cadus/CrewSecondOpinionView";
 import CrewKnowledge from "@/components/cadus/CrewKnowledge";
@@ -210,7 +222,7 @@ import CrewPlaybookView from "@/components/cadus/CrewPlaybookView";
 import CrewBuilder from "@/components/cadus/CrewBuilder";
 import PodcastView from "@/components/cadus/PodcastView";
 import { VoiceSettings } from "@/components/cadus/AudioParts";
-import { CADUS_CLINIC20_CSS, CADUS_CLINIC21_CSS, CADUS_CLINIC22_CSS, CADUS_CLINIC23_CSS, CADUS_CLINIC24_CSS, CADUS_CLINIC25_CSS, CADUS_CLINIC26_CSS, CADUS_CLINIC27_CSS, CADUS_CLINIC28_CSS, CADUS_CLINIC29_CSS, CADUS_CLINIC30_CSS, CADUS_CLINIC31_CSS, CADUS_CLINIC32_CSS, CADUS_CLINIC34_CSS, CADUS_CLINIC35_CSS, CADUS_CREW_CSS, CADUS_CREWPLUS_CSS, CADUS_VOICE_CSS } from "@/components/cadus/cadus-crew-styles";
+import { CADUS_CLINIC20_CSS, CADUS_CLINIC21_CSS, CADUS_CLINIC22_CSS, CADUS_CLINIC23_CSS, CADUS_CLINIC24_CSS, CADUS_CLINIC25_CSS, CADUS_CLINIC26_CSS, CADUS_CLINIC27_CSS, CADUS_CLINIC28_CSS, CADUS_CLINIC29_CSS, CADUS_CLINIC30_CSS, CADUS_CLINIC31_CSS, CADUS_CLINIC32_CSS, CADUS_CLINIC34_CSS, CADUS_CLINIC35_CSS, CADUS_CLINIC36_CSS, CADUS_CREW_CSS, CADUS_CREWPLUS_CSS, CADUS_VOICE_CSS } from "@/components/cadus/cadus-crew-styles";
 import TranslatorView from "@/components/cadus/TranslatorView";
 import PathwaysView from "@/components/cadus/PathwaysView";
 import FlashcardsView from "@/components/cadus/FlashcardsView";
@@ -309,9 +321,9 @@ type ModeId =
   | "admission" | "progress" | "opnote" | "death" | "certificate" | "rx" | "evidence";
 /** "groq" only appears in chats saved before Cadus became Claude-only. */
 type Provider = "claude" | "groq" | "library";
-type View = "chat" | "crew" | "second" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "debate" | "playbooks" | "podcasts" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan" | "ecg" | "abx" | "procedure" | "poison" | "infusions" | "convert" | "abg" | "logbook" | "followups" | "audiolib" | "rxwrite" | "labtrend" | "daily" | "letters" | "adr" | "mccd" | "mnemonics" | "generics" | "opd" | "imagequiz" | "dosecard" | "oncall" | "journal" | "stats" | "roster" | "records" | "voiceround" | "revnotes" | "analytics" | "preop" | "messages" | "preglact" | "pillchart" | "vaccines" | "diet" | "icd" | "consent" | "insulin" | "transfusion" | "mlc" | "tb" | "antenatal" | "ventilator" | "teleconsult" | "bills" | "bite" | "needlestick" | "imnci" | "cme" | "appointments" | "stock" | "screening" | "kidney" | "sam" | "contacts" | "accounts" | "thyroid" | "backup" | "ncd" | "anaemia" | "dengue" | "electrolytes" | "obsemergency" | "infection" | "asthma" | "milestones" | "contraception" | "palliative" | "imaging" | "ivfluids" | "sickday" | "labranges" | "burns" | "jaundice" | "stroke" | "bundles" | "alcohol" | "dfoot" | "heat" | "wound" | "anticoag" | "fevers" | "elderly" | "quitsmoking" | "croup" | "rheumatic" | "weight" | "hypo" | "gdm" | "infantfeed" | "antidep" | "eyeent" | "vte" | "headache" | "skin" | "gout" | "pnuti" | "ckd" | "preterm" | "epilepsy" | "childfever" | "cirrhosis" | "dementia" | "htnemergency" | "ugib" | "aki" | "hepbc" | "nrp" | "pain" | "bone" | "hrt" | "syncope" | "hf" | "af" | "lipids" | "pedvt" | "hiv" | "preeclampsia" | "sleep" | "urticaria" | "anaphylaxis" | "trauma" | "tox" | "ptx" | "fluids" | "steroid" | "refeed" | "backpain" | "acs" | "childfluids" | "agitation" | "suicide" | "headinjury" | "abdomen" | "fneutro" | "meningitis" | "quizbattle" | "caseround";
+type View = "chat" | "crew" | "second" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "debate" | "playbooks" | "podcasts" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan" | "ecg" | "abx" | "procedure" | "poison" | "infusions" | "convert" | "abg" | "logbook" | "followups" | "audiolib" | "rxwrite" | "labtrend" | "daily" | "letters" | "adr" | "mccd" | "mnemonics" | "generics" | "opd" | "imagequiz" | "dosecard" | "oncall" | "journal" | "stats" | "roster" | "records" | "voiceround" | "revnotes" | "analytics" | "preop" | "messages" | "preglact" | "pillchart" | "vaccines" | "diet" | "icd" | "consent" | "insulin" | "transfusion" | "mlc" | "tb" | "antenatal" | "ventilator" | "teleconsult" | "bills" | "bite" | "needlestick" | "imnci" | "cme" | "appointments" | "stock" | "screening" | "kidney" | "sam" | "contacts" | "accounts" | "thyroid" | "backup" | "ncd" | "anaemia" | "dengue" | "electrolytes" | "obsemergency" | "infection" | "asthma" | "milestones" | "contraception" | "palliative" | "imaging" | "ivfluids" | "sickday" | "labranges" | "burns" | "jaundice" | "stroke" | "bundles" | "alcohol" | "dfoot" | "heat" | "wound" | "anticoag" | "fevers" | "elderly" | "quitsmoking" | "croup" | "rheumatic" | "weight" | "hypo" | "gdm" | "infantfeed" | "antidep" | "eyeent" | "vte" | "headache" | "skin" | "gout" | "pnuti" | "ckd" | "preterm" | "epilepsy" | "childfever" | "cirrhosis" | "dementia" | "htnemergency" | "ugib" | "aki" | "hepbc" | "nrp" | "pain" | "bone" | "hrt" | "syncope" | "hf" | "af" | "lipids" | "pedvt" | "hiv" | "preeclampsia" | "sleep" | "urticaria" | "anaphylaxis" | "trauma" | "tox" | "ptx" | "fluids" | "steroid" | "refeed" | "backpain" | "acs" | "childfluids" | "agitation" | "suicide" | "headinjury" | "abdomen" | "fneutro" | "meningitis" | "quizbattle" | "caseround" | "statusepi" | "sodium" | "attack" | "bridging" | "oncoemerg" | "spirometry" | "thyroidstorm" | "sickle" | "rooms" | "drill";
 /** Views reached from the Tools hub, so the hub stays highlighted in the sidebar. */
-const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today", "discharge", "handover", "ddx", "studyplan", "podcasts", "ecg", "abx", "procedure", "poison", "infusions", "convert", "abg", "logbook", "followups", "audiolib", "rxwrite", "labtrend", "daily", "letters", "adr", "mccd", "mnemonics", "generics", "opd", "imagequiz", "dosecard", "oncall", "journal", "stats", "roster", "records", "voiceround", "revnotes", "analytics", "preop", "messages", "preglact", "pillchart", "vaccines", "diet", "icd", "consent", "insulin", "transfusion", "mlc", "tb", "antenatal", "ventilator", "teleconsult", "bills", "bite", "needlestick", "imnci", "cme", "appointments", "stock", "screening", "kidney", "sam", "contacts", "accounts", "thyroid", "backup", "ncd", "anaemia", "dengue", "electrolytes", "obsemergency", "infection", "asthma", "milestones", "contraception", "palliative", "imaging", "ivfluids", "sickday", "labranges", "burns", "jaundice", "stroke", "bundles", "alcohol", "dfoot", "heat", "wound", "anticoag", "fevers", "elderly", "quitsmoking", "croup", "rheumatic", "weight", "hypo", "gdm", "infantfeed", "antidep", "eyeent", "vte", "headache", "skin", "gout", "pnuti", "ckd", "preterm", "epilepsy", "childfever", "cirrhosis", "dementia", "htnemergency", "ugib", "aki", "hepbc", "nrp", "pain", "bone", "hrt", "syncope", "hf", "af", "lipids", "pedvt", "hiv", "preeclampsia", "sleep", "urticaria", "anaphylaxis", "trauma", "tox", "ptx", "fluids", "steroid", "refeed", "backpain", "acs", "childfluids", "agitation", "suicide", "headinjury", "abdomen", "fneutro", "meningitis"]);
+const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today", "discharge", "handover", "ddx", "studyplan", "podcasts", "ecg", "abx", "procedure", "poison", "infusions", "convert", "abg", "logbook", "followups", "audiolib", "rxwrite", "labtrend", "daily", "letters", "adr", "mccd", "mnemonics", "generics", "opd", "imagequiz", "dosecard", "oncall", "journal", "stats", "roster", "records", "voiceround", "revnotes", "analytics", "preop", "messages", "preglact", "pillchart", "vaccines", "diet", "icd", "consent", "insulin", "transfusion", "mlc", "tb", "antenatal", "ventilator", "teleconsult", "bills", "bite", "needlestick", "imnci", "cme", "appointments", "stock", "screening", "kidney", "sam", "contacts", "accounts", "thyroid", "backup", "ncd", "anaemia", "dengue", "electrolytes", "obsemergency", "infection", "asthma", "milestones", "contraception", "palliative", "imaging", "ivfluids", "sickday", "labranges", "burns", "jaundice", "stroke", "bundles", "alcohol", "dfoot", "heat", "wound", "anticoag", "fevers", "elderly", "quitsmoking", "croup", "rheumatic", "weight", "hypo", "gdm", "infantfeed", "antidep", "eyeent", "vte", "headache", "skin", "gout", "pnuti", "ckd", "preterm", "epilepsy", "childfever", "cirrhosis", "dementia", "htnemergency", "ugib", "aki", "hepbc", "nrp", "pain", "bone", "hrt", "syncope", "hf", "af", "lipids", "pedvt", "hiv", "preeclampsia", "sleep", "urticaria", "anaphylaxis", "trauma", "tox", "ptx", "fluids", "steroid", "refeed", "backpain", "acs", "childfluids", "agitation", "suicide", "headinjury", "abdomen", "fneutro", "meningitis", "statusepi", "sodium", "attack", "bridging", "oncoemerg", "spirometry", "thyroidstorm", "sickle"]);
 type ToolTab = "all" | "clinical" | "documentation" | "learning";
 type SettingsTab = "general" | "personal" | "letterhead" | "institution" | "data" | "shortcuts" | "about";
 type StyleId = "concise" | "balanced" | "detailed";
@@ -1186,10 +1198,16 @@ export default function CadusAI() {
   const [crewCol, setCrewCol] = useState("");
   const [packsOpen, setPacksOpen] = useState(false);
   const [packIncoming, setPackIncoming] = useState<ReadPack | null>(null);
+  /** Update 36: assistant memory, ratings and the improve dialog. */
+  const [crewMemory, setCrewMemory] = useState<Record<string, CrewFact[]>>(readMemory);
+  const [crewRatings, setCrewRatings] = useState<Record<string, CrewRating[]>>(readRatings);
+  const [crewImprove, setCrewImprove] = useState<CrewMember | null>(null);
   const [secondPick, setSecondPick] = useState("");
   useEffect(() => saveFav(crewFav), [crewFav]);
   useEffect(() => saveStyles(crewStyles), [crewStyles]);
   useEffect(() => saveOrg(crewOrg), [crewOrg]);
+  useEffect(() => saveMemory(crewMemory), [crewMemory]);
+  useEffect(() => saveRatings(crewRatings), [crewRatings]);
   useEffect(() => saveUse(crewUse), [crewUse]);
   const [crewNext, setCrewNext] = useState("");
   const [crewEdit, setCrewEdit] = useState<CrewMember | null>(null);
@@ -2091,7 +2109,10 @@ export default function CadusAI() {
     const inProject = isNew && view === "project" && project ? project.id : undefined;
     const temp = isNew ? tempNext : !!sessions.find((s) => s.id === sid)?.temp;
     // "Remember that…" saves a memory, like ChatGPT (not in temporary chats or role-play).
-    const fact = !temp && !ROLEPLAY.has(m) && personal.useMemory ? rememberFrom(text) : null;
+    // In a chat with a Crew assistant, "Remember: …" goes to that assistant's memory instead.
+    const crewFact = crew && !temp ? crewRememberFrom(text) : "";
+    if (crewFact && crew) { const nextMem = addFact(readMemory(), crew.id, crewFact); saveMemory(nextMem); setCrewMemory(nextMem); toast(`${crew.name} will remember that`); }
+    const fact = !crewFact && !temp && !ROLEPLAY.has(m) && personal.useMemory ? rememberFrom(text) : null;
     if (fact) {
       setPersonalState((p) => addMemory(p, fact));
       toast("Memory updated");
@@ -2618,6 +2639,17 @@ export default function CadusAI() {
       ...s,
       messages: s.messages.map((x) => (x.id === m.id ? { ...x, feedback: value, feedbackNote: value === "down" ? note ?? x.feedbackNote : undefined } : x)),
     })));
+    // Answers from a Crew assistant also count towards its Rate & improve.
+    const crewId = m.mention?.id ?? active.crewId;
+    if (crewId) {
+      if (!value) setCrewRatings((r) => unrateCrew(r, crewId, m.id));
+      else {
+        const i = active.messages.findIndex((x) => x.id === m.id);
+        const q = [...active.messages.slice(0, Math.max(0, i))].reverse().find((x) => x.role === "user")?.content ?? "";
+        const why = note ? [...note.reasons, note.comment].filter(Boolean).join("; ") : undefined;
+        setCrewRatings((r) => rateCrew(r, crewId, { msgId: m.id, vote: value, q, a: m.content, ...(why ? { why } : {}) }));
+      }
+    }
   };
   const thumb = (m: Msg, value: "up" | "down") => {
     if (m.feedback === value) {
@@ -2891,6 +2923,8 @@ export default function CadusAI() {
       { key: "a:playbooks", label: "Crew Playbooks: chain assistants into a workflow", hint: "Notes to presentation to discharge summary", icon: Workflow, run: () => openView("playbooks") },
       { key: "a:quizbattle", label: "Crew Quiz Battle: MCQs against the clock or a friend", hint: "Any topic, NEET-PG level, streaks and leaderboard", icon: Trophy, run: () => openView("quizbattle") },
       { key: "a:caseround", label: "Crew Case Round: a case through several specialists", hint: "Medical round, surgical MDT, tumour board, consensus plan", icon: Users2, run: () => openView("caseround") },
+      { key: "a:rooms", label: "Crew Chat Rooms: group chat with several assistants", hint: "@-mention one, @all, or let the best one answer", icon: MessagesSquare, run: () => openView("rooms") },
+      { key: "a:drill", label: "Crew Daily Drill: 5 questions a day with streaks", hint: "Weakest topic first, calendar and weak spots", icon: Flame, run: () => openView("drill") },
       { key: "a:deep", label: prefs.answerMode === "deep" ? "Turn off Deep Dive" : "Deep Dive: a cited research report", hint: "PubMed and guidelines, step by step", icon: Telescope, run: () => { setPrefs((p) => ({ ...p, answerMode: p.answerMode === "deep" ? "auto" : "deep" })); focusComposer(); } },
       ...ANSWER_MODES.filter((am) => am.id !== "deep" && am.id !== prefs.answerMode).map((am) => ({ key: `a:mode:${am.id}`, label: `Mode: ${am.label}`, hint: am.desc, icon: am.icon, run: () => { setPrefs((p) => ({ ...p, answerMode: am.id })); focusComposer(); } })),
       { key: "a:newproj", label: "New project", icon: FolderPlus, run: () => newProject() },
@@ -3059,6 +3093,14 @@ export default function CadusAI() {
       { key: "a:abdomen", label: "Acute Abdomen & Appendicitis scores", hint: "Red flags, Alvarado, Paediatric Appendicitis Score, BISAP for pancreatitis", icon: Stethoscope, run: () => openView("abdomen") },
       { key: "a:fneutro", label: "Febrile Neutropenia: MASCC and antibiotics", hint: "Neutrophil count, MASCC risk score, oral or IV empirical antibiotics within an hour", icon: ShieldPlus, run: () => openView("fneutro") },
       { key: "a:meningitis", label: "Meningitis & Encephalitis: empirical treatment", hint: "CT before LP, empirical antibiotics and acyclovir by age and weight, dexamethasone, contact prophylaxis", icon: Bug, run: () => openView("meningitis") },
+      { key: "a:statusepi", label: "Status Epilepticus: timed pathway", hint: "Clock from seizure onset, benzodiazepines, levetiracetam, phenytoin, valproate, refractory status", icon: Zap, run: () => openView("statusepi") },
+      { key: "a:sodium", label: "Hyponatraemia & Sodium: cause and safe correction", hint: "Corrected sodium, osmolality, urine tests, Adrogue-Madias, 3% saline, Furst ratio, limits", icon: FlaskConical, run: () => openView("sodium") },
+      { key: "a:attack", label: "Asthma & COPD Attack: severity and treatment", hint: "Adult and child asthma severity, nebulisers, steroids, magnesium, COPD exacerbation, NIV criteria", icon: Wind, run: () => openView("attack") },
+      { key: "a:bridging", label: "Pre-op Risk & Anticoagulant Bridging", hint: "RCRI, METs, when to stop and restart DOACs, warfarin bridging, antiplatelets and stents", icon: ClipboardCheck, run: () => openView("bridging") },
+      { key: "a:oncoemerg", label: "Oncology Emergencies: hypercalcaemia, TLS, MSCC", hint: "Corrected calcium and treatment, Cairo-Bishop TLS, rasburicase, cord compression, SVC obstruction", icon: Ribbon, run: () => openView("oncoemerg") },
+      { key: "a:spirometry", label: "Spirometry Interpreter", hint: "FEV1/FVC, obstruction or restriction, GOLD grade, bronchodilator reversibility", icon: Gauge, run: () => openView("spirometry") },
+      { key: "a:thyroidstorm", label: "Thyroid Storm & Myxoedema Coma", hint: "Burch-Wartofsky score, propranolol, PTU, iodine, hydrocortisone, IV levothyroxine", icon: Thermometer, run: () => openView("thyroidstorm") },
+      { key: "a:sickle", label: "Sickle Cell & Thalassaemia care", hint: "Pain crisis, danger signs, hydroxyurea dosing, transfusion volume, iron chelation", icon: Droplets, run: () => openView("sickle") },
       { key: "a:present", label: "Presentation Coach: practise presenting a case", hint: "Ward round, long case, SBAR; scored with a model answer", icon: Presentation, run: () => openView("present") },
       { key: "a:compare", label: "Compare over time: what changed between two studies", hint: "X-rays, ECGs, scans, reports and wound photos", icon: History, run: () => openView("compare") },
       { key: "a:newcase", label: "New patient case", hint: "Start a de-identified case sheet", icon: ClipboardList, run: () => { const c = newCase(); setCases((l) => [c, ...l]); openCases(c.id); } },
@@ -3574,6 +3616,14 @@ export default function CadusAI() {
     { id: "abdomen", icon: Stethoscope, tone: "teal", title: "Acute Abdomen & Appendicitis", sub: "Alvarado, PAS, BISAP", go: () => openView("abdomen") },
     { id: "fneutro", icon: ShieldPlus, tone: "lime", title: "Febrile Neutropenia", sub: "ANC, MASCC, first-hour antibiotics", go: () => openView("fneutro") },
     { id: "meningitis", icon: Bug, tone: "rose", title: "Meningitis & Encephalitis", sub: "CT before LP, antibiotics by age", go: () => openView("meningitis") },
+    { id: "statusepi", icon: Zap, tone: "rose", title: "Status Epilepticus", sub: "Timed pathway, doses by weight", go: () => openView("statusepi") },
+    { id: "sodium", icon: FlaskConical, tone: "sky", title: "Hyponatraemia & Sodium", sub: "Cause, fluids, safe correction", go: () => openView("sodium") },
+    { id: "attack", icon: Wind, tone: "teal", title: "Asthma & COPD Attack", sub: "Severity, nebs, magnesium, NIV", go: () => openView("attack") },
+    { id: "bridging", icon: ClipboardCheck, tone: "violet", title: "Pre-op Risk & Anticoagulant Bridging", sub: "RCRI, DOACs, warfarin, stents", go: () => openView("bridging") },
+    { id: "oncoemerg", icon: Ribbon, tone: "amber", title: "Oncology Emergencies", sub: "Calcium, TLS, cord compression", go: () => openView("oncoemerg") },
+    { id: "spirometry", icon: Gauge, tone: "lime", title: "Spirometry Interpreter", sub: "Ratio, pattern, GOLD, reversibility", go: () => openView("spirometry") },
+    { id: "thyroidstorm", icon: Thermometer, tone: "navy", title: "Thyroid Storm & Myxoedema Coma", sub: "Burch-Wartofsky, ICU regimens", go: () => openView("thyroidstorm") },
+    { id: "sickle", icon: Droplets, tone: "rose", title: "Sickle Cell & Thalassaemia", sub: "Crisis, hydroxyurea, chelation", go: () => openView("sickle") },
   ];
   const backupNeeded = view !== "backup" && backupDue();
   /** The More drawer: every tool, grouped by what it is for (update 24). */
@@ -3609,6 +3659,7 @@ export default function CadusAI() {
         { label: "Insomnia & Sleep", title: "Insomnia & Sleep", icon: Moon, on: view === "sleep", go: () => openView("sleep") },
         { label: "Back Pain & Cauda Equina", title: "Back Pain & Cauda Equina", icon: Bone, on: view === "backpain", go: () => openView("backpain") },
         { label: "Suicide Risk & Safety Plan", title: "Suicide Risk & Safety Plan", icon: LifeBuoy, on: view === "suicide", go: () => openView("suicide") },
+        { label: "Sickle Cell & Thalassaemia", title: "Sickle Cell & Thalassaemia", icon: Droplets, on: view === "sickle", go: () => openView("sickle") },
       ] },
     { id: "practice", label: "Practice", icon: BriefcaseMedical, items: [
         { label: "Appointments", title: "Appointments", icon: CalendarPlus, on: view === "appointments", go: () => openView("appointments") },
@@ -3642,6 +3693,9 @@ export default function CadusAI() {
         { label: "Refeeding & Nutrition", title: "Refeeding & Nutrition", icon: Utensils, on: view === "refeed", go: () => openView("refeed") },
         { label: "Agitation & Rapid Tranquillisation", title: "Agitation & Rapid Tranquillisation", icon: ShieldAlert, on: view === "agitation", go: () => openView("agitation") },
         { label: "Febrile Neutropenia", title: "Febrile Neutropenia", icon: ShieldPlus, on: view === "fneutro", go: () => openView("fneutro") },
+        { label: "Hyponatraemia & Sodium", title: "Hyponatraemia & Sodium", icon: FlaskConical, on: view === "sodium", go: () => openView("sodium") },
+        { label: "Pre-op Risk & Anticoagulant Bridging", title: "Pre-op Risk & Anticoagulant Bridging", icon: ClipboardCheck, on: view === "bridging", go: () => openView("bridging") },
+        { label: "Oncology Emergencies", title: "Oncology Emergencies", icon: Ribbon, on: view === "oncoemerg", go: () => openView("oncoemerg") },
       ] },
     { id: "emergency", label: "Emergency & ICU", icon: Siren, items: [
         { label: "Emergencies", title: "Emergency protocols", icon: Siren, on: view === "emergency", go: () => openView("emergency") },
@@ -3673,6 +3727,9 @@ export default function CadusAI() {
         { label: "Chest Pain & ACS", title: "Chest Pain & ACS", icon: HeartPulse, on: view === "acs", go: () => openView("acs") },
         { label: "Head Injury & CT Rules", title: "Head Injury & CT Rules", icon: Brain, on: view === "headinjury", go: () => openView("headinjury") },
         { label: "Meningitis & Encephalitis", title: "Meningitis & Encephalitis", icon: Bug, on: view === "meningitis", go: () => openView("meningitis") },
+        { label: "Status Epilepticus", title: "Status Epilepticus", icon: Zap, on: view === "statusepi", go: () => openView("statusepi") },
+        { label: "Asthma & COPD Attack", title: "Asthma & COPD Attack", icon: Wind, on: view === "attack", go: () => openView("attack") },
+        { label: "Thyroid Storm & Myxoedema Coma", title: "Thyroid Storm & Myxoedema Coma", icon: Thermometer, on: view === "thyroidstorm", go: () => openView("thyroidstorm") },
       ] },
     { id: "drugs", label: "Drugs & Prescribing", icon: Pill, items: [
         { label: "Drugs", title: "Drugs and prescriber", icon: Pill, on: view === "drugs", go: () => openDrugs() },
@@ -3734,6 +3791,7 @@ export default function CadusAI() {
         { label: "Dementia & Memory", title: "Dementia & Memory", icon: BrainCog, on: view === "dementia", go: () => openView("dementia") },
         { label: "Body Fluid Analysis", title: "Body Fluid Analysis", icon: TestTube, on: view === "fluids", go: () => openView("fluids") },
         { label: "Acute Abdomen & Appendicitis", title: "Acute Abdomen & Appendicitis", icon: Stethoscope, on: view === "abdomen", go: () => openView("abdomen") },
+        { label: "Spirometry Interpreter", title: "Spirometry Interpreter", icon: Gauge, on: view === "spirometry", go: () => openView("spirometry") },
       ] },
     { id: "documents", label: "Documents & Legal", icon: ScrollText, items: [
         { label: "Scribe", title: "Scribe: dictated notes", icon: Mic, on: view === "scribe", go: () => openView("scribe") },
@@ -4065,6 +4123,8 @@ export default function CadusAI() {
             {c.sources && <em><Globe size={11} /> Sources</em>}
             {c.knowledge?.length ? <em><BookOpen size={11} /> {c.knowledge.length} doc{c.knowledge.length === 1 ? "" : "s"}</em> : null}
             {styleSummary(crewStyles[c.id]) && <em data-crew-style={c.id}><Languages size={11} /> {styleSummary(crewStyles[c.id])}</em>}
+            {crewMemory[c.id]?.length ? <em data-crew-mem={c.id}><Brain size={11} /> Remembers {crewMemory[c.id].length}</em> : null}
+            {ratingSummary(crewRatings[c.id]).pct !== null && <em data-crew-rating={c.id}><ThumbsUp size={11} /> {ratingSummary(crewRatings[c.id]).pct}%</em>}
             {c.builtIn ? <em className="by">By Cadus</em> : <em className="by mine">{c.importedAt ? "Imported" : "Yours"}</em>}
           </span>
           {crewOrg.notes[c.id] && <span className="cx-crew-note" data-crew-note={c.id}><StickyNote size={11} /> {crewOrg.notes[c.id]}</span>}
@@ -4077,7 +4137,8 @@ export default function CadusAI() {
             {pop === key && (
               <div className="cx-pop cx-crew-menu" role="menu">
                 {!c.builtIn && <button className="cx-pop-i" onClick={() => { setPop(null); setCrewEdit({ ...c }); }}><Pencil size={15} /> Edit</button>}
-                <button className="cx-pop-i" onClick={() => { setPop(null); setCrewSettings(c); }} data-crew-settings={c.id}><SlidersHorizontal size={15} /> Style, collections and note</button>
+                <button className="cx-pop-i" onClick={() => { setPop(null); setCrewSettings(c); }} data-crew-settings={c.id}><SlidersHorizontal size={15} /> Style, memory, collections and note</button>
+                <button className="cx-pop-i" onClick={() => { setPop(null); setCrewImprove(c); }} data-crew-improve={c.id}><Sparkles size={15} /> Rate &amp; improve</button>
                 <button className="cx-pop-i" onClick={() => { setPop(null); setCrewShare(c); }}><Share2 size={15} /> Share</button>
                 <button className="cx-pop-i" onClick={() => { setPop(null); openHuddle([c.id]); }}><Users2 size={15} /> Huddle with others</button>
                 <button className="cx-pop-i" onClick={() => { setPop(null); setSecondPick(c.id); setView("second"); }}><Scale size={15} /> Ask for a second opinion</button>
@@ -4105,6 +4166,8 @@ export default function CadusAI() {
           <button className="cx-btn" onClick={() => { setSecondPick(""); openView("second"); }} data-crew="second"><Scale size={15} /> Second opinion</button>
           <button className="cx-btn" onClick={() => openView("quizbattle")} data-crew="quiz"><Trophy size={15} /> Quiz Battle</button>
           <button className="cx-btn" onClick={() => openView("caseround")} data-crew="caseround"><Stethoscope size={15} /> Case round</button>
+          <button className="cx-btn" onClick={() => openView("rooms")} data-crew="rooms"><MessagesSquare size={15} /> Chat rooms</button>
+          <button className="cx-btn" onClick={() => openView("drill")} data-crew="drill"><Flame size={15} /> Daily drill</button>
           <button className="cx-btn primary" onClick={() => setCrewEdit(blankCrew())} disabled={crewMine.length >= CREW_MAX}><Plus size={15} /> Create an assistant</button>
         </div>
       </header>
@@ -4118,6 +4181,9 @@ export default function CadusAI() {
         <span><Trophy size={14} /> <button className="cx-link" onClick={() => openView("quizbattle")}>Quiz Battle</button>: MCQs against the clock or a friend</span>
         <span><Stethoscope size={14} /> <button className="cx-link" onClick={() => openView("caseround")}>Case round</button>: a case passes through specialists in turn</span>
         <span><Languages size={14} /> Set each assistant's answer length, format and language from its menu</span>
+        <span><MessagesSquare size={14} /> <button className="cx-link" onClick={() => openView("rooms")}>Chat rooms</button>: a group chat with several assistants</span>
+        <span><Flame size={14} /> <button className="cx-link" onClick={() => openView("drill")}>Daily drill</button>: 5 questions a day, keep the streak</span>
+        <span><Brain size={14} /> Type "Remember: …" in a chat and the assistant keeps it in mind</span>
       </div>
       <div className="cx-crew-find" data-crew="finder">
         <label className="cx-field"><span><Sparkles size={13} /> Who should I ask?</span><input className="cx-input" value={crewFind} onChange={(e) => setCrewFind(e.target.value.slice(0, 200))} placeholder="Describe your question, e.g. spinal anaesthesia dose for caesarean" data-crew="find" /></label>
@@ -4204,7 +4270,7 @@ export default function CadusAI() {
         const group = BUILT_IN_CREW.filter((c) => (c.group ?? "Clinical") === g);
         return group.length ? (
           <div key={g}>
-            <h2 className="cx-crew-sh">{g === "Study" ? "For study and exams" : g === "Clinical" ? "For the wards and OPD" : g === "Specialists" ? "Specialist consults" : g === "Writing" ? "For notes and patients" : "For research"} <span>By Cadus</span></h2>
+            <h2 className="cx-crew-sh">{g === "Study" ? "For study and exams" : g === "Clinical" ? "For the wards and OPD" : g === "Specialists" ? "Specialist consults" : g === "Super-specialists" ? "Super-specialist consults" : g === "AYUSH & Integrative" ? "AYUSH and integrative medicine (evidence-checked)" : g === "Allied & Public Health" ? "Allied and public health" : g === "Exams & Careers" ? "Exams and careers" : g === "Writing" ? "For notes and patients" : "For research"} <span>By Cadus</span></h2>
             <div className="cx-crew-grid">{group.map((c, i) => crewCard(c, i + crewMine.length))}</div>
           </div>
         ) : null;
@@ -4977,7 +5043,7 @@ export default function CadusAI() {
       style={{ ["--acc" as string]: dark ? accent.dark : accent.light, ["--fs" as string]: `${fontSize}px`, ["--fs-u" as string]: `${sansSize}px` }}
       {...dropHandlers}
     >
-      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS + CADUS_CREWPLUS_CSS + CADUS_VOICE_CSS + CADUS_CLINIC20_CSS + CADUS_CLINIC21_CSS + CADUS_CLINIC22_CSS + CADUS_CLINIC23_CSS + CADUS_CLINIC24_CSS + CADUS_CLINIC25_CSS + CADUS_CLINIC26_CSS + CADUS_CLINIC27_CSS + CADUS_CLINIC28_CSS + CADUS_CLINIC29_CSS + CADUS_CLINIC30_CSS + CADUS_CLINIC31_CSS + CADUS_CLINIC32_CSS + CADUS_CLINIC34_CSS + CADUS_CLINIC35_CSS}</style>
+      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS + CADUS_CREWPLUS_CSS + CADUS_VOICE_CSS + CADUS_CLINIC20_CSS + CADUS_CLINIC21_CSS + CADUS_CLINIC22_CSS + CADUS_CLINIC23_CSS + CADUS_CLINIC24_CSS + CADUS_CLINIC25_CSS + CADUS_CLINIC26_CSS + CADUS_CLINIC27_CSS + CADUS_CLINIC28_CSS + CADUS_CLINIC29_CSS + CADUS_CLINIC30_CSS + CADUS_CLINIC31_CSS + CADUS_CLINIC32_CSS + CADUS_CLINIC34_CSS + CADUS_CLINIC35_CSS + CADUS_CLINIC36_CSS}</style>
 
       {/* ============================================== sidebar */}
       <div className={`cx-scrim ${sidebarOpen ? "on" : ""}`} onClick={() => setSidebarOpen(false)} />
@@ -5440,6 +5506,16 @@ export default function CadusAI() {
                 : view === "abdomen" ? [Stethoscope, "Acute Abdomen & Appendicitis"]
                 : view === "fneutro" ? [ShieldPlus, "Febrile Neutropenia"]
                 : view === "meningitis" ? [Bug, "Meningitis & Encephalitis"]
+                : view === "statusepi" ? [Zap, "Status Epilepticus"]
+                : view === "sodium" ? [FlaskConical, "Hyponatraemia & Sodium"]
+                : view === "attack" ? [Wind, "Asthma & COPD Attack"]
+                : view === "bridging" ? [ClipboardCheck, "Pre-op Risk & Anticoagulant Bridging"]
+                : view === "oncoemerg" ? [Ribbon, "Oncology Emergencies"]
+                : view === "spirometry" ? [Gauge, "Spirometry Interpreter"]
+                : view === "thyroidstorm" ? [Thermometer, "Thyroid Storm & Myxoedema Coma"]
+                : view === "sickle" ? [Droplets, "Sickle Cell & Thalassaemia"]
+                : view === "rooms" ? [MessagesSquare, "Crew Chat Rooms"]
+                : view === "drill" ? [Flame, "Daily Drill"]
                 : view === "quizbattle" ? [Trophy, "Quiz Battle"]
                 : view === "caseround" ? [Users2, "Case Round"]
                 : view === "project" && project ? [Folder, project.name]
@@ -5903,6 +5979,14 @@ export default function CadusAI() {
             : view === "abdomen" ? <AbdomenView />
             : view === "fneutro" ? <FneutroView />
             : view === "meningitis" ? <MeningitisView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
+            : view === "statusepi" ? <StatusEpiView />
+            : view === "sodium" ? <SodiumView />
+            : view === "attack" ? <AttackView />
+            : view === "bridging" ? <BridgingView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
+            : view === "oncoemerg" ? <OncoEmergView />
+            : view === "spirometry" ? <SpirometryView />
+            : view === "thyroidstorm" ? <ThyroidStormView />
+            : view === "sickle" ? <SickleView />
             : view === "today" ? (
               <TodayView
                 name={firstName}
@@ -6070,6 +6154,42 @@ export default function CadusAI() {
                   setView("chat");
                   focusComposer();
                 }}
+              />
+            )
+            : view === "rooms" ? (
+              <CrewRoomsView
+                mine={crewMine}
+                badge={(c, size) => <CrewBadge c={c} size={size} />}
+                ask={async (c, q) => {
+                  const r = await invokeCadus({ action: "chat", message: q, mode: "general", history: [], crew: crewPayload(c), model: prefs.model, language: prefs.language, search: limits.sources && !!c.sources, ...(profilePayload(profile) ? { profile: profilePayload(profile) } : {}) });
+                  if (!r?.message) throw new Error("No answer came back");
+                  return String(r.message);
+                }}
+                canAsk={(n) => {
+                  if (usage.date === today() && usage.count + n > limits.questionsPerDay) { setUpgrade({ reason: `You have used today's ${limits.questionsPerDay} questions on the ${PLAN_BY_ID[plan].name} plan.`, feature: "questions" }); return false; }
+                  setUsage((u) => (u.date === today() ? { ...u, count: u.count + n } : { date: today(), count: n }));
+                  return true;
+                }}
+                friendlyError={friendlyError}
+                toast={toast}
+              />
+            )
+            : view === "drill" ? (
+              <CrewDrillView
+                mine={crewMine}
+                badge={(c, size) => <CrewBadge c={c} size={size} />}
+                ask={async (c, q) => {
+                  const r = await invokeCadus({ action: "chat", message: q, mode: "general", history: [], crew: crewPayload(c), model: prefs.model, language: prefs.language, search: limits.sources && !!c.sources, ...(profilePayload(profile) ? { profile: profilePayload(profile) } : {}) });
+                  if (!r?.message) throw new Error("No answer came back");
+                  return String(r.message);
+                }}
+                canAsk={(n) => {
+                  if (usage.date === today() && usage.count + n > limits.questionsPerDay) { setUpgrade({ reason: `You have used today's ${limits.questionsPerDay} questions on the ${PLAN_BY_ID[plan].name} plan.`, feature: "questions" }); return false; }
+                  setUsage((u) => (u.date === today() ? { ...u, count: u.count + n } : { date: today(), count: n }));
+                  return true;
+                }}
+                friendlyError={friendlyError}
+                toast={toast}
               />
             )
             : view === "quizbattle" ? (
@@ -6766,7 +6886,34 @@ export default function CadusAI() {
       {profileOpen && <ProfileDialog profile={profile} onSave={updateProfile} onClose={() => setProfileOpen(false)} />}
       {shareItem && <ShareDialog item={shareItem} onClose={() => setShareItem(null)} toast={toast} dark={dark} />}
       {crewShare && <CrewShareDialog c={crewShare} base={`${window.location.origin}${window.location.pathname}`} badge={<CrewBadge c={crewShare} size={44} />} dark={dark} onClose={() => setCrewShare(null)} toast={toast} />}
-      {crewSettings && <CrewCardSettings c={crewSettings} style={crewStyles[crewSettings.id]} org={crewOrg} badge={<CrewBadge c={crewSettings} size={44} />} onStyle={(st) => setCrewStyles((m) => setStyle(m, crewSettings.id, st))} onOrg={setCrewOrg} onClose={() => setCrewSettings(null)} />}
+      {crewSettings && <CrewCardSettings c={crewSettings} style={crewStyles[crewSettings.id]} org={crewOrg} badge={<CrewBadge c={crewSettings} size={44} />} onStyle={(st) => setCrewStyles((m) => setStyle(m, crewSettings.id, st))} onOrg={setCrewOrg} memory={crewMemory} onMemory={setCrewMemory} onClose={() => setCrewSettings(null)} />}
+      {crewImprove && (
+        <CrewImproveDialog
+          c={crewImprove}
+          ratings={crewRatings[crewImprove.id] ?? []}
+          badge={<CrewBadge c={crewImprove} size={44} />}
+          improve={async (q) => {
+            const r = await invokeCadus({ action: "chat", message: q, mode: "general", history: [], model: prefs.model, language: "English" });
+            if (!r?.message) throw new Error("No answer came back");
+            return String(r.message);
+          }}
+          canAsk={(n) => {
+                  if (usage.date === today() && usage.count + n > limits.questionsPerDay) { setUpgrade({ reason: `You have used today's ${limits.questionsPerDay} questions on the ${PLAN_BY_ID[plan].name} plan.`, feature: "questions" }); return false; }
+                  setUsage((u) => (u.date === today() ? { ...u, count: u.count + n } : { date: today(), count: n }));
+                  return true;
+                }}
+          friendlyError={friendlyError}
+          toast={toast}
+          onApply={(instructions) => {
+            const c = crewImprove;
+            if (c.builtIn) setCrewEdit({ ...c, id: "", builtIn: undefined, group: undefined, name: `${c.name} (mine)`.slice(0, CREW_NAME_MAX), instructions });
+            else { setCrewMine((l) => l.map((x) => (x.id === c.id ? { ...x, instructions, updatedAt: Date.now() } : x))); toast(`${c.name} has the new instructions`); }
+            setCrewImprove(null);
+          }}
+          onClear={() => setCrewRatings((r) => { const n = { ...r }; delete n[crewImprove.id]; return n; })}
+          onClose={() => setCrewImprove(null)}
+        />
+      )}
       {crewImport && <CrewImportDialog c={crewImport} badge={<CrewBadge c={crewImport} size={44} />} already={crewMine.some((x) => x.name === crewImport.name)} onAdd={() => addImported(crewImport)} onClose={() => setCrewImport(null)} />}
       {onboardOpen && (
         <Onboarding

@@ -7,6 +7,7 @@
  */
 
 import { SPECIALIST_CREW } from "./crewSpecialists";
+import { SPECIALIST_CREW_2 } from "./crewSpecialists2";
 
 export const CREW_KEY = "cadus3.crew";
 
@@ -19,7 +20,7 @@ export const CREW_ICONS = ["stethoscope", "graduation", "pill", "file", "microsc
 export type CrewIcon = (typeof CREW_ICONS)[number];
 
 /** Where an assistant sits in the gallery. */
-export const CREW_GROUPS = ["Study", "Clinical", "Specialists", "Writing", "Research"] as const;
+export const CREW_GROUPS = ["Study", "Clinical", "Specialists", "Super-specialists", "AYUSH & Integrative", "Allied & Public Health", "Exams & Careers", "Writing", "Research"] as const;
 export type CrewGroup = (typeof CREW_GROUPS)[number];
 
 /** A document an assistant knows: the user's notes, protocols or references, as text. */
@@ -268,6 +269,7 @@ export const BUILT_IN_CREW: CrewMember[] = [
     starters: ["Lesson plan: approach to anaemia for MBBS phase 2", "Write an OSCE station on BP measurement", "10 good MCQs on heart failure", "Small-group activity on informed consent"],
   },
   ...SPECIALIST_CREW,
+  ...SPECIALIST_CREW_2,
 ];
 
 export const blankCrew = (): CrewMember => ({ id: "", name: "", tagline: "", instructions: "", starters: [], icon: "stethoscope", tone: "teal", mode: "general" });
@@ -328,10 +330,10 @@ export function saveCrew(list: CrewMember[]) {
 }
 
 /** What the server needs: the name, instructions and knowledge. */
-export const crewPayload = (c: CrewMember | undefined, style: CrewStyle | undefined = c ? readStyles()[c.id] : undefined) => {
+export const crewPayload = (c: CrewMember | undefined, style: CrewStyle | undefined = c ? readStyles()[c.id] : undefined, memory: CrewFact[] | undefined = c ? readMemory()[c.id] : undefined) => {
   if (!c) return undefined;
-  const line = styleLine(style);
-  const instructions = line ? `${line}\n\n${c.instructions}`.slice(0, INSTRUCTIONS_MAX) : c.instructions;
+  const pre = [styleLine(style), memoryLine(memory)].filter(Boolean).join("\n\n");
+  const instructions = pre ? `${pre}\n\n${c.instructions}`.slice(0, INSTRUCTIONS_MAX) : c.instructions;
   return { name: c.name, instructions, ...(c.knowledge?.length ? { knowledge: c.knowledge.map((d) => ({ name: d.name, text: d.text })) } : {}) };
 };
 
@@ -859,3 +861,183 @@ export function saveCaseRounds(list: CaseRound[]) { try { localStorage.setItem(C
 export function caseRoundMd(r: CaseRound): string {
   return ["# Case round", `**Case:** ${r.caseText.slice(0, 1500)}`, ...r.steps.map((s, i) => `## ${i + 1}. ${s.name}\n\n${s.text || s.error || ""}`), ...(r.summary ? [`## Consensus plan\n\n${r.summary}`] : [])].join("\n\n");
 }
+
+/* ------------------------------------------------------------------ Update 36: assistant memory */
+
+export interface CrewFact { id: string; text: string; at: number }
+export const CREW_MEMORY_KEY = "cadus3.crewMemory";
+export const MEMORY_MAX = 15;
+export const FACT_MAX = 200;
+export function cleanFacts(raw: unknown): CrewFact[] {
+  return (Array.isArray(raw) ? raw : []).map((f: any) => ({ id: clip(f?.id, 40) || `f-${Math.random().toString(36).slice(2, 8)}`, text: clip(f?.text, FACT_MAX).replace(/\s+/g, " "), at: Number(f?.at) || Date.now() })).filter((f) => f.text).slice(0, MEMORY_MAX);
+}
+export function readMemory(): Record<string, CrewFact[]> {
+  try {
+    const v = JSON.parse(localStorage.getItem(CREW_MEMORY_KEY) || "{}");
+    const out: Record<string, CrewFact[]> = {};
+    for (const [k, x] of Object.entries(v && typeof v === "object" ? v : {})) { const f = cleanFacts(x); if (f.length) out[k.slice(0, 60)] = f; }
+    return out;
+  } catch { return {}; }
+}
+export function saveMemory(m: Record<string, CrewFact[]>) { try { localStorage.setItem(CREW_MEMORY_KEY, JSON.stringify(m)); } catch { /* blocked */ } }
+export function addFact(m: Record<string, CrewFact[]>, crewId: string, text: string): Record<string, CrewFact[]> {
+  const t = clip(text, FACT_MAX).replace(/\s+/g, " ");
+  if (!t) return m;
+  const list = (m[crewId] ?? []).filter((f) => f.text.toLowerCase() !== t.toLowerCase());
+  return { ...m, [crewId]: [{ id: `f-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, text: t, at: Date.now() }, ...list].slice(0, MEMORY_MAX) };
+}
+export function removeFact(m: Record<string, CrewFact[]>, crewId: string, factId: string): Record<string, CrewFact[]> {
+  const list = (m[crewId] ?? []).filter((f) => f.id !== factId);
+  const next = { ...m };
+  if (list.length) next[crewId] = list; else delete next[crewId];
+  return next;
+}
+/** "Remember: …" / "Remember that …" typed in a chat with an assistant: the fact to save, or "". */
+export function rememberFrom(text: string): string {
+  const m = /^\s*(?:please\s+)?remember(?:\s+that)?\s*[:,-]?\s+(.{3,})$/is.exec(text);
+  return m ? clip(m[1], FACT_MAX).replace(/\s+/g, " ") : "";
+}
+export function memoryLine(facts: CrewFact[] | undefined): string {
+  const f = cleanFacts(facts);
+  if (!f.length) return "";
+  return `WHAT THE USER ASKED YOU TO REMEMBER (use it when relevant; do not list it back unless asked):\n${f.map((x) => `- ${x.text}`).join("\n")}`;
+}
+
+/* ------------------------------------------------------------------ Update 36: chat rooms */
+
+export interface RoomMsg { id: string; role: "user" | "crew"; crewId?: string; name?: string; text: string; at: number; error?: boolean }
+export interface CrewRoom { id: string; name: string; members: string[]; mode: "best" | "all"; messages: RoomMsg[]; createdAt: number; updatedAt: number }
+export const ROOMS_KEY = "cadus3.crewRooms";
+export const ROOM_MAX = 10;
+export const ROOM_MEMBERS_MAX = 5;
+export const ROOM_MSGS_MAX = 80;
+export function readRooms(): CrewRoom[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(ROOMS_KEY) || "[]");
+    return (Array.isArray(v) ? v : []).filter((r) => r && typeof r.name === "string" && Array.isArray(r.members) && Array.isArray(r.messages)).slice(0, ROOM_MAX)
+      .map((r) => ({ ...r, mode: r.mode === "all" ? "all" : "best", members: r.members.map(String).slice(0, ROOM_MEMBERS_MAX), messages: r.messages.slice(-ROOM_MSGS_MAX) }));
+  } catch { return []; }
+}
+export function saveRooms(list: CrewRoom[]) { try { localStorage.setItem(ROOMS_KEY, JSON.stringify(list.slice(0, ROOM_MAX).map((r) => ({ ...r, messages: r.messages.slice(-ROOM_MSGS_MAX) })))); } catch { /* full or blocked */ } }
+export function newRoom(name: string, members: string[]): CrewRoom {
+  const now = Date.now();
+  return { id: `room-${now.toString(36)}${Math.random().toString(36).slice(2, 5)}`, name: clip(name, 40) || "Crew room", members: [...new Set(members)].slice(0, ROOM_MEMBERS_MAX), mode: "best", messages: [], createdAt: now, updatedAt: now };
+}
+/** Who replies: anyone @-mentioned; otherwise everyone, or the best match for the message. */
+export function roomTargets(text: string, members: CrewMember[], mode: "best" | "all"): string[] {
+  const low = text.toLowerCase();
+  const named = members.filter((m) => low.includes(`@${m.name.toLowerCase()}`) || low.includes(`@${m.name.split(/\s+/)[0].toLowerCase()}`));
+  if (/@(all|everyone)\b/.test(low)) return members.map((m) => m.id);
+  if (named.length) return named.map((m) => m.id);
+  if (mode === "all") return members.map((m) => m.id);
+  const best = suggestCrewAmong(text, members)[0] ?? members[0];
+  return best ? [best.id] : [];
+}
+function suggestCrewAmong(text: string, members: CrewMember[]): CrewMember[] {
+  const words = text.toLowerCase().replace(/[^a-z0-9\s-]/g, " ").split(/\s+/).filter((w) => w.length > 3);
+  return members.map((c) => ({ c, s: words.reduce((a, w) => a + (c.name.toLowerCase().includes(w) ? 4 : 0) + (c.tagline.toLowerCase().includes(w) ? 3 : 0) + (c.instructions.toLowerCase().includes(w) ? 1 : 0), 0) }))
+    .filter((x) => x.s > 0).sort((a, b) => b.s - a.s).map((x) => x.c);
+}
+/** What one assistant is sent: the room, its members, the recent transcript and the new message. */
+export function roomMessage(room: CrewRoom, me: CrewMember, members: CrewMember[], text: string): string {
+  const recent = room.messages.slice(-12).map((m) => `${m.role === "user" ? "User" : m.name ?? "Assistant"}: ${m.text.slice(0, 800)}`).join("\n\n");
+  return [
+    `You are ${me.name}, in a group chat room called "${room.name}" with the user and these assistants: ${members.filter((m) => m.id !== me.id).map((m) => m.name).join(", ") || "no one else"}.`,
+    "Reply as yourself only, to the user's latest message. Build on what the others said, politely correct them if they are wrong, and do not repeat them. Keep it under 200 words unless asked for more.",
+    recent ? `<transcript>\n${recent}\n</transcript>` : "",
+    `<latest_message>\n${text}\n</latest_message>`,
+  ].filter(Boolean).join("\n\n");
+}
+export function roomMd(r: CrewRoom): string {
+  return [`# ${r.name}`, ...r.messages.map((m) => `**${m.role === "user" ? "You" : m.name}:** ${m.text}`)].join("\n\n");
+}
+
+/* ------------------------------------------------------------------ Update 36: daily drill and streaks */
+
+export interface DrillDay { topic: string; correct: number; total: number }
+export interface DrillState { crewId: string; topics: string[]; level: QuizLevel; days: Record<string, DrillDay>; stats: Record<string, { c: number; t: number }> }
+export const DRILL_KEY = "cadus3.crewDrill";
+export const DRILL_N = 5;
+export const blankDrill = (): DrillState => ({ crewId: "crew-neetpg", topics: [], level: "exam", days: {}, stats: {} });
+export function readDrill(): DrillState {
+  try {
+    const v = JSON.parse(localStorage.getItem(DRILL_KEY) || "null");
+    if (!v || typeof v !== "object") return blankDrill();
+    return { crewId: clip(v.crewId, 60) || "crew-neetpg", topics: (Array.isArray(v.topics) ? v.topics : []).map((t: unknown) => clip(t, 60)).filter(Boolean).slice(0, 20), level: v.level === "easy" || v.level === "hard" ? v.level : "exam", days: v.days && typeof v.days === "object" ? v.days : {}, stats: v.stats && typeof v.stats === "object" ? v.stats : {} };
+  } catch { return blankDrill(); }
+}
+export function saveDrill(d: DrillState) { try { localStorage.setItem(DRILL_KEY, JSON.stringify(d)); } catch { /* blocked */ } }
+export const dateKey = (d: Date = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const addDays = (key: string, n: number) => { const [y, m, d] = key.split("-").map(Number); return dateKey(new Date(y, m - 1, d + n)); };
+/** Days in a row with a drill, ending today (or yesterday if today's is not done yet). */
+export function drillStreak(days: Record<string, DrillDay>, today: string): number {
+  let k = days[today] ? today : addDays(today, -1), n = 0;
+  while (days[k]) { n++; k = addDays(k, -1); }
+  return n;
+}
+export function bestStreak(days: Record<string, DrillDay>): number {
+  const keys = Object.keys(days).sort();
+  let best = 0, run = 0, prev = "";
+  for (const k of keys) { run = prev && addDays(prev, 1) === k ? run + 1 : 1; best = Math.max(best, run); prev = k; }
+  return best;
+}
+/** Today's topic: the weakest (untried first), not the same as yesterday's when there is a choice. */
+export function pickTopic(d: DrillState, today: string): string {
+  if (!d.topics.length) return "";
+  const yesterday = d.days[addDays(today, -1)]?.topic;
+  const acc = (t: string) => (d.stats[t]?.t ? d.stats[t].c / d.stats[t].t : -1);
+  const sorted = [...d.topics].sort((a, b) => acc(a) - acc(b) || a.localeCompare(b));
+  return (sorted.length > 1 ? sorted.find((t) => t !== yesterday) : sorted[0]) ?? sorted[0];
+}
+export function recordDrill(d: DrillState, today: string, topic: string, correct: number, total: number): DrillState {
+  const s = d.stats[topic] ?? { c: 0, t: 0 };
+  return { ...d, days: { ...d.days, [today]: { topic, correct, total } }, stats: { ...d.stats, [topic]: { c: s.c + correct, t: s.t + total } } };
+}
+export function weakTopics(d: DrillState, min = 5): { topic: string; pct: number; answered: number }[] {
+  return Object.entries(d.stats).filter(([, s]) => s.t >= min).map(([topic, s]) => ({ topic, pct: Math.round((s.c / s.t) * 100), answered: s.t })).sort((a, b) => a.pct - b.pct).slice(0, 5);
+}
+/** The last n days, oldest first, for the streak calendar. */
+export function drillCalendar(d: DrillState, today: string, n = 28): { key: string; day?: DrillDay }[] {
+  return Array.from({ length: n }, (_, i) => { const key = addDays(today, i - n + 1); return { key, day: d.days[key] }; });
+}
+
+/* ------------------------------------------------------------------ Update 36: rate and improve */
+
+export interface CrewRating { msgId: string; vote: "up" | "down"; q: string; a: string; why?: string; at: number }
+export const CREW_FEEDBACK_KEY = "cadus3.crewFeedback";
+export const RATINGS_MAX = 30;
+export function readRatings(): Record<string, CrewRating[]> {
+  try {
+    const v = JSON.parse(localStorage.getItem(CREW_FEEDBACK_KEY) || "{}");
+    const out: Record<string, CrewRating[]> = {};
+    for (const [k, x] of Object.entries(v && typeof v === "object" ? v : {})) if (Array.isArray(x)) out[k.slice(0, 60)] = x.filter((r: any) => r && (r.vote === "up" || r.vote === "down")).slice(0, RATINGS_MAX);
+    return out;
+  } catch { return {}; }
+}
+export function saveRatings(m: Record<string, CrewRating[]>) { try { localStorage.setItem(CREW_FEEDBACK_KEY, JSON.stringify(m)); } catch { /* blocked */ } }
+export function rateCrew(m: Record<string, CrewRating[]>, crewId: string, r: Omit<CrewRating, "at"> & { at?: number }): Record<string, CrewRating[]> {
+  const item: CrewRating = { msgId: r.msgId, vote: r.vote, q: clip(r.q, 600), a: clip(r.a, 1200), ...(r.why ? { why: clip(r.why, 600) } : {}), at: r.at ?? Date.now() };
+  return { ...m, [crewId]: [item, ...(m[crewId] ?? []).filter((x) => x.msgId !== r.msgId)].slice(0, RATINGS_MAX) };
+}
+export function unrateCrew(m: Record<string, CrewRating[]>, crewId: string, msgId: string): Record<string, CrewRating[]> {
+  const list = (m[crewId] ?? []).filter((x) => x.msgId !== msgId);
+  const next = { ...m };
+  if (list.length) next[crewId] = list; else delete next[crewId];
+  return next;
+}
+export function ratingSummary(list: CrewRating[] | undefined): { up: number; down: number; pct: number | null } {
+  const up = (list ?? []).filter((r) => r.vote === "up").length, down = (list ?? []).filter((r) => r.vote === "down").length;
+  return { up, down, pct: up + down ? Math.round((up / (up + down)) * 100) : null };
+}
+/** Asks for better instructions from the ratings. */
+export function improvePrompt(c: CrewMember, list: CrewRating[]): string {
+  const ex = list.slice(0, 12).map((r) => `<rated vote="${r.vote}">\nQuestion: ${r.q.slice(0, 300)}\nAnswer (start): ${r.a.slice(0, 500)}${r.why ? `\nUser's complaint: ${r.why}` : ""}\n</rated>`).join("\n");
+  return [
+    `Improve the instructions of a Cadus Crew assistant called "${c.name}" using the user's ratings of its answers.`,
+    "Keep its role and purpose. Fix what the thumbs-down answers did wrong (length, format, accuracy, focus, tone, missing doses or sources) and keep what the thumbs-up answers did well.",
+    "Reply with ONLY the new instructions, written to the assistant in the second person ('Act as…'), under 2,500 characters, no preamble, no headings, no code fences.",
+    `<current_instructions>\n${c.instructions}\n</current_instructions>`,
+    ex,
+  ].join("\n\n");
+}
+export const cleanImproved = (text: string) => String(text ?? "").replace(/^```[a-z]*\s*/i, "").replace(/```\s*$/, "").replace(/^(new instructions|instructions)\s*:\s*/i, "").trim().slice(0, INSTRUCTIONS_MAX);
