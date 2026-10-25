@@ -287,6 +287,7 @@ const TOOLS: [string, string][] = [
   ["Upper GI Bleed & H. pylori", "r"], ["Acute Kidney Injury", "t"], ["Hepatitis B & C", "y"], ["Newborn Resuscitation", "r"], ["Pain Relief Planner", "v"], ["Osteoporosis & Bone Health", "t"], ["Menopause & HRT", "v"], ["Syncope", "y"],
   ["Heart Failure GDMT", "r"], ["Atrial Fibrillation", "v"], ["Lipids & CV Risk", "y"], ["PE & DVT", "t"], ["HIV Care", "r"], ["Pre-eclampsia", "r"], ["Insomnia & Sleep", "v"], ["Urticaria & Angioedema", "y"],
   ["Anaphylaxis & Allergy Plan", "r"], ["Trauma Primary Survey", "r"], ["Toxicology", "y"], ["Pneumothorax & Chest Drain", "t"], ["Body Fluid Analysis", "v"], ["Adrenal Crisis & Steroid Cover", "v"], ["Refeeding & Nutrition", "y"], ["Back Pain & Cauda Equina", "t"],
+  ["Chest Pain & ACS", "r"], ["Child Fluids & Dehydration", "t"], ["Agitation & Rapid Tranquillisation", "y"], ["Suicide Risk & Safety Plan", "v"], ["Head Injury & CT Rules", "v"], ["Acute Abdomen & Appendicitis", "t"], ["Febrile Neutropenia", "y"], ["Meningitis & Encephalitis", "r"],
 ];
 
 /**

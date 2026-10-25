@@ -710,3 +710,46 @@ export const CADUS_CLINIC34_CSS = `
 .cx-crew-h .cx-page-acts{flex-wrap:wrap}
 .cx-crew-sort .cx-select{width:auto;min-width:130px}
 `;
+
+/** Update 35: crew notes and collections, team packs, settings dialog, Quiz Battle and Case Round. */
+export const CADUS_CLINIC35_CSS = `
+.cx-crew-note{display:flex;gap:5px;align-items:flex-start;margin-top:6px;padding:6px 8px;border-radius:8px;background:var(--line2,rgba(0,0,0,.04));font-size:12px;line-height:1.4;color:var(--t2);text-align:left;white-space:pre-wrap;overflow-wrap:anywhere}
+.cx-crew-note svg{flex:none;margin-top:2px}
+.cx-crew-cols{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0 4px}
+.cx-crew-cols>span{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--t2);margin-right:2px}
+.cx-crew-cols .cx-chip small{opacity:.7;margin-left:4px}
+.cx-link.danger{color:var(--danger)}
+.cx-packs{margin:10px 0 16px}
+.cx-packs-h{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.cx-packs-h h3{display:inline-flex;align-items:center;gap:6px;margin:0}
+.cx-packs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin:6px 0 10px}
+.cx-pack{display:flex;flex-direction:column;gap:6px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+.cx-pack small{color:var(--t2);font-size:12px;line-height:1.4}
+.cx-pack-faces{display:flex;flex-wrap:wrap;gap:4px}
+.cx-pack .cx-btn{align-self:flex-start}
+.cx-pack-pick{display:flex;flex-wrap:wrap;gap:6px;max-height:220px;overflow:auto;padding:4px 0}
+.cx-pack-pick .cx-chip{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.cx-cset{max-width:620px}
+.cx-cset h4{display:flex;align-items:center;gap:6px;margin:14px 0 6px}
+.cx-cset h4:first-child{margin-top:0}
+.cx-cset .cx-pa-mine small{color:var(--t3)}
+.cx-qb-score{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.cx-qb-score .cx-chip{display:inline-flex;align-items:center;gap:5px}
+.cx-qb-score .cx-chip.warn{border-color:var(--danger);color:var(--danger)}
+.cx-qb-opts{display:grid;gap:8px;margin:10px 0}
+.cx-qb-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--text);font:inherit;cursor:pointer;transition:border-color .15s,background .15s}
+.cx-qb-opt:hover:not(:disabled){border-color:var(--primary)}
+.cx-qb-opt>span{flex:none;display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--line2,rgba(0,0,0,.06));font-weight:700;font-size:13px}
+.cx-qb-opt>svg{margin-left:auto;flex:none}
+.cx-qb-opt.right{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,transparent)}
+.cx-qb-opt.wrong{border-color:var(--danger);background:color-mix(in srgb,var(--danger) 10%,transparent)}
+.cx-qb-opt:disabled{cursor:default}
+.cx-quizb .cx-c23-table svg{color:var(--warn);vertical-align:-2px}
+.cx-cr-team{list-style:none;padding:0;margin:10px 0;display:grid;gap:6px;counter-reset:cr}
+.cx-cr-team li{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);counter-increment:cr}
+.cx-cr-team li::before{content:counter(cr);font-weight:700;color:var(--t3);width:16px}
+.cx-cr-acts{margin-left:auto;display:inline-flex;gap:2px}
+.cx-caseround .cx-cmp-out{margin-top:10px}
+.cx-caseround [data-cr-step]{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface)}
+.cx-caseround [data-cr="out"]>.cx-sc-acts{margin:12px 0 18px}
+`;

@@ -6,6 +6,8 @@
  * is used for the first message, and its starters fill the home page.
  */
 
+import { SPECIALIST_CREW } from "./crewSpecialists";
+
 export const CREW_KEY = "cadus3.crew";
 
 /** Colours a crew member's badge can take (the CSS has a tone for each). */
@@ -265,6 +267,7 @@ export const BUILT_IN_CREW: CrewMember[] = [
     instructions: "Act as a medical educator for Indian medical colleges (CBME curriculum, NMC competencies). Help faculty and PG students build lesson plans with objectives and competency codes, lecture outlines, small-group activities, case-based discussions, OSCE stations with checklists, and MCQs with item-writing best practice (single best answer, plausible distractors, no negatives). Suggest assessment and feedback methods.",
     starters: ["Lesson plan: approach to anaemia for MBBS phase 2", "Write an OSCE station on BP measurement", "10 good MCQs on heart failure", "Small-group activity on informed consent"],
   },
+  ...SPECIALIST_CREW,
 ];
 
 export const blankCrew = (): CrewMember => ({ id: "", name: "", tagline: "", instructions: "", starters: [], icon: "stethoscope", tone: "teal", mode: "general" });
@@ -325,8 +328,12 @@ export function saveCrew(list: CrewMember[]) {
 }
 
 /** What the server needs: the name, instructions and knowledge. */
-export const crewPayload = (c: CrewMember | undefined) =>
-  c ? { name: c.name, instructions: c.instructions, ...(c.knowledge?.length ? { knowledge: c.knowledge.map((d) => ({ name: d.name, text: d.text })) } : {}) } : undefined;
+export const crewPayload = (c: CrewMember | undefined, style: CrewStyle | undefined = c ? readStyles()[c.id] : undefined) => {
+  if (!c) return undefined;
+  const line = styleLine(style);
+  const instructions = line ? `${line}\n\n${c.instructions}`.slice(0, INSTRUCTIONS_MAX) : c.instructions;
+  return { name: c.name, instructions, ...(c.knowledge?.length ? { knowledge: c.knowledge.map((d) => ({ name: d.name, text: d.text })) } : {}) };
+};
 
 /** Every assistant, the user's first, for pickers. */
 export const allCrew = (mine: CrewMember[]) => [...mine, ...BUILT_IN_CREW];
@@ -612,4 +619,243 @@ export function suggestCrew(question: string, mine: CrewMember[], max = 3): Crew
     return { c, s };
   }).filter((x) => x.s > 0).sort((a, b) => b.s - a.s);
   return scored.slice(0, max).map((x) => x.c);
+}
+
+/* ------------------------------------------------------------------ Update 35: answer style and language per assistant */
+
+export type CrewLength = "brief" | "standard" | "detailed";
+export type CrewFormat = "default" | "bullets" | "table" | "steps" | "exam";
+export interface CrewStyle { length?: CrewLength; format?: CrewFormat; language?: string }
+export const CREW_STYLE_KEY = "cadus3.crewStyle";
+export const CREW_LANGS = ["English", "Hindi", "Hinglish", "Bengali", "Marathi", "Telugu", "Tamil", "Gujarati", "Kannada", "Malayalam", "Punjabi", "Odia", "Urdu", "Assamese"] as const;
+export const CREW_LENGTHS: { id: CrewLength; label: string }[] = [{ id: "brief", label: "Brief" }, { id: "standard", label: "Standard" }, { id: "detailed", label: "Detailed" }];
+export const CREW_FORMATS: { id: CrewFormat; label: string }[] = [{ id: "default", label: "As it sees fit" }, { id: "bullets", label: "Bullet points" }, { id: "table", label: "Tables where possible" }, { id: "steps", label: "Numbered steps" }, { id: "exam", label: "Exam answer (headings, key points)" }];
+
+export function cleanStyle(raw: unknown): CrewStyle | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const r = raw as Record<string, unknown>;
+  const out: CrewStyle = {};
+  if (CREW_LENGTHS.some((l) => l.id === r.length) && r.length !== "standard") out.length = r.length as CrewLength;
+  if (CREW_FORMATS.some((f) => f.id === r.format) && r.format !== "default") out.format = r.format as CrewFormat;
+  if ((CREW_LANGS as readonly string[]).includes(String(r.language)) && r.language !== "English") out.language = String(r.language);
+  return Object.keys(out).length ? out : undefined;
+}
+export function readStyles(): Record<string, CrewStyle> {
+  try {
+    const v = JSON.parse(localStorage.getItem(CREW_STYLE_KEY) || "{}");
+    const out: Record<string, CrewStyle> = {};
+    for (const [k, x] of Object.entries(v && typeof v === "object" ? v : {})) { const s = cleanStyle(x); if (s) out[k.slice(0, 60)] = s; }
+    return out;
+  } catch { return {}; }
+}
+export function saveStyles(m: Record<string, CrewStyle>) { try { localStorage.setItem(CREW_STYLE_KEY, JSON.stringify(m)); } catch { /* blocked */ } }
+/** A new style map with one assistant's style set (or cleared when everything is default). */
+export function setStyle(m: Record<string, CrewStyle>, id: string, style: CrewStyle): Record<string, CrewStyle> {
+  const next = { ...m };
+  const s = cleanStyle(style);
+  if (s) next[id] = s; else delete next[id];
+  return next;
+}
+/** The line put in front of the instructions. */
+export function styleLine(s: CrewStyle | undefined): string {
+  const c = cleanStyle(s);
+  if (!c) return "";
+  const parts: string[] = [];
+  if (c.length === "brief") parts.push("Keep answers brief: the key points in under 150 words unless asked for more.");
+  if (c.length === "detailed") parts.push("Give detailed, thorough answers with reasoning, doses and references to guidelines.");
+  if (c.format === "bullets") parts.push("Format answers as bullet points.");
+  if (c.format === "table") parts.push("Use tables wherever information can be compared.");
+  if (c.format === "steps") parts.push("Format answers as numbered steps.");
+  if (c.format === "exam") parts.push("Write like a model exam answer: short headings, key points, a diagram description or mnemonic where useful.");
+  if (c.language) parts.push(`Always answer in ${c.language === "Hinglish" ? "Hinglish (Hindi in Roman script mixed with English medical terms)" : c.language}, keeping drug names and medical terms in English.`);
+  return `ANSWER STYLE (set by the user for this assistant): ${parts.join(" ")}`;
+}
+export const styleSummary = (s: CrewStyle | undefined) => {
+  const c = cleanStyle(s);
+  if (!c) return "";
+  return [c.length && CREW_LENGTHS.find((l) => l.id === c.length)?.label, c.format && CREW_FORMATS.find((f) => f.id === c.format)?.label, c.language].filter(Boolean).join(" · ");
+};
+
+/* ------------------------------------------------------------------ Update 35: collections and private notes */
+
+export interface CrewCollection { id: string; name: string; ids: string[] }
+export interface CrewOrg { collections: CrewCollection[]; notes: Record<string, string> }
+export const CREW_ORG_KEY = "cadus3.crewOrg";
+export const COLLECTION_MAX = 20;
+export const NOTE_MAX = 1000;
+export function cleanOrg(raw: unknown): CrewOrg {
+  const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const collections = (Array.isArray(r.collections) ? r.collections : []).map((c: any) => ({
+    id: clip(c?.id, 40) || `col-${Math.random().toString(36).slice(2, 8)}`,
+    name: clip(c?.name, 40).replace(/\s+/g, " "),
+    ids: [...new Set((Array.isArray(c?.ids) ? c.ids : []).map((x: unknown) => clip(x, 60)).filter(Boolean))].slice(0, 120) as string[],
+  })).filter((c) => c.name).slice(0, COLLECTION_MAX);
+  const notes: Record<string, string> = {};
+  for (const [k, v] of Object.entries(r.notes && typeof r.notes === "object" ? r.notes as Record<string, unknown> : {})) { const t = clip(v, NOTE_MAX); if (t) notes[k.slice(0, 60)] = t; }
+  return { collections, notes };
+}
+export function readOrg(): CrewOrg { try { return cleanOrg(JSON.parse(localStorage.getItem(CREW_ORG_KEY) || "{}")); } catch { return { collections: [], notes: {} }; } }
+export function saveOrg(o: CrewOrg) { try { localStorage.setItem(CREW_ORG_KEY, JSON.stringify(o)); } catch { /* blocked */ } }
+export function addCollection(o: CrewOrg, name: string, ids: string[] = []): CrewOrg {
+  const n = clip(name, 40).replace(/\s+/g, " ");
+  if (!n || o.collections.length >= COLLECTION_MAX) return o;
+  const existing = o.collections.find((c) => c.name.toLowerCase() === n.toLowerCase());
+  if (existing) return { ...o, collections: o.collections.map((c) => (c === existing ? { ...c, ids: [...new Set([...c.ids, ...ids])] } : c)) };
+  return { ...o, collections: [...o.collections, { id: `col-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, name: n, ids: [...new Set(ids)] }] };
+}
+export const renameCollection = (o: CrewOrg, id: string, name: string): CrewOrg => ({ ...o, collections: o.collections.map((c) => (c.id === id && clip(name, 40) ? { ...c, name: clip(name, 40) } : c)) });
+export const deleteCollection = (o: CrewOrg, id: string): CrewOrg => ({ ...o, collections: o.collections.filter((c) => c.id !== id) });
+export const toggleInCollection = (o: CrewOrg, colId: string, crewId: string): CrewOrg => ({
+  ...o, collections: o.collections.map((c) => (c.id !== colId ? c : { ...c, ids: c.ids.includes(crewId) ? c.ids.filter((x) => x !== crewId) : [...c.ids, crewId] })),
+});
+export function setNote(o: CrewOrg, crewId: string, text: string): CrewOrg {
+  const notes = { ...o.notes };
+  const t = clip(text, NOTE_MAX);
+  if (t) notes[crewId] = t; else delete notes[crewId];
+  return { ...o, notes };
+}
+/** Collections an assistant belongs to. */
+export const collectionsOf = (o: CrewOrg, crewId: string) => o.collections.filter((c) => c.ids.includes(crewId));
+
+/* ------------------------------------------------------------------ Update 35: team packs */
+
+export interface CrewPack { id: string; name: string; description: string; ids: string[] }
+export const CREW_PACKS: CrewPack[] = [
+  { id: "pack-surgical", name: "Surgical team", description: "General, GI, urology, vascular, plastics, anaesthesia and the surgical registrar.", ids: ["crew-surgery", "crew-gisurg", "crew-uro", "crew-vascular", "crew-plastic", "crew-anaes", "crew-ir"] },
+  { id: "pack-medical", name: "Medical ward", description: "Cardiology, nephrology, gastro, pulmonology, ID, haematology and the pharmacist.", ids: ["crew-rounds", "crew-cardio", "crew-nephro", "crew-gastro", "crew-pulm", "crew-id", "crew-haem", "crew-pharmacist"] },
+  { id: "pack-paeds", name: "Paediatrics", description: "Doses, newborns, cardiology, neurology, surgery and child psychiatry.", ids: ["crew-paeds", "crew-neonat", "crew-paedcardio", "crew-paedneuro", "crew-paedsurg", "crew-cap"] },
+  { id: "pack-women", name: "Women's health", description: "Obstetrics, high-risk pregnancy, IVF, gynae oncology and breast.", ids: ["crew-obg", "crew-mfm", "crew-ivf", "crew-gynonc", "crew-surgonc"] },
+  { id: "pack-cancer", name: "Tumour board", description: "Medical, surgical and radiation oncology, pathology, nuclear medicine and palliative care.", ids: ["crew-onco", "crew-surgonc", "crew-radonc", "crew-path", "crew-nucmed", "crew-palliative"] },
+  { id: "pack-emergency", name: "Emergency & critical care", description: "ED, ICU, anaesthesia, neurosurgery, transfusion and toxicology help.", ids: ["crew-ed", "crew-icu", "crew-anaes", "crew-neurosurg", "crew-transfusion", "crew-tropical"] },
+  { id: "pack-basics", name: "First-year to finals", description: "Anatomy, physiology, biochemistry, pharmacology, microbiology, pathology and the exam coaches.", ids: ["crew-anatomy", "crew-physio", "crew-biochem", "crew-pharmacology", "crew-micro", "crew-path", "crew-viva", "crew-neetpg"] },
+  { id: "pack-rehab", name: "Rehab & allied health", description: "PMR, physiotherapy, speech and swallow, nutrition, psychology and geriatrics.", ids: ["crew-pmr", "crew-physioth", "crew-speech", "crew-nutrition", "crew-psychologist", "crew-geri"] },
+];
+export const PACK_V = 1;
+/** A pack as a file: built-ins by id, the user's own in full (knowledge files stay on this device). */
+export function packFile(name: string, ids: string[], mine: CrewMember[]): string {
+  const own = mine.filter((c) => ids.includes(c.id)).map(({ knowledge: _k, ...c }) => c);
+  return JSON.stringify({ app: "cadus-crew-pack", v: PACK_V, name: clip(name, 40) || "Crew pack", builtIn: ids.filter((id) => BUILT_IN_CREW.some((b) => b.id === id)), crew: own }, null, 2);
+}
+/** The short code for a pack link (built-ins as ids, the user's own compressed into the code). */
+export function packCode(name: string, ids: string[], mine: CrewMember[]): string {
+  const own = mine.filter((c) => ids.includes(c.id)).map((c) => ({ n: c.name, t: c.tagline, i: c.instructions, s: c.starters, ic: c.icon, to: c.tone, m: c.mode }));
+  return b64url(JSON.stringify({ v: PACK_V, p: clip(name, 40) || "Crew pack", b: ids.filter((id) => BUILT_IN_CREW.some((x) => x.id === id)), o: own }));
+}
+export const packLink = (name: string, ids: string[], mine: CrewMember[], base: string) => `${base}?crewpack=${packCode(name, ids, mine)}`;
+export interface ReadPack { name: string; builtInIds: string[]; custom: CrewMember[] }
+/** A pack read back from a file, a link or a code. */
+export function readPack(text: string, modes: string[]): ReadPack | null {
+  const t = text.trim();
+  try {
+    if (t.startsWith("{")) {
+      const v = JSON.parse(t);
+      if (v?.app !== "cadus-crew-pack") return null;
+      return {
+        name: clip(v.name, 40) || "Crew pack",
+        builtInIds: (Array.isArray(v.builtIn) ? v.builtIn : []).map(String).filter((id: string) => BUILT_IN_CREW.some((b) => b.id === id)).slice(0, 100),
+        custom: (Array.isArray(v.crew) ? v.crew : []).map((x: Partial<CrewMember>) => cleanCrew({ ...x, id: "", importedAt: Date.now() }, modes)).filter((x: CrewMember | null): x is CrewMember => !!x).slice(0, CREW_MAX),
+      };
+    }
+    const m = /[?&]crewpack=([A-Za-z0-9_-]+)/.exec(t);
+    const code = m ? m[1] : /^[A-Za-z0-9_-]+$/.test(t) ? t : "";
+    if (!code || code.length > 60000) return null;
+    const o = JSON.parse(unb64url(code));
+    if (!o || o.v !== PACK_V) return null;
+    return {
+      name: clip(o.p, 40) || "Crew pack",
+      builtInIds: (Array.isArray(o.b) ? o.b : []).map(String).filter((id: string) => BUILT_IN_CREW.some((b) => b.id === id)).slice(0, 100),
+      custom: (Array.isArray(o.o) ? o.o : []).map((x: any) => cleanCrew({ id: "", name: x?.n, tagline: x?.t, instructions: x?.i, starters: x?.s, icon: x?.ic, tone: x?.to, mode: x?.m, importedAt: Date.now() }, modes)).filter((x: CrewMember | null): x is CrewMember => !!x).slice(0, CREW_MAX),
+    };
+  } catch { return null; }
+}
+
+/* ------------------------------------------------------------------ Update 35: quiz battle */
+
+export interface QuizQ { q: string; options: string[]; answer: number; why: string }
+export type QuizLevel = "easy" | "exam" | "hard";
+export function quizPrompt(topic: string, n: number, level: QuizLevel): string {
+  return [
+    `Write ${n} single-best-answer multiple-choice questions on: ${topic.trim().slice(0, 300)}.`,
+    `Level: ${level === "easy" ? "MBBS university exam, core facts" : level === "hard" ? "NEET-PG/INI-CET hard, clinical vignettes and second-order thinking" : "NEET-PG standard, mix of recall and clinical vignettes"}.`,
+    "Each question has exactly 4 options, one correct, plausible distractors, no 'all of the above'. Vary the position of the correct answer.",
+    'Reply with ONLY a JSON array, no other text, in this shape: [{"q":"question","options":["A","B","C","D"],"answer":0,"why":"one or two lines on why it is right and the trap"}]. "answer" is the 0-based index of the correct option.',
+  ].join("\n");
+}
+/** The questions from a reply, made safe; malformed items dropped. */
+export function parseQuiz(text: string): QuizQ[] {
+  const t = String(text ?? "");
+  const start = t.indexOf("["), end = t.lastIndexOf("]");
+  if (start < 0 || end <= start) return [];
+  try {
+    const v = JSON.parse(t.slice(start, end + 1));
+    return (Array.isArray(v) ? v : []).map((x: any): QuizQ | null => {
+      const options = Array.isArray(x?.options) ? x.options.map((o: unknown) => clip(o, 300)).filter(Boolean) : [];
+      const answer = Number(x?.answer);
+      const q = clip(x?.q, 1200);
+      if (!q || options.length < 2 || options.length > 6 || !Number.isInteger(answer) || answer < 0 || answer >= options.length) return null;
+      return { q, options, answer, why: clip(x?.why, 800) };
+    }).filter((x): x is QuizQ => !!x).slice(0, 20);
+  } catch { return []; }
+}
+export interface QuizPlayer { name: string; score: number; streak: number; best: number; answered: number }
+/** Points for one answer: 10, plus a 5-point bonus from the third right answer in a row, plus up to 5 for speed. */
+export function quizPoints(correct: boolean, streak: number, secondsLeft: number, limit: number): number {
+  if (!correct) return 0;
+  return 10 + (streak >= 2 ? 5 : 0) + (limit > 0 ? Math.max(0, Math.min(5, Math.round((secondsLeft / limit) * 5))) : 0);
+}
+export interface QuizResult { id: string; at: number; topic: string; level: QuizLevel; crewId: string; players: { name: string; score: number; correct: number; total: number }[] }
+export const QUIZ_KEY = "cadus3.quizBattles";
+export function readQuizResults(): QuizResult[] {
+  try { const v = JSON.parse(localStorage.getItem(QUIZ_KEY) || "[]"); return (Array.isArray(v) ? v : []).filter((r) => r && Array.isArray(r.players)).slice(0, 40); } catch { return []; }
+}
+export function saveQuizResults(list: QuizResult[]) { try { localStorage.setItem(QUIZ_KEY, JSON.stringify(list.slice(0, 40))); } catch { /* blocked */ } }
+/** Best scores by player across saved battles. */
+export function quizLeaderboard(list: QuizResult[], max = 5): { name: string; best: number; games: number; accuracy: number }[] {
+  const m = new Map<string, { best: number; games: number; correct: number; total: number }>();
+  for (const r of list) for (const p of r.players) {
+    const k = p.name.trim() || "You";
+    const e = m.get(k) ?? { best: 0, games: 0, correct: 0, total: 0 };
+    m.set(k, { best: Math.max(e.best, p.score), games: e.games + 1, correct: e.correct + p.correct, total: e.total + p.total });
+  }
+  return [...m.entries()].map(([name, e]) => ({ name, best: e.best, games: e.games, accuracy: e.total ? Math.round((e.correct / e.total) * 100) : 0 })).sort((a, b) => b.best - a.best).slice(0, max);
+}
+
+/* ------------------------------------------------------------------ Update 35: case round */
+
+export interface CaseRoundPreset { id: string; label: string; ids: string[] }
+export const CASE_ROUND_PRESETS: CaseRoundPreset[] = [
+  { id: "medical", label: "Medical ward round", ids: ["crew-rounds", "crew-cardio", "crew-nephro", "crew-pharmacist"] },
+  { id: "surgical", label: "Surgical MDT", ids: ["crew-surgery", "crew-radiology", "crew-anaes", "crew-gisurg"] },
+  { id: "tumour", label: "Tumour board", ids: ["crew-onco", "crew-surgonc", "crew-radonc", "crew-palliative"] },
+  { id: "paeds", label: "Paediatric round", ids: ["crew-paeds", "crew-neonat", "crew-id"] },
+  { id: "fever", label: "Fever that won't settle", ids: ["crew-id", "crew-tropical", "crew-haem", "crew-abx"] },
+  { id: "elderly", label: "Frail elderly patient", ids: ["crew-geri", "crew-pharmacist", "crew-pmr", "crew-nutrition"] },
+];
+export const CASE_ROUND_MAX = 6;
+/** What each specialist sees: the case and what earlier specialists said. */
+export function caseRoundMessage(caseText: string, me: string, previous: { name: string; text: string }[]): string {
+  return [
+    `This case is being discussed at a multidisciplinary case round. You are the ${me}. ${previous.length ? "The colleagues before you have spoken (below)." : "You speak first."}`,
+    "Give your specialty's view only: your assessment, the key investigations, your recommendations with doses where relevant, and any disagreement with earlier colleagues (say why). Do not repeat what has already been said. Keep it under 250 words, with short headings.",
+    `<case>\n${caseText}\n</case>`,
+    ...previous.map((p) => `<colleague name="${p.name.replace(/"/g, "'")}">\n${p.text}\n</colleague>`),
+  ].join("\n\n");
+}
+/** The final message that combines the round into one plan. */
+export function caseSummaryMessage(caseText: string, outputs: { name: string; text: string }[]): string {
+  return [
+    "Chair this multidisciplinary case round and write the consensus. Use these headings: Summary of the case (2 lines); Agreed diagnosis or differentials; Agreed plan (numbered, with owner specialty); Points of disagreement and how they were resolved; Safety issues; Follow-up.",
+    "Base it only on the case and the opinions below; do not invent findings.",
+    `<case>\n${caseText}\n</case>`,
+    ...outputs.map((p) => `<opinion from="${p.name.replace(/"/g, "'")}">\n${p.text}\n</opinion>`),
+  ].join("\n\n");
+}
+export interface CaseRound { id: string; at: number; caseText: string; steps: { crewId: string; name: string; text: string; error?: string }[]; summary?: string }
+export const CASE_ROUNDS_KEY = "cadus3.caseRounds";
+export function readCaseRounds(): CaseRound[] {
+  try { const v = JSON.parse(localStorage.getItem(CASE_ROUNDS_KEY) || "[]"); return (Array.isArray(v) ? v : []).filter((r) => r && Array.isArray(r.steps)).slice(0, 15); } catch { return []; }
+}
+export function saveCaseRounds(list: CaseRound[]) { try { localStorage.setItem(CASE_ROUNDS_KEY, JSON.stringify(list.slice(0, 15))); } catch { /* full or blocked */ } }
+export function caseRoundMd(r: CaseRound): string {
+  return ["# Case round", `**Case:** ${r.caseText.slice(0, 1500)}`, ...r.steps.map((s, i) => `## ${i + 1}. ${s.name}\n\n${s.text || s.error || ""}`), ...(r.summary ? [`## Consensus plan\n\n${r.summary}`] : [])].join("\n\n");
 }
