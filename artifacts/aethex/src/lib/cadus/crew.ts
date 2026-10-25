@@ -8,6 +8,7 @@
 
 import { SPECIALIST_CREW } from "./crewSpecialists";
 import { SPECIALIST_CREW_2 } from "./crewSpecialists2";
+import { SPECIALIST_CREW_3 } from "./crewSpecialists3";
 
 export const CREW_KEY = "cadus3.crew";
 
@@ -20,7 +21,7 @@ export const CREW_ICONS = ["stethoscope", "graduation", "pill", "file", "microsc
 export type CrewIcon = (typeof CREW_ICONS)[number];
 
 /** Where an assistant sits in the gallery. */
-export const CREW_GROUPS = ["Study", "Clinical", "Specialists", "Super-specialists", "AYUSH & Integrative", "Allied & Public Health", "Exams & Careers", "Writing", "Research"] as const;
+export const CREW_GROUPS = ["Study", "Clinical", "Specialists", "Super-specialists", "AYUSH & Integrative", "Allied & Public Health", "Exams & Careers", "Dental", "Nursing & Midwifery", "Patient Languages", "Writing", "Research"] as const;
 export type CrewGroup = (typeof CREW_GROUPS)[number];
 
 /** A document an assistant knows: the user's notes, protocols or references, as text. */
@@ -270,6 +271,7 @@ export const BUILT_IN_CREW: CrewMember[] = [
   },
   ...SPECIALIST_CREW,
   ...SPECIALIST_CREW_2,
+  ...SPECIALIST_CREW_3,
 ];
 
 export const blankCrew = (): CrewMember => ({ id: "", name: "", tagline: "", instructions: "", starters: [], icon: "stethoscope", tone: "teal", mode: "general" });
@@ -1041,3 +1043,130 @@ export function improvePrompt(c: CrewMember, list: CrewRating[]): string {
   ].join("\n\n");
 }
 export const cleanImproved = (text: string) => String(text ?? "").replace(/^```[a-z]*\s*/i, "").replace(/```\s*$/, "").replace(/^(new instructions|instructions)\s*:\s*/i, "").trim().slice(0, INSTRUCTIONS_MAX);
+
+/* ------------------------------------------------------------------ Update 37: handoff */
+
+/** The first message for the next assistant: who handed over, the conversation so far, and what is needed. */
+export function handoffBrief(fromName: string, toName: string, msgs: { role: string; content: string }[], note: string): string {
+  const recent = msgs.filter((m) => m.content.trim()).slice(-8).map((m) => `${m.role === "user" ? "Me" : fromName}: ${m.content.replace(/\s+/g, " ").trim().slice(0, 400)}${m.content.length > 400 ? "…" : ""}`);
+  return [
+    `Handover from ${fromName} to ${toName}.`,
+    recent.length ? `Our conversation so far:\n${recent.map((r) => `- ${r}`).join("\n")}` : "",
+    `Please take over${note.trim() ? `: ${note.trim().slice(0, 500)}` : " from here with your expertise."}`,
+  ].filter(Boolean).join("\n\n");
+}
+
+/* ------------------------------------------------------------------ Update 37: notes and flashcards */
+
+export interface Flashcard { front: string; back: string; box: number; due: string }
+export interface CrewNote { id: string; crewId: string; title: string; text: string; at: number; cards?: Flashcard[] }
+export interface CrewNotes { notes: CrewNote[]; reviewed: number }
+export const CREW_NOTES_KEY = "cadus3.crewNotes";
+export const NOTES_MAX = 200;
+export function readNotes(): CrewNotes {
+  try {
+    const v = JSON.parse(localStorage.getItem(CREW_NOTES_KEY) || "null");
+    return { notes: (Array.isArray(v?.notes) ? v.notes : []).filter((n: any) => n && typeof n.text === "string").slice(0, NOTES_MAX), reviewed: Number(v?.reviewed) || 0 };
+  } catch { return { notes: [], reviewed: 0 }; }
+}
+export function saveNotes(n: CrewNotes) { try { localStorage.setItem(CREW_NOTES_KEY, JSON.stringify({ ...n, notes: n.notes.slice(0, NOTES_MAX) })); } catch { /* full or blocked */ } }
+export function noteTitle(text: string): string {
+  const h = /^#{1,3}\s+(.+)$/m.exec(text);
+  const first = (h ? h[1] : text.split("\n").find((l) => l.trim()) ?? "Note").replace(/[*_`>#]/g, "").trim();
+  return first.length > 70 ? `${first.slice(0, 67)}…` : first || "Note";
+}
+export function addNote(n: CrewNotes, crewId: string, text: string, title?: string): CrewNotes {
+  const t = clip(text, 20000);
+  if (!t || n.notes.some((x) => x.crewId === crewId && x.text === t)) return n;
+  return { ...n, notes: [{ id: `note-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, crewId, title: clip(title, 80) || noteTitle(t), text: t, at: Date.now() }, ...n.notes].slice(0, NOTES_MAX) };
+}
+export const deleteNote = (n: CrewNotes, id: string): CrewNotes => ({ ...n, notes: n.notes.filter((x) => x.id !== id) });
+export function flashcardPrompt(text: string, count = 8): string {
+  return [
+    `Make ${count} flashcards for revision from the note below.`,
+    "Each card tests one fact or concept: a short question on the front and a concise answer on the back (doses, numbers, criteria where present). No trivia, no duplicates.",
+    'Reply with ONLY a JSON array: [{"front":"question","back":"answer"}].',
+    `<note>\n${text.slice(0, 8000)}\n</note>`,
+  ].join("\n");
+}
+export function parseCards(text: string, today: string): Flashcard[] {
+  const t = String(text ?? ""), a = t.indexOf("["), b = t.lastIndexOf("]");
+  if (a < 0 || b <= a) return [];
+  try {
+    const v = JSON.parse(t.slice(a, b + 1));
+    return (Array.isArray(v) ? v : []).map((x: any) => ({ front: clip(x?.front, 300), back: clip(x?.back, 600), box: 1, due: today })).filter((c) => c.front && c.back).slice(0, 30);
+  } catch { return []; }
+}
+const LEITNER = [1, 2, 4, 8, 16];
+/** Leitner review: known moves up a box (due later), missed goes back to box 1 (due today). */
+export function reviewCard(c: Flashcard, knew: boolean, today: string): Flashcard {
+  const box = knew ? Math.min(5, c.box + 1) : 1;
+  return { ...c, box, due: knew ? addDays(today, LEITNER[box - 1]) : today };
+}
+export const dueCards = (n: CrewNotes, today: string) => n.notes.reduce((k, x) => k + (x.cards ?? []).filter((c) => c.due <= today).length, 0);
+
+/* ------------------------------------------------------------------ Update 37: scheduled check-ins */
+
+export interface CheckIn { id: string; crewId: string; kind: "tip" | "plan"; topic: string; enabled: boolean }
+export interface CheckInEntry { id: string; checkinId: string; crewId: string; date: string; text: string }
+export interface CheckIns { items: CheckIn[]; history: CheckInEntry[] }
+export const CHECKINS_KEY = "cadus3.crewCheckins";
+export function readCheckins(): CheckIns {
+  try {
+    const v = JSON.parse(localStorage.getItem(CHECKINS_KEY) || "null");
+    return { items: (Array.isArray(v?.items) ? v.items : []).filter((x: any) => x && x.crewId).slice(0, 6), history: (Array.isArray(v?.history) ? v.history : []).slice(0, 60) };
+  } catch { return { items: [], history: [] }; }
+}
+export function saveCheckins(c: CheckIns) { try { localStorage.setItem(CHECKINS_KEY, JSON.stringify({ items: c.items.slice(0, 6), history: c.history.slice(0, 60) })); } catch { /* blocked */ } }
+export function newCheckin(crewId: string, kind: "tip" | "plan", topic: string): CheckIn {
+  return { id: `ci-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, crewId, kind, topic: clip(topic, 120), enabled: true };
+}
+/** A daily tip is due once a day; a weekly plan once every 7 days. */
+export function isDue(item: CheckIn, history: CheckInEntry[], today: string): boolean {
+  if (!item.enabled) return false;
+  const mine = history.filter((h) => h.checkinId === item.id);
+  if (item.kind === "tip") return !mine.some((h) => h.date === today);
+  const weekAgo = addDays(today, -6);
+  return !mine.some((h) => h.date >= weekAgo && h.date <= today);
+}
+export const dueCheckins = (c: CheckIns, today: string) => c.items.filter((i) => isDue(i, c.history, today));
+export function checkinPrompt(item: CheckIn, today: string, who?: string): string {
+  const me = who ? ` I am a ${who}.` : "";
+  return item.kind === "tip"
+    ? `Give me today's tip (${today}) on ${item.topic || "my work"}.${me} One practical, high-yield point I can use today, a short example or mnemonic, and one question to test myself (answer at the end). Under 150 words. Vary it from day to day.`
+    : `Write my study plan for the week starting ${today} on ${item.topic || "my exam preparation"}.${me} A day-by-day table (Monday to Sunday) with topics, hours, active-recall tasks and one revision day, then three tips. Keep it realistic for a busy doctor.`;
+}
+export function addEntry(c: CheckIns, item: CheckIn, today: string, text: string): CheckIns {
+  return { ...c, history: [{ id: `ce-${Date.now().toString(36)}`, checkinId: item.id, crewId: item.crewId, date: today, text: clip(text, 6000) }, ...c.history].slice(0, 60) };
+}
+
+/* ------------------------------------------------------------------ Update 37: badges and stats */
+
+export interface CrewStats { chats: number; assistantsUsed: number; ownAssistants: number; quizBattles: number; bestQuiz: number; drillDays: number; bestStreak: number; caseRounds: number; roomMessages: number; ratings: number; facts: number; notes: number; cardsReviewed: number; collections: number; checkins: number }
+export const BADGES: { id: string; name: string; desc: string; metric: keyof CrewStats; target: number }[] = [
+  { id: "first", name: "First consult", desc: "Start a chat with an assistant", metric: "chats", target: 1 },
+  { id: "explorer", name: "Explorer", desc: "Chat with 10 different assistants", metric: "assistantsUsed", target: 10 },
+  { id: "polymath", name: "Polymath", desc: "Chat with 30 different assistants", metric: "assistantsUsed", target: 30 },
+  { id: "builder", name: "Builder", desc: "Create 3 of your own assistants", metric: "ownAssistants", target: 3 },
+  { id: "quiz", name: "Quiz contender", desc: "Play 5 Quiz Battles", metric: "quizBattles", target: 5 },
+  { id: "champion", name: "Quiz champion", desc: "Score 100 points in one battle", metric: "bestQuiz", target: 100 },
+  { id: "streak7", name: "One-week streak", desc: "7 daily drills in a row", metric: "bestStreak", target: 7 },
+  { id: "streak30", name: "Iron streak", desc: "30 daily drills in a row", metric: "bestStreak", target: 30 },
+  { id: "rounds", name: "Ward-round regular", desc: "Run 5 case rounds", metric: "caseRounds", target: 5 },
+  { id: "rooms", name: "Team player", desc: "Send 25 messages in chat rooms", metric: "roomMessages", target: 25 },
+  { id: "critic", name: "Constructive critic", desc: "Rate 10 assistant answers", metric: "ratings", target: 10 },
+  { id: "memory", name: "Well known", desc: "Give your assistants 5 facts to remember", metric: "facts", target: 5 },
+  { id: "notes", name: "Note keeper", desc: "Save 10 Crew notes", metric: "notes", target: 10 },
+  { id: "cards", name: "Flashcard pro", desc: "Review 100 flashcards", metric: "cardsReviewed", target: 100 },
+  { id: "curator", name: "Curator", desc: "Make 3 collections", metric: "collections", target: 3 },
+  { id: "checkins", name: "Check-in habit", desc: "Receive 10 check-ins", metric: "checkins", target: 10 },
+];
+export function badges(st: CrewStats) {
+  return BADGES.map((b) => ({ ...b, value: st[b.metric], earned: st[b.metric] >= b.target, progress: Math.min(1, st[b.metric] / b.target) }));
+}
+export function crewLevel(earned: number): { title: string; next: number | null } {
+  const levels: [number, string][] = [[0, "Intern"], [3, "Resident"], [6, "Registrar"], [10, "Consultant"], [14, "Professor"]];
+  const cur = [...levels].reverse().find(([n]) => earned >= n)!;
+  const nxt = levels.find(([n]) => n > earned);
+  return { title: cur[1], next: nxt ? nxt[0] : null };
+}

@@ -791,3 +791,29 @@ export const CADUS_CLINIC36_CSS = `
 .cx-imp-list small{color:var(--t2)}
 .cx-lab>.cx-seg,.cx-lab .cx-nihss .cx-field>.cx-seg{max-width:100%;flex-wrap:wrap}
 `;
+
+/** Update 37: handoff, notes and flashcards, check-ins, stats and badges. */
+export const CADUS_CLINIC37_CSS = `
+.cx-crew-due{display:flex;align-items:center;gap:8px;width:100%;margin:12px 0 0;padding:10px 14px;border:1px solid var(--warn);border-radius:12px;background:color-mix(in srgb,var(--warn) 10%,var(--surface));color:var(--text);font:inherit;font-weight:600;text-align:left;cursor:pointer}
+.cx-cn-list{display:grid;gap:8px;margin-top:10px}
+.cx-cn-item{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:10px 12px}
+.cx-cn-h{display:inline-flex;align-items:center;gap:6px}
+.cx-cn-body{margin-top:8px;border-top:1px solid var(--line);padding-top:8px;overflow-wrap:anywhere}
+.cx-fc{display:grid;gap:12px;max-width:560px}
+.cx-fc-card{min-height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px;border:1px solid var(--line);border-radius:16px;background:var(--surface);color:var(--text);font:inherit;font-size:18px;line-height:1.4;text-align:center;cursor:pointer}
+.cx-fc-card.flip{background:color-mix(in srgb,var(--ok) 8%,var(--surface));border-color:var(--ok)}
+.cx-fc-card small{font-size:12px;color:var(--t3)}
+.cx-badges{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.cx-badge-c{display:flex;flex-direction:column;gap:4px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);opacity:.75}
+.cx-badge-c.on{opacity:1;border-color:var(--warn)}
+.cx-badge-c .ic{color:var(--t3)}
+.cx-badge-c.on .ic{color:var(--warn)}
+.cx-badge-c small{font-size:12px;color:var(--t2)}
+.cx-badge-c .bar{height:6px;border-radius:3px;background:var(--line2,rgba(0,0,0,.06));overflow:hidden}
+.cx-badge-c .bar i{display:block;height:100%;background:var(--ok)}
+.cx-crewstats [data-cs2="level"] h3{display:flex;align-items:center;gap:6px}
+.cx-cs2-tiles{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
+.cx-crewbar button[data-crew="handoff"]{margin-left:auto}
+.cx-crewbar button[data-crew="handoff"]+button{margin-left:0}
+.cx-lab h4:has(> svg){display:flex;align-items:center;gap:6px}
+`;
