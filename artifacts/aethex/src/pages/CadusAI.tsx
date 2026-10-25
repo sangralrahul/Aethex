@@ -27,6 +27,7 @@ import {
   Accessibility, CigaretteOff, AirVent, HeartCrack, Candy,
   Milk, Repeat, BrainCircuit, Hand,
   Hourglass, BrainCog,
+  Flower2,
 } from "lucide-react";
 import { invokeAi } from "@/lib/ai-functions";
 import { useUserAuth } from "@/hooks/use-user-auth";
@@ -148,6 +149,14 @@ import ChildFeverView from "@/components/cadus/ChildFeverView";
 import CirrhosisView from "@/components/cadus/CirrhosisView";
 import DementiaView from "@/components/cadus/DementiaView";
 import HtnEmergencyView from "@/components/cadus/HtnEmergencyView";
+import UgibView from "@/components/cadus/UgibView";
+import AkiView from "@/components/cadus/AkiView";
+import HepatitisView from "@/components/cadus/HepatitisView";
+import NrpView from "@/components/cadus/NrpView";
+import PainView from "@/components/cadus/PainView";
+import BoneView from "@/components/cadus/BoneView";
+import HrtView from "@/components/cadus/HrtView";
+import SyncopeView from "@/components/cadus/SyncopeView";
 import SickDayView from "@/components/cadus/SickDayView";
 import LabRangesView from "@/components/cadus/LabRangesView";
 import { backupDue } from "@/lib/cadus/clinic26";
@@ -167,7 +176,7 @@ import CrewPlaybookView from "@/components/cadus/CrewPlaybookView";
 import CrewBuilder from "@/components/cadus/CrewBuilder";
 import PodcastView from "@/components/cadus/PodcastView";
 import { VoiceSettings } from "@/components/cadus/AudioParts";
-import { CADUS_CLINIC20_CSS, CADUS_CLINIC21_CSS, CADUS_CLINIC22_CSS, CADUS_CLINIC23_CSS, CADUS_CLINIC24_CSS, CADUS_CLINIC25_CSS, CADUS_CLINIC26_CSS, CADUS_CLINIC27_CSS, CADUS_CLINIC28_CSS, CADUS_CLINIC29_CSS, CADUS_CLINIC30_CSS, CADUS_CLINIC31_CSS, CADUS_CREW_CSS, CADUS_CREWPLUS_CSS, CADUS_VOICE_CSS } from "@/components/cadus/cadus-crew-styles";
+import { CADUS_CLINIC20_CSS, CADUS_CLINIC21_CSS, CADUS_CLINIC22_CSS, CADUS_CLINIC23_CSS, CADUS_CLINIC24_CSS, CADUS_CLINIC25_CSS, CADUS_CLINIC26_CSS, CADUS_CLINIC27_CSS, CADUS_CLINIC28_CSS, CADUS_CLINIC29_CSS, CADUS_CLINIC30_CSS, CADUS_CLINIC31_CSS, CADUS_CLINIC32_CSS, CADUS_CREW_CSS, CADUS_CREWPLUS_CSS, CADUS_VOICE_CSS } from "@/components/cadus/cadus-crew-styles";
 import TranslatorView from "@/components/cadus/TranslatorView";
 import PathwaysView from "@/components/cadus/PathwaysView";
 import FlashcardsView from "@/components/cadus/FlashcardsView";
@@ -266,9 +275,9 @@ type ModeId =
   | "admission" | "progress" | "opnote" | "death" | "certificate" | "rx" | "evidence";
 /** "groq" only appears in chats saved before Cadus became Claude-only. */
 type Provider = "claude" | "groq" | "library";
-type View = "chat" | "crew" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "debate" | "playbooks" | "podcasts" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan" | "ecg" | "abx" | "procedure" | "poison" | "infusions" | "convert" | "abg" | "logbook" | "followups" | "audiolib" | "rxwrite" | "labtrend" | "daily" | "letters" | "adr" | "mccd" | "mnemonics" | "generics" | "opd" | "imagequiz" | "dosecard" | "oncall" | "journal" | "stats" | "roster" | "records" | "voiceround" | "revnotes" | "analytics" | "preop" | "messages" | "preglact" | "pillchart" | "vaccines" | "diet" | "icd" | "consent" | "insulin" | "transfusion" | "mlc" | "tb" | "antenatal" | "ventilator" | "teleconsult" | "bills" | "bite" | "needlestick" | "imnci" | "cme" | "appointments" | "stock" | "screening" | "kidney" | "sam" | "contacts" | "accounts" | "thyroid" | "backup" | "ncd" | "anaemia" | "dengue" | "electrolytes" | "obsemergency" | "infection" | "asthma" | "milestones" | "contraception" | "palliative" | "imaging" | "ivfluids" | "sickday" | "labranges" | "burns" | "jaundice" | "stroke" | "bundles" | "alcohol" | "dfoot" | "heat" | "wound" | "anticoag" | "fevers" | "elderly" | "quitsmoking" | "croup" | "rheumatic" | "weight" | "hypo" | "gdm" | "infantfeed" | "antidep" | "eyeent" | "vte" | "headache" | "skin" | "gout" | "pnuti" | "ckd" | "preterm" | "epilepsy" | "childfever" | "cirrhosis" | "dementia" | "htnemergency";
+type View = "chat" | "crew" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "debate" | "playbooks" | "podcasts" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan" | "ecg" | "abx" | "procedure" | "poison" | "infusions" | "convert" | "abg" | "logbook" | "followups" | "audiolib" | "rxwrite" | "labtrend" | "daily" | "letters" | "adr" | "mccd" | "mnemonics" | "generics" | "opd" | "imagequiz" | "dosecard" | "oncall" | "journal" | "stats" | "roster" | "records" | "voiceround" | "revnotes" | "analytics" | "preop" | "messages" | "preglact" | "pillchart" | "vaccines" | "diet" | "icd" | "consent" | "insulin" | "transfusion" | "mlc" | "tb" | "antenatal" | "ventilator" | "teleconsult" | "bills" | "bite" | "needlestick" | "imnci" | "cme" | "appointments" | "stock" | "screening" | "kidney" | "sam" | "contacts" | "accounts" | "thyroid" | "backup" | "ncd" | "anaemia" | "dengue" | "electrolytes" | "obsemergency" | "infection" | "asthma" | "milestones" | "contraception" | "palliative" | "imaging" | "ivfluids" | "sickday" | "labranges" | "burns" | "jaundice" | "stroke" | "bundles" | "alcohol" | "dfoot" | "heat" | "wound" | "anticoag" | "fevers" | "elderly" | "quitsmoking" | "croup" | "rheumatic" | "weight" | "hypo" | "gdm" | "infantfeed" | "antidep" | "eyeent" | "vte" | "headache" | "skin" | "gout" | "pnuti" | "ckd" | "preterm" | "epilepsy" | "childfever" | "cirrhosis" | "dementia" | "htnemergency" | "ugib" | "aki" | "hepbc" | "nrp" | "pain" | "bone" | "hrt" | "syncope";
 /** Views reached from the Tools hub, so the hub stays highlighted in the sidebar. */
-const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today", "discharge", "handover", "ddx", "studyplan", "podcasts", "ecg", "abx", "procedure", "poison", "infusions", "convert", "abg", "logbook", "followups", "audiolib", "rxwrite", "labtrend", "daily", "letters", "adr", "mccd", "mnemonics", "generics", "opd", "imagequiz", "dosecard", "oncall", "journal", "stats", "roster", "records", "voiceround", "revnotes", "analytics", "preop", "messages", "preglact", "pillchart", "vaccines", "diet", "icd", "consent", "insulin", "transfusion", "mlc", "tb", "antenatal", "ventilator", "teleconsult", "bills", "bite", "needlestick", "imnci", "cme", "appointments", "stock", "screening", "kidney", "sam", "contacts", "accounts", "thyroid", "backup", "ncd", "anaemia", "dengue", "electrolytes", "obsemergency", "infection", "asthma", "milestones", "contraception", "palliative", "imaging", "ivfluids", "sickday", "labranges", "burns", "jaundice", "stroke", "bundles", "alcohol", "dfoot", "heat", "wound", "anticoag", "fevers", "elderly", "quitsmoking", "croup", "rheumatic", "weight", "hypo", "gdm", "infantfeed", "antidep", "eyeent", "vte", "headache", "skin", "gout", "pnuti", "ckd", "preterm", "epilepsy", "childfever", "cirrhosis", "dementia", "htnemergency"]);
+const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today", "discharge", "handover", "ddx", "studyplan", "podcasts", "ecg", "abx", "procedure", "poison", "infusions", "convert", "abg", "logbook", "followups", "audiolib", "rxwrite", "labtrend", "daily", "letters", "adr", "mccd", "mnemonics", "generics", "opd", "imagequiz", "dosecard", "oncall", "journal", "stats", "roster", "records", "voiceround", "revnotes", "analytics", "preop", "messages", "preglact", "pillchart", "vaccines", "diet", "icd", "consent", "insulin", "transfusion", "mlc", "tb", "antenatal", "ventilator", "teleconsult", "bills", "bite", "needlestick", "imnci", "cme", "appointments", "stock", "screening", "kidney", "sam", "contacts", "accounts", "thyroid", "backup", "ncd", "anaemia", "dengue", "electrolytes", "obsemergency", "infection", "asthma", "milestones", "contraception", "palliative", "imaging", "ivfluids", "sickday", "labranges", "burns", "jaundice", "stroke", "bundles", "alcohol", "dfoot", "heat", "wound", "anticoag", "fevers", "elderly", "quitsmoking", "croup", "rheumatic", "weight", "hypo", "gdm", "infantfeed", "antidep", "eyeent", "vte", "headache", "skin", "gout", "pnuti", "ckd", "preterm", "epilepsy", "childfever", "cirrhosis", "dementia", "htnemergency", "ugib", "aki", "hepbc", "nrp", "pain", "bone", "hrt", "syncope"]);
 type ToolTab = "all" | "clinical" | "documentation" | "learning";
 type SettingsTab = "general" | "personal" | "letterhead" | "institution" | "data" | "shortcuts" | "about";
 type StyleId = "concise" | "balanced" | "detailed";
@@ -2912,6 +2921,14 @@ export default function CadusAI() {
       { key: "a:cirrhosis", label: "Cirrhosis & Ascites: MELD-Na and SBP", hint: "Child-Pugh, MELD-Na, SBP antibiotics and albumin, paracentesis albumin, complications", icon: FlaskRound, run: () => openView("cirrhosis") },
       { key: "a:dementia", label: "Dementia & Memory: Mini-Cog and medicines", hint: "Mini-Cog screen, reversible causes, donepezil and memantine, planning", icon: BrainCog, run: () => openView("dementia") },
       { key: "a:htnemergency", label: "Hypertensive Emergency: targets and drugs", hint: "Urgency vs emergency, BP target by condition, labetalol, nicardipine, GTN, esmolol", icon: Gauge, run: () => openView("htnemergency") },
+      { key: "a:ugib", label: "Upper GI Bleed & H. pylori: Blatchford and treatment", hint: "Glasgow-Blatchford, resuscitation, PPI, varices, H. pylori regimens", icon: Activity, run: () => openView("ugib") },
+      { key: "a:aki", label: "Acute Kidney Injury: KDIGO stage and plan", hint: "AKI stage by creatinine and urine, causes, drugs to stop, dialysis triggers", icon: FlaskConical, run: () => openView("aki") },
+      { key: "a:hepbc", label: "Hepatitis B & C: serology and treatment", hint: "HBV panel meaning, APRI, tenofovir or entecavir, vaccination, HCV sofosbuvir regimens", icon: ShieldCheck, run: () => openView("hepbc") },
+      { key: "a:nrp", label: "Newborn Resuscitation: timer and doses", hint: "Clock from birth, NRP steps, SpO2 targets, tube size, adrenaline and fluid by weight", icon: Baby, run: () => openView("nrp") },
+      { key: "a:pain", label: "Pain Relief Planner: analgesia by patient", hint: "Paracetamol, NSAIDs, tramadol, opioids and neuropathic agents by kidney, GI, heart and age", icon: PillBottle, run: () => openView("pain") },
+      { key: "a:bone", label: "Osteoporosis & Bone Health: T-score and treatment", hint: "T-score category, FRAX and steroid thresholds, bisphosphonates, denosumab, calcium and vitamin D", icon: Bone, run: () => openView("bone") },
+      { key: "a:hrt", label: "Menopause & HRT: regimen and alternatives", hint: "Diagnosis by age, contraindications, route and progestogen, vaginal oestrogen, non-hormonal options", icon: Flower2, run: () => openView("hrt") },
+      { key: "a:syncope", label: "Syncope: ESC risk features", hint: "High-risk history and ECG features, reflex features, admit, observe or discharge", icon: HeartPulse, run: () => openView("syncope") },
       { key: "a:present", label: "Presentation Coach: practise presenting a case", hint: "Ward round, long case, SBAR; scored with a model answer", icon: Presentation, run: () => openView("present") },
       { key: "a:compare", label: "Compare over time: what changed between two studies", hint: "X-rays, ECGs, scans, reports and wound photos", icon: History, run: () => openView("compare") },
       { key: "a:newcase", label: "New patient case", hint: "Start a de-identified case sheet", icon: ClipboardList, run: () => { const c = newCase(); setCases((l) => [c, ...l]); openCases(c.id); } },
@@ -3395,6 +3412,14 @@ export default function CadusAI() {
     { id: "cirrhosis", icon: FlaskRound, tone: "lime", title: "Cirrhosis & Ascites", sub: "Child-Pugh, MELD-Na, SBP", go: () => openView("cirrhosis") },
     { id: "dementia", icon: BrainCog, tone: "violet", title: "Dementia & Memory", sub: "Mini-Cog, causes, medicines", go: () => openView("dementia") },
     { id: "htnemergency", icon: Gauge, tone: "rose", title: "Hypertensive Emergency", sub: "Targets and IV drugs", go: () => openView("htnemergency") },
+    { id: "ugib", icon: Activity, tone: "rose", title: "Upper GI Bleed & H. pylori", sub: "Blatchford, endoscopy, eradication", go: () => openView("ugib") },
+    { id: "aki", icon: FlaskConical, tone: "sky", title: "Acute Kidney Injury", sub: "KDIGO stage, causes, dialysis", go: () => openView("aki") },
+    { id: "hepbc", icon: ShieldCheck, tone: "amber", title: "Hepatitis B & C", sub: "Serology, who to treat, cure", go: () => openView("hepbc") },
+    { id: "nrp", icon: Baby, tone: "rose", title: "Newborn Resuscitation", sub: "Timer, steps, doses", go: () => openView("nrp") },
+    { id: "pain", icon: PillBottle, tone: "violet", title: "Pain Relief Planner", sub: "Stepwise, by comorbidity", go: () => openView("pain") },
+    { id: "bone", icon: Bone, tone: "lime", title: "Osteoporosis & Bone Health", sub: "T-score, who to treat, drugs", go: () => openView("bone") },
+    { id: "hrt", icon: Flower2, tone: "violet", title: "Menopause & HRT", sub: "Regimen, risks, alternatives", go: () => openView("hrt") },
+    { id: "syncope", icon: HeartPulse, tone: "amber", title: "Syncope", sub: "ESC risk, admit or discharge", go: () => openView("syncope") },
   ];
   const backupNeeded = view !== "backup" && backupDue();
   /** The More drawer: every tool, grouped by what it is for (update 24). */
@@ -3423,6 +3448,9 @@ export default function CadusAI() {
         { label: "Eye & ENT Triage", title: "Eye & ENT Triage", icon: Eye, on: view === "eyeent", go: () => openView("eyeent") },
         { label: "Skin Infections", title: "Skin Infections", icon: Hand, on: view === "skin", go: () => openView("skin") },
         { label: "CKD Care", title: "CKD Care", icon: Bean, on: view === "ckd", go: () => openView("ckd") },
+        { label: "Hepatitis B & C", title: "Hepatitis B & C", icon: ShieldCheck, on: view === "hepbc", go: () => openView("hepbc") },
+        { label: "Osteoporosis & Bone Health", title: "Osteoporosis & Bone Health", icon: Bone, on: view === "bone", go: () => openView("bone") },
+        { label: "Menopause & HRT", title: "Menopause & HRT", icon: Flower2, on: view === "hrt", go: () => openView("hrt") },
       ] },
     { id: "practice", label: "Practice", icon: BriefcaseMedical, items: [
         { label: "Appointments", title: "Appointments", icon: CalendarPlus, on: view === "appointments", go: () => openView("appointments") },
@@ -3449,6 +3477,7 @@ export default function CadusAI() {
         { label: "Elderly Care", title: "Elderly Care", icon: Accessibility, on: view === "elderly", go: () => openView("elderly") },
         { label: "VTE Prophylaxis", title: "VTE Prophylaxis", icon: ShieldPlus, on: view === "vte", go: () => openView("vte") },
         { label: "Cirrhosis & Ascites", title: "Cirrhosis & Ascites", icon: FlaskRound, on: view === "cirrhosis", go: () => openView("cirrhosis") },
+        { label: "Acute Kidney Injury", title: "Acute Kidney Injury", icon: FlaskConical, on: view === "aki", go: () => openView("aki") },
       ] },
     { id: "emergency", label: "Emergency & ICU", icon: Siren, items: [
         { label: "Emergencies", title: "Emergency protocols", icon: Siren, on: view === "emergency", go: () => openView("emergency") },
@@ -3470,6 +3499,8 @@ export default function CadusAI() {
         { label: "Heat Illness", title: "Heat Illness", icon: Sun, on: view === "heat", go: () => openView("heat") },
         { label: "Hypoglycaemia", title: "Hypoglycaemia", icon: Candy, on: view === "hypo", go: () => openView("hypo") },
         { label: "Hypertensive Emergency", title: "Hypertensive Emergency", icon: Gauge, on: view === "htnemergency", go: () => openView("htnemergency") },
+        { label: "Upper GI Bleed & H. pylori", title: "Upper GI Bleed & H. pylori", icon: Activity, on: view === "ugib", go: () => openView("ugib") },
+        { label: "Syncope", title: "Syncope", icon: HeartPulse, on: view === "syncope", go: () => openView("syncope") },
       ] },
     { id: "drugs", label: "Drugs & Prescribing", icon: Pill, items: [
         { label: "Drugs", title: "Drugs and prescriber", icon: Pill, on: view === "drugs", go: () => openDrugs() },
@@ -3488,6 +3519,7 @@ export default function CadusAI() {
         { label: "Antidepressant Switcher", title: "Antidepressant Switcher", icon: Repeat, on: view === "antidep", go: () => openView("antidep") },
         { label: "Gout & Uric Acid", title: "Gout & Uric Acid", icon: Bone, on: view === "gout", go: () => openView("gout") },
         { label: "Pneumonia & UTI Antibiotics", title: "Pneumonia & UTI Antibiotics", icon: Pill, on: view === "pnuti", go: () => openView("pnuti") },
+        { label: "Pain Relief Planner", title: "Pain Relief Planner", icon: PillBottle, on: view === "pain", go: () => openView("pain") },
       ] },
     { id: "mother", label: "Mother & Child", icon: Baby, items: [
         { label: "Paeds and obstetrics", title: "Paediatrics and obstetrics", icon: Baby, on: view === "paeds", go: () => openView("paeds") },
@@ -3505,6 +3537,7 @@ export default function CadusAI() {
         { label: "Infant Feeding", title: "Infant Feeding", icon: Milk, on: view === "infantfeed", go: () => openView("infantfeed") },
         { label: "Preterm Labour", title: "Preterm Labour", icon: Hourglass, on: view === "preterm", go: () => openView("preterm") },
         { label: "Fever in Under-5s", title: "Fever in Under-5s", icon: Thermometer, on: view === "childfever", go: () => openView("childfever") },
+        { label: "Newborn Resuscitation", title: "Newborn Resuscitation", icon: Baby, on: view === "nrp", go: () => openView("nrp") },
       ] },
     { id: "diagnosis", label: "Diagnosis & Evidence", icon: Microscope, items: [
         { label: "Research", title: "Research", icon: Microscope, on: view === "research", go: () => openResearch(), tour: "research" },
@@ -4689,7 +4722,7 @@ export default function CadusAI() {
       style={{ ["--acc" as string]: dark ? accent.dark : accent.light, ["--fs" as string]: `${fontSize}px`, ["--fs-u" as string]: `${sansSize}px` }}
       {...dropHandlers}
     >
-      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS + CADUS_CREWPLUS_CSS + CADUS_VOICE_CSS + CADUS_CLINIC20_CSS + CADUS_CLINIC21_CSS + CADUS_CLINIC22_CSS + CADUS_CLINIC23_CSS + CADUS_CLINIC24_CSS + CADUS_CLINIC25_CSS + CADUS_CLINIC26_CSS + CADUS_CLINIC27_CSS + CADUS_CLINIC28_CSS + CADUS_CLINIC29_CSS + CADUS_CLINIC30_CSS + CADUS_CLINIC31_CSS}</style>
+      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS + CADUS_CREWPLUS_CSS + CADUS_VOICE_CSS + CADUS_CLINIC20_CSS + CADUS_CLINIC21_CSS + CADUS_CLINIC22_CSS + CADUS_CLINIC23_CSS + CADUS_CLINIC24_CSS + CADUS_CLINIC25_CSS + CADUS_CLINIC26_CSS + CADUS_CLINIC27_CSS + CADUS_CLINIC28_CSS + CADUS_CLINIC29_CSS + CADUS_CLINIC30_CSS + CADUS_CLINIC31_CSS + CADUS_CLINIC32_CSS}</style>
 
       {/* ============================================== sidebar */}
       <div className={`cx-scrim ${sidebarOpen ? "on" : ""}`} onClick={() => setSidebarOpen(false)} />
@@ -5119,6 +5152,14 @@ export default function CadusAI() {
                 : view === "cirrhosis" ? [FlaskRound, "Cirrhosis & Ascites"]
                 : view === "dementia" ? [BrainCog, "Dementia & Memory"]
                 : view === "htnemergency" ? [Gauge, "Hypertensive Emergency"]
+                : view === "ugib" ? [Activity, "Upper GI Bleed & H. pylori"]
+                : view === "aki" ? [FlaskConical, "Acute Kidney Injury"]
+                : view === "hepbc" ? [ShieldCheck, "Hepatitis B & C"]
+                : view === "nrp" ? [Baby, "Newborn Resuscitation"]
+                : view === "pain" ? [PillBottle, "Pain Relief Planner"]
+                : view === "bone" ? [Bone, "Osteoporosis & Bone Health"]
+                : view === "hrt" ? [Flower2, "Menopause & HRT"]
+                : view === "syncope" ? [HeartPulse, "Syncope"]
                 : view === "project" && project ? [Folder, project.name]
                 : [Folder, "Projects"];
               return <span className="cx-title-btn static"><Icon size={14} /> <span>{label}</span></span>;
@@ -5548,6 +5589,14 @@ export default function CadusAI() {
             : view === "cirrhosis" ? <CirrhosisView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
             : view === "dementia" ? <DementiaView />
             : view === "htnemergency" ? <HtnEmergencyView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
+            : view === "ugib" ? <UgibView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
+            : view === "aki" ? <AkiView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
+            : view === "hepbc" ? <HepatitisView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
+            : view === "nrp" ? <NrpView />
+            : view === "pain" ? <PainView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
+            : view === "bone" ? <BoneView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
+            : view === "hrt" ? <HrtView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
+            : view === "syncope" ? <SyncopeView />
             : view === "today" ? (
               <TodayView
                 name={firstName}

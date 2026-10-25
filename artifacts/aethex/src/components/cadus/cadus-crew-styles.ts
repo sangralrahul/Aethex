@@ -677,3 +677,10 @@ export const CADUS_CLINIC31_CSS = `
 .cx-cmp-out:is(.cx-st-out,.cx-ac-low,.cx-ac-in,.cx-ac-high,.cx-ac-danger,.cx-tl-green,.cx-tl-amber,.cx-tl-red,.cx-pa-moderate,.cx-pa-severe,.cx-pa-life,.cx-nnj-photo,.cx-nnj-intensive,.cx-nnj-exchange,.cx-nnj-recheck,.cx-df-l2,.cx-df-l3,.cx-df-l4,.cx-ht-l2,.cx-ht-l3){padding-left:14px;border-radius:var(--r-md,10px)}
 .cx-tl-red .cx-lab-h3{color:var(--danger)}.cx-tl-amber .cx-lab-h3{color:#b45309}.cx-tl-green .cx-lab-h3{color:#15803d}
 `;
+
+export const CADUS_CLINIC32_CSS = `
+.cx-nrp-steps{display:flex;flex-direction:column;gap:8px;margin:12px 0}
+.cx-nrp-s{display:flex;flex-direction:column;gap:3px;text-align:left;padding:10px 14px;border:1px solid var(--line);border-left:5px solid var(--line);border-radius:var(--r-md,10px);background:var(--surface);color:inherit;font:inherit;cursor:pointer}
+.cx-nrp-s small{color:var(--t2);font-size:13px;line-height:1.4}
+.cx-nrp-s.on{border-left-color:var(--accent,#2563eb);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent,#2563eb) 18%,transparent)}
+`;
