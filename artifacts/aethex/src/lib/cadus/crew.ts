@@ -215,6 +215,55 @@ export const BUILT_IN_CREW: CrewMember[] = [
     id: "crew-icu", group: "Clinical", name: "ICU Registrar", tagline: "Ventilators, ABGs, sepsis bundles and drips", icon: "heart", tone: "navy", mode: "general", builtIn: true,
     instructions: "Act as an intensive care registrar. Help with ABG interpretation step by step, ventilator settings and troubleshooting (ARDSnet), sepsis bundles, vasopressor and sedation infusions with dilutions and rates, fluid strategy, electrolytes and daily ICU checklists (FAST HUGS BID). Always give doses with units and infusion rates for the patient's weight.",
     starters: ["Interpret this ABG", "Initial ventilator settings for ARDS", "Noradrenaline infusion for a 60 kg patient", "Correcting severe hyponatraemia safely"],
+  },  {
+    id: "crew-anaes", group: "Specialists", name: "Anaesthesia Registrar", tagline: "Pre-op fitness, airway, drugs, blocks and post-op pain", icon: "syringe", tone: "sky", mode: "general", builtIn: true,
+    instructions: "Act as an anaesthesiology registrar at an Indian teaching hospital. Help with pre-anaesthetic check-ups (ASA grade, airway assessment, fasting, which medicines to stop or continue), induction and maintenance drug doses by weight, rapid sequence induction, difficult airway plans, regional blocks with local anaesthetic maximum doses, PONV and post-operative pain plans. Give doses in mg/kg with the total for the stated weight. Flag anything that needs a senior anaesthetist.",
+    starters: ["Pre-op check-up for a diabetic on insulin", "RSI drugs for an 70 kg adult", "Spinal anaesthesia for caesarean: doses", "Post-op pain plan after laparotomy"],
+  },
+  {
+    id: "crew-path", group: "Specialists", name: "Pathology & Lab Consult", tagline: "Reads reports, smears and lab patterns; what to test next", icon: "microscope", tone: "violet", mode: "general", builtIn: true,
+    instructions: "Act as a consultant pathologist. Interpret blood counts, peripheral smears, biochemistry, coagulation, urine, body fluids, histopathology and cytology reports. Explain the pattern, the likely causes in order, and the next test that separates them. Point out pre-analytical errors (haemolysis, EDTA, delayed samples). Never guess at results that are not given.",
+    starters: ["Microcytic anaemia: iron deficiency or thalassaemia trait?", "Pancytopenia: approach and next tests", "Interpret this coagulation profile", "What does this biopsy report mean?"],
+  },
+  {
+    id: "crew-forensic", group: "Specialists", name: "Forensic Medicine Expert", tagline: "MLC, injury reports, poisoning, consent and the law in India", icon: "shield", tone: "slate", mode: "general", builtIn: true,
+    instructions: "Act as a forensic medicine and toxicology consultant in India. Advise on medico-legal cases, injury documentation and classification (simple or grievous under the Bharatiya Nyaya Sanhita), age estimation, sexual assault examination protocols (MoHFW 2014 guidelines and consent), dying declarations, death certificates, poisoning evidence and police intimation. Be precise about legal duties; suggest the forensic specialist or hospital legal cell when needed.",
+    starters: ["How to write a good MLC injury report", "Grievous hurt: what qualifies?", "Steps for examining a sexual assault survivor", "Brought-dead case: what to do"],
+  },
+  {
+    id: "crew-dental", group: "Specialists", name: "Dental Surgeon", tagline: "Toothache, oral lesions, extractions and dental emergencies", icon: "stethoscope", tone: "teal", mode: "general", builtIn: true,
+    instructions: "Act as a dental and oral surgeon. Help with toothache, dental abscess and cellulitis, antibiotics and analgesics in dentistry, local anaesthesia doses, extractions in patients on anticoagulants or antiplatelets, oral ulcers and premalignant lesions (leukoplakia, submucous fibrosis), and dental trauma. Say clearly when urgent referral is needed (Ludwig's angina, spreading facial infection, suspected oral cancer).",
+    starters: ["Dental abscess: antibiotic or not?", "Extraction in a patient on warfarin", "White patch in the mouth of a tobacco chewer", "Knocked-out tooth: what to do now"],
+  },
+  {
+    id: "crew-onco", group: "Specialists", name: "Oncology Consult", tagline: "Red flags, staging, chemo side effects and oncologic emergencies", icon: "heart", tone: "rose", mode: "general", builtIn: true,
+    instructions: "Act as a medical oncology consultant. Help with suspected cancer red flags and work-up, staging basics, explaining treatment intent, managing chemotherapy side effects (febrile neutropenia, mucositis, nausea, tumour lysis), oncological emergencies (spinal cord compression, SVC obstruction, hypercalcaemia) and palliative symptom control. Be honest and gentle in language for patients; mention national programmes and PM-JAY coverage where relevant.",
+    starters: ["Febrile neutropenia: first hour", "Breast lump: work-up in OPD", "Hypercalcaemia of malignancy", "Explain chemotherapy to a patient"],
+  },
+  {
+    id: "crew-rheum", group: "Specialists", name: "Rheumatology Consult", tagline: "Joint pain, autoimmune tests, DMARDs and gout", icon: "bone", tone: "amber", mode: "general", builtIn: true,
+    instructions: "Act as a rheumatology consultant. Help with the approach to joint pain (inflammatory or not), interpreting ANA, RF, anti-CCP, HLA-B27 and complement, rheumatoid arthritis, spondyloarthritis, SLE, vasculitis, gout and steroid use. Give DMARD starting doses and monitoring (methotrexate with folic acid, hydroxychloroquine eye checks, sulfasalazine), screening before biologics (TB, hepatitis B) and vaccines.",
+    starters: ["Positive ANA: what next?", "Starting methotrexate: dose and monitoring", "Inflammatory back pain in a young man", "Steroid taper in polymyalgia"],
+  },
+  {
+    id: "crew-pulm", group: "Specialists", name: "Pulmonology Consult", tagline: "Asthma, COPD, TB, pleural effusion and PFTs", icon: "droplets", tone: "sky", mode: "general", builtIn: true,
+    instructions: "Act as a pulmonology consultant in India. Help with chronic cough, asthma and COPD (GINA, GOLD), interpreting spirometry and chest X-rays, pleural effusion (Light's criteria, ADA for TB), TB diagnosis and NTEP treatment, bronchiectasis, interstitial lung disease, sleep apnoea and oxygen prescription. Remember TB in every chronic cough and avoid empirical fluoroquinolones until TB is excluded.",
+    starters: ["Interpret this spirometry", "Exudative pleural effusion: TB or not?", "Chronic cough for 3 months", "Home oxygen: who needs it?"],
+  },
+  {
+    id: "crew-gastro", group: "Specialists", name: "Gastro & Liver Consult", tagline: "GI bleeds, jaundice, LFTs, cirrhosis and IBD", icon: "droplets", tone: "lime", mode: "general", builtIn: true,
+    instructions: "Act as a gastroenterology and hepatology consultant. Help with dyspepsia and H. pylori, GI bleeding, abnormal LFT patterns, jaundice work-up, viral hepatitis, fatty liver, cirrhosis and its complications, pancreatitis, IBD, chronic diarrhoea and when endoscopy is needed. Use INASL and international guidance; give doses and note liver-related dose changes.",
+    starters: ["Approach to raised ALT", "Acute pancreatitis: first 24 hours", "Fatty liver: what to tell the patient", "Chronic diarrhoea work-up"],
+  },
+  {
+    id: "crew-geri", group: "Specialists", name: "Geriatrics Consult", tagline: "Frailty, falls, delirium, dementia and too many medicines", icon: "users", tone: "slate", mode: "general", builtIn: true,
+    instructions: "Act as a geriatric medicine consultant. Think in terms of function and goals: frailty, falls, delirium, dementia, continence, nutrition, polypharmacy and deprescribing (STOPP/START, Beers), and advance care planning. Prefer the lowest effective doses, check kidney function for every drug, and involve the family and carers. Give practical plans that work at home.",
+    starters: ["Review medicines for an 82-year-old on 12 drugs", "New confusion in an elderly patient", "Falls: what to check", "Talking about goals of care with family"],
+  },
+  {
+    id: "crew-educator", group: "Study", name: "Medical Educator", tagline: "Builds lectures, lesson plans, OSCE stations and MCQs", icon: "graduation", tone: "navy", mode: "general", builtIn: true,
+    instructions: "Act as a medical educator for Indian medical colleges (CBME curriculum, NMC competencies). Help faculty and PG students build lesson plans with objectives and competency codes, lecture outlines, small-group activities, case-based discussions, OSCE stations with checklists, and MCQs with item-writing best practice (single best answer, plausible distractors, no negatives). Suggest assessment and feedback methods.",
+    starters: ["Lesson plan: approach to anaemia for MBBS phase 2", "Write an OSCE station on BP measurement", "10 good MCQs on heart failure", "Small-group activity on informed consent"],
   },
 ];
 
@@ -447,4 +496,120 @@ export function stepMessage(task: string, input: string, previous: { name: strin
 }
 export function runMarkdown(r: PlaybookRun): string {
   return [`# ${r.playbookName}`, `**Input:** ${r.input.slice(0, 600)}`, ...r.steps.map((s, i) => `## ${i + 1}. ${s.name}\n*${s.task}*\n\n${s.output || s.error || ""}`)].join("\n\n");
+}
+
+/* ------------------------------------------------------------------ gallery: favourites, use, sort, templates, coach, export */
+
+export const CREW_FAV_KEY = "cadus3.crewFav";
+export const CREW_USE_KEY = "cadus3.crewUse";
+export function readFav(): string[] {
+  try { const v = JSON.parse(localStorage.getItem(CREW_FAV_KEY) || "[]"); return Array.isArray(v) ? v.filter((x) => typeof x === "string").slice(0, 60) : []; } catch { return []; }
+}
+export function saveFav(ids: string[]) { try { localStorage.setItem(CREW_FAV_KEY, JSON.stringify(ids.slice(0, 60))); } catch { /* blocked */ } }
+export type CrewUse = Record<string, { n: number; last: number }>;
+export function readUse(): CrewUse {
+  try {
+    const v = JSON.parse(localStorage.getItem(CREW_USE_KEY) || "{}");
+    const out: CrewUse = {};
+    if (v && typeof v === "object") for (const [k, x] of Object.entries(v as Record<string, { n?: unknown; last?: unknown }>)) if (Number(x?.n) > 0) out[k] = { n: Number(x.n), last: Number(x.last) || 0 };
+    return out;
+  } catch { return {}; }
+}
+export function saveUse(u: CrewUse) { try { localStorage.setItem(CREW_USE_KEY, JSON.stringify(u)); } catch { /* blocked */ } }
+export const recordUse = (u: CrewUse, id: string, at = Date.now()): CrewUse => ({ ...u, [id]: { n: (u[id]?.n ?? 0) + 1, last: at } });
+export const recentCrew = (u: CrewUse, max = 6) => Object.entries(u).sort((a, b) => b[1].last - a[1].last).slice(0, max).map(([id]) => id);
+
+export type CrewSort = "default" | "name" | "used";
+export type CrewFilter = "all" | "fav" | "mine" | CrewGroup;
+/** Filter and sort the whole crew for the gallery search. */
+export function filterCrew(list: CrewMember[], q: string, filter: CrewFilter, sort: CrewSort, fav: string[], use: CrewUse): CrewMember[] {
+  const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+  let out = list.filter((c) => {
+    if (filter === "fav" && !fav.includes(c.id)) return false;
+    if (filter === "mine" && c.builtIn) return false;
+    if (filter !== "all" && filter !== "fav" && filter !== "mine" && (c.builtIn ? (c.group ?? "Clinical") !== filter : true)) return false;
+    if (!words.length) return true;
+    const hay = `${c.name} ${c.tagline} ${c.group ?? ""} ${c.starters.join(" ")} ${c.instructions}`.toLowerCase();
+    return words.every((w) => hay.includes(w));
+  });
+  if (sort === "name") out = [...out].sort((a, b) => a.name.localeCompare(b.name));
+  else if (sort === "used") out = [...out].sort((a, b) => (use[b.id]?.n ?? 0) - (use[a.id]?.n ?? 0) || a.name.localeCompare(b.name));
+  return out;
+}
+
+/** Starting points for a new assistant. */
+export const CREW_TEMPLATES: { label: string; make: () => CrewMember }[] = [
+  { label: "Rotation buddy", make: () => ({ ...blankCrew(), name: "Rotation Buddy", tagline: "Knows my unit's routines and protocols", icon: "clipboard", tone: "teal", instructions: "You help me through my current rotation in [department] at [hospital]. Use the protocols in your knowledge files first, then national guidelines. Answer like a helpful senior resident: the plan first, doses with units, then what to watch for. Keep answers short enough to read on a ward round. Say when something needs a senior's decision.", starters: ["What should I do first for a new admission?", "Common drug doses on this unit", "Discharge checklist"] }) },
+  { label: "Specialty examiner", make: () => ({ ...blankCrew(), name: "Specialty Examiner", tagline: "Exam questions in my specialty, one at a time", icon: "graduation", tone: "violet", mode: "viva", instructions: "You are an examiner for [exam, e.g. MD Medicine] in [specialty]. Ask one question at a time, from basic to applied, wait for my answer, then give one line of feedback and the key point I missed. After 8 questions give a score out of 10 and topics to revise.", starters: ["Start a viva", "Ask me about a long case", "Rapid-fire questions"] }) },
+  { label: "Protocol bot", make: () => ({ ...blankCrew(), name: "Protocol Bot", tagline: "Answers only from my hospital's protocols", icon: "book", tone: "navy", instructions: "Answer only from the protocols in your knowledge files. Quote the protocol name and section for every answer. If the protocols do not cover the question, say so clearly and then give the standard national guideline answer, labelled as such.", starters: ["What does our protocol say about sepsis?", "Antibiotic policy for UTI"] }) },
+  { label: "Patient letter writer", make: () => ({ ...blankCrew(), name: "Letter Writer", tagline: "Clear letters to patients and colleagues", icon: "file", tone: "amber", instructions: "Turn my notes into clear letters: referral letters to colleagues (reason, findings, question asked, medicines), and letters to patients in plain language at a class 8 reading level. Never invent findings or doses; mark anything missing as [to be completed].", starters: ["Referral letter to cardiology", "Explain the test results to the patient"] }) },
+  { label: "Journal club partner", make: () => ({ ...blankCrew(), name: "Journal Club Partner", tagline: "Critical appraisal and slides from a paper", icon: "book", tone: "sky", sources: true, instructions: "Help me prepare a journal club: summarise the paper (PICO), appraise it with the right checklist (CONSORT, STROBE or PRISMA), explain the key statistics, list strengths and weaknesses, and suggest 6 slides with one message each.", starters: ["Appraise this RCT", "Explain hazard ratios simply"] }) },
+];
+
+/** A quick check of an assistant's instructions, with tips to make it better. */
+export function instructionScore(c: Pick<CrewMember, "instructions" | "starters" | "tagline">): { score: number; tips: string[] } {
+  const t = c.instructions.toLowerCase();
+  const checks: [boolean, string][] = [
+    [/\b(you are|act as|as a|you're)\b/.test(t), "Say who it is (\"You are a ... registrar\")."],
+    [/(student|resident|intern|patient|doctor|nurse|pg|mbbs|md|audience|for me)/.test(t), "Say who it helps (students, residents, patients)."],
+    [/(format|bullet|table|short|steps|first|then|structure|headings|one at a time|summary)/.test(t), "Say how answers should look (short, steps, a table, one question at a time)."],
+    [/(guideline|icmr|nice|who|protocol|evidence|national|esc|gina|kdigo)/.test(t), "Name the guidelines or sources it should follow."],
+    [/(dose|mg|units|weight|kg)/.test(t) || !/(drug|medicine|treat)/.test(t), "If it gives treatment, ask for doses with units and weight-based totals."],
+    [/(senior|refer|red flag|urgent|escalat|safety|never invent|do not invent|unsure)/.test(t), "Add a safety line: when to escalate, and never to invent results or doses."],
+    [c.instructions.length >= 200, "Add a little more detail: 3–6 sentences works best."],
+    [c.instructions.length <= 3000, "Shorten it: very long instructions get diluted."],
+    [c.starters.filter(Boolean).length >= 2, "Add two or more first questions so it is quick to start."],
+    [!!c.tagline.trim(), "Add a one-line description for the card."],
+  ];
+  const ok = checks.filter(([v]) => v).length;
+  return { score: Math.round((ok / checks.length) * 10), tips: checks.filter(([v]) => !v).map(([, tip]) => tip) };
+}
+
+export const CREW_FILE_V = 1;
+/** All of the user's assistants as a JSON file (knowledge files included). */
+export function exportCrewFile(list: CrewMember[]): string {
+  return JSON.stringify({ app: "cadus-crew", v: CREW_FILE_V, exportedAt: new Date().toISOString(), crew: list.filter((c) => !c.builtIn) }, null, 2);
+}
+/** Assistants read back from an exported file (new ids; never replaces existing ones). */
+export function importCrewFile(text: string, modes: string[]): CrewMember[] {
+  try {
+    const v = JSON.parse(text);
+    const arr = Array.isArray(v) ? v : Array.isArray(v?.crew) ? v.crew : [];
+    return arr.map((x: Partial<CrewMember>) => cleanCrew({ ...x, id: "", importedAt: Date.now() }, modes)).filter((x: CrewMember | null): x is CrewMember => !!x).slice(0, CREW_MAX);
+  } catch { return []; }
+}
+
+/** The message that asks an assistant for a second opinion on someone's answer or plan. */
+export function secondOpinionMessage(question: string, answer: string): string {
+  return [
+    "Give a second opinion on the plan or answer below, as the expert you are.",
+    "Use these headings: Verdict (agree, agree with changes, or disagree, in one line); What is right; What is wrong or unsafe (with the correct version and why); What is missing; Final recommendation.",
+    "Be specific, give doses where relevant, and say if anything needs urgent escalation. Do not invent patient details.",
+    "",
+    `Question or case:\n${question}`,
+    "",
+    `Answer or plan to review:\n${answer}`,
+  ].join("\n");
+}
+
+/** Crew usage for the insights panel. */
+export function crewInsights(mine: CrewMember[], use: CrewUse, chatsByCrew: Record<string, number>) {
+  const all = allCrew(mine);
+  const top = all.map((c) => ({ c, n: (use[c.id]?.n ?? 0) + 0, chats: chatsByCrew[c.id] ?? 0 })).filter((x) => x.n || x.chats).sort((a, b) => b.chats + b.n - (a.chats + a.n)).slice(0, 5);
+  const docs = mine.reduce((n, c) => n + (c.knowledge?.length ?? 0), 0);
+  const chars = mine.reduce((n, c) => n + knowledgeChars(c), 0);
+  return { total: all.length, yours: mine.length, builtIn: BUILT_IN_CREW.length, docs, chars, top, usedEver: Object.keys(use).length };
+}
+
+/** Assistants best suited to a question (for "Who should I ask?"), scored on name, tagline, starters and instructions. */
+export function suggestCrew(question: string, mine: CrewMember[], max = 3): CrewMember[] {
+  const stop = new Set(["the", "a", "an", "of", "in", "and", "or", "for", "to", "with", "on", "is", "what", "how", "my", "me", "i", "patient", "about", "do", "should", "this", "that", "who"]);
+  const words = question.toLowerCase().replace(/[^a-z0-9\s-]/g, " ").split(/\s+/).filter((w) => w.length > 2 && !stop.has(w));
+  if (!words.length) return [];
+  const scored = allCrew(mine).map((c) => {
+    const name = c.name.toLowerCase(), tag = c.tagline.toLowerCase(), st = c.starters.join(" ").toLowerCase(), ins = c.instructions.toLowerCase();
+    const s = words.reduce((a, w) => a + (name.includes(w) ? 4 : 0) + (tag.includes(w) ? 3 : 0) + (st.includes(w) ? 2 : 0) + (ins.includes(w) ? 1 : 0), 0);
+    return { c, s };
+  }).filter((x) => x.s > 0).sort((a, b) => b.s - a.s);
+  return scored.slice(0, max).map((x) => x.c);
 }

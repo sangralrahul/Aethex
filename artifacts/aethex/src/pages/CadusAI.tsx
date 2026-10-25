@@ -29,6 +29,8 @@ import {
   Hourglass, BrainCog,
   Flower2,
   Waves, CircleDot,
+  Star, Upload,
+  TestTube, Utensils,
 } from "lucide-react";
 import { invokeAi } from "@/lib/ai-functions";
 import { useUserAuth } from "@/hooks/use-user-auth";
@@ -166,6 +168,14 @@ import HivView from "@/components/cadus/HivView";
 import PreEclampsiaView from "@/components/cadus/PreEclampsiaView";
 import SleepView from "@/components/cadus/SleepView";
 import UrticariaView from "@/components/cadus/UrticariaView";
+import AnaphylaxisView from "@/components/cadus/AnaphylaxisView";
+import TraumaView from "@/components/cadus/TraumaView";
+import ToxView from "@/components/cadus/ToxView";
+import PtxView from "@/components/cadus/PtxView";
+import FluidsView from "@/components/cadus/FluidsView";
+import SteroidView from "@/components/cadus/SteroidView";
+import RefeedView from "@/components/cadus/RefeedView";
+import BackPainView from "@/components/cadus/BackPainView";
 import SickDayView from "@/components/cadus/SickDayView";
 import LabRangesView from "@/components/cadus/LabRangesView";
 import { backupDue } from "@/lib/cadus/clinic26";
@@ -176,7 +186,9 @@ import {
   BUILT_IN_CREW, blankCrew, cleanCrew, CREW_ICONS, CREW_MAX, CREW_TONES, crewPayload, findCrew, INSTRUCTIONS_MAX as CREW_INSTRUCTIONS_MAX, NAME_MAX as CREW_NAME_MAX,
   readCrew, saveCrew, STARTER_MAX, TAGLINE_MAX, type CrewIcon, type CrewMember,
   CREW_GROUPS, matchCrew, readShareCode, type HuddleResult,
+  readFav, saveFav, readUse, saveUse, recordUse, recentCrew, filterCrew, CREW_TEMPLATES, instructionScore, exportCrewFile, importCrewFile, crewInsights, suggestCrew, type CrewSort, type CrewFilter,
 } from "@/lib/cadus/crew";
+import CrewSecondOpinionView from "@/components/cadus/CrewSecondOpinionView";
 import CrewKnowledge from "@/components/cadus/CrewKnowledge";
 import { CrewImportDialog, CrewPasteImport, CrewShareDialog } from "@/components/cadus/CrewShare";
 import CrewHuddleView from "@/components/cadus/CrewHuddleView";
@@ -185,7 +197,7 @@ import CrewPlaybookView from "@/components/cadus/CrewPlaybookView";
 import CrewBuilder from "@/components/cadus/CrewBuilder";
 import PodcastView from "@/components/cadus/PodcastView";
 import { VoiceSettings } from "@/components/cadus/AudioParts";
-import { CADUS_CLINIC20_CSS, CADUS_CLINIC21_CSS, CADUS_CLINIC22_CSS, CADUS_CLINIC23_CSS, CADUS_CLINIC24_CSS, CADUS_CLINIC25_CSS, CADUS_CLINIC26_CSS, CADUS_CLINIC27_CSS, CADUS_CLINIC28_CSS, CADUS_CLINIC29_CSS, CADUS_CLINIC30_CSS, CADUS_CLINIC31_CSS, CADUS_CLINIC32_CSS, CADUS_CREW_CSS, CADUS_CREWPLUS_CSS, CADUS_VOICE_CSS } from "@/components/cadus/cadus-crew-styles";
+import { CADUS_CLINIC20_CSS, CADUS_CLINIC21_CSS, CADUS_CLINIC22_CSS, CADUS_CLINIC23_CSS, CADUS_CLINIC24_CSS, CADUS_CLINIC25_CSS, CADUS_CLINIC26_CSS, CADUS_CLINIC27_CSS, CADUS_CLINIC28_CSS, CADUS_CLINIC29_CSS, CADUS_CLINIC30_CSS, CADUS_CLINIC31_CSS, CADUS_CLINIC32_CSS, CADUS_CLINIC34_CSS, CADUS_CREW_CSS, CADUS_CREWPLUS_CSS, CADUS_VOICE_CSS } from "@/components/cadus/cadus-crew-styles";
 import TranslatorView from "@/components/cadus/TranslatorView";
 import PathwaysView from "@/components/cadus/PathwaysView";
 import FlashcardsView from "@/components/cadus/FlashcardsView";
@@ -284,9 +296,9 @@ type ModeId =
   | "admission" | "progress" | "opnote" | "death" | "certificate" | "rx" | "evidence";
 /** "groq" only appears in chats saved before Cadus became Claude-only. */
 type Provider = "claude" | "groq" | "library";
-type View = "chat" | "crew" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "debate" | "playbooks" | "podcasts" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan" | "ecg" | "abx" | "procedure" | "poison" | "infusions" | "convert" | "abg" | "logbook" | "followups" | "audiolib" | "rxwrite" | "labtrend" | "daily" | "letters" | "adr" | "mccd" | "mnemonics" | "generics" | "opd" | "imagequiz" | "dosecard" | "oncall" | "journal" | "stats" | "roster" | "records" | "voiceround" | "revnotes" | "analytics" | "preop" | "messages" | "preglact" | "pillchart" | "vaccines" | "diet" | "icd" | "consent" | "insulin" | "transfusion" | "mlc" | "tb" | "antenatal" | "ventilator" | "teleconsult" | "bills" | "bite" | "needlestick" | "imnci" | "cme" | "appointments" | "stock" | "screening" | "kidney" | "sam" | "contacts" | "accounts" | "thyroid" | "backup" | "ncd" | "anaemia" | "dengue" | "electrolytes" | "obsemergency" | "infection" | "asthma" | "milestones" | "contraception" | "palliative" | "imaging" | "ivfluids" | "sickday" | "labranges" | "burns" | "jaundice" | "stroke" | "bundles" | "alcohol" | "dfoot" | "heat" | "wound" | "anticoag" | "fevers" | "elderly" | "quitsmoking" | "croup" | "rheumatic" | "weight" | "hypo" | "gdm" | "infantfeed" | "antidep" | "eyeent" | "vte" | "headache" | "skin" | "gout" | "pnuti" | "ckd" | "preterm" | "epilepsy" | "childfever" | "cirrhosis" | "dementia" | "htnemergency" | "ugib" | "aki" | "hepbc" | "nrp" | "pain" | "bone" | "hrt" | "syncope" | "hf" | "af" | "lipids" | "pedvt" | "hiv" | "preeclampsia" | "sleep" | "urticaria";
+type View = "chat" | "crew" | "second" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "debate" | "playbooks" | "podcasts" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan" | "ecg" | "abx" | "procedure" | "poison" | "infusions" | "convert" | "abg" | "logbook" | "followups" | "audiolib" | "rxwrite" | "labtrend" | "daily" | "letters" | "adr" | "mccd" | "mnemonics" | "generics" | "opd" | "imagequiz" | "dosecard" | "oncall" | "journal" | "stats" | "roster" | "records" | "voiceround" | "revnotes" | "analytics" | "preop" | "messages" | "preglact" | "pillchart" | "vaccines" | "diet" | "icd" | "consent" | "insulin" | "transfusion" | "mlc" | "tb" | "antenatal" | "ventilator" | "teleconsult" | "bills" | "bite" | "needlestick" | "imnci" | "cme" | "appointments" | "stock" | "screening" | "kidney" | "sam" | "contacts" | "accounts" | "thyroid" | "backup" | "ncd" | "anaemia" | "dengue" | "electrolytes" | "obsemergency" | "infection" | "asthma" | "milestones" | "contraception" | "palliative" | "imaging" | "ivfluids" | "sickday" | "labranges" | "burns" | "jaundice" | "stroke" | "bundles" | "alcohol" | "dfoot" | "heat" | "wound" | "anticoag" | "fevers" | "elderly" | "quitsmoking" | "croup" | "rheumatic" | "weight" | "hypo" | "gdm" | "infantfeed" | "antidep" | "eyeent" | "vte" | "headache" | "skin" | "gout" | "pnuti" | "ckd" | "preterm" | "epilepsy" | "childfever" | "cirrhosis" | "dementia" | "htnemergency" | "ugib" | "aki" | "hepbc" | "nrp" | "pain" | "bone" | "hrt" | "syncope" | "hf" | "af" | "lipids" | "pedvt" | "hiv" | "preeclampsia" | "sleep" | "urticaria" | "anaphylaxis" | "trauma" | "tox" | "ptx" | "fluids" | "steroid" | "refeed" | "backpain";
 /** Views reached from the Tools hub, so the hub stays highlighted in the sidebar. */
-const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today", "discharge", "handover", "ddx", "studyplan", "podcasts", "ecg", "abx", "procedure", "poison", "infusions", "convert", "abg", "logbook", "followups", "audiolib", "rxwrite", "labtrend", "daily", "letters", "adr", "mccd", "mnemonics", "generics", "opd", "imagequiz", "dosecard", "oncall", "journal", "stats", "roster", "records", "voiceround", "revnotes", "analytics", "preop", "messages", "preglact", "pillchart", "vaccines", "diet", "icd", "consent", "insulin", "transfusion", "mlc", "tb", "antenatal", "ventilator", "teleconsult", "bills", "bite", "needlestick", "imnci", "cme", "appointments", "stock", "screening", "kidney", "sam", "contacts", "accounts", "thyroid", "backup", "ncd", "anaemia", "dengue", "electrolytes", "obsemergency", "infection", "asthma", "milestones", "contraception", "palliative", "imaging", "ivfluids", "sickday", "labranges", "burns", "jaundice", "stroke", "bundles", "alcohol", "dfoot", "heat", "wound", "anticoag", "fevers", "elderly", "quitsmoking", "croup", "rheumatic", "weight", "hypo", "gdm", "infantfeed", "antidep", "eyeent", "vte", "headache", "skin", "gout", "pnuti", "ckd", "preterm", "epilepsy", "childfever", "cirrhosis", "dementia", "htnemergency", "ugib", "aki", "hepbc", "nrp", "pain", "bone", "hrt", "syncope", "hf", "af", "lipids", "pedvt", "hiv", "preeclampsia", "sleep", "urticaria"]);
+const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today", "discharge", "handover", "ddx", "studyplan", "podcasts", "ecg", "abx", "procedure", "poison", "infusions", "convert", "abg", "logbook", "followups", "audiolib", "rxwrite", "labtrend", "daily", "letters", "adr", "mccd", "mnemonics", "generics", "opd", "imagequiz", "dosecard", "oncall", "journal", "stats", "roster", "records", "voiceround", "revnotes", "analytics", "preop", "messages", "preglact", "pillchart", "vaccines", "diet", "icd", "consent", "insulin", "transfusion", "mlc", "tb", "antenatal", "ventilator", "teleconsult", "bills", "bite", "needlestick", "imnci", "cme", "appointments", "stock", "screening", "kidney", "sam", "contacts", "accounts", "thyroid", "backup", "ncd", "anaemia", "dengue", "electrolytes", "obsemergency", "infection", "asthma", "milestones", "contraception", "palliative", "imaging", "ivfluids", "sickday", "labranges", "burns", "jaundice", "stroke", "bundles", "alcohol", "dfoot", "heat", "wound", "anticoag", "fevers", "elderly", "quitsmoking", "croup", "rheumatic", "weight", "hypo", "gdm", "infantfeed", "antidep", "eyeent", "vte", "headache", "skin", "gout", "pnuti", "ckd", "preterm", "epilepsy", "childfever", "cirrhosis", "dementia", "htnemergency", "ugib", "aki", "hepbc", "nrp", "pain", "bone", "hrt", "syncope", "hf", "af", "lipids", "pedvt", "hiv", "preeclampsia", "sleep", "urticaria", "anaphylaxis", "trauma", "tox", "ptx", "fluids", "steroid", "refeed", "backpain"]);
 type ToolTab = "all" | "clinical" | "documentation" | "learning";
 type SettingsTab = "general" | "personal" | "letterhead" | "institution" | "data" | "shortcuts" | "about";
 type StyleId = "concise" | "balanced" | "detailed";
@@ -1147,6 +1159,16 @@ export default function CadusAI() {
     });
   /** Cadus Crew: the user's own assistants, the one a new chat will be with, and the one being edited. */
   const [crewMine, setCrewMine] = useState<CrewMember[]>(() => readCrew(MODES.map((m) => m.id)));
+  const [crewFav, setCrewFav] = useState<string[]>(readFav);
+  const [crewUse, setCrewUse] = useState(readUse);
+  const [crewQ, setCrewQ] = useState("");
+  const [crewFilter, setCrewFilter] = useState<CrewFilter>("all");
+  const [crewSort, setCrewSort] = useState<CrewSort>("default");
+  const [crewFind, setCrewFind] = useState("");
+  const [crewInsightsOpen, setCrewInsightsOpen] = useState(false);
+  const [secondPick, setSecondPick] = useState("");
+  useEffect(() => saveFav(crewFav), [crewFav]);
+  useEffect(() => saveUse(crewUse), [crewUse]);
   const [crewNext, setCrewNext] = useState("");
   const [crewEdit, setCrewEdit] = useState<CrewMember | null>(null);
   /** Sharing and importing assistants, @mentions in the composer, and the huddle's first picks. */
@@ -1518,6 +1540,28 @@ export default function CadusAI() {
   const startCrew = (c: CrewMember) => {
     newChat();
     setCrewNext(c.id);
+    setCrewUse((u) => recordUse(u, c.id));
+  };
+  const toggleFav = (id: string) => setCrewFav((f) => (f.includes(id) ? f.filter((x) => x !== id) : [id, ...f]));
+  const exportCrew = () => {
+    if (!crewMine.length) { toast("Create or import an assistant first"); return; }
+    const blob = new Blob([exportCrewFile(crewMine)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `cadus-crew-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    toast(`Exported ${crewMine.length} assistant${crewMine.length === 1 ? "" : "s"}`);
+  };
+  const importCrew = async (f: File | undefined) => {
+    if (!f) return;
+    const list = importCrewFile(await f.text(), MODES.map((m) => m.id));
+    if (!list.length) { toast("No assistants found in that file"); return; }
+    const room = Math.max(0, CREW_MAX - crewMine.length);
+    const add = list.slice(0, room);
+    if (!add.length) { toast(`You can keep up to ${CREW_MAX} assistants`); return; }
+    setCrewMine((l) => [...add, ...l]);
+    toast(`Imported ${add.length} assistant${add.length === 1 ? "" : "s"}${list.length > add.length ? ` (${list.length - add.length} skipped: limit ${CREW_MAX})` : ""}`);
   };
   const saveCrewEdit = () => {
     if (!crewEdit) return;
@@ -2946,6 +2990,14 @@ export default function CadusAI() {
       { key: "a:preeclampsia", label: "Pre-eclampsia: aspirin and diagnosis", hint: "Risk factors and aspirin 150 mg, diagnosis and severity, antihypertensives, delivery", icon: Baby, run: () => openView("preeclampsia") },
       { key: "a:sleep", label: "Insomnia & Sleep: STOP-BANG and CBT-I", hint: "Sleep apnoea screen, sleep efficiency and window, medicines, sleep handout", icon: Moon, run: () => openView("sleep") },
       { key: "a:urticaria", label: "Urticaria & Angioedema: steps and red flags", hint: "Acute and chronic urticaria, up-dosing, omalizumab, UAS7, angioedema flags", icon: CircleDot, run: () => openView("urticaria") },
+      { key: "a:anaphylaxis", label: "Anaphylaxis & Allergy Plan: adrenaline and action plan", hint: "IM adrenaline by age and weight, refractory steps, observation, written allergy plan", icon: Siren, run: () => openView("anaphylaxis") },
+      { key: "a:trauma", label: "Trauma Primary Survey: ABCDE with a clock", hint: "Time-stamped <C>ABCDE, shock class, ABC score, GCS, tranexamic acid", icon: Ambulance, run: () => openView("trauma") },
+      { key: "a:tox", label: "Toxicology: paracetamol and organophosphate", hint: "Paracetamol line and NAC doses, atropine doubling, pralidoxime, Indian poisons", icon: FlaskConical, run: () => openView("tox") },
+      { key: "a:ptx", label: "Pneumothorax & Chest Drain: BTS pathway", hint: "Conservative, aspiration or drain by BTS 2023; tension; chest drain steps", icon: Wind, run: () => openView("ptx") },
+      { key: "a:fluids", label: "Body Fluid Analysis: pleural, ascitic, CSF, synovial", hint: "Light's criteria, ADA, SAAG, SBP, CSF patterns, synovial counts", icon: TestTube, run: () => openView("fluids") },
+      { key: "a:steroid", label: "Adrenal Crisis & Steroid Cover", hint: "Steroid equivalents, who is at risk, surgical and labour cover, adrenal crisis", icon: Syringe, run: () => openView("steroid") },
+      { key: "a:refeed", label: "Refeeding & Nutrition: risk and calorie ramp", hint: "NICE refeeding risk, starting kcal/kg, day-by-day ramp, thiamine and electrolytes", icon: Utensils, run: () => openView("refeed") },
+      { key: "a:backpain", label: "Back Pain & Cauda Equina: red flags", hint: "Cauda equina symptoms, red flags including spinal TB, emergency, urgent or routine plan", icon: Bone, run: () => openView("backpain") },
       { key: "a:present", label: "Presentation Coach: practise presenting a case", hint: "Ward round, long case, SBAR; scored with a model answer", icon: Presentation, run: () => openView("present") },
       { key: "a:compare", label: "Compare over time: what changed between two studies", hint: "X-rays, ECGs, scans, reports and wound photos", icon: History, run: () => openView("compare") },
       { key: "a:newcase", label: "New patient case", hint: "Start a de-identified case sheet", icon: ClipboardList, run: () => { const c = newCase(); setCases((l) => [c, ...l]); openCases(c.id); } },
@@ -3445,6 +3497,14 @@ export default function CadusAI() {
     { id: "preeclampsia", icon: Baby, tone: "rose", title: "Pre-eclampsia", sub: "Aspirin, diagnosis, plan", go: () => openView("preeclampsia") },
     { id: "sleep", icon: Moon, tone: "violet", title: "Insomnia & Sleep", sub: "STOP-BANG, CBT-I, handout", go: () => openView("sleep") },
     { id: "urticaria", icon: CircleDot, tone: "lime", title: "Urticaria & Angioedema", sub: "Antihistamine steps, UAS7", go: () => openView("urticaria") },
+    { id: "anaphylaxis", icon: Siren, tone: "rose", title: "Anaphylaxis & Allergy Plan", sub: "Adrenaline, refractory, plan", go: () => openView("anaphylaxis") },
+    { id: "trauma", icon: Ambulance, tone: "rose", title: "Trauma Primary Survey", sub: "<C>ABCDE clock, MTP, TXA", go: () => openView("trauma") },
+    { id: "tox", icon: FlaskConical, tone: "amber", title: "Toxicology", sub: "Paracetamol, organophosphate", go: () => openView("tox") },
+    { id: "ptx", icon: Wind, tone: "sky", title: "Pneumothorax & Chest Drain", sub: "BTS pathway, drain steps", go: () => openView("ptx") },
+    { id: "fluids", icon: TestTube, tone: "teal", title: "Body Fluid Analysis", sub: "Pleural, ascitic, CSF, joint", go: () => openView("fluids") },
+    { id: "steroid", icon: Syringe, tone: "violet", title: "Adrenal Crisis & Steroid Cover", sub: "Equivalents, surgery cover", go: () => openView("steroid") },
+    { id: "refeed", icon: Utensils, tone: "lime", title: "Refeeding & Nutrition", sub: "NICE risk, calorie ramp", go: () => openView("refeed") },
+    { id: "backpain", icon: Bone, tone: "amber", title: "Back Pain & Cauda Equina", sub: "Red flags, urgency", go: () => openView("backpain") },
   ];
   const backupNeeded = view !== "backup" && backupDue();
   /** The More drawer: every tool, grouped by what it is for (update 24). */
@@ -3478,6 +3538,7 @@ export default function CadusAI() {
         { label: "Menopause & HRT", title: "Menopause & HRT", icon: Flower2, on: view === "hrt", go: () => openView("hrt") },
         { label: "HIV Care", title: "HIV Care", icon: Ribbon, on: view === "hiv", go: () => openView("hiv") },
         { label: "Insomnia & Sleep", title: "Insomnia & Sleep", icon: Moon, on: view === "sleep", go: () => openView("sleep") },
+        { label: "Back Pain & Cauda Equina", title: "Back Pain & Cauda Equina", icon: Bone, on: view === "backpain", go: () => openView("backpain") },
       ] },
     { id: "practice", label: "Practice", icon: BriefcaseMedical, items: [
         { label: "Appointments", title: "Appointments", icon: CalendarPlus, on: view === "appointments", go: () => openView("appointments") },
@@ -3506,6 +3567,9 @@ export default function CadusAI() {
         { label: "Cirrhosis & Ascites", title: "Cirrhosis & Ascites", icon: FlaskRound, on: view === "cirrhosis", go: () => openView("cirrhosis") },
         { label: "Acute Kidney Injury", title: "Acute Kidney Injury", icon: FlaskConical, on: view === "aki", go: () => openView("aki") },
         { label: "Heart Failure GDMT", title: "Heart Failure GDMT", icon: HeartPulse, on: view === "hf", go: () => openView("hf") },
+        { label: "Pneumothorax & Chest Drain", title: "Pneumothorax & Chest Drain", icon: Wind, on: view === "ptx", go: () => openView("ptx") },
+        { label: "Adrenal Crisis & Steroid Cover", title: "Adrenal Crisis & Steroid Cover", icon: Syringe, on: view === "steroid", go: () => openView("steroid") },
+        { label: "Refeeding & Nutrition", title: "Refeeding & Nutrition", icon: Utensils, on: view === "refeed", go: () => openView("refeed") },
       ] },
     { id: "emergency", label: "Emergency & ICU", icon: Siren, items: [
         { label: "Emergencies", title: "Emergency protocols", icon: Siren, on: view === "emergency", go: () => openView("emergency") },
@@ -3531,6 +3595,9 @@ export default function CadusAI() {
         { label: "Syncope", title: "Syncope", icon: HeartPulse, on: view === "syncope", go: () => openView("syncope") },
         { label: "Atrial Fibrillation", title: "Atrial Fibrillation", icon: Activity, on: view === "af", go: () => openView("af") },
         { label: "PE & DVT", title: "PE & DVT", icon: Waves, on: view === "pedvt", go: () => openView("pedvt") },
+        { label: "Anaphylaxis & Allergy Plan", title: "Anaphylaxis & Allergy Plan", icon: Siren, on: view === "anaphylaxis", go: () => openView("anaphylaxis") },
+        { label: "Trauma Primary Survey", title: "Trauma Primary Survey", icon: Ambulance, on: view === "trauma", go: () => openView("trauma") },
+        { label: "Toxicology", title: "Toxicology", icon: FlaskConical, on: view === "tox", go: () => openView("tox") },
       ] },
     { id: "drugs", label: "Drugs & Prescribing", icon: Pill, items: [
         { label: "Drugs", title: "Drugs and prescriber", icon: Pill, on: view === "drugs", go: () => openDrugs() },
@@ -3589,6 +3656,7 @@ export default function CadusAI() {
         { label: "Headache & Migraine", title: "Headache & Migraine", icon: BrainCircuit, on: view === "headache", go: () => openView("headache") },
         { label: "Epilepsy & First Seizure", title: "Epilepsy & First Seizure", icon: Zap, on: view === "epilepsy", go: () => openView("epilepsy") },
         { label: "Dementia & Memory", title: "Dementia & Memory", icon: BrainCog, on: view === "dementia", go: () => openView("dementia") },
+        { label: "Body Fluid Analysis", title: "Body Fluid Analysis", icon: TestTube, on: view === "fluids", go: () => openView("fluids") },
       ] },
     { id: "documents", label: "Documents & Legal", icon: ScrollText, items: [
         { label: "Scribe", title: "Scribe: dictated notes", icon: Mic, on: view === "scribe", go: () => openView("scribe") },
@@ -3924,6 +3992,7 @@ export default function CadusAI() {
         </button>
         <div className="cx-crew-acts">
           <button className="cx-btn primary sm" onClick={() => startCrew(c)}><MessageSquare size={14} /> Chat</button>
+          <button className={`cx-ib cx-crew-fav ${crewFav.includes(c.id) ? "on" : ""}`} onClick={() => toggleFav(c.id)} aria-label={crewFav.includes(c.id) ? `Remove ${c.name} from favourites` : `Add ${c.name} to favourites`} aria-pressed={crewFav.includes(c.id)} data-crew-fav={c.id}><Star size={15} /></button>
           <div className="cx-rel" data-pop={key}>
             <button className={`cx-ib ${pop === key ? "open" : ""}`} onClick={() => togglePop(key)} aria-label={`More for ${c.name}`} aria-haspopup="menu" aria-expanded={pop === key}><Ellipsis size={16} /></button>
             {pop === key && (
@@ -3931,6 +4000,7 @@ export default function CadusAI() {
                 {!c.builtIn && <button className="cx-pop-i" onClick={() => { setPop(null); setCrewEdit({ ...c }); }}><Pencil size={15} /> Edit</button>}
                 <button className="cx-pop-i" onClick={() => { setPop(null); setCrewShare(c); }}><Share2 size={15} /> Share</button>
                 <button className="cx-pop-i" onClick={() => { setPop(null); openHuddle([c.id]); }}><Users2 size={15} /> Huddle with others</button>
+                <button className="cx-pop-i" onClick={() => { setPop(null); setSecondPick(c.id); setView("second"); }}><Scale size={15} /> Ask for a second opinion</button>
                 <button className="cx-pop-i" onClick={() => { setPop(null); setCrewEdit({ ...c, id: "", builtIn: undefined, group: undefined, name: `${c.name} (copy)`.slice(0, CREW_NAME_MAX) }); }}><Copy size={15} /> {c.builtIn ? "Make my own version" : "Duplicate"}</button>
                 {!c.builtIn && <button className="cx-pop-i danger" onClick={() => deleteCrew(c.id)}><Trash2 size={15} /> Remove</button>}
               </div>
@@ -3952,6 +4022,7 @@ export default function CadusAI() {
           <button className="cx-btn" onClick={() => openHuddle()} data-crew="huddle"><Users2 size={15} /> Crew Huddle</button>
           <button className="cx-btn" onClick={() => openView("debate")} data-crew="debate"><Swords size={15} /> Debate</button>
           <button className="cx-btn" onClick={() => openView("playbooks")} data-crew="playbooks"><Workflow size={15} /> Playbooks</button>
+          <button className="cx-btn" onClick={() => { setSecondPick(""); openView("second"); }} data-crew="second"><Scale size={15} /> Second opinion</button>
           <button className="cx-btn primary" onClick={() => setCrewEdit(blankCrew())} disabled={crewMine.length >= CREW_MAX}><Plus size={15} /> Create an assistant</button>
         </div>
       </header>
@@ -3961,7 +4032,28 @@ export default function CadusAI() {
         <span><BookOpen size={14} /> Give your own assistants knowledge files</span>
         <span><Swords size={14} /> <button className="cx-link" onClick={() => openView("debate")}>Debate</button>: two argue, a judge decides</span>
         <span><Workflow size={14} /> <button className="cx-link" onClick={() => openView("playbooks")}>Playbooks</button>: chain them into a workflow</span>
+        <span><Scale size={14} /> <button className="cx-link" onClick={() => { setSecondPick(""); openView("second"); }}>Second opinion</button>: have an expert review a plan</span>
       </div>
+      <div className="cx-crew-find" data-crew="finder">
+        <label className="cx-field"><span><Sparkles size={13} /> Who should I ask?</span><input className="cx-input" value={crewFind} onChange={(e) => setCrewFind(e.target.value.slice(0, 200))} placeholder="Describe your question, e.g. spinal anaesthesia dose for caesarean" data-crew="find" /></label>
+        {crewFind.trim() && (() => { const sug = suggestCrew(crewFind, crewMine, 3); return sug.length ? <div className="cx-crew-sug" data-crew="suggest">{sug.map((c) => <button key={c.id} className="cx-chip" onClick={() => startCrew(c)}><CrewBadge c={c} size={20} /> {c.name}</button>)}</div> : <p className="cx-set-hint">No close match: try other words, or ask Cadus directly.</p>; })()}
+      </div>
+      <div className="cx-crew-bar" data-crew="bar">
+        <label className="cx-search-l"><Search size={14} /><input className="cx-input" value={crewQ} onChange={(e) => setCrewQ(e.target.value.slice(0, 80))} placeholder={`Search ${BUILT_IN_CREW.length + crewMine.length} assistants`} aria-label="Search assistants" data-crew="q" /></label>
+        <div className="cx-crew-chips" role="tablist" aria-label="Filter">{([["all", "All"], ["fav", `Favourites${crewFav.length ? ` ${crewFav.length}` : ""}`], ["mine", "Yours"], ...CREW_GROUPS.map((g) => [g, g])] as [CrewFilter, string][]).map(([v, l]) => <button key={v} role="tab" aria-selected={crewFilter === v} className={`cx-chip ${crewFilter === v ? "on" : ""}`} onClick={() => setCrewFilter(v)} data-crew-filter={v}>{l}</button>)}</div>
+        <label className="cx-crew-sort"><span>Sort</span><select className="cx-select sm" value={crewSort} onChange={(e) => setCrewSort(e.target.value as CrewSort)} data-crew="sort"><option value="default">Default</option><option value="name">A–Z</option><option value="used">Most used</option></select></label>
+      </div>
+      {(crewQ.trim() || crewFilter !== "all" || crewSort !== "default") ? (() => {
+        const res = filterCrew([...crewMine, ...BUILT_IN_CREW], crewQ, crewFilter, crewSort, crewFav, crewUse);
+        return (
+          <div data-crew="results">
+            <h2 className="cx-crew-sh">{res.length} assistant{res.length === 1 ? "" : "s"} <span>{crewQ.trim() ? `for "${crewQ.trim()}"` : ""}</span></h2>
+            {res.length ? <div className="cx-crew-grid">{res.map((c, i) => crewCard(c, i))}</div> : <p className="cx-set-hint">Nothing matches. Clear the search or create your own assistant.</p>}
+          </div>
+        );
+      })() : (<>
+      {crewFav.length > 0 && <><h2 className="cx-crew-sh"><Star size={15} /> Favourites</h2><div className="cx-crew-grid" data-crew="favs">{crewFav.map((id) => findCrew(id, crewMine)).filter((c): c is CrewMember => !!c).map((c, i) => crewCard(c, i))}</div></>}
+      {recentCrew(crewUse).length > 0 && <><h2 className="cx-crew-sh"><History size={15} /> Recently used</h2><div className="cx-crew-recent" data-crew="recent">{recentCrew(crewUse).map((id) => findCrew(id, crewMine)).filter((c): c is CrewMember => !!c).map((c) => <button key={c.id} className="cx-chip" onClick={() => startCrew(c)}><CrewBadge c={c} size={20} /> {c.name}</button>)}</div></>}
       <CrewBuilder
         build={(description) => invokeCadus({ action: "crew-build", description, model: prefs.model, modes: MODES.map((m) => ({ id: m.id, label: m.label })) })}
         onBuilt={(c) => setCrewEdit(c)}
@@ -3969,6 +4061,27 @@ export default function CadusAI() {
         toast={toast}
         disabled={crewMine.length >= CREW_MAX}
       />
+      <div className="cx-crew-tpl" data-crew="templates"><span>Start from a template:</span>{CREW_TEMPLATES.map((t) => <button key={t.label} className="cx-chip" onClick={() => setCrewEdit(t.make())} disabled={crewMine.length >= CREW_MAX} data-crew-tpl={t.label}><Plus size={13} /> {t.label}</button>)}</div>
+      <div className="cx-crew-io">
+        <button className="cx-btn sm" onClick={exportCrew} data-crew="export"><Download size={14} /> Export my assistants</button>
+        <label className="cx-btn sm"><Upload size={14} /> Import from file<input type="file" accept="application/json,.json" hidden onChange={(e) => { void importCrew(e.target.files?.[0]); e.target.value = ""; }} data-crew="import-file" /></label>
+        <button className="cx-btn sm" onClick={() => setCrewInsightsOpen((v) => !v)} aria-expanded={crewInsightsOpen} data-crew="insights-btn"><BarChart3 size={14} /> Insights</button>
+      </div>
+      {crewInsightsOpen && (() => {
+        const byCrew: Record<string, number> = {};
+        sessions.forEach((x) => { if (x.crewId) byCrew[x.crewId] = (byCrew[x.crewId] ?? 0) + 1; });
+        const ins = crewInsights(crewMine, crewUse, byCrew);
+        return (
+          <div className="cx-cmp-out" data-crew="insights">
+            <div className="cx-sim-stats">
+              <div><b>{ins.total}</b><small>assistants ({ins.builtIn} by Cadus, {ins.yours} yours)</small></div>
+              <div><b>{ins.usedEver}</b><small>you have started chats with</small></div>
+              <div><b>{ins.docs}</b><small>knowledge files ({Math.round(ins.chars / 1000)}k characters)</small></div>
+            </div>
+            {ins.top.length ? <><h4>Most used</h4><ol className="cx-c23-steps">{ins.top.map((t) => <li key={t.c.id}><b>{t.c.name}</b>: {t.chats} chat{t.chats === 1 ? "" : "s"}, opened {t.n} time{t.n === 1 ? "" : "s"}</li>)}</ol></> : <p className="cx-set-hint">Start chats with assistants and your favourites will show here.</p>}
+          </div>
+        );
+      })()}
       <h2 className="cx-crew-sh">Your crew <span>{crewMine.length ? crewMine.length : ""}</span></h2>
       {crewMine.length ? (
         <div className="cx-crew-grid">{crewMine.map((c, i) => crewCard(c, i))}</div>
@@ -3988,6 +4101,7 @@ export default function CadusAI() {
           </div>
         ) : null;
       })}
+      </>)}
     </section>
   );
 
@@ -4755,7 +4869,7 @@ export default function CadusAI() {
       style={{ ["--acc" as string]: dark ? accent.dark : accent.light, ["--fs" as string]: `${fontSize}px`, ["--fs-u" as string]: `${sansSize}px` }}
       {...dropHandlers}
     >
-      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS + CADUS_CREWPLUS_CSS + CADUS_VOICE_CSS + CADUS_CLINIC20_CSS + CADUS_CLINIC21_CSS + CADUS_CLINIC22_CSS + CADUS_CLINIC23_CSS + CADUS_CLINIC24_CSS + CADUS_CLINIC25_CSS + CADUS_CLINIC26_CSS + CADUS_CLINIC27_CSS + CADUS_CLINIC28_CSS + CADUS_CLINIC29_CSS + CADUS_CLINIC30_CSS + CADUS_CLINIC31_CSS + CADUS_CLINIC32_CSS}</style>
+      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS + CADUS_CREWPLUS_CSS + CADUS_VOICE_CSS + CADUS_CLINIC20_CSS + CADUS_CLINIC21_CSS + CADUS_CLINIC22_CSS + CADUS_CLINIC23_CSS + CADUS_CLINIC24_CSS + CADUS_CLINIC25_CSS + CADUS_CLINIC26_CSS + CADUS_CLINIC27_CSS + CADUS_CLINIC28_CSS + CADUS_CLINIC29_CSS + CADUS_CLINIC30_CSS + CADUS_CLINIC31_CSS + CADUS_CLINIC32_CSS + CADUS_CLINIC34_CSS}</style>
 
       {/* ============================================== sidebar */}
       <div className={`cx-scrim ${sidebarOpen ? "on" : ""}`} onClick={() => setSidebarOpen(false)} />
@@ -5048,6 +5162,7 @@ export default function CadusAI() {
                 view === "tools" ? [LayoutGrid, "Tools"]
                 : view === "crew" ? [Bot, "Cadus Crew"]
                 : view === "huddle" ? [Users2, "Crew Huddle"]
+                : view === "second" ? [Scale, "Second Opinion"]
                 : view === "debate" ? [Swords, "Crew Debate"]
                 : view === "playbooks" ? [Workflow, "Crew Playbooks"]
                 : view === "calculators" ? [Calculator, "Calculators"]
@@ -5201,6 +5316,14 @@ export default function CadusAI() {
                 : view === "preeclampsia" ? [Baby, "Pre-eclampsia"]
                 : view === "sleep" ? [Moon, "Insomnia & Sleep"]
                 : view === "urticaria" ? [CircleDot, "Urticaria & Angioedema"]
+                : view === "anaphylaxis" ? [Siren, "Anaphylaxis & Allergy Plan"]
+                : view === "trauma" ? [Ambulance, "Trauma Primary Survey"]
+                : view === "tox" ? [FlaskConical, "Toxicology"]
+                : view === "ptx" ? [Wind, "Pneumothorax & Chest Drain"]
+                : view === "fluids" ? [TestTube, "Body Fluid Analysis"]
+                : view === "steroid" ? [Syringe, "Adrenal Crisis & Steroid Cover"]
+                : view === "refeed" ? [Utensils, "Refeeding & Nutrition"]
+                : view === "backpain" ? [Bone, "Back Pain & Cauda Equina"]
                 : view === "project" && project ? [Folder, project.name]
                 : [Folder, "Projects"];
               return <span className="cx-title-btn static"><Icon size={14} /> <span>{label}</span></span>;
@@ -5646,6 +5769,14 @@ export default function CadusAI() {
             : view === "preeclampsia" ? <PreEclampsiaView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
             : view === "sleep" ? <SleepView generate={(body) => invokeCadus({ ...body, model: prefs.model })} friendlyError={friendlyError} toast={toast} onPrint={(title, md) => printDoc(title, md, { mode: "leaflet" })} defaultLanguage={prefs.language} />
             : view === "urticaria" ? <UrticariaView />
+            : view === "anaphylaxis" ? <AnaphylaxisView generate={(body) => invokeCadus({ ...body, model: prefs.model })} friendlyError={friendlyError} toast={toast} onPrint={(title, md) => printDoc(title, md, { mode: "leaflet" })} defaultLanguage={prefs.language} />
+            : view === "trauma" ? <TraumaView />
+            : view === "tox" ? <ToxView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
+            : view === "ptx" ? <PtxView />
+            : view === "fluids" ? <FluidsView />
+            : view === "steroid" ? <SteroidView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
+            : view === "refeed" ? <RefeedView onPrint={(title, md) => printDoc(title, md, { mode: "" })} />
+            : view === "backpain" ? <BackPainView />
             : view === "today" ? (
               <TodayView
                 name={firstName}
@@ -5804,6 +5935,35 @@ export default function CadusAI() {
                 friendlyError={friendlyError}
                 toast={toast}
                 onSave={(question, answer) => { setLibrary((l) => [{ id: uid(), sessionId: "", messageId: uid(), question, answer, mode: "general", at: Date.now() }, ...l]); toast("Saved to Library"); }}
+                onContinue={(c, q, answer) => {
+                  const sid = uid();
+                  const u: Msg = { id: uid(), role: "user", mode: "general", at: Date.now(), content: q };
+                  const a: Msg = { id: uid(), role: "assistant", mode: "general", at: Date.now(), content: answer, mention: { id: c.id, name: c.name, icon: c.icon, tone: c.tone } };
+                  upsert(sid, () => [u, a], clip(q, 64), undefined, { crewId: c.id });
+                  setActiveId(sid);
+                  setView("chat");
+                  focusComposer();
+                }}
+              />
+            )
+            : view === "second" ? (
+              <CrewSecondOpinionView
+                key={secondPick || "second"}
+                mine={crewMine}
+                initial={secondPick}
+                badge={(c, size) => <CrewBadge c={c} size={size} />}
+                ask={async (c, q) => {
+                  const r = await invokeCadus({ action: "chat", message: q, mode: "general", history: [], crew: crewPayload(c), model: prefs.model, language: prefs.language, search: limits.sources && !!c.sources, ...(profilePayload(profile) ? { profile: profilePayload(profile) } : {}) });
+                  if (!r?.message) throw new Error("No answer came back");
+                  return String(r.message);
+                }}
+                canAsk={(n) => {
+                  if (usage.date === today() && usage.count + n > limits.questionsPerDay) { setUpgrade({ reason: `You have used today's ${limits.questionsPerDay} questions on the ${PLAN_BY_ID[plan].name} plan.`, feature: "questions" }); return false; }
+                  setUsage((u) => (u.date === today() ? { ...u, count: u.count + n } : { date: today(), count: n }));
+                  return true;
+                }}
+                friendlyError={friendlyError}
+                toast={toast}
                 onContinue={(c, q, answer) => {
                   const sid = uid();
                   const u: Msg = { id: uid(), role: "user", mode: "general", at: Date.now(), content: q };
@@ -5987,6 +6147,12 @@ export default function CadusAI() {
                   placeholder="Who it is, who it helps and how it should answer. e.g. You are a cardiology registrar at a government medical college. Answer for an MD Medicine resident: follow ESC and CSI guidance, give doses for Indian formulations, and end every answer with what to tell the consultant." />
                 <small>{crewEdit.instructions.length} / {CREW_INSTRUCTIONS_MAX}. Avoid patient names or other identifying details.</small>
               </label>
+              {crewEdit.instructions.trim().length > 0 && (() => { const sc = instructionScore(crewEdit); return (
+                <div className={`cx-crew-coach ${sc.score >= 8 ? "good" : sc.score >= 5 ? "ok" : "low"}`} data-crew="coach">
+                  <b>Instruction coach: {sc.score}/10</b>
+                  {sc.tips.length ? <ul>{sc.tips.slice(0, 4).map((t) => <li key={t}>{t}</li>)}</ul> : <span> Clear and complete.</span>}
+                </div>
+              ); })()}
               <div className="cx-field">
                 <span>First questions <span className="opt">(optional, up to 4)</span></span>
                 <div className="cx-crew-starters-ed">
