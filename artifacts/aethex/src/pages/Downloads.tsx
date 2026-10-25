@@ -291,6 +291,7 @@ const TOOLS: [string, string][] = [
   ["Status Epilepticus", "r"], ["Hyponatraemia & Sodium", "t"], ["Asthma & COPD Attack", "t"], ["Pre-op Risk & Anticoagulant Bridging", "v"], ["Oncology Emergencies", "y"], ["Spirometry Interpreter", "t"], ["Thyroid Storm & Myxoedema Coma", "v"], ["Sickle Cell & Thalassaemia", "r"],
   ["Hyperkalaemia & ECG", "r"], ["Acute Pancreatitis Plan", "y"], ["Paediatric Sepsis & Shock", "r"], ["Upper Airway & Stridor", "v"], ["Rhabdomyolysis & CK", "y"], ["Hypothermia & Drowning", "t"], ["Paediatric DKA", "v"], ["Acute Urinary Retention", "t"],
   ["Hypertension in Pregnancy & Postpartum", "r"], ["Kidney Stones & Colic", "t"], ["Children's Antibiotics by Weight", "y"], ["Opioid Conversion & Palliative Infusions", "v"], ["Cellulitis & Necrotising Fasciitis", "r"], ["Kawasaki Disease", "y"], ["Infective Endocarditis", "v"], ["Bell's Palsy & Facial Weakness", "t"],
+  ["Postpartum Haemorrhage", "r"], ["Neonatal Sepsis & Antibiotics", "v"], ["Antibiotic Renal Dosing", "t"], ["Brain-stem Death & Organ Donation", "v"], ["Septic Arthritis & Hot Joint", "y"], ["Neonatal Hypoglycaemia", "y"], ["Altitude Illness", "t"], ["Serotonin Syndrome vs NMS", "r"],
 ];
 
 /**

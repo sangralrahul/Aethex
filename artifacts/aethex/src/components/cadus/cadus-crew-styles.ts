@@ -837,3 +837,27 @@ export const CADUS_CLINIC38_CSS = `
 .cx-crewvoice .cx-rm-compose{align-items:center}
 @media (max-width:760px){.cx-crew-h>div:first-child{flex-basis:auto}}
 `;
+
+/** Update 39: personas, workspaces, fact-check. */
+export const CADUS_CLINIC39_CSS = `
+.cx-crew-av{font-weight:700;line-height:1;font-family:var(--sans,inherit)}
+.cx-crew-greet{margin:4px 0 0;padding:8px 14px;border-radius:14px;background:var(--surface);border:1px solid var(--line);font-size:14px;color:var(--text);max-width:520px}
+.cx-crew-persona{margin-top:4px}
+.cx-crew-ws{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:12px 0 0;padding:10px 12px;border:1px solid var(--primary);border-radius:12px;background:color-mix(in srgb,var(--primary) 6%,var(--surface))}
+.cx-crew-ws .cx-chip{display:inline-flex;align-items:center;gap:6px}
+.cx-ws-crew{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.cx-ws-crew .cx-chip{display:inline-flex;align-items:center;gap:6px}
+.cx-workspaces [data-ws="active"] h3{display:flex;align-items:center;gap:6px}
+.cx-fc-ic{display:inline-grid;place-items:center;width:44px;height:44px;border-radius:12px;background:var(--line2,rgba(0,0,0,.06));color:var(--primary)}
+.cx-fc-list{list-style:none;padding:0;margin:10px 0;display:grid;gap:6px}
+.cx-fc-list li{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow-wrap:anywhere}
+.cx-fc-list li span{display:flex;flex-direction:column;gap:2px}
+.cx-fc-list li small{color:var(--t2)}
+.cx-fc-list li svg{flex:none;margin-top:2px}
+.cx-fc-list li.v-ok svg{color:var(--ok)}
+.cx-fc-list li.v-flag{border-color:var(--danger)}
+.cx-fc-list li.v-flag svg{color:var(--danger)}
+.cx-fc-list li.v-unsure svg{color:var(--warn)}
+.cx-pp-blocked td{opacity:.6;text-decoration:line-through}
+.cx-pp-blocked td:first-child{text-decoration:none}
+`;

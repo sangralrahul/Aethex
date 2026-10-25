@@ -57,6 +57,10 @@ export interface CrewMember {
   knowledge?: CrewDoc[];
   /** Imported from a shared link. */
   importedAt?: number;
+  /** Update 36+: persona for the user's own assistants: an emoji or initials, a greeting and a sign-off. */
+  avatar?: string;
+  greeting?: string;
+  signoff?: string;
   createdAt?: number;
   updatedAt?: number;
 }
@@ -311,6 +315,9 @@ export function cleanCrew(raw: Partial<CrewMember>, modes: string[]): CrewMember
     ...(raw.sources ? { sources: true } : {}),
     ...(cleanDocs(raw.knowledge).length ? { knowledge: cleanDocs(raw.knowledge) } : {}),
     ...(Number(raw.importedAt) ? { importedAt: Number(raw.importedAt) } : {}),
+    ...(cleanAvatar(raw.avatar) ? { avatar: cleanAvatar(raw.avatar) } : {}),
+    ...(clip(raw.greeting, GREETING_MAX) ? { greeting: clip(raw.greeting, GREETING_MAX).replace(/\s+/g, " ") } : {}),
+    ...(clip(raw.signoff, SIGNOFF_MAX) ? { signoff: clip(raw.signoff, SIGNOFF_MAX).replace(/\s+/g, " ") } : {}),
     createdAt: Number(raw.createdAt) || Date.now(),
     updatedAt: Date.now(),
   };
@@ -334,7 +341,7 @@ export function saveCrew(list: CrewMember[]) {
 /** What the server needs: the name, instructions and knowledge. */
 export const crewPayload = (c: CrewMember | undefined, style: CrewStyle | undefined = c ? readStyles()[c.id] : undefined, memory: CrewFact[] | undefined = c ? readMemory()[c.id] : undefined) => {
   if (!c) return undefined;
-  const pre = [styleLine(style), memoryLine(memory)].filter(Boolean).join("\n\n");
+  const pre = [styleLine(style), memoryLine(memory), c.signoff ? `SIGN-OFF: end every answer with this line: "${c.signoff.replace(/"/g, "'")}"` : ""].filter(Boolean).join("\n\n");
   const instructions = pre ? `${pre}\n\n${c.instructions}`.slice(0, INSTRUCTIONS_MAX) : c.instructions;
   return { name: c.name, instructions, ...(c.knowledge?.length ? { knowledge: c.knowledge.map((d) => ({ name: d.name, text: d.text })) } : {}) };
 };
@@ -1300,4 +1307,122 @@ export function timelineMd(ev: TimelineEvent[]): string {
   const groups = new Map<string, TimelineEvent[]>();
   for (const e of ev) { const k = dateKey(new Date(e.at)); groups.set(k, [...(groups.get(k) ?? []), e]); }
   return ["# My Cadus Crew timeline", "", ...[...groups.entries()].flatMap(([k, list]) => [`## ${k}`, ...list.map((e) => `- **${TIMELINE_LABELS[e.kind]}:** ${e.title}${e.detail ? ` — ${e.detail}` : ""}`), ""])].join("\n");
+}
+
+/* ------------------------------------------------------------------ Update 39: personas */
+
+export const GREETING_MAX = 200;
+export const SIGNOFF_MAX = 80;
+/** An avatar: up to two characters (letters, digits or one emoji), or "". */
+export function cleanAvatar(v: unknown): string {
+  if (typeof v !== "string") return "";
+  const chars = [...v.trim().replace(/\s+/g, "")];
+  if (!chars.length) return "";
+  const emoji = /\p{Extended_Pictographic}/u.test(chars[0]);
+  if (emoji) { const seg = (globalThis as any).Intl?.Segmenter ? [...new (Intl as any).Segmenter(undefined, { granularity: "grapheme" }).segment(v.trim())].map((x: any) => x.segment) : chars; return seg[0] ?? ""; }
+  return chars.filter((c) => /[\p{L}\p{N}]/u.test(c)).slice(0, 2).join("").toUpperCase();
+}
+
+/* ------------------------------------------------------------------ Update 39: workspaces */
+
+export interface CrewWorkspace { id: string; name: string; crewIds: string[]; templateIds: string[]; noteIds: string[]; createdAt: number }
+export interface CrewWorkspaces { list: CrewWorkspace[]; active: string }
+export const WORKSPACES_KEY = "cadus3.crewWorkspaces";
+export const WORKSPACE_MAX = 12;
+export function readWorkspaces(): CrewWorkspaces {
+  try {
+    const v = JSON.parse(localStorage.getItem(WORKSPACES_KEY) || "null");
+    const list = (Array.isArray(v?.list) ? v.list : []).filter((w: any) => w && typeof w.name === "string").slice(0, WORKSPACE_MAX).map((w: any) => ({
+      id: String(w.id), name: clip(w.name, 40), crewIds: (Array.isArray(w.crewIds) ? w.crewIds : []).map(String).slice(0, 12), templateIds: (Array.isArray(w.templateIds) ? w.templateIds : []).map(String).slice(0, 20), noteIds: (Array.isArray(w.noteIds) ? w.noteIds : []).map(String).slice(0, 50), createdAt: Number(w.createdAt) || Date.now(),
+    }));
+    return { list, active: list.some((w: CrewWorkspace) => w.id === v?.active) ? String(v.active) : "" };
+  } catch { return { list: [], active: "" }; }
+}
+export function saveWorkspaces(w: CrewWorkspaces) { try { localStorage.setItem(WORKSPACES_KEY, JSON.stringify(w)); } catch { /* blocked */ } }
+export function newWorkspace(name: string, crewIds: string[] = []): CrewWorkspace | null {
+  const n = clip(name, 40).replace(/\s+/g, " ");
+  if (!n) return null;
+  return { id: `ws-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, name: n, crewIds: [...new Set(crewIds)].slice(0, 12), templateIds: [], noteIds: [], createdAt: Date.now() };
+}
+export function toggleWsItem(w: CrewWorkspace, field: "crewIds" | "templateIds" | "noteIds", id: string): CrewWorkspace {
+  const max = field === "crewIds" ? 12 : field === "templateIds" ? 20 : 50;
+  const has = w[field].includes(id);
+  return { ...w, [field]: has ? w[field].filter((x) => x !== id) : [...w[field], id].slice(0, max) };
+}
+export const WORKSPACE_IDEAS: { name: string; crewIds: string[] }[] = [
+  { name: "Surgery posting", crewIds: ["crew-surgery", "crew-anaes", "crew-gisurg", "crew-uro", "crew-discharge"] },
+  { name: "Medicine posting", crewIds: ["crew-rounds", "crew-cardio", "crew-nephro", "crew-pharmacist", "crew-discharge"] },
+  { name: "NEET-PG prep", crewIds: ["crew-neetpg", "crew-viva", "crew-anatomy", "crew-pharmacology", "crew-micro"] },
+  { name: "Paediatrics posting", crewIds: ["crew-paeds", "crew-neonat", "crew-paedcardio", "crew-patient"] },
+  { name: "Thesis year", crewIds: ["crew-thesis", "crew-biostat", "crew-sysreview", "crew-medwriter", "crew-ethics"] },
+];
+
+/* ------------------------------------------------------------------ Update 39: fact-check */
+
+export interface FactItem { claim: string; verdict: "ok" | "flag" | "unsure"; note: string }
+export function factCheckPrompt(question: string, answer: string): string {
+  return [
+    "Fact-check the answer below as a careful senior colleague. Check every drug dose, route and frequency, every number and threshold, every guideline claim and every safety statement.",
+    'Reply with ONLY JSON: {"summary":"one line overall verdict","items":[{"claim":"short quote or paraphrase","verdict":"ok" | "flag" | "unsure","note":"why, and the correct value if flagged"}]}. Include up to 12 of the most important claims, flagged ones first.',
+    question ? `<question>\n${question.slice(0, 2000)}\n</question>` : "",
+    `<answer>\n${answer.slice(0, 8000)}\n</answer>`,
+  ].filter(Boolean).join("\n\n");
+}
+export function parseFactCheck(text: string): { summary: string; items: FactItem[] } | null {
+  const t = String(text ?? ""), a = t.indexOf("{"), b = t.lastIndexOf("}");
+  if (a < 0 || b <= a) return null;
+  try {
+    const v = JSON.parse(t.slice(a, b + 1));
+    const items: FactItem[] = (Array.isArray(v?.items) ? v.items : []).map((x: any): FactItem | null => {
+      const claim = clip(x?.claim, 300), verdict = x?.verdict === "ok" || x?.verdict === "flag" ? x.verdict : "unsure";
+      return claim ? { claim, verdict, note: clip(x?.note, 500) } : null;
+    }).filter((x: FactItem | null): x is FactItem => !!x).slice(0, 12);
+    const order = { flag: 0, unsure: 1, ok: 2 } as const;
+    items.sort((p: FactItem, q: FactItem) => order[p.verdict] - order[q.verdict]);
+    return { summary: clip(v?.summary, 300), items };
+  } catch { return null; }
+}
+
+/* ------------------------------------------------------------------ Update 39: digest */
+
+export interface DigestInput {
+  chats: { at: number; crewId: string; question: string }[];
+  quiz: QuizResult[]; drill: DrillState; rounds: CaseRound[]; notes: CrewNote[]; checkins: CheckInEntry[]; ratings: Record<string, CrewRating[]>;
+  crewName: (id: string) => string;
+}
+export interface Digest { from: number; to: number; chats: number; topCrew: { name: string; n: number }[]; questions: string[]; quizzes: number; quizAccuracy: number | null; drillDays: number; drillAccuracy: number | null; weak: { topic: string; pct: number }[]; rounds: number; notes: string[]; checkins: number; flagged: number }
+export function buildDigest(x: DigestInput, now: number, days: number): Digest {
+  const from = now - days * 86400000;
+  const inP = (at: number) => at >= from && at <= now;
+  const chats = x.chats.filter((c) => inP(c.at));
+  const counts = new Map<string, number>();
+  chats.forEach((c) => counts.set(c.crewId, (counts.get(c.crewId) ?? 0) + 1));
+  const quiz = x.quiz.filter((q) => inP(q.at));
+  const qc = quiz.reduce((n, q) => n + (q.players[0]?.correct ?? 0), 0), qt = quiz.reduce((n, q) => n + (q.players[0]?.total ?? 0), 0);
+  const ddays = Object.entries(x.drill.days).filter(([k]) => { const [y, m, d] = k.split("-").map(Number); return inP(new Date(y, m - 1, d, 12).getTime()); });
+  const dc = ddays.reduce((n, [, d]) => n + d.correct, 0), dt = ddays.reduce((n, [, d]) => n + d.total, 0);
+  return {
+    from, to: now, chats: chats.length,
+    topCrew: [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([id, n]) => ({ name: x.crewName(id), n })),
+    questions: chats.slice().sort((a, b) => b.at - a.at).map((c) => c.question).filter(Boolean).slice(0, 8),
+    quizzes: quiz.length, quizAccuracy: qt ? Math.round((qc / qt) * 100) : null,
+    drillDays: ddays.length, drillAccuracy: dt ? Math.round((dc / dt) * 100) : null,
+    weak: weakTopics(x.drill, 3).slice(0, 3).map((w) => ({ topic: w.topic, pct: w.pct })),
+    rounds: x.rounds.filter((r) => inP(r.at)).length,
+    notes: x.notes.filter((n) => inP(n.at)).map((n) => n.title).slice(0, 8),
+    checkins: x.checkins.filter((c) => { const [y, m, d] = c.date.split("-").map(Number); return inP(new Date(y, m - 1, d, 12).getTime()); }).length,
+    flagged: Object.values(x.ratings).flat().filter((r) => r.vote === "down" && inP(r.at)).length,
+  };
+}
+export function digestMd(d: Digest): string {
+  const day = (t: number) => dateKey(new Date(t));
+  return [
+    `# Cadus Crew digest: ${day(d.from)} to ${day(d.to)}`, "",
+    `- **${d.chats}** chats with assistants${d.topCrew.length ? `; most used: ${d.topCrew.map((t) => `${t.name} (${t.n})`).join(", ")}` : ""}`,
+    `- **${d.quizzes}** quiz battles${d.quizAccuracy !== null ? ` (${d.quizAccuracy}% right)` : ""}; **${d.drillDays}** daily drills${d.drillAccuracy !== null ? ` (${d.drillAccuracy}% right)` : ""}`,
+    `- **${d.rounds}** case rounds; **${d.checkins}** check-ins; **${d.flagged}** answers marked not helpful`,
+    ...(d.weak.length ? ["", "## Topics to revise", ...d.weak.map((w) => `- ${w.topic}: ${w.pct}%`)] : []),
+    ...(d.questions.length ? ["", "## Recent questions", ...d.questions.map((q) => `- ${q}`)] : []),
+    ...(d.notes.length ? ["", "## Notes saved", ...d.notes.map((n) => `- ${n}`)] : []),
+  ].join("\n");
 }
