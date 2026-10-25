@@ -671,3 +671,9 @@ export const CADUS_CLINIC30_CSS = `
 .cx-lab ul:not([class])>li{margin:3px 0;padding-left:2px}
 .cx-lab ul:not([class])>li::marker{color:var(--t3)}
 `;
+
+export const CADUS_CLINIC31_CSS = `
+.cx-tl-green{border-left:5px solid #16a34a}.cx-tl-amber{border-left:5px solid #d97706}.cx-tl-red{border-left:5px solid var(--danger)}
+.cx-cmp-out:is(.cx-st-out,.cx-ac-low,.cx-ac-in,.cx-ac-high,.cx-ac-danger,.cx-tl-green,.cx-tl-amber,.cx-tl-red,.cx-pa-moderate,.cx-pa-severe,.cx-pa-life,.cx-nnj-photo,.cx-nnj-intensive,.cx-nnj-exchange,.cx-nnj-recheck,.cx-df-l2,.cx-df-l3,.cx-df-l4,.cx-ht-l2,.cx-ht-l3){padding-left:14px;border-radius:var(--r-md,10px)}
+.cx-tl-red .cx-lab-h3{color:var(--danger)}.cx-tl-amber .cx-lab-h3{color:#b45309}.cx-tl-green .cx-lab-h3{color:#15803d}
+`;

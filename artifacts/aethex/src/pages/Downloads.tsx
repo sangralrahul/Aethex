@@ -283,6 +283,7 @@ const TOOLS: [string, string][] = [
   ["Burns Helper", "r"], ["Neonatal Jaundice", "y"], ["Stroke & Thrombolysis", "v"], ["Sepsis & DKA Bundles", "r"], ["Alcohol Withdrawal", "v"], ["Diabetic Foot", "t"], ["Heat Illness", "y"], ["Wound & Suture Care", "t"],
   ["Warfarin & Anticoagulation", "r"], ["Tropical Fevers", "y"], ["Elderly Care", "t"], ["Quit Smoking Helper", "v"], ["Croup & Child Asthma", "t"], ["Rheumatic Fever", "r"], ["Weight Management", "y"], ["Hypoglycaemia", "v"],
   ["Gestational Diabetes", "r"], ["Infant Feeding", "y"], ["Antidepressant Switcher", "v"], ["Eye & ENT Triage", "t"], ["VTE Prophylaxis", "r"], ["Headache & Migraine", "v"], ["Skin Infections", "y"], ["Gout & Uric Acid", "t"],
+  ["Pneumonia & UTI Antibiotics", "r"], ["CKD Care", "t"], ["Preterm Labour", "r"], ["Epilepsy & First Seizure", "v"], ["Fever in Under-5s", "y"], ["Cirrhosis & Ascites", "t"], ["Dementia & Memory", "v"], ["Hypertensive Emergency", "r"],
 ];
 
 /**
