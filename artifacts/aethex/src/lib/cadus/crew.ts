@@ -636,7 +636,7 @@ export function suggestCrew(question: string, mine: CrewMember[], max = 3): Crew
 
 export type CrewLength = "brief" | "standard" | "detailed";
 export type CrewFormat = "default" | "bullets" | "table" | "steps" | "exam";
-export interface CrewStyle { length?: CrewLength; format?: CrewFormat; language?: string }
+export interface CrewStyle { length?: CrewLength; format?: CrewFormat; language?: string; mentor?: boolean }
 export const CREW_STYLE_KEY = "cadus3.crewStyle";
 export const CREW_LANGS = ["English", "Hindi", "Hinglish", "Bengali", "Marathi", "Telugu", "Tamil", "Gujarati", "Kannada", "Malayalam", "Punjabi", "Odia", "Urdu", "Assamese"] as const;
 export const CREW_LENGTHS: { id: CrewLength; label: string }[] = [{ id: "brief", label: "Brief" }, { id: "standard", label: "Standard" }, { id: "detailed", label: "Detailed" }];
@@ -649,6 +649,7 @@ export function cleanStyle(raw: unknown): CrewStyle | undefined {
   if (CREW_LENGTHS.some((l) => l.id === r.length) && r.length !== "standard") out.length = r.length as CrewLength;
   if (CREW_FORMATS.some((f) => f.id === r.format) && r.format !== "default") out.format = r.format as CrewFormat;
   if ((CREW_LANGS as readonly string[]).includes(String(r.language)) && r.language !== "English") out.language = String(r.language);
+  if (r.mentor === true) out.mentor = true;
   return Object.keys(out).length ? out : undefined;
 }
 export function readStyles(): Record<string, CrewStyle> {
@@ -679,12 +680,13 @@ export function styleLine(s: CrewStyle | undefined): string {
   if (c.format === "steps") parts.push("Format answers as numbered steps.");
   if (c.format === "exam") parts.push("Write like a model exam answer: short headings, key points, a diagram description or mnemonic where useful.");
   if (c.language) parts.push(`Always answer in ${c.language === "Hinglish" ? "Hinglish (Hindi in Roman script mixed with English medical terms)" : c.language}, keeping drug names and medical terms in English.`);
+  if (c.mentor) parts.push("MENTOR MODE: teach by questioning. Do not give the full answer straight away: ask one or two guiding questions, wait for the user's reasoning, give a hint if they are stuck, and confirm or correct once they have tried. Give the full answer at once only for emergencies or if the user says 'just tell me'.");
   return `ANSWER STYLE (set by the user for this assistant): ${parts.join(" ")}`;
 }
 export const styleSummary = (s: CrewStyle | undefined) => {
   const c = cleanStyle(s);
   if (!c) return "";
-  return [c.length && CREW_LENGTHS.find((l) => l.id === c.length)?.label, c.format && CREW_FORMATS.find((f) => f.id === c.format)?.label, c.language].filter(Boolean).join(" · ");
+  return [c.mentor && "Mentor", c.length && CREW_LENGTHS.find((l) => l.id === c.length)?.label, c.format && CREW_FORMATS.find((f) => f.id === c.format)?.label, c.language].filter(Boolean).join(" · ");
 };
 
 /* ------------------------------------------------------------------ Update 35: collections and private notes */
@@ -1426,3 +1428,88 @@ export function digestMd(d: Digest): string {
     ...(d.notes.length ? ["", "## Notes saved", ...d.notes.map((n) => `- ${n}`)] : []),
   ].join("\n");
 }
+
+/* ------------------------------------------------------------------ Update 40: translations */
+
+export function translatePrompt(text: string, language: string): string {
+  return [
+    `Translate the medical text below into ${language} for a patient or colleague. Keep the meaning exactly; keep every number, dose, unit and drug name unchanged (write drug names in English, with the ${language} spelling in brackets the first time).`,
+    "Keep headings and bullet points. Reply with only the translation.",
+    `<text>\n${text.slice(0, 8000)}\n</text>`,
+  ].join("\n\n");
+}
+/** Numbers in a text (doses, values), for checking a translation dropped none. */
+export const numbersIn = (t: string) => (String(t).match(/\d+(?:[.,]\d+)?/g) ?? []).map((n) => n.replace(",", "."));
+export function missingNumbers(original: string, translated: string): string[] {
+  const have = new Map<string, number>();
+  numbersIn(translated).forEach((n) => have.set(n, (have.get(n) ?? 0) + 1));
+  const missing: string[] = [];
+  for (const n of numbersIn(original)) { const k = have.get(n) ?? 0; if (k > 0) have.set(n, k - 1); else missing.push(n); }
+  return [...new Set(missing)];
+}
+
+/* ------------------------------------------------------------------ Update 40: share cards */
+
+/** Lines for a card, wrapped to a width with a measuring function (canvas measureText in the app). */
+export function wrapLines(text: string, maxWidth: number, measure: (s: string) => number, maxLines = 18): string[] {
+  const out: string[] = [];
+  for (const para of text.split(/\n+/)) {
+    const words = para.split(/\s+/).filter(Boolean);
+    let line = "";
+    for (const w of words) {
+      const t = line ? `${line} ${w}` : w;
+      if (measure(t) <= maxWidth || !line) line = t; else { out.push(line); line = w; }
+      if (out.length >= maxLines) break;
+    }
+    if (line && out.length < maxLines) out.push(line);
+    if (out.length >= maxLines) break;
+  }
+  const full = text.split(/\s+/).filter(Boolean).length, used = out.join(" ").split(/\s+/).filter(Boolean).length;
+  if (used < full && out.length) out[out.length - 1] = `${out[out.length - 1].replace(/[.,;:]?$/, "")}…`;
+  return out;
+}
+/** Card body: plain text from markdown, bullets kept as "•". */
+export function cardText(md: string, max = 900): string {
+  const t = String(md ?? "").replace(/```[\s\S]*?```/g, " ").replace(/^\s*\|.*\|\s*$/gm, "").replace(/^#{1,6}\s*/gm, "").replace(/^\s*[-*]\s+/gm, "• ").replace(/[*_`>]/g, "").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/\n{3,}/g, "\n\n").trim();
+  return t.length > max ? `${t.slice(0, max).replace(/\s+\S*$/, "")}…` : t;
+}
+
+/* ------------------------------------------------------------------ Update 40: assistant schedules */
+
+export interface CrewSchedule { id: string; crewId: string; prompt: string; days: number[]; time: string; enabled: boolean; lastDone: string }
+export const SCHEDULES_KEY = "cadus3.crewSchedules";
+export const SCHEDULE_MAX = 10;
+export const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+export function readSchedules(): CrewSchedule[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(SCHEDULES_KEY) || "[]");
+    return (Array.isArray(v) ? v : []).filter((x) => x && x.crewId && typeof x.prompt === "string").slice(0, SCHEDULE_MAX).map((x) => ({
+      id: String(x.id), crewId: String(x.crewId), prompt: clip(x.prompt, 1000), days: (Array.isArray(x.days) ? x.days : []).map(Number).filter((d: number) => d >= 0 && d <= 6), time: /^\d{2}:\d{2}$/.test(x.time) ? x.time : "19:00", enabled: x.enabled !== false, lastDone: String(x.lastDone ?? ""),
+    }));
+  } catch { return []; }
+}
+export function saveSchedules(l: CrewSchedule[]) { try { localStorage.setItem(SCHEDULES_KEY, JSON.stringify(l.slice(0, SCHEDULE_MAX))); } catch { /* blocked */ } }
+export function newSchedule(crewId: string, prompt: string, days: number[], time: string): CrewSchedule | null {
+  const p = clip(prompt, 1000);
+  if (!p || !days.length || !/^\d{2}:\d{2}$/.test(time)) return null;
+  return { id: `sch-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, crewId, prompt: p, days: [...new Set(days)].sort(), time, enabled: true, lastDone: "" };
+}
+const hm = (d: Date) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+/** Due now: enabled, today is one of its days, the time has passed and it was not done today. */
+export const schedDue = (list: CrewSchedule[], now: Date) => list.filter((x) => x.enabled && x.days.includes(now.getDay()) && hm(now) >= x.time && x.lastDone !== dateKey(now));
+export function nextRun(x: CrewSchedule, now: Date): string {
+  if (!x.enabled || !x.days.length) return "Paused";
+  for (let i = 0; i < 8; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+    if (!x.days.includes(d.getDay())) continue;
+    if (i === 0 && (x.lastDone === dateKey(now) || hm(now) >= x.time)) { if (x.lastDone !== dateKey(now)) return "Due now"; continue; }
+    return `${i === 0 ? "Today" : i === 1 ? "Tomorrow" : DAY_NAMES[d.getDay()]} at ${x.time}`;
+  }
+  return "Paused";
+}
+export const SCHEDULE_IDEAS: { label: string; crewId: string; prompt: string; days: number[]; time: string }[] = [
+  { label: "Evening viva", crewId: "crew-viva", prompt: "Ask me 3 viva questions on a high-yield topic, one at a time, and score me.", days: [1, 2, 3, 4, 5], time: "20:00" },
+  { label: "Morning MCQs", crewId: "crew-neetpg", prompt: "Give me 5 NEET-PG MCQs on a random subject with answers at the end.", days: [1, 2, 3, 4, 5, 6], time: "07:30" },
+  { label: "Weekly ECG", crewId: "crew-ecg", prompt: "Describe an ECG case in words and ask me to interpret it step by step.", days: [0], time: "10:00" },
+  { label: "Drug of the day", crewId: "crew-pharmacist", prompt: "Teach me one commonly used drug today: dose, key interactions, and one safety pearl.", days: [0, 1, 2, 3, 4, 5, 6], time: "08:00" },
+];

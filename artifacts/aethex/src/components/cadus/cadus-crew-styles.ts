@@ -861,3 +861,26 @@ export const CADUS_CLINIC39_CSS = `
 .cx-pp-blocked td{opacity:.6;text-decoration:line-through}
 .cx-pp-blocked td:first-child{text-decoration:none}
 `;
+
+/* Update 40: DKA clock row, share cards, translations, schedules, mentor toggle. */
+export const CADUS_CLINIC40_CSS = `
+.cx-dh-now td{background:color-mix(in srgb,var(--primary) 12%,var(--surface));font-weight:600}
+.cx-sc-canvas{display:block;width:100%;max-width:360px;height:auto;margin:10px auto;border-radius:14px;border:1px solid var(--line);box-shadow:0 6px 24px rgba(0,0,0,.12)}
+.cx-dialog.cx-tr-dialog{max-width:900px;width:calc(100vw - 32px)}
+.cx-tr-dialog .cx-cc-cols>*{overflow-wrap:anywhere;min-width:0}
+.cx-crew-sched-due{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0 0;padding:10px 14px;border:1px solid var(--primary);border-radius:12px;background:color-mix(in srgb,var(--primary) 8%,var(--surface))}
+.cx-crew-sched-due>span{flex:1 1 200px;min-width:0;overflow-wrap:anywhere}
+.cx-crew-sched-due>svg{flex:none;color:var(--primary)}
+.cx-crewbar button[data-crew="mentor"]{margin-left:auto}
+.cx-crewbar button[data-crew="mentor"]+button[data-crew="handoff"]{margin-left:0}
+.cx-crewbar button[data-crew="mentor"].on{background:color-mix(in srgb,var(--primary) 14%,transparent);color:var(--primary);font-weight:600}
+.cx-crew-mentor{display:inline-flex;align-items:center;gap:6px;margin-top:8px}
+.cx-crew-mentor.on{border-color:var(--primary);color:var(--primary);font-weight:600}
+.cx-crewbar>.cx-crew-badge{flex:none;overflow:visible}
+.cx-schedules h4{display:flex;align-items:center;gap:6px;margin:20px 0 8px}
+.cx-schedules [data-sch="days"]{margin:12px 0}
+.cx-schedules .cx-sc-acts{margin:4px 0 8px}
+.cx-schedules [data-sch="list"]{margin-bottom:10px}
+[data-tr="missing"]{display:flex;align-items:flex-start;gap:6px}
+[data-tr="missing"] svg{flex:none;margin-top:3px}
+`;

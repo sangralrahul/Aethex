@@ -292,6 +292,7 @@ const TOOLS: [string, string][] = [
   ["Hyperkalaemia & ECG", "r"], ["Acute Pancreatitis Plan", "y"], ["Paediatric Sepsis & Shock", "r"], ["Upper Airway & Stridor", "v"], ["Rhabdomyolysis & CK", "y"], ["Hypothermia & Drowning", "t"], ["Paediatric DKA", "v"], ["Acute Urinary Retention", "t"],
   ["Hypertension in Pregnancy & Postpartum", "r"], ["Kidney Stones & Colic", "t"], ["Children's Antibiotics by Weight", "y"], ["Opioid Conversion & Palliative Infusions", "v"], ["Cellulitis & Necrotising Fasciitis", "r"], ["Kawasaki Disease", "y"], ["Infective Endocarditis", "v"], ["Bell's Palsy & Facial Weakness", "t"],
   ["Postpartum Haemorrhage", "r"], ["Neonatal Sepsis & Antibiotics", "v"], ["Antibiotic Renal Dosing", "t"], ["Brain-stem Death & Organ Donation", "v"], ["Septic Arthritis & Hot Joint", "y"], ["Neonatal Hypoglycaemia", "y"], ["Altitude Illness", "t"], ["Serotonin Syndrome vs NMS", "r"],
+  ["Acute Asthma in Children", "t"], ["DKA & HHS Adult Timer", "r"], ["Antenatal Steroids & Tocolysis", "v"], ["Iron, B12 & Folate Replacement", "y"], ["Therapeutic Drug Levels", "t"], ["Contrast Safety", "v"], ["Pressure Injuries", "y"], ["Hyperemesis Gravidarum", "r"],
 ];
 
 /**

@@ -17,7 +17,7 @@ export default function CrewCardSettings({ c, style, org, memory, badge, onStyle
   onOrg: (o: CrewOrg) => void;
   onClose: () => void;
 }) {
-  const [s, setS] = useState<CrewStyle>({ length: style?.length ?? "standard", format: style?.format ?? "default", language: style?.language ?? "English" });
+  const [s, setS] = useState<CrewStyle>({ length: style?.length ?? "standard", format: style?.format ?? "default", language: style?.language ?? "English", mentor: !!style?.mentor });
   const [note, setNoteText] = useState(org.notes[c.id] ?? "");
   const [newCol, setNewCol] = useState("");
   const [fact, setFact] = useState("");
@@ -39,6 +39,7 @@ export default function CrewCardSettings({ c, style, org, memory, badge, onStyle
             <label className="cx-field"><span>Format</span><select className="cx-select" value={s.format} onChange={(e) => setS({ ...s, format: e.target.value as CrewStyle["format"] })} data-cs="format">{CREW_FORMATS.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}</select></label>
             <label className="cx-field"><span>Language</span><select className="cx-select" value={s.language} onChange={(e) => setS({ ...s, language: e.target.value })} data-cs="language">{CREW_LANGS.map((l) => <option key={l} value={l}>{l}</option>)}</select></label>
           </div>
+          <label className="cx-pa-mine"><input type="checkbox" checked={!!s.mentor} onChange={(e) => setS({ ...s, mentor: e.target.checked })} data-cs="mentor" /> Mentor mode: teach me by asking questions instead of giving the answer straight away</label>
           <p className="cx-set-hint" data-cs="preview">{preview ? preview.replace(/^ANSWER STYLE \(set by the user for this assistant\): /, "It will be told: ") : "Default: answers in English, at the length and format the question needs."}</p>
           <h4><FolderPlus size={14} /> Collections</h4>
           {org.collections.length ? <div className="cx-imaging-ticks">{org.collections.map((col) => <label key={col.id} className="cx-pa-mine"><input type="checkbox" checked={col.ids.includes(c.id)} onChange={() => onOrg(toggleInCollection(org, col.id, c.id))} data-cs-col={col.name} /> {col.name} <small>({col.ids.length})</small></label>)}</div> : <p className="cx-set-hint">No collections yet: make one for a rotation, an exam or your unit.</p>}
