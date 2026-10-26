@@ -3,10 +3,10 @@
  * with the assistant ready to add, and the import screen that previews an assistant
  * from a link before it joins your crew. Knowledge files are not shared.
  */
-import { useMemo, useState, type ReactNode } from "react";
-import { Check, Copy, Download, Link2, MessageCircle, QrCode, ShieldCheck, X } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Check, Copy, Download, Link2, Maximize2, MessageCircle, QrCode, ShieldCheck, X } from "lucide-react";
 import { qrSvg } from "@/lib/cadus/qr";
-import { crewShareLink, readShareCode, shareCodeFrom, type CrewMember } from "@/lib/cadus/crew";
+import { canCompress, crewShareLink, crewShareLinkZ, readShareCode, readShareCodeZ, shareCodeFrom, type CrewMember } from "@/lib/cadus/crew";
 
 /** Links up to this length still make a QR code a phone can scan. */
 const QR_MAX = 1800;
@@ -19,9 +19,15 @@ export function CrewShareDialog({ c, base, badge, dark, onClose, toast }: {
   onClose: () => void;
   toast: (t: string) => void;
 }) {
-  const link = useMemo(() => crewShareLink(c, base), [c, base]);
+  const plain = useMemo(() => crewShareLink(c, base), [c, base]);
+  /** Update 42: a compressed link (with avatar, greeting and sign-off) when it is shorter, so longer assistants still fit a QR code. */
+  const [zLink, setZLink] = useState("");
+  useEffect(() => { let live = true; if (canCompress()) void crewShareLinkZ(c, base).then((z) => { if (live) setZLink(z); }).catch(() => {}); return () => { live = false; }; }, [c, base]);
+  const link = zLink && zLink.length < plain.length ? zLink : plain;
   const [copied, setCopied] = useState(false);
+  const [full, setFull] = useState(false);
   const qr = useMemo(() => (link.length <= QR_MAX ? qrSvg(link, 200, { dark: dark ? "#F2EFE8" : "#0F1729", light: dark ? "#111A2B" : "#fff" }) : ""), [link, dark]);
+  const bigQr = useMemo(() => (full && link.length <= QR_MAX ? qrSvg(link, 340, { dark: "#0F1729", light: "#fff" }) : ""), [full, link]);
   const copy = async () => {
     try { await navigator.clipboard.writeText(link); setCopied(true); toast("Link copied"); setTimeout(() => setCopied(false), 1600); } catch { toast("Couldn't copy; select the link and copy it"); }
   };
@@ -48,11 +54,21 @@ export function CrewShareDialog({ c, base, badge, dark, onClose, toast }: {
             <button className="cx-btn" onClick={download}><Download size={14} /> Save as file</button>
           </div>
           {qr ? (
-            <div className="cx-cs-qr"><span dangerouslySetInnerHTML={{ __html: qr }} /><small><QrCode size={13} /> Scan to add it on a phone</small></div>
+            <div className="cx-cs-qr" data-cs="qr" data-compressed={String(link === zLink)}><span dangerouslySetInnerHTML={{ __html: qr }} /><small><QrCode size={13} /> Scan to add it on a phone</small><button className="cx-btn sm" onClick={() => setFull(true)} data-cs="full"><Maximize2 size={13} /> Show full screen</button></div>
           ) : (
             <p className="cx-cs-note"><QrCode size={13} /> The instructions are too long for a QR code; share the link instead.</p>
           )}
-          <p className="cx-cs-note"><ShieldCheck size={13} /> Shared: name, description, instructions, first questions, tool and look.{c.knowledge?.length ? ` Not shared: its ${c.knowledge.length} knowledge document${c.knowledge.length === 1 ? "" : "s"}, which stay on this device.` : ""}</p>
+          {full && bigQr && (
+            <div className="cx-qr-full" role="dialog" aria-modal="true" aria-label={`QR code for ${c.name}`} onMouseDown={(e) => { e.stopPropagation(); setFull(false); }} data-crew="qr-full">
+              <div onMouseDown={(e) => e.stopPropagation()}>
+                <b>{c.name}</b>
+                <span dangerouslySetInnerHTML={{ __html: bigQr }} />
+                <small>Scan with the phone camera to add this assistant to Cadus Crew</small>
+                <button className="cx-btn" onClick={() => setFull(false)} data-cs="full-close"><X size={14} /> Close</button>
+              </div>
+            </div>
+          )}
+          <p className="cx-cs-note"><ShieldCheck size={13} /> Shared: name, description, instructions, first questions, tool and look{link === zLink ? ", avatar, greeting and sign-off" : ""}.{c.knowledge?.length ? ` Not shared: its ${c.knowledge.length} knowledge document${c.knowledge.length === 1 ? "" : "s"}, which stay on this device.` : ""}</p>
         </div>
       </div>
     </div>
@@ -91,15 +107,16 @@ export function CrewImportDialog({ c, badge, onAdd, onClose, already }: {
 /** Paste a shared link (or open a saved .cadus-crew.json) to import. */
 export function CrewPasteImport({ modes, onFound, toast }: { modes: string[]; onFound: (c: CrewMember) => void; toast: (t: string) => void }) {
   const [text, setText] = useState("");
-  const go = (t: string) => {
-    const code = shareCodeFrom(t);
-    const c = code ? readShareCode(code, modes) : null;
+  const go = async (t: string) => {
+    const z = /[?&]crewz=([A-Za-z0-9_-]+)/.exec(t.trim());
+    const code = z ? "" : shareCodeFrom(t);
+    const c = z ? await readShareCodeZ(z[1], modes) : code ? readShareCode(code, modes) : null;
     if (!c) { toast("That isn't a Cadus Crew link"); return; }
     setText("");
     onFound(c);
   };
   return (
-    <form className="cx-ci-paste" onSubmit={(e) => { e.preventDefault(); go(text); }}>
+    <form className="cx-ci-paste" onSubmit={(e) => { e.preventDefault(); void go(text); }}>
       <input className="cx-input" value={text} onChange={(e) => setText(e.target.value)} placeholder="Paste a Cadus Crew link to import" aria-label="Paste a Cadus Crew link" data-crew="paste" />
       <button className="cx-btn" type="submit" disabled={!text.trim()}>Import</button>
       <label className="cx-btn">
@@ -108,7 +125,7 @@ export function CrewPasteImport({ modes, onFound, toast }: { modes: string[]; on
           const f = e.target.files?.[0];
           e.target.value = "";
           if (!f) return;
-          try { const o = JSON.parse(await f.text()); go(String(o?.link ?? "")); } catch { toast("That isn't a Cadus Crew file"); }
+          try { const o = JSON.parse(await f.text()); await go(String(o?.link ?? "")); } catch { toast("That isn't a Cadus Crew file"); }
         }} />
       </label>
     </form>

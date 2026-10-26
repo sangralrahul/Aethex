@@ -295,6 +295,8 @@ const TOOLS: [string, string][] = [
   ["Acute Asthma in Children", "t"], ["DKA & HHS Adult Timer", "r"], ["Antenatal Steroids & Tocolysis", "v"], ["Iron, B12 & Folate Replacement", "y"], ["Therapeutic Drug Levels", "t"], ["Contrast Safety", "v"], ["Pressure Injuries", "y"], ["Hyperemesis Gravidarum", "r"],
   ["Bronchiolitis in Infants", "t"], ["Ectopic & Early Pregnancy Bleeding", "r"], ["Febrile Seizures", "y"], ["Testicular Torsion & Scrotal Pain", "r"], ["Myasthenic Crisis & GBS", "v"], ["Hypercalcaemia", "y"], ["Deprescribing (STOPP/START)", "t"], ["Acute Limb Ischaemia", "r"],
   ["Delirium & 4AT", "v"], ["Childhood Rashes", "y"], ["Sore Throat & Ear Infection", "t"], ["Falls & Hip Fracture", "v"],
+  ["Vertigo & HINTS", "t"], ["Acute Pulmonary Oedema", "r"], ["Arrhythmias (ACLS)", "y"], ["Scorpion Sting", "r"], ["Pericarditis & Myocarditis", "v"], ["PCOS", "v"], ["Postnatal Depression (EPDS)", "t"], ["Red Eye & Acute Glaucoma", "r"],
+  ["Cholecystitis & Cholangitis", "y"], ["Thyroid Nodule (TI-RADS)", "t"], ["VTE Risk in Pregnancy", "v"], ["Nephrotic Syndrome in Children", "y"],
 ];
 
 /**

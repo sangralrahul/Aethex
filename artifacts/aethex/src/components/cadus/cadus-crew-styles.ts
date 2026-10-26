@@ -913,3 +913,33 @@ export const CADUS_CLINIC41_CSS = `
 [data-plw="missing"]{display:flex;align-items:flex-start;gap:6px}
 [data-plw="missing"] svg{flex:none;margin-top:3px}
 `;
+
+/* Update 42: remix menu, reading list, full-screen QR, scorpion grades. */
+export const CADUS_CLINIC42_CSS = `
+.cx-a-acts{flex-wrap:wrap}
+.cx-remix{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 2px 7px}
+.cx-rl-list{display:grid;gap:10px;margin-top:12px}
+.cx-rl-item{display:grid;gap:6px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.cx-rl-item.read{opacity:.72}
+.cx-rl-h{display:flex;align-items:flex-start;gap:8px}
+.cx-rl-h a{color:var(--text);font-weight:600;text-decoration:none;overflow-wrap:anywhere}
+.cx-rl-h a:hover{text-decoration:underline}
+.cx-rl-h a svg{display:inline;margin-left:4px;vertical-align:-1px;color:var(--t3)}
+.cx-rl-item small{color:var(--t2);overflow-wrap:anywhere}
+.cx-rl-item textarea{min-height:36px;resize:vertical}
+.cx-rl-acts{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cx-reading h4{display:flex;align-items:center;gap:6px;margin:18px 0 8px}
+.cx-reading .cx-sc-acts{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.cx-reading [data-rl="find"]{flex:1 1 220px;min-width:0}
+.cx-qr-full{position:fixed;inset:0;z-index:200;display:grid;place-items:center;background:rgba(15,23,41,.85);padding:16px}
+.cx-qr-full>div{display:flex;flex-direction:column;align-items:center;gap:12px;padding:24px;border-radius:18px;background:#fff;color:#0F1729;max-width:100%;text-align:center}
+.cx-qr-full span{display:block;line-height:0;max-width:min(340px,80vw)}
+.cx-qr-full span svg{width:100%;height:auto}
+.cx-qr-full small{color:#475569}
+.cx-cs-qr .cx-btn{margin-top:4px}
+.cx-scorpion [data-scp="grades"]{display:grid;gap:8px;margin:8px 0 12px}
+.cx-scorpion .cx-rm-card{cursor:pointer}
+.cx-scorpion .cx-rm-card.on{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 6%,var(--surface))}
+.cx-epds .cx-nihss>*,.cx-epds .cx-select,.cx-tirads .cx-nihss>*,.cx-tirads .cx-select{min-width:0;max-width:100%}
+.cx-epds .cx-select,.cx-tirads .cx-select{width:100%;text-overflow:ellipsis}
+`;

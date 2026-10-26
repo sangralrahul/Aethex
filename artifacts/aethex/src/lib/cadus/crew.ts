@@ -1630,3 +1630,105 @@ export function pinLabel(md: string, max = 70): string {
   const line = String(md ?? "").split("\n").map((l) => l.replace(/^[#>*\-\s]+/, "").replace(/[*_`]/g, "").trim()).find((l) => l.length > 0) ?? "Answer";
   return line.length > max ? `${line.slice(0, max).replace(/\s+\S*$/, "")}…` : line;
 }
+
+/* ------------------------------------------------------------------ Update 42: branch chat */
+
+/** The messages up to and including one message, for a new chat that branches from it. */
+export function branchMessages<T extends { id: string }>(msgs: T[], mid: string): T[] {
+  const i = msgs.findIndex((m) => m.id === mid);
+  return i < 0 ? [] : msgs.slice(0, i + 1).map((m) => ({ ...m }));
+}
+export const branchTitle = (title: string) => `Branch: ${String(title || "Chat").replace(/^Branch: /, "")}`.slice(0, 80);
+
+/* ------------------------------------------------------------------ Update 42: answer remix */
+
+export const REMIX_KINDS: { id: string; label: string; ask: string }[] = [
+  { id: "shorter", label: "Shorter", ask: "Rewrite that answer in under 120 words, keeping every dose, number and safety point." },
+  { id: "table", label: "As a table", ask: "Turn that answer into a clear comparison table (with a one-line summary above it). Keep every dose and number." },
+  { id: "exam", label: "As an exam answer", ask: "Rewrite that answer as a 10-mark university theory answer: introduction, headings, labelled flowchart or table, and a short conclusion." },
+  { id: "mnemonic", label: "With mnemonics", ask: "Rewrite that answer as high-yield revision points and add memorable mnemonics where they help." },
+  { id: "viva", label: "As viva questions", ask: "Turn that answer into 6 viva questions an examiner might ask, each with a model answer in 1–2 lines." },
+  { id: "patient", label: "For a patient", ask: "Explain that answer to a patient in simple words at an age-12 reading level, without medical jargon, keeping doses exact." },
+];
+export function remixPrompt(kind: string, answer: string): string {
+  const k = REMIX_KINDS.find((x) => x.id === kind) ?? REMIX_KINDS[0];
+  const start = String(answer ?? "").replace(/[#*_>`|]/g, "").replace(/\s+/g, " ").trim().slice(0, 90);
+  return `${k.ask}\n\n(The answer that begins: "${start}${start.length >= 90 ? "…" : ""}")`;
+}
+
+/* ------------------------------------------------------------------ Update 42: reading list */
+
+export interface ReadingItem { id: string; title: string; url: string; pmid: string; doi: string; note: string; read: boolean; at: number; crewId: string }
+export const READING_KEY = "cadus3.crewReading";
+export const READING_MAX = 300;
+export function readReading(): ReadingItem[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(READING_KEY) || "[]");
+    return (Array.isArray(v) ? v : []).filter((x) => x && (x.title || x.url || x.pmid || x.doi)).slice(0, READING_MAX).map((x) => ({
+      id: String(x.id), title: clip(x.title, 300), url: /^https?:\/\//.test(String(x.url)) ? clip(x.url, 600) : "", pmid: /^\d{5,9}$/.test(String(x.pmid)) ? String(x.pmid) : "", doi: clip(x.doi, 200), note: clip(x.note, 1000), read: x.read === true, at: Number(x.at) || 0, crewId: String(x.crewId ?? ""),
+    }));
+  } catch { return []; }
+}
+export function saveReading(l: ReadingItem[]) { try { localStorage.setItem(READING_KEY, JSON.stringify(l.slice(0, READING_MAX))); } catch { /* blocked */ } }
+export type RefFound = { title: string; url: string; pmid: string; doi: string };
+/** References in an answer: its source list, PMIDs, DOIs, links, and lines under a References/Sources heading. */
+export function extractRefs(md: string, sources: { url: string; title: string }[] = []): RefFound[] {
+  const out: RefFound[] = [];
+  const text = String(md ?? "");
+  for (const s of sources) if (s && /^https?:\/\//.test(s.url)) out.push({ title: clip(s.title, 300) || s.url, url: s.url, pmid: (/pubmed\.ncbi\.nlm\.nih\.gov\/(\d{5,9})/.exec(s.url) ?? [])[1] ?? "", doi: (/doi\.org\/(10\.\d{4,9}\/[^\s?#]+)/i.exec(s.url) ?? [])[1] ?? "" });
+  const lines = text.split("\n");
+  let inRefs = false;
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (/^#{1,6}\s*(references|sources|further reading|bibliography)\b/i.test(line) || /^\*\*(references|sources)\*\*:?$/i.test(line) || /^(references|sources):?$/i.test(line)) { inRefs = true; continue; }
+    if (inRefs && /^#{1,6}\s/.test(line)) inRefs = false;
+    const pmid = (/\bPMID:?\s*(\d{5,9})\b/i.exec(line) ?? [])[1] ?? "";
+    const doi = ((/\b(10\.\d{4,9}\/[^\s)\]>,;]+)/.exec(line) ?? [])[1] ?? "").replace(/[.]$/, "");
+    const url = ((/(https?:\/\/[^\s)\]>]+)/.exec(line) ?? [])[1] ?? "").replace(/[.,]$/, "");
+    const isRefLine = inRefs && /^(\d+[.)]|[-*•]|\[\d+\])\s+\S/.test(line);
+    if (!pmid && !doi && !url && !isRefLine) continue;
+    const title = line.replace(/^(\d+[.)]|[-*•]|\[\d+\])\s+/, "").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/https?:\/\/\S+/g, "").replace(/\b(PMID|doi):?\s*\S+/gi, "").replace(/[*_`]/g, "").replace(/\s{2,}/g, " ").replace(/[\s.,;:-]+$/, "").trim();
+    out.push({ title: clip(title, 300) || url || (pmid ? `PMID ${pmid}` : doi), url, pmid, doi });
+  }
+  const seen = new Set<string>();
+  return out.filter((r) => { const k = (r.pmid || r.doi || r.url || r.title).toLowerCase(); if (!k || seen.has(k)) return false; seen.add(k); return true; });
+}
+export function addReading(list: ReadingItem[], refs: RefFound[], crewId: string, now = Date.now()): { list: ReadingItem[]; added: number } {
+  const key = (r: { pmid: string; doi: string; url: string; title: string }) => (r.pmid || r.doi || r.url || r.title).toLowerCase();
+  const have = new Set(list.map(key));
+  const fresh = refs.filter((r) => !have.has(key(r))).map((r, i) => ({ id: `rd-${now.toString(36)}${i}${Math.random().toString(36).slice(2, 5)}`, title: r.title, url: r.url, pmid: r.pmid, doi: r.doi, note: "", read: false, at: now, crewId }));
+  return { list: [...fresh, ...list].slice(0, READING_MAX), added: fresh.length };
+}
+export function refLink(r: { url: string; pmid: string; doi: string; title: string }): string {
+  if (r.pmid) return `https://pubmed.ncbi.nlm.nih.gov/${r.pmid}/`;
+  if (r.doi) return `https://doi.org/${r.doi}`;
+  if (r.url) return r.url;
+  return `https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent(r.title.slice(0, 200))}`;
+}
+export function readingMarkdown(list: ReadingItem[]): string {
+  return ["# Reading list", "", ...list.map((r, i) => `${i + 1}. ${r.title}${r.pmid ? ` PMID: ${r.pmid}.` : ""}${r.doi ? ` doi: ${r.doi}.` : ""} ${refLink(r)}${r.read ? " (read)" : ""}${r.note ? `\n   Note: ${r.note}` : ""}`)].join("\n");
+}
+
+/* ------------------------------------------------------------------ Update 42: compressed share codes for QR */
+
+const toB64url = (bytes: Uint8Array) => { let bin = ""; bytes.forEach((b) => { bin += String.fromCharCode(b); }); return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); };
+const fromB64url = (s: string) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), (ch) => ch.charCodeAt(0));
+async function pipeBytes(bytes: Uint8Array, stream: CompressionStream | DecompressionStream): Promise<Uint8Array> {
+  const out = new Response(new Blob([bytes as BlobPart]).stream().pipeThrough(stream));
+  return new Uint8Array(await out.arrayBuffer());
+}
+export const canCompress = () => typeof CompressionStream !== "undefined" && typeof DecompressionStream !== "undefined";
+/** A shorter, compressed share code (with persona) so longer assistants fit in a QR code. */
+export async function crewShareCodeZ(c: CrewMember): Promise<string> {
+  const json = JSON.stringify({ v: SHARE_V, n: c.name, t: c.tagline, i: c.instructions, s: c.starters, ic: c.icon, to: c.tone, m: c.mode, ...(c.sources ? { src: 1 } : {}), ...(c.avatar ? { av: c.avatar } : {}), ...(c.greeting ? { gr: c.greeting } : {}), ...(c.signoff ? { so: c.signoff } : {}) });
+  return toB64url(await pipeBytes(new TextEncoder().encode(json), new CompressionStream("deflate-raw")));
+}
+export async function crewShareLinkZ(c: CrewMember, base: string): Promise<string> { return `${base}?crewz=${await crewShareCodeZ(c)}`; }
+export async function readShareCodeZ(code: string, modes: string[]): Promise<CrewMember | null> {
+  try {
+    if (!code || code.length > 12000 || !/^[A-Za-z0-9_-]+$/.test(code)) return null;
+    const o = JSON.parse(new TextDecoder().decode(await pipeBytes(fromB64url(code), new DecompressionStream("deflate-raw"))));
+    if (!o || o.v !== SHARE_V) return null;
+    return cleanCrew({ id: "", name: o.n, tagline: o.t, instructions: o.i, starters: o.s, icon: o.ic, tone: o.to, mode: o.m, sources: !!o.src, avatar: o.av, greeting: o.gr, signoff: o.so, importedAt: Date.now() }, modes);
+  } catch { return null; }
+}
