@@ -884,3 +884,32 @@ export const CADUS_CLINIC40_CSS = `
 [data-tr="missing"]{display:flex;align-items:flex-start;gap:6px}
 [data-tr="missing"] svg{flex:none;margin-top:3px}
 `;
+
+/* Update 41: pins, exam banner, mistakes and exam pages. */
+export const CADUS_CLINIC41_CSS = `
+.cx-pinbar{display:flex;align-items:center;gap:6px;margin:0 0 14px;padding:6px 10px;border:1px dashed var(--line);border-radius:12px;overflow-x:auto;scrollbar-width:none}
+.cx-pinbar::-webkit-scrollbar{display:none}
+.cx-pinbar>svg{flex:none;color:var(--t2)}
+.cx-pinbar .cx-chip{flex:none;display:inline-block;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@keyframes cx-pin-flash{0%,100%{box-shadow:none}30%{box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 35%,transparent)}}
+.cx-a.cx-pin-flash{animation:cx-pin-flash 1.6s ease;border-radius:12px}
+.cx-act.on{color:var(--primary)}
+.cx-crew-exam{display:flex;align-items:center;gap:8px;width:100%;margin:12px 0 0;padding:10px 14px;border:1px solid var(--primary);border-radius:12px;background:color-mix(in srgb,var(--primary) 6%,var(--surface));color:var(--text);font:inherit;text-align:left;cursor:pointer}
+.cx-crew-exam>svg{flex:none;color:var(--primary)}
+.cx-crew-exam>span{min-width:0;overflow-wrap:anywhere}
+.cx-mistakes .cx-sc-acts,.cx-exam .cx-sc-acts{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.cx-mistakes [data-mk="q"]{margin:12px 0}
+.cx-mistakes [data-mk="why"]{margin-top:10px}
+.cx-mistakes [data-mk="next"]{width:auto;margin-top:8px;padding:0 18px}
+.cx-exam h4{margin:18px 0 8px}
+.cx-exam .cx-sim-stats{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:640px){.cx-exam .cx-sim-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.cx-exam [data-ex="go"]{display:inline-flex;align-items:center;gap:6px}
+.cx-deprescribe [data-dp="find"]{max-width:360px;margin:0 0 8px}
+.cx-deprescribe small{color:var(--t2)}
+.cx-delirium .cx-nihss>*,.cx-delirium .cx-select{min-width:0;max-width:100%}
+.cx-delirium .cx-select{width:100%;text-overflow:ellipsis}
+.cx-childrash [data-kr="list"]{display:grid;gap:10px;margin-top:12px}
+[data-plw="missing"]{display:flex;align-items:flex-start;gap:6px}
+[data-plw="missing"] svg{flex:none;margin-top:3px}
+`;

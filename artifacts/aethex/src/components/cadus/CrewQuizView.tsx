@@ -9,13 +9,15 @@ import { allCrew, findCrew, parseQuiz, quizLeaderboard, quizPoints, quizPrompt, 
 
 interface P { name: string; score: number; streak: number; correct: number; total: number }
 
-export default function CrewQuizView({ mine, badge, ask, canAsk, friendlyError, toast }: {
+export default function CrewQuizView({ mine, badge, ask, canAsk, friendlyError, toast, onMistake }: {
   mine: CrewMember[];
   badge: (c: Pick<CrewMember, "icon" | "tone">, size: number) => ReactNode;
   ask: (c: CrewMember, message: string) => Promise<string>;
   canAsk: (n: number) => boolean;
   friendlyError: (raw: string) => string;
   toast: (t: string) => void;
+  /** Update 41: wrong answers go to the mistake notebook. */
+  onMistake?: (m: { q: string; options: string[]; answer: number; why: string; crewId: string; topic: string }) => void;
 }) {
   const [crewId, setCrewId] = useState("crew-neetpg");
   const [topic, setTopic] = useState("");
@@ -57,6 +59,7 @@ export default function CrewQuizView({ mine, badge, ask, canAsk, friendlyError, 
   const answer = (pick: number | null) => {
     if (picked !== null || !qs[i]) return;
     const right = pick === qs[i].answer;
+    if (!right && onMistake) onMistake({ q: qs[i].q, options: qs[i].options, answer: qs[i].answer, why: qs[i].why, crewId, topic: topic.trim() });
     setPicked(pick ?? -1);
     setLog((l) => [...l, { q: i, who: turn, pick }]);
     setPlayers((ps) => ps.map((p, k) => (k !== turn ? p : { ...p, score: p.score + quizPoints(right, p.streak, left, limit), streak: right ? p.streak + 1 : 0, correct: p.correct + (right ? 1 : 0), total: p.total + 1 })));

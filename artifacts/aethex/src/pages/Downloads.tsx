@@ -293,6 +293,8 @@ const TOOLS: [string, string][] = [
   ["Hypertension in Pregnancy & Postpartum", "r"], ["Kidney Stones & Colic", "t"], ["Children's Antibiotics by Weight", "y"], ["Opioid Conversion & Palliative Infusions", "v"], ["Cellulitis & Necrotising Fasciitis", "r"], ["Kawasaki Disease", "y"], ["Infective Endocarditis", "v"], ["Bell's Palsy & Facial Weakness", "t"],
   ["Postpartum Haemorrhage", "r"], ["Neonatal Sepsis & Antibiotics", "v"], ["Antibiotic Renal Dosing", "t"], ["Brain-stem Death & Organ Donation", "v"], ["Septic Arthritis & Hot Joint", "y"], ["Neonatal Hypoglycaemia", "y"], ["Altitude Illness", "t"], ["Serotonin Syndrome vs NMS", "r"],
   ["Acute Asthma in Children", "t"], ["DKA & HHS Adult Timer", "r"], ["Antenatal Steroids & Tocolysis", "v"], ["Iron, B12 & Folate Replacement", "y"], ["Therapeutic Drug Levels", "t"], ["Contrast Safety", "v"], ["Pressure Injuries", "y"], ["Hyperemesis Gravidarum", "r"],
+  ["Bronchiolitis in Infants", "t"], ["Ectopic & Early Pregnancy Bleeding", "r"], ["Febrile Seizures", "y"], ["Testicular Torsion & Scrotal Pain", "r"], ["Myasthenic Crisis & GBS", "v"], ["Hypercalcaemia", "y"], ["Deprescribing (STOPP/START)", "t"], ["Acute Limb Ischaemia", "r"],
+  ["Delirium & 4AT", "v"], ["Childhood Rashes", "y"], ["Sore Throat & Ear Infection", "t"], ["Falls & Hip Fracture", "v"],
 ];
 
 /**

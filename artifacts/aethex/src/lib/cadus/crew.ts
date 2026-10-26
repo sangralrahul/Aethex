@@ -1513,3 +1513,120 @@ export const SCHEDULE_IDEAS: { label: string; crewId: string; prompt: string; da
   { label: "Weekly ECG", crewId: "crew-ecg", prompt: "Describe an ECG case in words and ask me to interpret it step by step.", days: [0], time: "10:00" },
   { label: "Drug of the day", crewId: "crew-pharmacist", prompt: "Teach me one commonly used drug today: dose, key interactions, and one safety pearl.", days: [0, 1, 2, 3, 4, 5, 6], time: "08:00" },
 ];
+
+/* ------------------------------------------------------------------ Update 41: plain-language rewrite */
+
+export const PLAIN_LEVELS: { id: "simple" | "very-simple" | "child"; label: string; how: string }[] = [
+  { id: "simple", label: "Simple (age 12 reading)", how: "plain everyday words, short sentences, explain any medical term in brackets" },
+  { id: "very-simple", label: "Very simple (age 8 reading)", how: "very short sentences of under 12 words, the most common words only, no medical terms" },
+  { id: "child", label: "For a child", how: "talk kindly to a 7-year-old, use a simple comparison, keep it to a few sentences" },
+];
+export function plainPrompt(text: string, level: "simple" | "very-simple" | "child", language: string): string {
+  const l = PLAIN_LEVELS.find((x) => x.id === level) ?? PLAIN_LEVELS[0];
+  return [
+    `Rewrite the medical text below for a patient${level === "child" ? " who is a child" : ""}, in ${language}: ${l.how}.`,
+    "Keep every medicine name, dose, number and warning exactly. Keep it as a few short bullet points under 3 headings: What it is, What to do, When to get help. Do not add new medical advice. Reply with only the rewrite.",
+    `<text>\n${text.slice(0, 8000)}\n</text>`,
+  ].join("\n\n");
+}
+const syllables = (w: string) => { const s = w.toLowerCase().replace(/[^a-z]/g, ""); if (!s) return 0; if (s.length <= 3) return 1; const m = s.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, "").replace(/^y/, "").match(/[aeiouy]{1,2}/g); return Math.max(1, m ? m.length : 1); };
+/** Flesch reading ease for English text (higher is easier); null if too short or not English. */
+export function readingEase(text: string): number | null {
+  const t = String(text ?? "").replace(/[#*_>`|-]/g, " ");
+  const words: string[] = t.match(/[A-Za-z][A-Za-z'’]*/g) ?? [];
+  if (words.length < 8) return null;
+  const sentences = Math.max(1, (t.match(/[.!?](\s|$)|\n+/g) ?? []).length);
+  const syl = words.reduce((a, w) => a + syllables(w), 0);
+  return Math.round(206.835 - 1.015 * (words.length / sentences) - 84.6 * (syl / words.length));
+}
+export const easeLabel = (n: number) => (n >= 80 ? "very easy" : n >= 70 ? "easy" : n >= 60 ? "plain English" : n >= 50 ? "fairly hard" : n >= 30 ? "hard" : "very hard");
+
+/* ------------------------------------------------------------------ Update 41: mistake notebook */
+
+export interface Mistake { id: string; q: string; options: string[]; answer: number; why: string; crewId: string; topic: string; at: number; wrong: number; streak: number; mastered: boolean }
+export const MISTAKES_KEY = "cadus3.crewMistakes";
+export const MISTAKES_MAX = 200;
+export function readMistakes(): Mistake[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(MISTAKES_KEY) || "[]");
+    return (Array.isArray(v) ? v : []).filter((x) => x && typeof x.q === "string" && Array.isArray(x.options) && x.options.length >= 2).slice(0, MISTAKES_MAX).map((x) => ({
+      id: String(x.id), q: clip(x.q, 600), options: x.options.slice(0, 6).map((o: unknown) => clip(o, 200)), answer: Math.max(0, Math.min(x.options.length - 1, Number(x.answer) || 0)), why: clip(x.why, 800),
+      crewId: String(x.crewId ?? ""), topic: clip(x.topic, 120), at: Number(x.at) || 0, wrong: Math.max(1, Number(x.wrong) || 1), streak: Math.max(0, Number(x.streak) || 0), mastered: x.mastered === true,
+    }));
+  } catch { return []; }
+}
+export function saveMistakes(l: Mistake[]) { try { localStorage.setItem(MISTAKES_KEY, JSON.stringify(l.slice(0, MISTAKES_MAX))); } catch { /* blocked */ } }
+const qKey = (q: string) => q.toLowerCase().replace(/\W+/g, " ").trim();
+export function addMistake(list: Mistake[], m: { q: string; options: string[]; answer: number; why: string; crewId: string; topic: string }, now = Date.now()): Mistake[] {
+  const k = qKey(m.q);
+  const i = list.findIndex((x) => qKey(x.q) === k);
+  if (i >= 0) return list.map((x, j) => (j === i ? { ...x, wrong: x.wrong + 1, streak: 0, mastered: false, at: now } : x));
+  const item: Mistake = { id: `mk-${now.toString(36)}${Math.random().toString(36).slice(2, 5)}`, q: clip(m.q, 600), options: m.options.slice(0, 6).map((o) => clip(o, 200)), answer: m.answer, why: clip(m.why, 800), crewId: m.crewId, topic: clip(m.topic, 120), at: now, wrong: 1, streak: 0, mastered: false };
+  return [item, ...list].slice(0, MISTAKES_MAX);
+}
+/** Two right in a row masters a mistake; a wrong answer resets the streak. */
+export function retestMistake(list: Mistake[], id: string, right: boolean): Mistake[] {
+  return list.map((x) => (x.id !== id ? x : right ? { ...x, streak: x.streak + 1, mastered: x.streak + 1 >= 2 } : { ...x, wrong: x.wrong + 1, streak: 0, mastered: false }));
+}
+export const dueMistakes = (list: Mistake[]) => list.filter((x) => !x.mastered).sort((a, b) => b.wrong - a.wrong || a.at - b.at);
+
+/* ------------------------------------------------------------------ Update 41: exam countdown */
+
+export const EXAMS: { id: string; name: string }[] = [
+  { id: "neetpg", name: "NEET-PG" }, { id: "inicet", name: "INI-CET" }, { id: "fmge", name: "FMGE" }, { id: "neetss", name: "NEET-SS" }, { id: "usmle1", name: "USMLE Step 1" }, { id: "custom", name: "Other exam" },
+];
+export const EXAM_SUBJECTS: [string, string][] = [
+  ["Anatomy", "crew-firstyear"], ["Physiology", "crew-firstyear"], ["Biochemistry", "crew-firstyear"], ["Pathology", "crew-path"], ["Pharmacology", "crew-pharmacist"], ["Microbiology", "crew-path"],
+  ["Forensic Medicine", "crew-forensic"], ["Community Medicine (PSM)", "crew-psm"], ["ENT", "crew-ent"], ["Ophthalmology", "crew-ophthal"], ["Medicine", "crew-rounds"], ["Surgery", "crew-surgery"],
+  ["Obstetrics & Gynaecology", "crew-obg"], ["Paediatrics", "crew-paeds"], ["Orthopaedics", "crew-ortho"], ["Dermatology", "crew-derm"], ["Psychiatry", "crew-psych"], ["Anaesthesia", "crew-anaes"], ["Radiology", "crew-radiology"],
+];
+export interface ExamState { exam: string; name: string; date: string; done: string[] }
+export const EXAM_KEY = "cadus3.crewExam";
+export function readExam(): ExamState | null {
+  try {
+    const v = JSON.parse(localStorage.getItem(EXAM_KEY) || "null");
+    if (!v || !/^\d{4}-\d{2}-\d{2}$/.test(String(v.date))) return null;
+    const names = EXAM_SUBJECTS.map((s) => s[0]);
+    return { exam: EXAMS.some((e) => e.id === v.exam) ? v.exam : "custom", name: clip(v.name, 60), date: v.date, done: (Array.isArray(v.done) ? v.done : []).filter((d: string) => names.includes(d)) };
+  } catch { return null; }
+}
+export function saveExam(s: ExamState | null) { try { if (s) localStorage.setItem(EXAM_KEY, JSON.stringify(s)); else localStorage.removeItem(EXAM_KEY); } catch { /* blocked */ } }
+const dayNum = (key: string) => { const [y, m, d] = key.split("-").map(Number); return Math.round(Date.UTC(y, m - 1, d) / 86400000); };
+export function examPlan(s: ExamState, today: string): { daysLeft: number; remaining: string[]; revisionDays: number; daysPerSubject: number | null; next: [string, string] | null; phase: "past" | "study" | "revision" | "done"; text: string } {
+  const daysLeft = dayNum(s.date) - dayNum(today);
+  const remaining = EXAM_SUBJECTS.map((x) => x[0]).filter((n) => !s.done.includes(n));
+  const next = EXAM_SUBJECTS.find((x) => remaining.includes(x[0])) ?? null;
+  const revisionDays = Math.max(7, Math.round(daysLeft * 0.15));
+  const examName = s.exam === "custom" ? s.name || "Your exam" : EXAMS.find((e) => e.id === s.exam)?.name ?? "Your exam";
+  if (daysLeft < 0) return { daysLeft, remaining, revisionDays: 0, daysPerSubject: null, next, phase: "past", text: `${examName} was ${-daysLeft} day${daysLeft === -1 ? "" : "s"} ago. Set the next exam date.` };
+  if (!remaining.length) return { daysLeft, remaining, revisionDays, daysPerSubject: null, next: null, phase: "done", text: `${examName} in ${daysLeft} days: every subject done. Grand tests and revising your mistakes now.` };
+  const study = daysLeft - revisionDays;
+  if (study <= 0) return { daysLeft, remaining, revisionDays: daysLeft, daysPerSubject: null, next, phase: "revision", text: `${examName} in ${daysLeft} day${daysLeft === 1 ? "" : "s"}: revision time. Focus on high-yield topics and mistakes in ${remaining.length} remaining subject${remaining.length === 1 ? "" : "s"}.` };
+  const dps = Math.round((study / remaining.length) * 10) / 10;
+  return { daysLeft, remaining, revisionDays, daysPerSubject: dps, next, phase: "study", text: `${examName} in ${daysLeft} days: ${remaining.length} subject${remaining.length === 1 ? "" : "s"} left, about ${dps} day${dps === 1 ? "" : "s"} each, keeping the last ${revisionDays} days for revision.` };
+}
+
+/* ------------------------------------------------------------------ Update 41: pinned answers */
+
+export const PINS_KEY = "cadus3.chatPins";
+export const PIN_MAX = 10;
+export function readPins(): Record<string, string[]> {
+  try {
+    const v = JSON.parse(localStorage.getItem(PINS_KEY) || "{}");
+    if (!v || typeof v !== "object" || Array.isArray(v)) return {};
+    const out: Record<string, string[]> = {};
+    for (const [k, ids] of Object.entries(v).slice(0, 100)) if (Array.isArray(ids)) out[k] = ids.map(String).slice(0, PIN_MAX);
+    return out;
+  } catch { return {}; }
+}
+export function savePins(m: Record<string, string[]>) { try { localStorage.setItem(PINS_KEY, JSON.stringify(m)); } catch { /* blocked */ } }
+export function togglePin(m: Record<string, string[]>, sid: string, mid: string): Record<string, string[]> | null {
+  const cur = m[sid] ?? [];
+  if (cur.includes(mid)) { const next = cur.filter((x) => x !== mid); const out = { ...m }; if (next.length) out[sid] = next; else delete out[sid]; return out; }
+  if (cur.length >= PIN_MAX) return null;
+  return { ...m, [sid]: [...cur, mid] };
+}
+export function pinLabel(md: string, max = 70): string {
+  const line = String(md ?? "").split("\n").map((l) => l.replace(/^[#>*\-\s]+/, "").replace(/[*_`]/g, "").trim()).find((l) => l.length > 0) ?? "Answer";
+  return line.length > max ? `${line.slice(0, max).replace(/\s+\S*$/, "")}…` : line;
+}
