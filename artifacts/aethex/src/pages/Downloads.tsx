@@ -299,6 +299,8 @@ const TOOLS: [string, string][] = [
   ["Cholecystitis & Cholangitis", "y"], ["Thyroid Nodule (TI-RADS)", "t"], ["VTE Risk in Pregnancy", "v"], ["Nephrotic Syndrome in Children", "y"],
   ["Leprosy (MDT)", "y"], ["Tinea & Dermatophytosis", "t"], ["Acne Treatment Ladder", "r"], ["Tetanus", "v"], ["Cervical Cancer Screening", "v"], ["WHO Labour Care Guide", "t"], ["DMARD Monitoring", "y"], ["Tumour Lysis Syndrome", "r"],
   ["BPH & LUTS (IPSS)", "t"], ["Haemorrhoids & Anal Fissure", "y"], ["Psoriasis", "v"], ["Acute Viral Hepatitis (A & E)", "r"],
+  ["Lung Nodule (Fleischner)", "t"], ["ITP (Immune Thrombocytopenia)", "r"], ["Parkinson's Disease Medicines", "v"], ["Breast Lump & Screening", "r"], ["Constipation & Enuresis (Children)", "y"], ["ADHD in Children", "v"], ["Infertility Work-up", "t"], ["Knee & Hip Osteoarthritis", "y"],
+  ["Allergic Rhinitis & Sinusitis", "t"], ["GERD & Heartburn", "r"], ["Shoulder Pain", "y"], ["Carpal Tunnel Syndrome", "v"],
 ];
 
 /**

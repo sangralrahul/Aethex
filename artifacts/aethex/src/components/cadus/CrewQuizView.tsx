@@ -4,12 +4,12 @@
  * on this device.
  */
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Check, Crown, Loader2, RotateCcw, Swords, Timer, Trophy, X } from "lucide-react";
-import { allCrew, findCrew, parseQuiz, quizLeaderboard, quizPoints, quizPrompt, readQuizResults, saveQuizResults, type CrewMember, type QuizLevel, type QuizQ, type QuizResult } from "@/lib/cadus/crew";
+import { Check, Copy, Crown, Loader2, MessageCircle, RotateCcw, Share2, Swords, Timer, Trophy, X } from "lucide-react";
+import { allCrew, canCompress, findCrew, parseQuiz, quizLeaderboard, quizPoints, quizPrompt, quizShareCode, readQuizResults, saveQuizResults, type CrewMember, type QuizLevel, type QuizQ, type QuizResult, type QuizShare } from "@/lib/cadus/crew";
 
 interface P { name: string; score: number; streak: number; correct: number; total: number }
 
-export default function CrewQuizView({ mine, badge, ask, canAsk, friendlyError, toast, onMistake }: {
+export default function CrewQuizView({ mine, badge, ask, canAsk, friendlyError, toast, onMistake, preset, onPresetUsed, shareBase }: {
   mine: CrewMember[];
   badge: (c: Pick<CrewMember, "icon" | "tone">, size: number) => ReactNode;
   ask: (c: CrewMember, message: string) => Promise<string>;
@@ -18,6 +18,10 @@ export default function CrewQuizView({ mine, badge, ask, canAsk, friendlyError, 
   toast: (t: string) => void;
   /** Update 41: wrong answers go to the mistake notebook. */
   onMistake?: (m: { q: string; options: string[]; answer: number; why: string; crewId: string; topic: string }) => void;
+  /** Update 44: a quiz opened from a shared link, and where share links point. */
+  preset?: QuizShare | null;
+  onPresetUsed?: () => void;
+  shareBase?: string;
 }) {
   const [crewId, setCrewId] = useState("crew-neetpg");
   const [topic, setTopic] = useState("");
@@ -36,6 +40,8 @@ export default function CrewQuizView({ mine, badge, ask, canAsk, friendlyError, 
   const [history, setHistory] = useState<QuizResult[]>(readQuizResults);
   const [done, setDone] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [from, setFrom] = useState<QuizShare["from"] | null>(null);
+  const [shareLink, setShareLink] = useState("");
   const turn = two ? i % 2 : 0;
   const c = findCrew(crewId, mine);
 
@@ -43,6 +49,23 @@ export default function CrewQuizView({ mine, badge, ask, canAsk, friendlyError, 
     setQs(questions); setI(0); setPicked(null); setLog([]); setDone(false);
     setPlayers((two ? names : [names[0]]).map((nm) => ({ name: nm.trim() || "Player", score: 0, streak: 0, correct: 0, total: 0 })));
     setLeft(limit);
+  };
+  useEffect(() => {
+    if (!preset) return;
+    setTopic(preset.topic); setTwo(false); setFrom(preset.from ?? null); setShareLink("");
+    setQs(preset.qs); setI(0); setPicked(null); setLog([]); setDone(false);
+    setPlayers([{ name: names[0].trim() || "You", score: 0, streak: 0, correct: 0, total: 0 }]);
+    setLeft(limit);
+    onPresetUsed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preset]);
+  const share = async () => {
+    if (!canCompress()) { toast("Sharing quizzes isn't supported in this browser"); return; }
+    try {
+      const me = players[0];
+      const code = await quizShareCode({ topic: topic.trim(), qs, from: me && !two ? { name: me.name, correct: me.correct, total: me.total } : undefined });
+      setShareLink(`${shareBase || `${window.location.origin}${window.location.pathname}`}?quiz=${code}`);
+    } catch { toast("Couldn't make a link for this quiz"); }
   };
   const start = async () => {
     if (!c) return;
@@ -120,6 +143,7 @@ export default function CrewQuizView({ mine, badge, ask, canAsk, friendlyError, 
       {qs.length > 0 && !done && q && (
         <div data-qb="play">
           <div className="cx-qb-score">{players.map((p, k) => <span key={k} className={`cx-chip ${k === turn ? "on" : ""}`} data-qb-player={k}><b>{p.name}</b> {p.score}{p.streak >= 2 ? ` · ${p.streak} in a row` : ""}</span>)}{limit > 0 && <span className={`cx-chip ${left <= 5 ? "warn" : ""}`} data-qb="left"><Timer size={13} /> {Math.max(0, left)}s</span>}</div>
+          {from && i === 0 && <p className="cx-qb-vs" data-qb="challenge"><b>{from.name}</b> scored {from.correct}/{from.total} on this quiz. Can you beat it?</p>}
           <p className="cx-set-hint">Question {i + 1} of {qs.length}{two ? ` · ${players[turn]?.name === "You" ? "Your" : `${players[turn]?.name}'s`} turn` : ""}{c ? ` · set by ${c.name}` : ""}</p>
           <h3 className="cx-lab-h3" data-qb="q">{q.q}</h3>
           <div className="cx-qb-opts">{q.options.map((o, k) => (
@@ -141,9 +165,18 @@ export default function CrewQuizView({ mine, badge, ask, canAsk, friendlyError, 
           <div className="cx-sim-stats">{players.map((p) => <div key={p.name}><b>{p.score}</b><small>{p.name}: {p.correct}/{p.total} right</small></div>)}</div>
           <h4>Review</h4>
           <ol className="cx-c23-steps">{qs.map((x, k) => { const l = log.find((e) => e.q === k); return <li key={k}><b>{x.q}</b><br />Answer: {x.options[x.answer]}{l && l.pick !== x.answer ? ` (${players[l.who]?.name ?? ""} chose ${l.pick === null ? "nothing" : x.options[l.pick]})` : " ✓"}<br /><small>{x.why}</small></li>; })}</ol>
+          {from && players[0] && <p className="cx-qb-vs" data-qb="vs"><b>You {players[0].correct}/{players[0].total}</b> vs <b>{from.name} {from.correct}/{from.total}</b>: {players[0].correct > from.correct ? "you win!" : players[0].correct === from.correct ? "a tie!" : `${from.name} wins this one.`}</p>}
+          {shareLink && (
+            <div className="cx-qb-share" data-qb="share-box">
+              <input className="cx-input" readOnly value={shareLink} onFocus={(e) => e.currentTarget.select()} aria-label="Quiz link" data-qb="share-link" />
+              <button className="cx-btn" onClick={() => { void navigator.clipboard?.writeText(shareLink); toast("Quiz link copied"); }} data-qb="share-copy"><Copy size={14} /> Copy</button>
+              <a className="cx-btn" href={`https://wa.me/?text=${encodeURIComponent(`Can you beat my ${players[0]?.correct ?? 0}/${players[0]?.total ?? 0} on "${topic}"? ${shareLink}`.slice(0, 3800))}`} target="_blank" rel="noopener noreferrer" data-qb="share-wa"><MessageCircle size={14} /> WhatsApp</a>
+            </div>
+          )}
           <div className="cx-sc-acts">
             <button className="cx-btn primary" onClick={() => begin(qs)} data-qb="rematch"><RotateCcw size={14} /> Rematch (same questions)</button>
-            <button className="cx-btn" onClick={() => { setQs([]); setDone(false); }} data-qb="new">New battle</button>
+            <button className="cx-btn" onClick={() => void share()} data-qb="share"><Share2 size={14} /> Share this quiz</button>
+            <button className="cx-btn" onClick={() => { setQs([]); setDone(false); setFrom(null); setShareLink(""); }} data-qb="new">New battle</button>
           </div>
           {c && <p className="cx-set-hint">{badge(c, 18)} Questions by {c.name}. AI-written questions can contain mistakes: check anything surprising in a textbook.</p>}
         </div>

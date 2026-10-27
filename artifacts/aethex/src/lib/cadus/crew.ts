@@ -1849,3 +1849,93 @@ export function recapPrompt(msgs: { role: string; content: string }[]): string {
     `<conversation>\n${tail}\n</conversation>`,
   ].join("\n\n");
 }
+
+/* ------------------------------------------------------------------ Update 44: teach-back */
+
+export interface TeachResult { score: number; verdict: string; strengths: string[]; gaps: string[]; errors: string[]; model: string }
+export function teachPrompt(topic: string, explanation: string): string {
+  return [
+    `I am a medical student. I will explain "${topic.trim().slice(0, 200)}" in my own words (the teach-back method). Grade my explanation as a strict but kind examiner.`,
+    'Reply with ONLY JSON: {"score": 0-10, "verdict": "one sentence", "strengths": ["..."], "gaps": ["important points I missed"], "errors": ["anything wrong, with the correction"], "model": "a model explanation in 4-6 sentences"}.',
+    `<explanation>\n${explanation.slice(0, 6000)}\n</explanation>`,
+  ].join("\n\n");
+}
+export function parseTeach(text: string): TeachResult | null {
+  const t = String(text ?? "");
+  const s = t.indexOf("{"), e = t.lastIndexOf("}");
+  if (s < 0 || e <= s) return null;
+  try {
+    const o = JSON.parse(t.slice(s, e + 1));
+    const list = (v: unknown) => (Array.isArray(v) ? v.map((x) => clip(x, 400)).filter(Boolean).slice(0, 8) : []);
+    const score = Math.max(0, Math.min(10, Math.round(Number(o.score))));
+    if (!Number.isFinite(score)) return null;
+    return { score, verdict: clip(o.verdict, 300), strengths: list(o.strengths), gaps: list(o.gaps), errors: list(o.errors), model: clip(o.model, 2000) };
+  } catch { return null; }
+}
+export interface TeachAttempt { at: number; crewId: string; topic: string; score: number }
+export const TEACH_KEY = "cadus3.crewTeach";
+export function readTeach(): TeachAttempt[] {
+  try { const v = JSON.parse(localStorage.getItem(TEACH_KEY) || "[]"); return (Array.isArray(v) ? v : []).filter((x) => x && Number.isFinite(Number(x.score))).slice(0, 200).map((x) => ({ at: Number(x.at) || 0, crewId: String(x.crewId ?? ""), topic: clip(x.topic, 200), score: Math.max(0, Math.min(10, Number(x.score))) })); } catch { return []; }
+}
+export function saveTeach(l: TeachAttempt[]) { try { localStorage.setItem(TEACH_KEY, JSON.stringify(l.slice(0, 200))); } catch { /* blocked */ } }
+
+/* ------------------------------------------------------------------ Update 44: share a quiz */
+
+export interface QuizShare { topic: string; qs: QuizQ[]; from?: { name: string; correct: number; total: number } }
+export async function quizShareCode(s: QuizShare): Promise<string> {
+  const json = JSON.stringify({ v: 1, t: s.topic, q: s.qs.map((x) => [x.q, x.options, x.answer, x.why]), ...(s.from ? { f: [s.from.name, s.from.correct, s.from.total] } : {}) });
+  return toB64url(await pipeBytes(new TextEncoder().encode(json), new CompressionStream("deflate-raw")));
+}
+export async function readQuizShare(code: string): Promise<QuizShare | null> {
+  try {
+    if (!code || code.length > 30000 || !/^[A-Za-z0-9_-]+$/.test(code)) return null;
+    const o = JSON.parse(new TextDecoder().decode(await pipeBytes(fromB64url(code), new DecompressionStream("deflate-raw"))));
+    if (!o || o.v !== 1 || !Array.isArray(o.q)) return null;
+    const qs: QuizQ[] = o.q.filter((x: unknown) => Array.isArray(x) && typeof x[0] === "string" && Array.isArray(x[1]) && x[1].length >= 2).slice(0, 20).map((x: [string, unknown[], number, string]) => {
+      const options = x[1].slice(0, 6).map((op) => clip(op, 300));
+      return { q: clip(x[0], 800), options, answer: Math.max(0, Math.min(options.length - 1, Number(x[2]) || 0)), why: clip(x[3], 800) };
+    });
+    if (!qs.length) return null;
+    const f = Array.isArray(o.f) ? { name: clip(o.f[0], 20) || "Your friend", correct: Math.max(0, Number(o.f[1]) || 0), total: Math.max(0, Number(o.f[2]) || 0) } : undefined;
+    return { topic: clip(o.t, 120), qs, ...(f ? { from: f } : {}) };
+  } catch { return null; }
+}
+
+/* ------------------------------------------------------------------ Update 44: weekly study goals */
+
+export interface StudyGoals { minutes: number; questions: number; notes: number; chats: number; teach: number }
+export const GOALS_KEY = "cadus3.crewGoals";
+export const GOAL_DEFAULTS: StudyGoals = { minutes: 300, questions: 50, notes: 5, chats: 10, teach: 3 };
+export const GOAL_LABELS: [keyof StudyGoals, string, string][] = [["minutes", "Study timer minutes", "min"], ["questions", "Quiz questions answered", "questions"], ["notes", "Notes saved", "notes"], ["chats", "Chats with assistants", "chats"], ["teach", "Teach-backs", "teach-backs"]];
+export function readGoals(): StudyGoals | null {
+  try {
+    const v = JSON.parse(localStorage.getItem(GOALS_KEY) || "null");
+    if (!v) return null;
+    const out = { ...GOAL_DEFAULTS };
+    for (const [k] of GOAL_LABELS) out[k] = Math.max(0, Math.min(10000, Math.round(Number(v[k]) || 0)));
+    return out;
+  } catch { return null; }
+}
+export function saveGoals(g: StudyGoals | null) { try { if (g) localStorage.setItem(GOALS_KEY, JSON.stringify(g)); else localStorage.removeItem(GOALS_KEY); } catch { /* blocked */ } }
+/** Monday 00:00 of this week. */
+export const weekStart = (now: Date) => { const d = new Date(now.getFullYear(), now.getMonth(), now.getDate()); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.getTime(); };
+export function goalProgress(g: StudyGoals, data: { pomo: { at: number; minutes: number }[]; quiz: { at: number; total: number }[]; notes: { at: number }[]; chats: { at: number }[]; teach: { at: number }[] }, now: Date): { key: keyof StudyGoals; label: string; unit: string; done: number; target: number; pct: number }[] {
+  const from = weekStart(now);
+  const done: StudyGoals = {
+    minutes: data.pomo.filter((x) => x.at >= from).reduce((a, x) => a + x.minutes, 0),
+    questions: data.quiz.filter((x) => x.at >= from).reduce((a, x) => a + x.total, 0),
+    notes: data.notes.filter((x) => x.at >= from).length,
+    chats: data.chats.filter((x) => x.at >= from).length,
+    teach: data.teach.filter((x) => x.at >= from).length,
+  };
+  return GOAL_LABELS.filter(([k]) => g[k] > 0).map(([k, label, unit]) => ({ key: k, label, unit, done: done[k], target: g[k], pct: Math.min(100, Math.round((done[k] / g[k]) * 100)) }));
+}
+
+/* ------------------------------------------------------------------ Update 44: select to explain */
+
+export function explainPrompt(term: string, context: string): string {
+  return [
+    `Explain "${term.trim().slice(0, 200)}" briefly for a medical student, in 2–4 sentences: what it means and why it matters here. If it is an abbreviation, expand it first. No headings.`,
+    context ? `It appeared in this text:\n"""${context.slice(0, 1200)}"""` : "",
+  ].filter(Boolean).join("\n\n");
+}
