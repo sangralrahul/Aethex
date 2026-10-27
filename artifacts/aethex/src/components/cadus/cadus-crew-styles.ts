@@ -1116,3 +1116,36 @@ export const CADUS_CLINIC47_CSS = `
 .cx-gls-item dt{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:600}
 .cx-gls-item dd{margin:2px 0 0;font-size:13.5px;color:var(--t2);line-height:1.5}
 `;
+
+export const CADUS_CLINIC48_CSS = `
+.cx-vs-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+.cx-vs-table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:520px}
+.cx-vs-table th,.cx-vs-table td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;line-height:1.45}
+.cx-vs-table thead th{background:color-mix(in srgb,var(--primary) 7%,var(--surface));font-weight:700}
+.cx-vs-table tbody th{width:22%;font-weight:600;color:var(--t2)}
+.cx-vs-table tbody tr:last-child th,.cx-vs-table tbody tr:last-child td{border-bottom:0}
+.cx-ddx-case{line-height:1.6}
+.cx-ddx-list{list-style:none;margin:6px 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.cx-ddx-list li{display:flex;gap:8px;align-items:flex-start}
+.cx-ddx-list li>svg{flex:none;margin-top:3px}
+.cx-ddx-list li.hit>svg{color:var(--ok)}.cx-ddx-list li.miss>svg{color:var(--danger)}
+.cx-ddx-list li em{font-style:normal;font-size:11px;font-weight:600;padding:1px 7px;border-radius:999px;background:var(--line);color:var(--t2)}
+.cx-ddx-list li.k-must em{background:color-mix(in srgb,var(--danger) 14%,var(--surface));color:var(--danger)}
+.cx-ddx-list li.k-likely em{background:color-mix(in srgb,var(--ok) 14%,var(--surface));color:var(--ok)}
+.cx-ddx-fb{margin-top:10px;padding:12px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line)}
+.cx-lec-out{margin-top:16px;display:flex;flex-direction:column;gap:10px}
+.cx-lec-out h2{margin:0}
+.cx-lec-cards summary{cursor:pointer;font-weight:600}
+.cx-lec-cards ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.cx-lecture label.cx-btn{cursor:pointer}
+.cx-ib-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:16px 0 6px}
+.cx-ib-h h4{margin:0}
+.cx-ib-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.cx-ib-item{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.cx-ib-q{flex:1 1 260px;min-width:0;overflow-wrap:anywhere}
+.cx-ib-acts{display:flex;align-items:center;gap:6px;flex:none;max-width:100%}
+.cx-ib-acts .cx-select{width:auto;max-width:190px;padding-top:4px;padding-bottom:4px;font-size:12.5px}
+.cx-inbox code{padding:1px 5px;border-radius:5px;background:var(--line)}
+.cx-ddx .cx-sim-stats,.cx-spot .cx-sim-stats,.cx-guess .cx-sim-stats{margin-bottom:14px}
+.cx-vs .cx-crew-chips .cx-set-hint{align-self:center}
+`;

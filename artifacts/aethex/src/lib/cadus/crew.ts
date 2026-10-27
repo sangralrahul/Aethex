@@ -1814,16 +1814,18 @@ export const SLASH_CMDS: { cmd: string; hint: string; arg: string }[] = [
   { cmd: "mnemonic", hint: "Last answer with mnemonics", arg: "" },
   { cmd: "patient", hint: "Last answer for a patient", arg: "" },
   { cmd: "recap", hint: "Key points and to-dos from this chat", arg: "" },
+  { cmd: "later", hint: "Save a question to your Question Inbox", arg: "question" },
 ];
 export const matchSlash = (typed: string) => { const q = typed.replace(/^\//, "").toLowerCase(); return SLASH_CMDS.filter((c) => c.cmd.startsWith(q)); };
 /** Expands a slash command: a message to send, the recap action, or null if it isn't one (or needs a missing topic). */
-export function expandSlash(text: string, lastAnswer: string): { send: string } | { action: "recap" } | { error: string } | null {
+export function expandSlash(text: string, lastAnswer: string): { send: string } | { action: "recap" } | { action: "later"; text: string } | { error: string } | null {
   const m = /^\/([a-z]+)\b\s*([\s\S]*)$/i.exec(text.trim());
   if (!m) return null;
   const cmd = SLASH_CMDS.find((c) => c.cmd === m[1].toLowerCase());
   if (!cmd) return null;
   const arg = m[2].trim();
   if (cmd.cmd === "recap") return { action: "recap" };
+  if (cmd.cmd === "later" && arg) return { action: "later", text: arg.slice(0, 1000) };
   if (cmd.arg && !arg) return { error: `Add a ${cmd.arg} after /${cmd.cmd}, e.g. /${cmd.cmd} ${cmd.arg === "case" ? "fever with rash in a 6-year-old" : "heart failure"}` };
   const remix: Record<string, string> = { table: "table", shorter: "shorter", mnemonic: "mnemonic", patient: "patient" };
   if (remix[cmd.cmd]) return lastAnswer ? { send: remixPrompt(remix[cmd.cmd], lastAnswer) } : { error: `/${cmd.cmd} works on the last answer: ask something first` };
@@ -2369,3 +2371,162 @@ export function definePrompt(term: string): string {
 export function glossaryMarkdown(l: GlossTerm[]): string {
   return glossarySorted(l).map((x) => `**${x.term}**: ${x.def.replace(/\s+/g, " ")}`).join("\n\n");
 }
+
+/* ------------------------------------------------------------------ Update 48: compare two conditions */
+
+export interface VsRow { aspect: string; a: string; b: string }
+export interface VsTable { id: string; a: string; b: string; rows: VsRow[]; key: string[]; traps: string[]; at: number; crewId: string }
+export function vsPrompt(a: string, b: string, level: QuizLevel): string {
+  return [
+    `Compare "${a.trim().slice(0, 120)}" with "${b.trim().slice(0, 120)}" for ${level === "easy" ? "an MBBS student" : level === "hard" ? "a postgraduate" : "a NEET-PG student"}.`,
+    "Cover 8–12 aspects that actually distinguish them (e.g. cause, epidemiology, key symptoms, signs, investigations with cut-offs, imaging or histology, management with drug doses, complications, prognosis). Each cell under 20 words; keep numbers exact.",
+    'Reply with ONLY JSON: {"rows": [{"aspect": "…", "a": "…", "b": "…"}], "key": ["3–4 single best differentiators"], "traps": ["2–3 common exam traps or confusions"]}.',
+  ].join("\n\n");
+}
+export function parseVs(reply: string, a: string, b: string, crewId: string, now = Date.now()): VsTable | null {
+  const t = String(reply ?? "");
+  const s = t.indexOf("{"), e = t.lastIndexOf("}");
+  if (s < 0 || e <= s) return null;
+  try {
+    const v = JSON.parse(t.slice(s, e + 1));
+    const rows = (Array.isArray(v.rows) ? v.rows : []).map((x: any) => ({ aspect: clip(x?.aspect, 80), a: clip(x?.a, 300), b: clip(x?.b, 300) })).filter((x: VsRow) => x.aspect && (x.a || x.b)).slice(0, 16);
+    if (rows.length < 2) return null;
+    const list = (x: unknown) => (Array.isArray(x) ? x : []).map((y: unknown) => clip(y, 300)).filter(Boolean).slice(0, 6);
+    return { id: `vs-${now.toString(36)}`, a: clip(a, 120), b: clip(b, 120), rows, key: list(v.key), traps: list(v.traps), at: now, crewId };
+  } catch { return null; }
+}
+const cell = (t: string) => t.replace(/\|/g, "/").replace(/\s+/g, " ").trim();
+export function vsMarkdown(v: VsTable): string {
+  return [
+    `## ${v.a} vs ${v.b}`,
+    `| | ${cell(v.a)} | ${cell(v.b)} |\n|---|---|---|\n${v.rows.map((r) => `| **${cell(r.aspect)}** | ${cell(r.a)} | ${cell(r.b)} |`).join("\n")}`,
+    v.key.length ? `### Key differentiators\n${v.key.map((k) => `- ${k}`).join("\n")}` : "",
+    v.traps.length ? `### Exam traps\n${v.traps.map((k) => `- ${k}`).join("\n")}` : "",
+  ].filter(Boolean).join("\n\n");
+}
+export const vsCards = (v: VsTable) => v.rows.map((r) => ({ front: `${v.a} vs ${v.b}: ${r.aspect}?`, back: `${v.a}: ${r.a}\n${v.b}: ${r.b}` }));
+export const VS_KEY = "cadus3.crewVs";
+export function readVs(): VsTable[] {
+  try { const v = JSON.parse(localStorage.getItem(VS_KEY) || "[]"); return (Array.isArray(v) ? v : []).filter((x) => x && Array.isArray(x.rows)).slice(0, 30); } catch { return []; }
+}
+export function saveVs(l: VsTable[]) { try { localStorage.setItem(VS_KEY, JSON.stringify(l.slice(0, 30))); } catch { /* blocked */ } }
+
+/* ------------------------------------------------------------------ Update 48: differential coach */
+
+export type DdxKind = "likely" | "must" | "possible";
+export interface DdxItem { dx: string; aliases: string[]; kind: DdxKind; why: string }
+export interface DdxCase { vignette: string; items: DdxItem[]; clues: string[] }
+const DDX_JSON = '{"vignette": "…", "items": [{"dx": "diagnosis", "aliases": ["other names or abbreviations"], "kind": "likely | must | possible", "why": "one line: the clue for or against"}], "clues": ["the 3–5 key clues in the case"]}';
+export function ddxCasePrompt(area: string, level: QuizLevel): string {
+  return [
+    `Write a short clinical case (6–9 sentences: age, sex, complaint, history, examination with numbers, one or two first results) for ${level === "easy" ? "an MBBS student" : level === "hard" ? "a postgraduate" : "a NEET-PG student"} to practise building a differential diagnosis${area && area !== "Any" ? `, in ${area}` : ""}, set in India.`,
+    "Then the model differential: 1 most likely diagnosis (kind \"likely\"), 1–3 must-not-miss diagnoses (kind \"must\"), and 2–5 other reasonable possibilities (kind \"possible\"). Do not name the diagnosis in the vignette.",
+    `Reply with ONLY JSON: ${DDX_JSON}.`,
+  ].join("\n\n");
+}
+export function ddxAnswerPrompt(caseText: string): string {
+  return [
+    "Give the model differential diagnosis for the case below: 1 most likely (kind \"likely\"), 1–3 must-not-miss (kind \"must\"), 2–5 other possibilities (kind \"possible\").",
+    `Reply with ONLY JSON: ${DDX_JSON} (repeat the case as "vignette").`,
+    `<case>\n${caseText.slice(0, 4000)}\n</case>`,
+  ].join("\n\n");
+}
+export function parseDdx(reply: string): DdxCase | null {
+  const t = String(reply ?? "");
+  const s = t.indexOf("{"), e = t.lastIndexOf("}");
+  if (s < 0 || e <= s) return null;
+  try {
+    const v = JSON.parse(t.slice(s, e + 1));
+    const items = (Array.isArray(v.items) ? v.items : []).map((x: any) => ({ dx: clip(x?.dx, 120), aliases: (Array.isArray(x?.aliases) ? x.aliases : []).map((a: unknown) => clip(a, 80)).filter(Boolean).slice(0, 6), kind: (x?.kind === "likely" || x?.kind === "must" ? x.kind : "possible") as DdxKind, why: clip(x?.why, 300) })).filter((x: DdxItem) => x.dx).slice(0, 10);
+    if (!items.length) return null;
+    return { vignette: clip(v.vignette, 3000), items, clues: (Array.isArray(v.clues) ? v.clues : []).map((c: unknown) => clip(c, 200)).filter(Boolean).slice(0, 6) };
+  } catch { return null; }
+}
+/** True if a line the student wrote names this diagnosis (all key words of the name or an alias, or a specific part of the name such as "pneumonia"). */
+export function ddxMatch(line: string, item: DdxItem): boolean {
+  const l = toks(line);
+  if (!l.length) return false;
+  const ls = new Set(l);
+  return [item.dx, ...item.aliases].some((name) => {
+    const k = toks(name);
+    if (!k.length) return false;
+    if (k.every((w) => ls.has(w))) return true;
+    return l.every((w) => k.includes(w)) && l.some((w) => w.length >= 5);
+  });
+}
+const DDX_W: Record<DdxKind, number> = { likely: 3, must: 3, possible: 1 };
+export function scoreDdx(lines: string[], items: DdxItem[]): { matched: number[]; missedMust: number[]; extra: string[]; topRight: boolean; score: number } {
+  const clean = lines.map((x) => x.replace(/^[-*\d.)\s]+/, "").trim()).filter(Boolean).slice(0, 15);
+  const matched = items.map((_, i) => i).filter((i) => clean.some((l) => ddxMatch(l, items[i])));
+  const missedMust = items.map((_, i) => i).filter((i) => items[i].kind === "must" && !matched.includes(i));
+  const extra = clean.filter((l) => !items.some((it) => ddxMatch(l, it)));
+  const likelyIdx = items.findIndex((x) => x.kind === "likely");
+  const topRight = likelyIdx >= 0 && clean.length > 0 && ddxMatch(clean[0], items[likelyIdx]);
+  const total = items.reduce((s2, x) => s2 + DDX_W[x.kind], 0);
+  const got = matched.reduce((s2, i) => s2 + DDX_W[items[i].kind], 0);
+  const score = Math.min(100, Math.round((100 * got) / Math.max(1, total)) + (topRight ? 5 : 0));
+  return { matched, missedMust, extra, topRight, score };
+}
+export function ddxFeedbackPrompt(c: DdxCase, lines: string[]): string {
+  return [
+    "Coach my clinical reasoning. Here is a case, my differential (in my order), and the model differential. In under 150 words: what I did well, what I missed and which clue should have pointed me to it, and one tip for building differentials. Be direct and kind.",
+    `Case: ${c.vignette}`,
+    `My differential:\n${lines.filter((x) => x.trim()).map((x, i) => `${i + 1}. ${x.trim()}`).join("\n")}`,
+    `Model differential:\n${c.items.map((x) => `- ${x.dx} (${x.kind === "likely" ? "most likely" : x.kind === "must" ? "must not miss" : "possible"}): ${x.why}`).join("\n")}`,
+  ].join("\n\n");
+}
+export interface DdxAttempt { at: number; score: number; topRight: boolean; missedMust: number }
+export const DDX_KEY = "cadus3.crewDdx";
+export function readDdx(): DdxAttempt[] {
+  try { const v = JSON.parse(localStorage.getItem(DDX_KEY) || "[]"); return (Array.isArray(v) ? v : []).filter((x) => x && Number.isFinite(Number(x.score))).slice(0, 100); } catch { return []; }
+}
+export function saveDdx(l: DdxAttempt[]) { try { localStorage.setItem(DDX_KEY, JSON.stringify(l.slice(0, 100))); } catch { /* blocked */ } }
+
+/* ------------------------------------------------------------------ Update 48: lecture to notes */
+
+export interface LectureNotes { title: string; notes: string; keyPoints: string[]; cards: { front: string; back: string }[] }
+export function lecturePrompt(title: string, text: string, cards: number): string {
+  return [
+    `Turn this lecture${title.trim() ? ` ("${title.trim().slice(0, 120)}")` : ""} into revision notes for a medical student.`,
+    `"notes": well-structured markdown with ## headings, short bullets, a table where it helps, every number and dose kept exactly; fix obvious transcription errors but do not add facts that are not in the lecture except to correct clear mistakes (mark those with "(corrected)"). "keyPoints": the 5–8 most important points. "cards": ${cards} question-and-answer flashcards on the most testable facts.`,
+    'Reply with ONLY JSON: {"title": "short title", "notes": "markdown", "keyPoints": ["…"], "cards": [{"front": "question", "back": "answer"}]}.',
+    `<lecture>\n${text.slice(0, 20000)}\n</lecture>`,
+  ].join("\n\n");
+}
+export function parseLecture(reply: string, fallbackTitle: string): LectureNotes | null {
+  const t = String(reply ?? "");
+  const s = t.indexOf("{"), e = t.lastIndexOf("}");
+  if (s < 0 || e <= s) return null;
+  try {
+    const v = JSON.parse(t.slice(s, e + 1));
+    const notes = clip(v.notes, 16000);
+    if (!notes) return null;
+    return {
+      title: clip(v.title, 120) || clip(fallbackTitle, 120) || "Lecture notes",
+      notes,
+      keyPoints: (Array.isArray(v.keyPoints) ? v.keyPoints : []).map((x: unknown) => clip(x, 300)).filter(Boolean).slice(0, 10),
+      cards: (Array.isArray(v.cards) ? v.cards : []).map((x: any) => ({ front: clip(x?.front, 300), back: clip(x?.back, 600) })).filter((x: { front: string; back: string }) => x.front && x.back).slice(0, 30),
+    };
+  } catch { return null; }
+}
+export const lectureMarkdown = (l: LectureNotes) => [`# ${l.title}`, l.keyPoints.length ? `## Key points\n${l.keyPoints.map((k) => `- ${k}`).join("\n")}` : "", l.notes].filter(Boolean).join("\n\n");
+
+/* ------------------------------------------------------------------ Update 48: question inbox */
+
+export interface InboxItem { id: string; q: string; crewId: string; at: number; answer?: string; answeredAt?: number }
+export const INBOX_KEY = "cadus3.crewInbox";
+export function readInbox(): InboxItem[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(INBOX_KEY) || "[]");
+    return (Array.isArray(v) ? v : []).filter((x) => x && typeof x.q === "string").slice(0, 200).map((x) => ({ id: String(x.id), q: clip(x.q, 1000), crewId: String(x.crewId ?? ""), at: Number(x.at) || 0, ...(typeof x.answer === "string" && x.answer ? { answer: clip(x.answer, 12000), answeredAt: Number(x.answeredAt) || 0 } : {}) }));
+  } catch { return []; }
+}
+export function saveInbox(l: InboxItem[]) { try { localStorage.setItem(INBOX_KEY, JSON.stringify(l.slice(0, 200))); } catch { /* blocked */ } }
+/** Adds a question (skips an exact duplicate that is still open); suggests an assistant from the topic rules. */
+export function addInbox(list: InboxItem[], q: string, mine: CrewMember[], crewId = "", now = Date.now()): InboxItem[] {
+  const t = clip(q, 1000);
+  if (!t || list.some((x) => !x.answer && x.q.toLowerCase() === t.toLowerCase())) return list;
+  const cid = crewId || bestCrewFor(t.length >= 15 ? t : `${t} — question`, mine)?.c.id || "crew-neetpg";
+  return [{ id: `ib-${now.toString(36)}${Math.random().toString(36).slice(2, 5)}`, q: t, crewId: cid, at: now }, ...list].slice(0, 200);
+}
+export const inboxPending = (l: InboxItem[]) => l.filter((x) => !x.answer);

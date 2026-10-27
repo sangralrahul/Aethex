@@ -310,6 +310,9 @@ const TOOLS: [string, string][] = [
   ["Haemoptysis", "t"], ["Leg Swelling (Oedema)", "s"], ["Palpitations", "r"], ["Tremor", "y"],
   ["Limping Child", "v"], ["Recurrent Abdominal Pain (Children)", "t"], ["Recurrent Miscarriage", "s"], ["Mastitis & Breast Abscess", "r"],
   ["Epistaxis (Nosebleed)", "y"], ["Mouth Ulcers", "v"], ["Heel Pain (Plantar Fasciitis)", "t"], ["Gynaecomastia", "s"],
+  ["Dysphagia", "r"], ["Tired All the Time", "y"], ["Fever of Unknown Origin", "v"], ["Chronic Itch (Pruritus)", "t"],
+  ["Early & Late Puberty", "s"], ["Ovarian Cyst (Adnexal Mass)", "r"], ["Pelvic Organ Prolapse", "y"], ["Breast Pain (Mastalgia)", "v"],
+  ["Hoarseness", "t"], ["Tinnitus", "s"], ["Warts & Molluscum", "r"], ["Paronychia & Ingrown Toenail", "y"],
 ];
 
 /**
