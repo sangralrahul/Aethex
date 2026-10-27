@@ -3,24 +3,41 @@
  * conversation so far; the brief opens in a new chat with that assistant, ready to send.
  */
 import { useMemo, useState, type ReactNode } from "react";
-import { ArrowRightLeft, X } from "lucide-react";
-import { allCrew, handoffBrief, suggestCrew, type CrewMember } from "@/lib/cadus/crew";
+import { ArrowRightLeft, Loader2, Sparkles, X } from "lucide-react";
+import { allCrew, bestCrewFor, handoffAiPrompt, handoffBrief, suggestCrew, type CrewMember } from "@/lib/cadus/crew";
 
-export default function CrewHandoffDialog({ from, mine, messages, badge, onConfirm, onClose }: {
+export default function CrewHandoffDialog({ from, mine, messages, badge, onConfirm, onClose, summarise, canAsk, onError }: {
   from: CrewMember;
   mine: CrewMember[];
   messages: { role: string; content: string }[];
   badge: (c: Pick<CrewMember, "icon" | "tone">, size: number) => ReactNode;
   onConfirm: (to: CrewMember, brief: string) => void;
   onClose: () => void;
+  /** Update 46: write the brief with AI. */
+  summarise?: (prompt: string) => Promise<string>;
+  canAsk?: (n: number) => boolean;
+  onError?: (e: unknown) => void;
 }) {
   const lastQ = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
-  const sug = useMemo(() => suggestCrew(lastQ, mine, 5).filter((c) => c.id !== from.id).slice(0, 4), [lastQ, mine, from.id]);
+  const sug = useMemo(() => {
+    // Update 46: the topic rules' best match leads, then the older keyword suggestions.
+    const best = bestCrewFor(lastQ, mine)?.c;
+    const rest = suggestCrew(lastQ, mine, 5);
+    return [...(best ? [best] : []), ...rest].filter((c, i, a) => c.id !== from.id && a.findIndex((x) => x.id === c.id) === i).slice(0, 4);
+  }, [lastQ, mine, from.id]);
   const [to, setTo] = useState(sug[0]?.id ?? "crew-rounds");
   const [note, setNote] = useState("");
   const target = allCrew(mine).find((c) => c.id === to);
   const [edited, setEdited] = useState<string | null>(null);
   const brief = edited ?? (target ? handoffBrief(from.name, target.name, messages, note) : "");
+  const [aiBusy, setAiBusy] = useState(false);
+  const writeAi = async () => {
+    if (!summarise || !target || (canAsk && !canAsk(1))) return;
+    setAiBusy(true);
+    try { const t = (await summarise(handoffAiPrompt(from.name, target.name, messages, note))).trim(); if (t) setEdited(t.slice(0, 6000)); }
+    catch (e) { onError?.(e); }
+    finally { setAiBusy(false); }
+  };
 
   return (
     <div className="cx-overlay center" onMouseDown={onClose}>
@@ -36,7 +53,7 @@ export default function CrewHandoffDialog({ from, mine, messages, badge, onConfi
             <label className="cx-field"><span>What should they do? (optional)</span><input className="cx-input" value={note} onChange={(e) => { setNote(e.target.value.slice(0, 500)); setEdited(null); }} placeholder="e.g. Plan the management and doses" data-ho="note" /></label>
           </div>
           <label className="cx-field"><span>Brief (you can edit it; it is sent only when you press send)</span><textarea className="cx-input" rows={8} value={brief} onChange={(e) => setEdited(e.target.value.slice(0, 6000))} data-ho="brief" /></label>
-          <div className="cx-sc-acts"><button className="cx-btn primary" disabled={!target} onClick={() => target && onConfirm(target, brief)} data-ho="go"><ArrowRightLeft size={14} /> Hand off to {target?.name ?? "…"}</button><button className="cx-btn" onClick={onClose}>Cancel</button></div>
+          <div className="cx-sc-acts">{summarise && <button className="cx-btn" disabled={!target || aiBusy} onClick={() => void writeAi()} data-ho="ai">{aiBusy ? <Loader2 size={14} className="cx-rot" /> : <Sparkles size={14} />} {aiBusy ? "Writing…" : "Write the brief with AI"}</button>}<button className="cx-btn primary" disabled={!target} onClick={() => target && onConfirm(target, brief)} data-ho="go"><ArrowRightLeft size={14} /> Hand off to {target?.name ?? "…"}</button><button className="cx-btn" onClick={onClose}>Cancel</button></div>
         </div>
       </div>
     </div>

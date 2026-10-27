@@ -2022,7 +2022,7 @@ const SUGGEST_RULES: [RegExp, string][] = [
   [/\b(x-?ray|ct scan|ct head|mri|ultrasound|usg|radiograph\w*|consolidation|opacity)\b/, "crew-radiology"],
   [/\b(child|children|infant|baby|neonat\w*|newborn|toddler|paediatric|pediatric|\d+[- ]?(month|year)s?[- ]old (boy|girl))\b/, "crew-paeds"],
   [/\b(pregnan\w*|antenatal|labou?r|postpartum|obstetric\w*|menstrua\w*|periods?|gyna?ec\w*|pcos|uterus|ovar\w*|contracepti\w*)\b/, "crew-obg"],
-  [/\b(chest pain|myocardial|angina|heart failure|murmur|troponin|cardiac|statin|hypertension|blood pressure)\b/, "crew-cardio"],
+  [/\b(chest pain|myocardial|angina|acs|stemi|nstemi|acute coronary|heart failure|murmur|troponin|cardiac|statin|hypertension|blood pressure)\b/, "crew-cardio"],
   [/\b(ecg|ekg|st[- ]elevation|st[- ]depression|qrs|qtc|arrhythmi\w*|atrial fibrillation|heart block|tachycardia|bradycardia)\b/, "crew-ecg"],
   [/\b(neet|inicet|ini-cet|fmge|mcqs?)\b/, "crew-neetpg"],
   [/\b(viva|oral exam)\b/, "crew-viva"],
@@ -2065,4 +2065,159 @@ export function bestCrewFor(text: string, mine: CrewMember[]): { c: CrewMember; 
   if (!best) return null;
   const c = findCrew(best[0], mine);
   return c ? { c, score: Math.round(best[1] / 10) } : null;
+}
+
+/* ------------------------------------------------------------------ Update 46: weak topic radar */
+
+const SUBJECT_RULES: [RegExp, string][] = [
+  [/\b(anatom\w*|brachial plexus|nerve supply|muscles? of|embryolog\w*|histolog\w*|osteolog\w*)\b/, "Anatomy"],
+  [/\b(physiolog\w*|cardiac cycle|renal physiology|action potential|respiratory physiology|endocrine physiology)\b/, "Physiology"],
+  [/\b(biochem\w*|enzymes?|metabolism|vitamins?|glycolysis|urea cycle|lipoproteins?|genetics)\b/, "Biochemistry"],
+  [/\b(patholog\w*|neoplasia|inflammation|haematolog\w*|hematolog\w*|anaemias?|anemias?|amyloid\w*)\b/, "Pathology"],
+  [/\b(pharmacolog\w*|antiepileptics?|antibiotics?|antimicrobials?|autonomic drugs?|drugs?|antihypertensives?|anticoagulants?)\b/, "Pharmacology"],
+  [/\b(microbiolog\w*|bacteria\w*|virolog\w*|viruses?|parasit\w*|mycolog\w*|immunolog\w*)\b/, "Microbiology"],
+  [/\b(forensic\w*|toxicolog\w*|poisons?|post-?mortem|medico-?legal)\b/, "Forensic Medicine"],
+  [/\b(psm|community medicine|epidemiolog\w*|biostatistics|statistics|national programmes?|screening tests?|vaccin\w*)\b/, "Community Medicine (PSM)"],
+  [/\b(ent|ear|nose|throat|larynx|sinusitis|otitis|hearing)\b/, "ENT"],
+  [/\b(ophthalm\w*|eyes?|glaucoma|cataract|retina\w*|uveitis|squint)\b/, "Ophthalmology"],
+  [/\b(obstetric\w*|gynae\w*|gyne\w*|pregnan\w*|labour|antenatal|menstrua\w*|pcos|pre-?eclampsia)\b/, "Obstetrics & Gynaecology"],
+  [/\b(paediatric\w*|pediatric\w*|neonat\w*|child\w*|infants?|milestones?)\b/, "Paediatrics"],
+  [/\b(orthop\w*|fractures?|bones? tumou?rs?|joints?|spine)\b/, "Orthopaedics"],
+  [/\b(dermatolog\w*|skin|psoriasis|leprosy|eczema|acne)\b/, "Dermatology"],
+  [/\b(psychiatr\w*|depression|schizophrenia|bipolar|anxiety|psychosis)\b/, "Psychiatry"],
+  [/\b(anaesth\w*|anesth\w*|airway|intubation)\b/, "Anaesthesia"],
+  [/\b(radiolog\w*|x-?rays?|imaging|ct|mri|ultrasound)\b/, "Radiology"],
+  [/\b(surg\w*|hernia|appendic\w*|trauma|breast|thyroid surgery|urolog\w*)\b/, "Surgery"],
+  [/\b(medicine|cardio\w*|ecg|heart|diabetes|kidney|renal|lungs?|asthma|copd|neurolog\w*|stroke|gastro\w*|liver|endocrin\w*|thyroid|rheumat\w*|infectious)\b/, "Medicine"],
+];
+/** The NEET-PG subject a topic belongs to, if one clearly fits. */
+export function subjectFor(topic: string): string | null {
+  const t = String(topic ?? "").toLowerCase();
+  const exact = EXAM_SUBJECTS.find(([s]) => s.toLowerCase() === t.trim() || (s === "Obstetrics & Gynaecology" && t.trim() === "obstetrics and gynaecology") || (s === "Community Medicine (PSM)" && t.trim() === "community medicine"));
+  if (exact) return exact[0];
+  for (const [re, s] of SUBJECT_RULES) if (re.test(t)) return s;
+  return null;
+}
+/** The assistant to revise a topic with: the subject's assistant, then the topic rules, then the NEET-PG Coach. */
+export function crewForTopic(topic: string, mine: CrewMember[]): CrewMember {
+  const s = subjectFor(topic);
+  const sid = s ? EXAM_SUBJECTS.find((x) => x[0] === s)?.[1] : undefined;
+  const t = String(topic ?? "").toLowerCase();
+  const rid = sid ? undefined : SUGGEST_RULES.find(([re]) => re.test(t))?.[1];
+  return findCrew(sid ?? rid ?? "crew-neetpg", mine) ?? findCrew("crew-neetpg", mine)!;
+}
+export interface RadarItem { key: string; topic: string; subject: string | null; correct: number; total: number; mistakes: number; teachAvg: number | null; teachN: number; score: number; evidence: number; weak: boolean }
+export interface RadarInput {
+  quiz: QuizResult[];
+  drill: Record<string, { c: number; t: number }>;
+  mistakes: Mistake[];
+  teach: TeachAttempt[];
+  practice: Record<string, { attempted: number; correct: number }>;
+}
+const rKey = (t: string) => t.toLowerCase().replace(/\s+/g, " ").trim();
+/**
+ * Topics by strength, weakest first. Score (0–100): accuracy from quizzes, daily drills and MCQ
+ * practice, blended with teach-back scores (each attempt weighs like 3 questions), minus 5 points
+ * per open mistake (up to 25). A topic is "weak" under 60 with at least 3 pieces of evidence.
+ */
+export function radarTopics(x: RadarInput): RadarItem[] {
+  const m = new Map<string, { topic: string; c: number; t: number; mk: number; ts: number; tn: number }>();
+  const get = (topic: string) => {
+    const k = rKey(topic);
+    if (!k) return null;
+    let e = m.get(k);
+    if (!e) { e = { topic: topic.trim().slice(0, 120), c: 0, t: 0, mk: 0, ts: 0, tn: 0 }; m.set(k, e); }
+    return e;
+  };
+  for (const r of x.quiz) { const p = r.players[0]; const e = get(r.topic); if (e && p) { e.c += p.correct; e.t += p.total; } }
+  for (const [t, s] of Object.entries(x.drill)) { const e = get(t); if (e) { e.c += s.c; e.t += s.t; } }
+  for (const [t, s] of Object.entries(x.practice)) { const e = get(t); if (e) { e.c += s.correct; e.t += s.attempted; } }
+  for (const mk of x.mistakes) if (!mk.mastered) { const e = get(mk.topic || "General"); if (e) e.mk += 1; }
+  for (const a of x.teach) { const e = get(a.topic); if (e) { e.ts += a.score; e.tn += 1; } }
+  return [...m.entries()].map(([key, e]) => {
+    const parts: [number, number][] = [];
+    if (e.t > 0) parts.push([(100 * e.c) / e.t, e.t]);
+    if (e.tn > 0) parts.push([(10 * e.ts) / e.tn, e.tn * 3]);
+    const w = parts.reduce((s, p) => s + p[1], 0);
+    const base = w ? parts.reduce((s, p) => s + p[0] * p[1], 0) / w : 50;
+    const score = Math.max(0, Math.min(100, Math.round(base - Math.min(25, 5 * e.mk))));
+    const evidence = e.t + e.tn * 3 + e.mk;
+    return { key, topic: e.topic, subject: subjectFor(e.topic), correct: e.c, total: e.t, mistakes: e.mk, teachAvg: e.tn ? Math.round((e.ts / e.tn) * 10) / 10 : null, teachN: e.tn, score, evidence, weak: score < 60 && evidence >= 3 };
+  }).filter((i) => i.evidence > 0).sort((a, b) => a.score - b.score || b.evidence - a.evidence);
+}
+const radarLine = (i: RadarItem) => `${i.topic}: ${i.score}%${i.total ? `, ${i.correct}/${i.total} questions right` : ""}${i.mistakes ? `, ${i.mistakes} open mistake${i.mistakes === 1 ? "" : "s"}` : ""}${i.teachAvg !== null ? `, teach-back ${i.teachAvg}/10` : ""}`;
+export function revisePrompt(i: RadarItem): string {
+  return `I am weak on ${i.topic} (${radarLine(i)}). Teach me the high-yield points I am most likely missing and the common exam traps, in short bullets. Then give me 5 single-best-answer MCQs one at a time: wait for my answer, tell me if I was right and why, then ask the next.`;
+}
+export function radarPlanPrompt(items: RadarItem[]): string {
+  return [
+    "These are my weakest topics from quizzes, drills, MCQ practice, my mistakes notebook and teach-back scores:",
+    items.slice(0, 6).map((i) => `- ${radarLine(i)}`).join("\n"),
+    "Make me a 7-day fix-it plan as a markdown table (Day | Topic | What to do | Minutes), weakest topics first, mixing revision with active recall and MCQs. Then give 3 short tips on why I might be losing marks in these topics.",
+  ].join("\n\n");
+}
+
+/* ------------------------------------------------------------------ Update 46: smarter handoff */
+
+/** Cadus itself, as the sender of a handoff from an ordinary (non-assistant) chat. */
+export const CADUS_SELF: CrewMember = { id: "cadus-self", name: "Cadus", tagline: "", instructions: "", starters: [], icon: "stethoscope", tone: "teal", mode: "general" };
+export function handoffAiPrompt(fromName: string, toName: string, msgs: { role: string; content: string }[], note: string): string {
+  const convo = msgs.filter((m) => m.content.trim()).slice(-14).map((m) => `${m.role === "user" ? "User" : fromName}: ${m.content.replace(/\s+/g, " ").trim().slice(0, 1200)}`).join("\n");
+  return [
+    `Write a short handover brief so that ${toName} can take over this conversation from ${fromName}. Write it in the first person as the user ("I"), addressed to ${toName}.`,
+    "Include: the question or case in one or two lines; key facts (age, findings, results, doses) exactly as given; what has already been answered or decided; what is still open. Use short bullets, under 180 words. Do not invent anything.",
+    `End with one line asking ${toName} to ${note.trim() ? note.trim().slice(0, 300) : "take it from here"}.`,
+    `<conversation>\n${convo.slice(-9000)}\n</conversation>`,
+  ].join("\n\n");
+}
+
+/* ------------------------------------------------------------------ Update 46: make a case from this */
+
+export interface CaseQ { q: string; a: string }
+export interface CaseVignette { title: string; vignette: string; questions: CaseQ[] }
+export function casePrompt(text: string, level: "student" | "pg" = "pg"): string {
+  return [
+    `Turn the medical teaching below into a realistic clinical case vignette for ${level === "student" ? "an MBBS student" : "a postgraduate (NEET-PG) student"} in India.`,
+    "The vignette: 5–8 sentences with age, sex, presenting complaint, relevant history, examination and key investigation results (with numbers), written so that the teaching below is the answer. Do not name the diagnosis in the vignette.",
+    'Then 4 questions that test the key points (diagnosis, next investigation, management with doses, a complication or trap), each with a short model answer. Reply with ONLY JSON: {"title": "short case title without the diagnosis", "vignette": "…", "questions": [{"q": "…", "a": "…"}]}.',
+    `<teaching>\n${text.slice(0, 6000)}\n</teaching>`,
+  ].join("\n\n");
+}
+export function parseCase(reply: string): CaseVignette | null {
+  const t = String(reply ?? "");
+  const s = t.indexOf("{"), e = t.lastIndexOf("}");
+  if (s < 0 || e <= s) return null;
+  try {
+    const v = JSON.parse(t.slice(s, e + 1));
+    const vignette = clip(v.vignette, 3000);
+    const questions = (Array.isArray(v.questions) ? v.questions : []).map((x: any) => ({ q: clip(x?.q, 400), a: clip(x?.a, 1200) })).filter((x: CaseQ) => x.q && x.a).slice(0, 6);
+    if (!vignette || !questions.length) return null;
+    return { title: clip(v.title, 120) || "Clinical case", vignette, questions };
+  } catch { return null; }
+}
+export function caseMarkdown(c: CaseVignette): string {
+  return [`## ${c.title}`, c.vignette, ...c.questions.map((x, i) => `**Q${i + 1}. ${x.q}**\n\n${x.a}`)].join("\n\n");
+}
+export function casePractisePrompt(c: CaseVignette): string {
+  return [`Here is a clinical case. Ask me these questions one at a time, wait for my answer, grade it out of 10 against the model answer, then move on. Do not reveal the answers before I reply.`, `Case: ${c.vignette}`, c.questions.map((x, i) => `Q${i + 1}. ${x.q}\n(Model answer, keep hidden: ${x.a})`).join("\n")].join("\n\n");
+}
+
+/* ------------------------------------------------------------------ Update 46: cheat sheets */
+
+export interface CheatSheet { id: string; title: string; crewId: string; md: string; at: number }
+export const CHEATS_KEY = "cadus3.crewCheats";
+export function readCheats(): CheatSheet[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(CHEATS_KEY) || "[]");
+    return (Array.isArray(v) ? v : []).filter((x) => x && typeof x.md === "string").slice(0, 30).map((x) => ({ id: String(x.id), title: clip(x.title, 120) || "Cheat sheet", crewId: String(x.crewId ?? ""), md: clip(x.md, 12000), at: Number(x.at) || 0 }));
+  } catch { return []; }
+}
+export function saveCheats(l: CheatSheet[]) { try { localStorage.setItem(CHEATS_KEY, JSON.stringify(l.slice(0, 30))); } catch { /* blocked */ } }
+export function cheatPrompt(topic: string, notes: { title: string; text: string }[]): string {
+  const src = notes.map((n) => `### ${n.title}\n${n.text.slice(0, 3000)}`).join("\n\n").slice(0, 14000);
+  return [
+    `Make a one-page cheat sheet on: ${topic.trim().slice(0, 200) || "the notes below"}, for last-minute revision by a medical student.`,
+    "Format in markdown: a one-line definition; then short sections with headings (key facts, numbers and cut-offs, drugs and doses, investigations, management steps, exam traps); a small comparison table if it helps; finish with a 3-line mnemonic or memory hook if a good one exists. Keep it under 450 words. Keep every number and dose exact.",
+    src ? `Use these notes as the main source (add only standard, well-established facts):\n\n<notes>\n${src}\n</notes>` : "Use standard textbook facts (Harrison, Bailey & Love, Williams, Nelson, KD Tripathi).",
+  ].join("\n\n");
 }

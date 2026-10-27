@@ -304,6 +304,9 @@ const TOOLS: [string, string][] = [
   ["Chronic Cough", "s"], ["Haematuria Work-up", "r"], ["Abnormal LFTs", "y"], ["Lymphadenopathy", "v"],
   ["Abnormal Uterine Bleeding", "t"], ["Amenorrhoea", "s"], ["Vaginal Discharge & STI", "r"], ["UTI in Children", "y"],
   ["High Blood Counts", "v"], ["Peripheral Arterial Disease (ABPI)", "t"], ["Hair Loss (Alopecia)", "s"], ["Vitiligo", "r"],
+  ["Chronic Diarrhoea & IBS", "y"], ["Sleep Apnoea (STOP-BANG)", "v"], ["Unexplained Weight Loss", "t"], ["Polyuria & Diabetes Insipidus", "s"],
+  ["Short Stature & Growth", "r"], ["Urinary Incontinence (Women)", "y"], ["Dysmenorrhoea & Endometriosis", "v"], ["Hernia & Undescended Testis", "t"],
+  ["Restless Legs Syndrome", "s"], ["Raynaud's Phenomenon", "r"], ["Scabies & Head Lice", "y"], ["Peripheral Neuropathy", "v"],
 ];
 
 /**
