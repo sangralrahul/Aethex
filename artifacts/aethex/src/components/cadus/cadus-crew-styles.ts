@@ -1079,3 +1079,40 @@ export const CADUS_CLINIC46_CSS = `
 .cx-cht-pick .cx-pa-mine.on{color:var(--text);font-weight:600}
 .cx-cht-page{padding:16px 18px;border:1px solid var(--line);border-radius:12px;background:var(--bg,#fff)}
 `;
+
+export const CADUS_CLINIC47_CSS = `
+.cx-spot-card{margin-top:14px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.cx-spot-card .cx-crew-dh{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.cx-spot-card .cx-crew-dh small{color:var(--t2);font-size:12px}
+.cx-spot-text{margin:0 0 10px;line-height:1.75}
+.cx-spot-s{display:inline;margin:0 3px 0 0;padding:1px 3px;border:0;border-radius:5px;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.cx-spot-s:hover:not(:disabled){background:color-mix(in srgb,var(--primary) 8%,transparent)}
+.cx-spot-s.on{background:color-mix(in srgb,var(--warn) 22%,transparent);text-decoration:underline wavy color-mix(in srgb,var(--warn) 70%,transparent)}
+.cx-spot-s.found{background:color-mix(in srgb,var(--ok) 20%,transparent)}
+.cx-spot-s.missed{background:color-mix(in srgb,var(--warn) 25%,transparent);outline:1px dashed var(--warn)}
+.cx-spot-s.false{background:color-mix(in srgb,var(--danger) 16%,transparent);text-decoration:line-through}
+.cx-spot-s:disabled{cursor:default;opacity:1;color:inherit}
+.cx-gs [data-gs="tests"] .cx-set-hint{display:inline-flex;align-items:center;gap:4px;margin:0}
+.cx-gloss .cx-sc-acts{margin-top:8px}
+.cx-gs{margin-top:12px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--surface);display:flex;flex-direction:column;gap:10px}
+.cx-gs-open{line-height:1.55}
+.cx-gs-meta{display:flex;flex-wrap:wrap;gap:6px}
+.cx-gs-meta span{font-size:12px;padding:2px 9px;border-radius:999px;background:color-mix(in srgb,var(--primary) 8%,var(--surface));color:var(--t2)}
+.cx-gs-log{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;max-height:340px;overflow:auto}
+.cx-gs-log li{display:flex;flex-direction:column;gap:1px}
+.cx-gs-log li span{color:var(--t2);font-size:13px}
+.cx-gs-log li.k-test b{color:var(--primary)}
+.cx-gs-log li.ok span{color:var(--ok);font-weight:600}.cx-gs-log li.no span{color:var(--danger);font-weight:600}
+.cx-gs-row{display:flex;gap:8px;flex-wrap:wrap}
+.cx-gs-row .cx-input{flex:1 1 220px;min-width:0}
+.cx-gs-profile{white-space:pre-wrap;font-size:13px;color:var(--t2)}
+.cx-gls-card{margin:10px 0;padding:18px;border:1px solid var(--line);border-radius:14px;background:var(--surface);display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.cx-gls-card small{color:var(--t3);font-size:12px}
+.cx-gls-card>b{font-size:20px}
+.cx-gls-card p{margin:0;line-height:1.55}
+.cx-gls-list{margin:10px 0 0;display:flex;flex-direction:column;gap:6px}
+.cx-gls-item{padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.cx-gls-letter{display:block;margin:-2px 0 4px;font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--primary)}
+.cx-gls-item dt{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:600}
+.cx-gls-item dd{margin:2px 0 0;font-size:13.5px;color:var(--t2);line-height:1.5}
+`;

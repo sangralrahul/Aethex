@@ -307,6 +307,9 @@ const TOOLS: [string, string][] = [
   ["Chronic Diarrhoea & IBS", "y"], ["Sleep Apnoea (STOP-BANG)", "v"], ["Unexplained Weight Loss", "t"], ["Polyuria & Diabetes Insipidus", "s"],
   ["Short Stature & Growth", "r"], ["Urinary Incontinence (Women)", "y"], ["Dysmenorrhoea & Endometriosis", "v"], ["Hernia & Undescended Testis", "t"],
   ["Restless Legs Syndrome", "s"], ["Raynaud's Phenomenon", "r"], ["Scabies & Head Lice", "y"], ["Peripheral Neuropathy", "v"],
+  ["Haemoptysis", "t"], ["Leg Swelling (Oedema)", "s"], ["Palpitations", "r"], ["Tremor", "y"],
+  ["Limping Child", "v"], ["Recurrent Abdominal Pain (Children)", "t"], ["Recurrent Miscarriage", "s"], ["Mastitis & Breast Abscess", "r"],
+  ["Epistaxis (Nosebleed)", "y"], ["Mouth Ulcers", "v"], ["Heel Pain (Plantar Fasciitis)", "t"], ["Gynaecomastia", "s"],
 ];
 
 /**

@@ -2113,6 +2113,8 @@ export interface RadarInput {
   mistakes: Mistake[];
   teach: TeachAttempt[];
   practice: Record<string, { attempted: number; correct: number }>;
+  /** Update 47: spot-the-error rounds count like questions (errors found out of errors hidden). */
+  spot?: { topic: string; found: number; total: number }[];
 }
 const rKey = (t: string) => t.toLowerCase().replace(/\s+/g, " ").trim();
 /**
@@ -2132,6 +2134,7 @@ export function radarTopics(x: RadarInput): RadarItem[] {
   for (const r of x.quiz) { const p = r.players[0]; const e = get(r.topic); if (e && p) { e.c += p.correct; e.t += p.total; } }
   for (const [t, s] of Object.entries(x.drill)) { const e = get(t); if (e) { e.c += s.c; e.t += s.t; } }
   for (const [t, s] of Object.entries(x.practice)) { const e = get(t); if (e) { e.c += s.correct; e.t += s.attempted; } }
+  for (const sp of x.spot ?? []) { const e = get(sp.topic); if (e) { e.c += sp.found; e.t += sp.total; } }
   for (const mk of x.mistakes) if (!mk.mastered) { const e = get(mk.topic || "General"); if (e) e.mk += 1; }
   for (const a of x.teach) { const e = get(a.topic); if (e) { e.ts += a.score; e.tn += 1; } }
   return [...m.entries()].map(([key, e]) => {
@@ -2220,4 +2223,149 @@ export function cheatPrompt(topic: string, notes: { title: string; text: string 
     "Format in markdown: a one-line definition; then short sections with headings (key facts, numbers and cut-offs, drugs and doses, investigations, management steps, exam traps); a small comparison table if it helps; finish with a 3-line mnemonic or memory hook if a good one exists. Keep it under 450 words. Keep every number and dose exact.",
     src ? `Use these notes as the main source (add only standard, well-established facts):\n\n<notes>\n${src}\n</notes>` : "Use standard textbook facts (Harrison, Bailey & Love, Williams, Nelson, KD Tripathi).",
   ].join("\n\n");
+}
+
+/* ------------------------------------------------------------------ Update 47: spot the error */
+
+export interface SpotError { wrong: string; fix: string; why: string }
+export interface SpotSet { topic: string; text: string; errors: SpotError[] }
+export function spotPrompt(topic: string, n: number, level: QuizLevel): string {
+  return [
+    `Write a short teaching answer (120–200 words, 6–10 sentences, plain prose, no headings or lists) on: ${topic.trim().slice(0, 200)}, at ${level === "easy" ? "MBBS" : level === "hard" ? "hard NEET-PG/INI-CET" : "NEET-PG"} level.`,
+    `Deliberately put exactly ${n} factual errors in it (a wrong dose, number, drug, sign, association or mechanism), each in a different sentence, so that a careful student could spot them. Everything else must be correct.`,
+    'Reply with ONLY JSON: {"text": "the answer with the errors", "errors": [{"wrong": "the exact wrong words as they appear in the text (3–12 words)", "fix": "the correct fact", "why": "one line"}]}.',
+  ].join("\n\n");
+}
+const normSp = (t: string) => t.toLowerCase().replace(/[^a-z0-9%.]+/g, " ").replace(/\s+/g, " ").trim();
+/** Splits prose into sentences (keeps decimals like 0.5 and abbreviations like "e.g." together). */
+export function splitSentences(text: string): string[] {
+  const t = String(text ?? "").replace(/\s+/g, " ").trim();
+  if (!t) return [];
+  const out: string[] = [];
+  let cur = "";
+  for (let i = 0; i < t.length; i++) {
+    cur += t[i];
+    if (/[.!?]/.test(t[i]) && (i + 1 === t.length || (t[i + 1] === " " && /[A-Z0-9(]/.test(t[i + 2] ?? ""))) && !/\b(e\.g|i\.e|vs|Dr|approx|etc)\.$/i.test(cur)) { out.push(cur.trim()); cur = ""; }
+  }
+  if (cur.trim()) out.push(cur.trim());
+  return out;
+}
+export function parseSpot(reply: string, topic: string): SpotSet | null {
+  const t = String(reply ?? "");
+  const s = t.indexOf("{"), e = t.lastIndexOf("}");
+  if (s < 0 || e <= s) return null;
+  try {
+    const v = JSON.parse(t.slice(s, e + 1));
+    const text = clip(v.text, 3000);
+    const nt = normSp(text);
+    const errors = (Array.isArray(v.errors) ? v.errors : []).map((x: any) => ({ wrong: clip(x?.wrong, 200), fix: clip(x?.fix, 300), why: clip(x?.why, 300) })).filter((x: SpotError) => x.wrong && x.fix && nt.includes(normSp(x.wrong))).slice(0, 5);
+    if (!text || !errors.length) return null;
+    return { topic: clip(topic, 120), text, errors };
+  } catch { return null; }
+}
+/** Which sentence holds each error (−1 if none). */
+export function spotSentenceOf(sentences: string[], err: SpotError): number {
+  const w = normSp(err.wrong);
+  return sentences.findIndex((x) => normSp(x).includes(w));
+}
+export function spotCheck(sentences: string[], picked: number[], errors: SpotError[]): { found: number[]; missed: number[]; falsePicks: number[]; score: number } {
+  const at = errors.map((er) => spotSentenceOf(sentences, er));
+  const found = errors.map((_, i) => i).filter((i) => at[i] >= 0 && picked.includes(at[i]));
+  const missed = errors.map((_, i) => i).filter((i) => !found.includes(i));
+  const falsePicks = picked.filter((p) => !at.includes(p));
+  const score = Math.max(0, Math.round((100 * found.length) / Math.max(1, errors.length)) - 10 * falsePicks.length);
+  return { found, missed, falsePicks, score };
+}
+export interface SpotAttempt { at: number; topic: string; crewId: string; found: number; total: number; falsePicks: number }
+export const SPOT_KEY = "cadus3.crewSpot";
+export function readSpot(): SpotAttempt[] {
+  try { const v = JSON.parse(localStorage.getItem(SPOT_KEY) || "[]"); return (Array.isArray(v) ? v : []).filter((x) => x && Number.isFinite(Number(x.total))).slice(0, 100).map((x) => ({ at: Number(x.at) || 0, topic: clip(x.topic, 120), crewId: String(x.crewId ?? ""), found: Math.max(0, Number(x.found) || 0), total: Math.max(0, Number(x.total) || 0), falsePicks: Math.max(0, Number(x.falsePicks) || 0) })); } catch { return []; }
+}
+export function saveSpot(l: SpotAttempt[]) { try { localStorage.setItem(SPOT_KEY, JSON.stringify(l.slice(0, 100))); } catch { /* blocked */ } }
+
+/* ------------------------------------------------------------------ Update 47: quiz from my notes */
+
+export function notesQuizPrompt(notes: { title: string; text: string }[], n: number, level: QuizLevel): string {
+  const src = notes.map((x) => `### ${x.title}\n${x.text.slice(0, 3000)}`).join("\n\n").slice(0, 14000);
+  return [
+    `Write ${n} single-best-answer multiple-choice questions that test the facts in my notes below (one or two questions per important fact; use clinical vignettes where natural).`,
+    `Level: ${level === "easy" ? "MBBS university exam" : level === "hard" ? "hard NEET-PG/INI-CET" : "NEET-PG standard"}. Every question must be answerable from the notes; keep numbers and doses exactly as in the notes.`,
+    'Reply with ONLY a JSON array: [{"q": "question", "options": ["A", "B", "C", "D"], "answer": 0, "why": "one-line explanation"}] where answer is the index of the correct option. Vary the position of the right answer.',
+    `<notes>\n${src}\n</notes>`,
+  ].join("\n\n");
+}
+
+/* ------------------------------------------------------------------ Update 47: guess the diagnosis */
+
+export interface GuessTest { name: string; result: string }
+export interface GuessCase { diagnosis: string; aliases: string[]; opening: string; profile: string; tests: GuessTest[]; teaching: string[] }
+export const GUESS_AREAS = ["Any", "Medicine", "Surgery", "Paediatrics", "Obstetrics & Gynaecology", "Emergency", "Infectious disease (India)", "Neurology", "Cardiology", "Endocrinology"];
+export function guessCasePrompt(area: string, level: QuizLevel): string {
+  return [
+    `Create a hidden diagnosis game case${area && area !== "Any" ? ` in ${area}` : ""} for ${level === "easy" ? "an MBBS student (common, classic presentation)" : level === "hard" ? "a postgraduate (less common or atypical but fair)" : "a NEET-PG student (common, exam-relevant)"} in India.`,
+    "Reply with ONLY JSON: {\"diagnosis\": \"the diagnosis\", \"aliases\": [\"other accepted names or abbreviations\"], \"opening\": \"one or two lines: age, sex, presenting complaint only (no diagnosis, no key clue)\", \"profile\": \"the full hidden record: history, past history, drugs, social, family, examination findings (with numbers), 12–20 short lines\", \"tests\": [{\"name\": \"test name\", \"result\": \"result\"}] (6–10 tests including some normal ones), \"teaching\": [\"3–5 key teaching points\"]}.",
+  ].join("\n\n");
+}
+export function parseGuessCase(reply: string): GuessCase | null {
+  const t = String(reply ?? "");
+  const s = t.indexOf("{"), e = t.lastIndexOf("}");
+  if (s < 0 || e <= s) return null;
+  try {
+    const v = JSON.parse(t.slice(s, e + 1));
+    const diagnosis = clip(v.diagnosis, 160), opening = clip(v.opening, 400), profile = clip(v.profile, 4000);
+    const tests = (Array.isArray(v.tests) ? v.tests : []).map((x: any) => ({ name: clip(x?.name, 80), result: clip(x?.result, 300) })).filter((x: GuessTest) => x.name && x.result).slice(0, 12);
+    if (!diagnosis || !opening || !profile) return null;
+    return { diagnosis, aliases: (Array.isArray(v.aliases) ? v.aliases : []).map((a: unknown) => clip(a, 120)).filter(Boolean).slice(0, 8), opening, profile, tests, teaching: (Array.isArray(v.teaching) ? v.teaching : []).map((a: unknown) => clip(a, 300)).filter(Boolean).slice(0, 6) };
+  } catch { return null; }
+}
+export function guessAnswerPrompt(c: GuessCase, log: { q: string; a: string }[], question: string): string {
+  return [
+    "You are the hidden patient record in a diagnosis game. Answer the student's question from the record below in ONE short line: start with Yes, No or Not known, then the specific fact if relevant. Use only the record; if it is not in the record, say it is not known or normal as appropriate.",
+    "Never name, hint at or confirm the diagnosis, and never suggest what to ask next. If the student asks for the diagnosis, reply: \"Make a guess when you are ready.\"",
+    `<record>\nPresenting: ${c.opening}\n${c.profile}\n</record>`,
+    log.length ? `Earlier questions:\n${log.slice(-8).map((x) => `Q: ${x.q}\nA: ${x.a}`).join("\n")}` : "",
+    `Question: ${question.trim().slice(0, 300)}`,
+  ].filter(Boolean).join("\n\n");
+}
+const STOP = new Set(["the", "and", "with", "of", "in", "to", "a", "an", "acute", "chronic", "disease", "syndrome", "due", "secondary"]);
+const toks = (t: string) => normSp(t).replace(/[.%]/g, " ").split(" ").filter((w) => w.length > 1 && !STOP.has(w));
+/** True if the guess names the diagnosis or an accepted alias (all its key words, in any order). */
+export function checkGuess(c: GuessCase, guess: string): boolean {
+  const g = new Set(toks(guess));
+  if (!g.size) return false;
+  return [c.diagnosis, ...c.aliases].some((name) => { const k = toks(name); return k.length > 0 && k.every((w) => g.has(w)); });
+}
+export function guessScore(questions: number, tests: number, wrong: number, solved: boolean): number {
+  return solved ? Math.max(10, 100 - 3 * questions - 2 * tests - 10 * wrong) : 0;
+}
+export interface GuessResult { at: number; diagnosis: string; solved: boolean; score: number; questions: number }
+export const GUESS_KEY = "cadus3.crewGuess";
+export function readGuess(): GuessResult[] {
+  try { const v = JSON.parse(localStorage.getItem(GUESS_KEY) || "[]"); return (Array.isArray(v) ? v : []).filter((x) => x && typeof x.diagnosis === "string").slice(0, 50).map((x) => ({ at: Number(x.at) || 0, diagnosis: clip(x.diagnosis, 160), solved: x.solved === true, score: Math.max(0, Number(x.score) || 0), questions: Math.max(0, Number(x.questions) || 0) })); } catch { return []; }
+}
+export function saveGuess(l: GuessResult[]) { try { localStorage.setItem(GUESS_KEY, JSON.stringify(l.slice(0, 50))); } catch { /* blocked */ } }
+
+/* ------------------------------------------------------------------ Update 47: my glossary */
+
+export interface GlossTerm { id: string; term: string; def: string; at: number; crewId: string }
+export const GLOSS_KEY = "cadus3.crewGlossary";
+export const GLOSS_MAX = 500;
+export function readGlossary(): GlossTerm[] {
+  try { const v = JSON.parse(localStorage.getItem(GLOSS_KEY) || "[]"); return (Array.isArray(v) ? v : []).filter((x) => x && typeof x.term === "string" && typeof x.def === "string").slice(0, GLOSS_MAX).map((x) => ({ id: String(x.id), term: clip(x.term, 120), def: clip(x.def, 2000), at: Number(x.at) || 0, crewId: String(x.crewId ?? "") })); } catch { return []; }
+}
+export function saveGlossary(l: GlossTerm[]) { try { localStorage.setItem(GLOSS_KEY, JSON.stringify(l.slice(0, GLOSS_MAX))); } catch { /* blocked */ } }
+/** Adds a term, or updates its definition if the term is already there (case-insensitive). */
+export function addTerm(list: GlossTerm[], term: string, def: string, crewId = "", now = Date.now()): GlossTerm[] {
+  const t = clip(term, 120), d = clip(def, 2000);
+  if (!t || !d) return list;
+  const i = list.findIndex((x) => x.term.toLowerCase() === t.toLowerCase());
+  if (i >= 0) return list.map((x, j) => (j === i ? { ...x, def: d, at: now } : x));
+  return [{ id: `gl-${now.toString(36)}${Math.random().toString(36).slice(2, 5)}`, term: t, def: d, at: now, crewId }, ...list].slice(0, GLOSS_MAX);
+}
+export const glossarySorted = (l: GlossTerm[]) => [...l].sort((a, b) => a.term.localeCompare(b.term, "en", { sensitivity: "base" }));
+export function definePrompt(term: string): string {
+  return `Define the medical term "${term.trim().slice(0, 120)}" for a medical student in 2–3 sentences: expand it if it is an abbreviation, say what it means, and give one clinically important point (a cut-off, sign, cause or treatment). Plain text, no headings.`;
+}
+export function glossaryMarkdown(l: GlossTerm[]): string {
+  return glossarySorted(l).map((x) => `**${x.term}**: ${x.def.replace(/\s+/g, " ")}`).join("\n\n");
 }

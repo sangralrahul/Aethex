@@ -4,7 +4,7 @@
  */
 import { useMemo, useState, type ReactNode } from "react";
 import { Loader2, Play, Radar, Save, Sparkles } from "lucide-react";
-import { crewForTopic, findCrew, radarPlanPrompt, radarTopics, readDrill, readMistakes, readQuizResults, readTeach, revisePrompt, type CrewMember, type RadarItem } from "@/lib/cadus/crew";
+import { crewForTopic, findCrew, radarPlanPrompt, radarTopics, readDrill, readMistakes, readQuizResults, readSpot, readTeach, revisePrompt, type CrewMember, type RadarItem } from "@/lib/cadus/crew";
 import { readPractice } from "@/lib/cadus/practice";
 import { MdBlock } from "./LiveAnswer";
 
@@ -24,6 +24,7 @@ export default function CrewRadarView({ mine, badge, ask, canAsk, friendlyError,
     mistakes: readMistakes(),
     teach: readTeach(),
     practice: readPractice().stats,
+    spot: readSpot(),
   }), []);
   const [busy, setBusy] = useState(false);
   const [plan, setPlan] = useState("");
@@ -39,7 +40,7 @@ export default function CrewRadarView({ mine, badge, ask, canAsk, friendlyError,
   const band = (s: number) => (s < 50 ? "low" : s < 75 ? "mid" : "high");
   return (
     <section className="cx-page cx-lab cx-radar">
-      <header className="cx-page-h"><div><h1>Weak Topic Radar</h1><p>Your quizzes, daily drills, MCQ practice, mistakes and teach-back scores, combined into one list of topics from weakest to strongest. Nothing leaves this device until you ask for a plan.</p></div></header>
+      <header className="cx-page-h"><div><h1>Weak Topic Radar</h1><p>Your quizzes, daily drills, MCQ practice, spot-the-error rounds, mistakes and teach-back scores, combined into one list of topics from weakest to strongest. Nothing leaves this device until you ask for a plan.</p></div></header>
       {!items.length ? (
         <p className="cx-set-hint" data-rdr="empty">Nothing to read yet. Play a Quiz Battle, do a daily drill or MCQ practice, or try a teach-back, and your radar fills in.</p>
       ) : (
