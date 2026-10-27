@@ -37,7 +37,8 @@ const WHY = [
 export default function CadusSignIn() {
   const [, setLocation] = useLocation();
   const { isLoggedIn } = useUserAuth();
-  const [mode, setMode] = useState<"in" | "up">("in");
+  // ?mode=signup (from Cadus's "Sign up free") opens on account creation.
+  const [mode, setMode] = useState<"in" | "up">(() => { try { return new URLSearchParams(window.location.search).get("mode") === "signup" ? "up" : "in"; } catch { return "in"; } });
   const [method, setMethod] = useState<Method>("password");
   const [step, setStep] = useState<Step>("enter");
   const [name, setName] = useState("");

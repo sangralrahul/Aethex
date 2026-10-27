@@ -313,6 +313,9 @@ const TOOLS: [string, string][] = [
   ["Dysphagia", "r"], ["Tired All the Time", "y"], ["Fever of Unknown Origin", "v"], ["Chronic Itch (Pruritus)", "t"],
   ["Early & Late Puberty", "s"], ["Ovarian Cyst (Adnexal Mass)", "r"], ["Pelvic Organ Prolapse", "y"], ["Breast Pain (Mastalgia)", "v"],
   ["Hoarseness", "t"], ["Tinnitus", "s"], ["Warts & Molluscum", "r"], ["Paronychia & Ingrown Toenail", "y"],
+  ["Jaundice Work-up", "v"], ["Proteinuria Work-up", "t"], ["Splenomegaly", "s"], ["Pancytopenia", "r"],
+  ["Varicose Veins", "y"], ["Otitis Externa & Ear Wax", "v"], ["Dry Eye & Blepharitis", "t"], ["Perianal Abscess & Pilonidal", "s"],
+  ["Neck Pain", "r"], ["Hyperhidrosis", "y"], ["Seborrhoeic Dermatitis & Dandruff", "v"], ["Halitosis (Bad Breath)", "t"],
 ];
 
 /**

@@ -8,7 +8,7 @@ import {
   type ReactNode, type DragEvent as ReactDragEvent, type FocusEvent as ReactFocusEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent,
 } from "react";
 import {
-  AlertTriangle, BatteryLow, Columns2, Inbox, NotebookText, Sparkle,  BookA, Dices, User,  Radar,  Route,  Loader2, Highlighter, Puzzle, Scan, Sprout,  Armchair, Fingerprint, Slash,  Orbit, Venus, Wand2,  SpellCheck,  Bed, AlarmClock,  Mountain, Briefcase, SearchCheck, UserRoundPen,  Smile, Columns3, LibraryBig, Snowflake, MessagesSquare, GlassWater, LifeBuoy, Trophy, Package, StickyNote, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ArrowUpRight, Bookmark, BookmarkCheck, BookOpen, BookOpenCheck, Brain, Gauge,
+  AlertTriangle, Layers2, Lock, UserPlus,  BatteryLow, Columns2, Inbox, NotebookText, Sparkle,  BookA, Dices, User,  Radar,  Route,  Loader2, Highlighter, Puzzle, Scan, Sprout,  Armchair, Fingerprint, Slash,  Orbit, Venus, Wand2,  SpellCheck,  Bed, AlarmClock,  Mountain, Briefcase, SearchCheck, UserRoundPen,  Smile, Columns3, LibraryBig, Snowflake, MessagesSquare, GlassWater, LifeBuoy, Trophy, Package, StickyNote, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ArrowUpRight, Bookmark, BookmarkCheck, BookOpen, BookOpenCheck, Brain, Gauge,
   Calculator, Camera, Check, ChevronDown, ChevronRight, ChevronsUpDown, CircleQuestionMark, ClipboardCheck, ClipboardList, Copy, CornerDownRight,
   Flame, Languages, Mail, MessageCircleQuestion, Target, UserCog, UserRound,
   Archive, ArchiveRestore, AudioLines, Bell, ChevronLeft, Ellipsis, FileDown, FilePen, Lightbulb, MessageSquareDashed, Paperclip, Share2,
@@ -61,207 +61,8 @@ import { CASE_MODES, looksLikeCase, WARD_ACTIONS } from "@/lib/cadus/ward";
 import { LiveAnswer, MdBlock } from "@/components/cadus/LiveAnswer";
 import CanvasPanel, { type CanvasDoc } from "@/components/cadus/CanvasPanel";
 import VoiceMode, { speakable, voiceSupported, type VoicePersona } from "@/components/cadus/VoiceMode";
-import AudioLibraryView from "@/components/cadus/AudioLibraryView";
-import RxWriterView from "@/components/cadus/RxWriterView";
-import LabTrendsView from "@/components/cadus/LabTrendsView";
-import DailyCaseView from "@/components/cadus/DailyCaseView";
-import DocWriterView from "@/components/cadus/DocWriterView";
-import MnemonicView from "@/components/cadus/MnemonicView";
-import GenericFinderView from "@/components/cadus/GenericFinderView";
-import OpdQueueView from "@/components/cadus/OpdQueueView";
-import ImageQuizView from "@/components/cadus/ImageQuizView";
-import DoseCardView from "@/components/cadus/DoseCardView";
-import OnCallView from "@/components/cadus/OnCallView";
-import JournalClubView from "@/components/cadus/JournalClubView";
-import StatsChooserView from "@/components/cadus/StatsChooserView";
-import RosterView from "@/components/cadus/RosterView";
 import RecordsView, { type RecordIncoming } from "@/components/cadus/RecordsView";
-import VoiceRoundView from "@/components/cadus/VoiceRoundView";
-import RevNotesView from "@/components/cadus/RevNotesView";
-import AnalyticsView from "@/components/cadus/AnalyticsView";
-import PreopView from "@/components/cadus/PreopView";
-import PatientMessageView from "@/components/cadus/PatientMessageView";
-import PregLactView from "@/components/cadus/PregLactView";
-import PillChartView from "@/components/cadus/PillChartView";
-import VaccinesView from "@/components/cadus/VaccinesView";
-import DietView from "@/components/cadus/DietView";
-import IcdView from "@/components/cadus/IcdView";
-import ConsentView from "@/components/cadus/ConsentView";
-import InsulinView from "@/components/cadus/InsulinView";
-import TransfusionView from "@/components/cadus/TransfusionView";
-import MlcView from "@/components/cadus/MlcView";
-import TbView from "@/components/cadus/TbView";
-import AntenatalView from "@/components/cadus/AntenatalView";
-import VentilatorView from "@/components/cadus/VentilatorView";
-import TeleconsultView from "@/components/cadus/TeleconsultView";
-import BillsView from "@/components/cadus/BillsView";
-import AnimalBiteView from "@/components/cadus/AnimalBiteView";
-import NeedlestickView from "@/components/cadus/NeedlestickView";
-import ImnciView from "@/components/cadus/ImnciView";
-import CmeView from "@/components/cadus/CmeView";
-import AppointmentsView from "@/components/cadus/AppointmentsView";
-import StockView from "@/components/cadus/StockView";
-import ScreeningView from "@/components/cadus/ScreeningView";
-import KidneyDoseView from "@/components/cadus/KidneyDoseView";
-import SamView from "@/components/cadus/SamView";
-import ContactsView from "@/components/cadus/ContactsView";
-import AccountsView from "@/components/cadus/AccountsView";
-import ThyroidView from "@/components/cadus/ThyroidView";
-import BackupView from "@/components/cadus/BackupView";
-import NcdView from "@/components/cadus/NcdView";
-import AnaemiaView from "@/components/cadus/AnaemiaView";
-import DengueView from "@/components/cadus/DengueView";
-import ElectrolytesView from "@/components/cadus/ElectrolytesView";
-import ObsEmergencyView from "@/components/cadus/ObsEmergencyView";
-import InfectionView from "@/components/cadus/InfectionView";
-import AsthmaView from "@/components/cadus/AsthmaView";
-import MilestonesView from "@/components/cadus/MilestonesView";
-import ContraceptionView from "@/components/cadus/ContraceptionView";
-import PalliativeView from "@/components/cadus/PalliativeView";
-import ImagingRulesView from "@/components/cadus/ImagingRulesView";
-import IvFluidsView from "@/components/cadus/IvFluidsView";
-import BurnsView from "@/components/cadus/BurnsView";
-import JaundiceView from "@/components/cadus/JaundiceView";
-import StrokeView from "@/components/cadus/StrokeView";
-import SepsisDkaView from "@/components/cadus/SepsisDkaView";
-import AlcoholView from "@/components/cadus/AlcoholView";
-import DiabeticFootView from "@/components/cadus/DiabeticFootView";
-import HeatView from "@/components/cadus/HeatView";
-import WoundView from "@/components/cadus/WoundView";
-import AnticoagView from "@/components/cadus/AnticoagView";
-import TropicalFeverView from "@/components/cadus/TropicalFeverView";
-import ElderlyView from "@/components/cadus/ElderlyView";
-import QuitSmokingView from "@/components/cadus/QuitSmokingView";
-import CroupView from "@/components/cadus/CroupView";
-import RheumaticView from "@/components/cadus/RheumaticView";
-import WeightView from "@/components/cadus/WeightView";
-import HypoView from "@/components/cadus/HypoView";
-import GdmView from "@/components/cadus/GdmView";
-import InfantFeedingView from "@/components/cadus/InfantFeedingView";
-import AntidepView from "@/components/cadus/AntidepView";
-import EyeEntView from "@/components/cadus/EyeEntView";
-import VteView from "@/components/cadus/VteView";
-import HeadacheView from "@/components/cadus/HeadacheView";
-import SkinView from "@/components/cadus/SkinView";
-import GoutView from "@/components/cadus/GoutView";
-import PneumoniaUtiView from "@/components/cadus/PneumoniaUtiView";
-import CkdView from "@/components/cadus/CkdView";
-import PretermView from "@/components/cadus/PretermView";
-import EpilepsyView from "@/components/cadus/EpilepsyView";
-import ChildFeverView from "@/components/cadus/ChildFeverView";
-import CirrhosisView from "@/components/cadus/CirrhosisView";
-import DementiaView from "@/components/cadus/DementiaView";
-import HtnEmergencyView from "@/components/cadus/HtnEmergencyView";
-import UgibView from "@/components/cadus/UgibView";
-import AkiView from "@/components/cadus/AkiView";
-import HepatitisView from "@/components/cadus/HepatitisView";
-import NrpView from "@/components/cadus/NrpView";
-import PainView from "@/components/cadus/PainView";
-import BoneView from "@/components/cadus/BoneView";
-import HrtView from "@/components/cadus/HrtView";
-import SyncopeView from "@/components/cadus/SyncopeView";
-import HfView from "@/components/cadus/HfView";
-import AfView from "@/components/cadus/AfView";
-import LipidsView from "@/components/cadus/LipidsView";
-import PeDvtView from "@/components/cadus/PeDvtView";
-import HivView from "@/components/cadus/HivView";
-import PreEclampsiaView from "@/components/cadus/PreEclampsiaView";
-import SleepView from "@/components/cadus/SleepView";
-import UrticariaView from "@/components/cadus/UrticariaView";
-import AnaphylaxisView from "@/components/cadus/AnaphylaxisView";
-import TraumaView from "@/components/cadus/TraumaView";
-import ToxView from "@/components/cadus/ToxView";
-import PtxView from "@/components/cadus/PtxView";
-import FluidsView from "@/components/cadus/FluidsView";
-import SteroidView from "@/components/cadus/SteroidView";
-import RefeedView from "@/components/cadus/RefeedView";
-import BackPainView from "@/components/cadus/BackPainView";
-import AcsView from "@/components/cadus/AcsView";
-import ChildFluidsView from "@/components/cadus/ChildFluidsView";
-import AgitationView from "@/components/cadus/AgitationView";
-import SuicideView from "@/components/cadus/SuicideView";
-import HeadInjuryView from "@/components/cadus/HeadInjuryView";
-import AbdomenView from "@/components/cadus/AbdomenView";
-import FneutroView from "@/components/cadus/FneutroView";
-import MeningitisView from "@/components/cadus/MeningitisView";
-import StatusEpiView from "@/components/cadus/StatusEpiView";
-import SodiumView from "@/components/cadus/SodiumView";
-import AttackView from "@/components/cadus/AttackView";
-import BridgingView from "@/components/cadus/BridgingView";
-import OncoEmergView from "@/components/cadus/OncoEmergView";
-import SpirometryView from "@/components/cadus/SpirometryView";
-import ThyroidStormView from "@/components/cadus/ThyroidStormView";
-import SickleView from "@/components/cadus/SickleView";
-import HyperkView from "@/components/cadus/HyperkView";
-import PancreatitisView from "@/components/cadus/PancreatitisView";
-import PaedSepsisView from "@/components/cadus/PaedSepsisView";
-import AirwayView from "@/components/cadus/AirwayView";
-import RhabdoView from "@/components/cadus/RhabdoView";
-import HypothermiaView from "@/components/cadus/HypothermiaView";
-import PaedDkaView from "@/components/cadus/PaedDkaView";
-import RetentionView from "@/components/cadus/RetentionView";
-import PregHtnView from "@/components/cadus/PregHtnView";
-import StonesView from "@/components/cadus/StonesView";
-import PaedAbxView from "@/components/cadus/PaedAbxView";
-import OpioidView from "@/components/cadus/OpioidView";
-import CellulitisView from "@/components/cadus/CellulitisView";
-import KawasakiView from "@/components/cadus/KawasakiView";
-import EndocarditisView from "@/components/cadus/EndocarditisView";
-import BellView from "@/components/cadus/BellView";
-import PphView from "@/components/cadus/PphView";
-import NeoSepsisView from "@/components/cadus/NeoSepsisView";
-import RenalAbxView from "@/components/cadus/RenalAbxView";
-import BrainDeathView from "@/components/cadus/BrainDeathView";
-import SepticJointView from "@/components/cadus/SepticJointView";
-import NeoHypoView from "@/components/cadus/NeoHypoView";
-import AltitudeView from "@/components/cadus/AltitudeView";
-import SerotoninView from "@/components/cadus/SerotoninView";
-import PaedAsthmaView from "@/components/cadus/PaedAsthmaView";
-import DkaHhsView from "@/components/cadus/DkaHhsView";
-import AntenatalSteroidView from "@/components/cadus/AntenatalSteroidView";
-import IronB12View from "@/components/cadus/IronB12View";
-import TdmView from "@/components/cadus/TdmView";
-import ContrastView from "@/components/cadus/ContrastView";
-import PressureView from "@/components/cadus/PressureView";
-import HyperemesisView from "@/components/cadus/HyperemesisView";
-import BronchiolitisView from "@/components/cadus/BronchiolitisView";
-import EctopicView from "@/components/cadus/EctopicView";
-import FebrileSeizureView from "@/components/cadus/FebrileSeizureView";
-import TorsionView from "@/components/cadus/TorsionView";
-import MyastheniaGbsView from "@/components/cadus/MyastheniaGbsView";
-import HypercalcaemiaView from "@/components/cadus/HypercalcaemiaView";
-import DeprescribingView from "@/components/cadus/DeprescribingView";
-import LimbIschaemiaView from "@/components/cadus/LimbIschaemiaView";
-import DeliriumView from "@/components/cadus/DeliriumView";
-import ChildRashView from "@/components/cadus/ChildRashView";
-import SoreThroatView from "@/components/cadus/SoreThroatView";
-import FallsHipView from "@/components/cadus/FallsHipView";
-import VertigoView from "@/components/cadus/VertigoView";
-import PulmOedemaView from "@/components/cadus/PulmOedemaView";
-import AclsView from "@/components/cadus/AclsView";
-import ScorpionView from "@/components/cadus/ScorpionView";
-import PericarditisView from "@/components/cadus/PericarditisView";
-import PcosView from "@/components/cadus/PcosView";
-import EpdsView from "@/components/cadus/EpdsView";
-import RedEyeView from "@/components/cadus/RedEyeView";
-import BiliaryView from "@/components/cadus/BiliaryView";
-import TiradsView from "@/components/cadus/TiradsView";
-import PregVteView from "@/components/cadus/PregVteView";
-import NephroticView from "@/components/cadus/NephroticView";
-import LeprosyView from "@/components/cadus/LeprosyView";
-import TineaView from "@/components/cadus/TineaView";
-import AcneView from "@/components/cadus/AcneView";
-import TetanusView from "@/components/cadus/TetanusView";
-import CervicalScreenView from "@/components/cadus/CervicalScreenView";
-import LabourGuideView from "@/components/cadus/LabourGuideView";
-import DmardView from "@/components/cadus/DmardView";
-import TlsView from "@/components/cadus/TlsView";
-import BphView from "@/components/cadus/BphView";
-import HaemorrhoidsView from "@/components/cadus/HaemorrhoidsView";
-import PsoriasisView from "@/components/cadus/PsoriasisView";
-import HepatitisAeView from "@/components/cadus/HepatitisAeView";
 import CrewVersionsDialog from "@/components/cadus/CrewVersionsDialog";
-import CrewTimerView from "@/components/cadus/CrewTimerView";
 import CrewRecapDialog from "@/components/cadus/CrewRecapDialog";
 /* Update 44: newer tools load on demand to keep the first load small. */
 const LungNoduleView = lazy(() => import("@/components/cadus/LungNoduleView"));
@@ -339,34 +140,291 @@ const CrewVsView = lazy(() => import("@/components/cadus/CrewVsView"));
 const CrewDdxView = lazy(() => import("@/components/cadus/CrewDdxView"));
 const CrewLectureView = lazy(() => import("@/components/cadus/CrewLectureView"));
 const CrewInboxView = lazy(() => import("@/components/cadus/CrewInboxView"));
+const JaundiceView = lazy(() => import("@/components/cadus/JaundiceView"));
+const ProteinuriaView = lazy(() => import("@/components/cadus/ProteinuriaView"));
+const SplenomegalyView = lazy(() => import("@/components/cadus/SplenomegalyView"));
+const PancytopeniaView = lazy(() => import("@/components/cadus/PancytopeniaView"));
+const VaricoseView = lazy(() => import("@/components/cadus/VaricoseView"));
+const OtitisExternaView = lazy(() => import("@/components/cadus/OtitisExternaView"));
+const DryEyeView = lazy(() => import("@/components/cadus/DryEyeView"));
+const PerianalView = lazy(() => import("@/components/cadus/PerianalView"));
+const NeckPainView = lazy(() => import("@/components/cadus/NeckPainView"));
+const HyperhidrosisView = lazy(() => import("@/components/cadus/HyperhidrosisView"));
+const SebDermView = lazy(() => import("@/components/cadus/SebDermView"));
+const HalitosisView = lazy(() => import("@/components/cadus/HalitosisView"));
+const CrewSmartView = lazy(() => import("@/components/cadus/CrewSmartView"));
+const CrewRapidView = lazy(() => import("@/components/cadus/CrewRapidView"));
+const CrewLevelsView = lazy(() => import("@/components/cadus/CrewLevelsView"));
+const CrewSyllabusView = lazy(() => import("@/components/cadus/CrewSyllabusView"));
+// Update 49: every tool and Crew page loads on demand (inside the view Suspense below).
+const AudioLibraryView = lazy(() => import("@/components/cadus/AudioLibraryView"));
+const RxWriterView = lazy(() => import("@/components/cadus/RxWriterView"));
+const LabTrendsView = lazy(() => import("@/components/cadus/LabTrendsView"));
+const DailyCaseView = lazy(() => import("@/components/cadus/DailyCaseView"));
+const DocWriterView = lazy(() => import("@/components/cadus/DocWriterView"));
+const MnemonicView = lazy(() => import("@/components/cadus/MnemonicView"));
+const GenericFinderView = lazy(() => import("@/components/cadus/GenericFinderView"));
+const OpdQueueView = lazy(() => import("@/components/cadus/OpdQueueView"));
+const ImageQuizView = lazy(() => import("@/components/cadus/ImageQuizView"));
+const DoseCardView = lazy(() => import("@/components/cadus/DoseCardView"));
+const OnCallView = lazy(() => import("@/components/cadus/OnCallView"));
+const JournalClubView = lazy(() => import("@/components/cadus/JournalClubView"));
+const StatsChooserView = lazy(() => import("@/components/cadus/StatsChooserView"));
+const RosterView = lazy(() => import("@/components/cadus/RosterView"));
+const VoiceRoundView = lazy(() => import("@/components/cadus/VoiceRoundView"));
+const RevNotesView = lazy(() => import("@/components/cadus/RevNotesView"));
+const AnalyticsView = lazy(() => import("@/components/cadus/AnalyticsView"));
+const PreopView = lazy(() => import("@/components/cadus/PreopView"));
+const PatientMessageView = lazy(() => import("@/components/cadus/PatientMessageView"));
+const PregLactView = lazy(() => import("@/components/cadus/PregLactView"));
+const PillChartView = lazy(() => import("@/components/cadus/PillChartView"));
+const VaccinesView = lazy(() => import("@/components/cadus/VaccinesView"));
+const DietView = lazy(() => import("@/components/cadus/DietView"));
+const IcdView = lazy(() => import("@/components/cadus/IcdView"));
+const ConsentView = lazy(() => import("@/components/cadus/ConsentView"));
+const InsulinView = lazy(() => import("@/components/cadus/InsulinView"));
+const TransfusionView = lazy(() => import("@/components/cadus/TransfusionView"));
+const MlcView = lazy(() => import("@/components/cadus/MlcView"));
+const TbView = lazy(() => import("@/components/cadus/TbView"));
+const AntenatalView = lazy(() => import("@/components/cadus/AntenatalView"));
+const VentilatorView = lazy(() => import("@/components/cadus/VentilatorView"));
+const TeleconsultView = lazy(() => import("@/components/cadus/TeleconsultView"));
+const BillsView = lazy(() => import("@/components/cadus/BillsView"));
+const AnimalBiteView = lazy(() => import("@/components/cadus/AnimalBiteView"));
+const NeedlestickView = lazy(() => import("@/components/cadus/NeedlestickView"));
+const ImnciView = lazy(() => import("@/components/cadus/ImnciView"));
+const CmeView = lazy(() => import("@/components/cadus/CmeView"));
+const AppointmentsView = lazy(() => import("@/components/cadus/AppointmentsView"));
+const StockView = lazy(() => import("@/components/cadus/StockView"));
+const ScreeningView = lazy(() => import("@/components/cadus/ScreeningView"));
+const KidneyDoseView = lazy(() => import("@/components/cadus/KidneyDoseView"));
+const SamView = lazy(() => import("@/components/cadus/SamView"));
+const ContactsView = lazy(() => import("@/components/cadus/ContactsView"));
+const AccountsView = lazy(() => import("@/components/cadus/AccountsView"));
+const ThyroidView = lazy(() => import("@/components/cadus/ThyroidView"));
+const BackupView = lazy(() => import("@/components/cadus/BackupView"));
+const NcdView = lazy(() => import("@/components/cadus/NcdView"));
+const AnaemiaView = lazy(() => import("@/components/cadus/AnaemiaView"));
+const DengueView = lazy(() => import("@/components/cadus/DengueView"));
+const ElectrolytesView = lazy(() => import("@/components/cadus/ElectrolytesView"));
+const ObsEmergencyView = lazy(() => import("@/components/cadus/ObsEmergencyView"));
+const InfectionView = lazy(() => import("@/components/cadus/InfectionView"));
+const AsthmaView = lazy(() => import("@/components/cadus/AsthmaView"));
+const MilestonesView = lazy(() => import("@/components/cadus/MilestonesView"));
+const ContraceptionView = lazy(() => import("@/components/cadus/ContraceptionView"));
+const PalliativeView = lazy(() => import("@/components/cadus/PalliativeView"));
+const ImagingRulesView = lazy(() => import("@/components/cadus/ImagingRulesView"));
+const IvFluidsView = lazy(() => import("@/components/cadus/IvFluidsView"));
+const BurnsView = lazy(() => import("@/components/cadus/BurnsView"));
+const JaundiceWorkupView = lazy(() => import("@/components/cadus/JaundiceWorkupView"));
+const StrokeView = lazy(() => import("@/components/cadus/StrokeView"));
+const SepsisDkaView = lazy(() => import("@/components/cadus/SepsisDkaView"));
+const AlcoholView = lazy(() => import("@/components/cadus/AlcoholView"));
+const DiabeticFootView = lazy(() => import("@/components/cadus/DiabeticFootView"));
+const HeatView = lazy(() => import("@/components/cadus/HeatView"));
+const WoundView = lazy(() => import("@/components/cadus/WoundView"));
+const AnticoagView = lazy(() => import("@/components/cadus/AnticoagView"));
+const TropicalFeverView = lazy(() => import("@/components/cadus/TropicalFeverView"));
+const ElderlyView = lazy(() => import("@/components/cadus/ElderlyView"));
+const QuitSmokingView = lazy(() => import("@/components/cadus/QuitSmokingView"));
+const CroupView = lazy(() => import("@/components/cadus/CroupView"));
+const RheumaticView = lazy(() => import("@/components/cadus/RheumaticView"));
+const WeightView = lazy(() => import("@/components/cadus/WeightView"));
+const HypoView = lazy(() => import("@/components/cadus/HypoView"));
+const GdmView = lazy(() => import("@/components/cadus/GdmView"));
+const InfantFeedingView = lazy(() => import("@/components/cadus/InfantFeedingView"));
+const AntidepView = lazy(() => import("@/components/cadus/AntidepView"));
+const EyeEntView = lazy(() => import("@/components/cadus/EyeEntView"));
+const VteView = lazy(() => import("@/components/cadus/VteView"));
+const HeadacheView = lazy(() => import("@/components/cadus/HeadacheView"));
+const SkinView = lazy(() => import("@/components/cadus/SkinView"));
+const GoutView = lazy(() => import("@/components/cadus/GoutView"));
+const PneumoniaUtiView = lazy(() => import("@/components/cadus/PneumoniaUtiView"));
+const CkdView = lazy(() => import("@/components/cadus/CkdView"));
+const PretermView = lazy(() => import("@/components/cadus/PretermView"));
+const EpilepsyView = lazy(() => import("@/components/cadus/EpilepsyView"));
+const ChildFeverView = lazy(() => import("@/components/cadus/ChildFeverView"));
+const CirrhosisView = lazy(() => import("@/components/cadus/CirrhosisView"));
+const DementiaView = lazy(() => import("@/components/cadus/DementiaView"));
+const HtnEmergencyView = lazy(() => import("@/components/cadus/HtnEmergencyView"));
+const UgibView = lazy(() => import("@/components/cadus/UgibView"));
+const AkiView = lazy(() => import("@/components/cadus/AkiView"));
+const HepatitisView = lazy(() => import("@/components/cadus/HepatitisView"));
+const NrpView = lazy(() => import("@/components/cadus/NrpView"));
+const PainView = lazy(() => import("@/components/cadus/PainView"));
+const BoneView = lazy(() => import("@/components/cadus/BoneView"));
+const HrtView = lazy(() => import("@/components/cadus/HrtView"));
+const SyncopeView = lazy(() => import("@/components/cadus/SyncopeView"));
+const HfView = lazy(() => import("@/components/cadus/HfView"));
+const AfView = lazy(() => import("@/components/cadus/AfView"));
+const LipidsView = lazy(() => import("@/components/cadus/LipidsView"));
+const PeDvtView = lazy(() => import("@/components/cadus/PeDvtView"));
+const HivView = lazy(() => import("@/components/cadus/HivView"));
+const PreEclampsiaView = lazy(() => import("@/components/cadus/PreEclampsiaView"));
+const SleepView = lazy(() => import("@/components/cadus/SleepView"));
+const UrticariaView = lazy(() => import("@/components/cadus/UrticariaView"));
+const AnaphylaxisView = lazy(() => import("@/components/cadus/AnaphylaxisView"));
+const TraumaView = lazy(() => import("@/components/cadus/TraumaView"));
+const ToxView = lazy(() => import("@/components/cadus/ToxView"));
+const PtxView = lazy(() => import("@/components/cadus/PtxView"));
+const FluidsView = lazy(() => import("@/components/cadus/FluidsView"));
+const SteroidView = lazy(() => import("@/components/cadus/SteroidView"));
+const RefeedView = lazy(() => import("@/components/cadus/RefeedView"));
+const BackPainView = lazy(() => import("@/components/cadus/BackPainView"));
+const AcsView = lazy(() => import("@/components/cadus/AcsView"));
+const ChildFluidsView = lazy(() => import("@/components/cadus/ChildFluidsView"));
+const AgitationView = lazy(() => import("@/components/cadus/AgitationView"));
+const SuicideView = lazy(() => import("@/components/cadus/SuicideView"));
+const HeadInjuryView = lazy(() => import("@/components/cadus/HeadInjuryView"));
+const AbdomenView = lazy(() => import("@/components/cadus/AbdomenView"));
+const FneutroView = lazy(() => import("@/components/cadus/FneutroView"));
+const MeningitisView = lazy(() => import("@/components/cadus/MeningitisView"));
+const StatusEpiView = lazy(() => import("@/components/cadus/StatusEpiView"));
+const SodiumView = lazy(() => import("@/components/cadus/SodiumView"));
+const AttackView = lazy(() => import("@/components/cadus/AttackView"));
+const BridgingView = lazy(() => import("@/components/cadus/BridgingView"));
+const OncoEmergView = lazy(() => import("@/components/cadus/OncoEmergView"));
+const SpirometryView = lazy(() => import("@/components/cadus/SpirometryView"));
+const ThyroidStormView = lazy(() => import("@/components/cadus/ThyroidStormView"));
+const SickleView = lazy(() => import("@/components/cadus/SickleView"));
+const HyperkView = lazy(() => import("@/components/cadus/HyperkView"));
+const PancreatitisView = lazy(() => import("@/components/cadus/PancreatitisView"));
+const PaedSepsisView = lazy(() => import("@/components/cadus/PaedSepsisView"));
+const AirwayView = lazy(() => import("@/components/cadus/AirwayView"));
+const RhabdoView = lazy(() => import("@/components/cadus/RhabdoView"));
+const HypothermiaView = lazy(() => import("@/components/cadus/HypothermiaView"));
+const PaedDkaView = lazy(() => import("@/components/cadus/PaedDkaView"));
+const RetentionView = lazy(() => import("@/components/cadus/RetentionView"));
+const PregHtnView = lazy(() => import("@/components/cadus/PregHtnView"));
+const StonesView = lazy(() => import("@/components/cadus/StonesView"));
+const PaedAbxView = lazy(() => import("@/components/cadus/PaedAbxView"));
+const OpioidView = lazy(() => import("@/components/cadus/OpioidView"));
+const CellulitisView = lazy(() => import("@/components/cadus/CellulitisView"));
+const KawasakiView = lazy(() => import("@/components/cadus/KawasakiView"));
+const EndocarditisView = lazy(() => import("@/components/cadus/EndocarditisView"));
+const BellView = lazy(() => import("@/components/cadus/BellView"));
+const PphView = lazy(() => import("@/components/cadus/PphView"));
+const NeoSepsisView = lazy(() => import("@/components/cadus/NeoSepsisView"));
+const RenalAbxView = lazy(() => import("@/components/cadus/RenalAbxView"));
+const BrainDeathView = lazy(() => import("@/components/cadus/BrainDeathView"));
+const SepticJointView = lazy(() => import("@/components/cadus/SepticJointView"));
+const NeoHypoView = lazy(() => import("@/components/cadus/NeoHypoView"));
+const AltitudeView = lazy(() => import("@/components/cadus/AltitudeView"));
+const SerotoninView = lazy(() => import("@/components/cadus/SerotoninView"));
+const PaedAsthmaView = lazy(() => import("@/components/cadus/PaedAsthmaView"));
+const DkaHhsView = lazy(() => import("@/components/cadus/DkaHhsView"));
+const AntenatalSteroidView = lazy(() => import("@/components/cadus/AntenatalSteroidView"));
+const IronB12View = lazy(() => import("@/components/cadus/IronB12View"));
+const TdmView = lazy(() => import("@/components/cadus/TdmView"));
+const ContrastView = lazy(() => import("@/components/cadus/ContrastView"));
+const PressureView = lazy(() => import("@/components/cadus/PressureView"));
+const HyperemesisView = lazy(() => import("@/components/cadus/HyperemesisView"));
+const BronchiolitisView = lazy(() => import("@/components/cadus/BronchiolitisView"));
+const EctopicView = lazy(() => import("@/components/cadus/EctopicView"));
+const FebrileSeizureView = lazy(() => import("@/components/cadus/FebrileSeizureView"));
+const TorsionView = lazy(() => import("@/components/cadus/TorsionView"));
+const MyastheniaGbsView = lazy(() => import("@/components/cadus/MyastheniaGbsView"));
+const HypercalcaemiaView = lazy(() => import("@/components/cadus/HypercalcaemiaView"));
+const DeprescribingView = lazy(() => import("@/components/cadus/DeprescribingView"));
+const LimbIschaemiaView = lazy(() => import("@/components/cadus/LimbIschaemiaView"));
+const DeliriumView = lazy(() => import("@/components/cadus/DeliriumView"));
+const ChildRashView = lazy(() => import("@/components/cadus/ChildRashView"));
+const SoreThroatView = lazy(() => import("@/components/cadus/SoreThroatView"));
+const FallsHipView = lazy(() => import("@/components/cadus/FallsHipView"));
+const VertigoView = lazy(() => import("@/components/cadus/VertigoView"));
+const PulmOedemaView = lazy(() => import("@/components/cadus/PulmOedemaView"));
+const AclsView = lazy(() => import("@/components/cadus/AclsView"));
+const ScorpionView = lazy(() => import("@/components/cadus/ScorpionView"));
+const PericarditisView = lazy(() => import("@/components/cadus/PericarditisView"));
+const PcosView = lazy(() => import("@/components/cadus/PcosView"));
+const EpdsView = lazy(() => import("@/components/cadus/EpdsView"));
+const RedEyeView = lazy(() => import("@/components/cadus/RedEyeView"));
+const BiliaryView = lazy(() => import("@/components/cadus/BiliaryView"));
+const TiradsView = lazy(() => import("@/components/cadus/TiradsView"));
+const PregVteView = lazy(() => import("@/components/cadus/PregVteView"));
+const NephroticView = lazy(() => import("@/components/cadus/NephroticView"));
+const LeprosyView = lazy(() => import("@/components/cadus/LeprosyView"));
+const TineaView = lazy(() => import("@/components/cadus/TineaView"));
+const AcneView = lazy(() => import("@/components/cadus/AcneView"));
+const TetanusView = lazy(() => import("@/components/cadus/TetanusView"));
+const CervicalScreenView = lazy(() => import("@/components/cadus/CervicalScreenView"));
+const LabourGuideView = lazy(() => import("@/components/cadus/LabourGuideView"));
+const DmardView = lazy(() => import("@/components/cadus/DmardView"));
+const TlsView = lazy(() => import("@/components/cadus/TlsView"));
+const BphView = lazy(() => import("@/components/cadus/BphView"));
+const HaemorrhoidsView = lazy(() => import("@/components/cadus/HaemorrhoidsView"));
+const PsoriasisView = lazy(() => import("@/components/cadus/PsoriasisView"));
+const HepatitisAeView = lazy(() => import("@/components/cadus/HepatitisAeView"));
+const CrewTimerView = lazy(() => import("@/components/cadus/CrewTimerView"));
+const CrewReadingView = lazy(() => import("@/components/cadus/CrewReadingView"));
+const CrewMistakesView = lazy(() => import("@/components/cadus/CrewMistakesView"));
+const CrewExamView = lazy(() => import("@/components/cadus/CrewExamView"));
+const CrewSchedulesView = lazy(() => import("@/components/cadus/CrewSchedulesView"));
+const CrewWorkspacesView = lazy(() => import("@/components/cadus/CrewWorkspacesView"));
+const CrewDigestView = lazy(() => import("@/components/cadus/CrewDigestView"));
+const CrewCompareView = lazy(() => import("@/components/cadus/CrewCompareView"));
+const CrewVoiceView = lazy(() => import("@/components/cadus/CrewVoiceView"));
+const CrewTemplatesView = lazy(() => import("@/components/cadus/CrewTemplatesView"));
+const CrewTimelineView = lazy(() => import("@/components/cadus/CrewTimelineView"));
+const CrewNotesView = lazy(() => import("@/components/cadus/CrewNotesView"));
+const CrewCheckinsView = lazy(() => import("@/components/cadus/CrewCheckinsView"));
+const CrewStatsView = lazy(() => import("@/components/cadus/CrewStatsView"));
+const CrewRoomsView = lazy(() => import("@/components/cadus/CrewRoomsView"));
+const CrewDrillView = lazy(() => import("@/components/cadus/CrewDrillView"));
+const CrewQuizView = lazy(() => import("@/components/cadus/CrewQuizView"));
+const CrewCaseRoundView = lazy(() => import("@/components/cadus/CrewCaseRoundView"));
+const CrewPacks = lazy(() => import("@/components/cadus/CrewPacks"));
+const SickDayView = lazy(() => import("@/components/cadus/SickDayView"));
+const LabRangesView = lazy(() => import("@/components/cadus/LabRangesView"));
+const CrewSecondOpinionView = lazy(() => import("@/components/cadus/CrewSecondOpinionView"));
+const CrewHuddleView = lazy(() => import("@/components/cadus/CrewHuddleView"));
+const CrewDebateView = lazy(() => import("@/components/cadus/CrewDebateView"));
+const CrewPlaybookView = lazy(() => import("@/components/cadus/CrewPlaybookView"));
+const CrewBuilder = lazy(() => import("@/components/cadus/CrewBuilder"));
+const PodcastView = lazy(() => import("@/components/cadus/PodcastView"));
+const TranslatorView = lazy(() => import("@/components/cadus/TranslatorView"));
+const PathwaysView = lazy(() => import("@/components/cadus/PathwaysView"));
+const FlashcardsView = lazy(() => import("@/components/cadus/FlashcardsView"));
+const CompareView = lazy(() => import("@/components/cadus/CompareView"));
+const MedRecView = lazy(() => import("@/components/cadus/MedRecView"));
+const PresentCoachView = lazy(() => import("@/components/cadus/PresentCoachView"));
+const TodayView = lazy(() => import("@/components/cadus/TodayView"));
+const DischargeView = lazy(() => import("@/components/cadus/DischargeView"));
+const HandoverView = lazy(() => import("@/components/cadus/HandoverView"));
+const DifferentialView = lazy(() => import("@/components/cadus/DifferentialView"));
+const StudyPlanView = lazy(() => import("@/components/cadus/StudyPlanView"));
+const EcgView = lazy(() => import("@/components/cadus/EcgView"));
+const AntibioticView = lazy(() => import("@/components/cadus/AntibioticView"));
+const ProcedureView = lazy(() => import("@/components/cadus/ProcedureView"));
+const PoisonView = lazy(() => import("@/components/cadus/PoisonView"));
+const InfusionView = lazy(() => import("@/components/cadus/InfusionView"));
+const ConvertView = lazy(() => import("@/components/cadus/ConvertView"));
+const AbgView = lazy(() => import("@/components/cadus/AbgView"));
+const LogbookView = lazy(() => import("@/components/cadus/LogbookView"));
+const FollowUpView = lazy(() => import("@/components/cadus/FollowUpView"));
+const CaseView = lazy(() => import("@/components/cadus/CaseView"));
+const LearnView = lazy(() => import("@/components/cadus/LearnView"));
+const DrugsView = lazy(() => import("@/components/cadus/DrugsView"));
+const WardView = lazy(() => import("@/components/cadus/WardView"));
+const ScribeView = lazy(() => import("@/components/cadus/ScribeView"));
+const EmergencyView = lazy(() => import("@/components/cadus/EmergencyView"));
+const PaedsView = lazy(() => import("@/components/cadus/PaedsView"));
+const LeafletsView = lazy(() => import("@/components/cadus/LeafletsView"));
+const CaseSimView = lazy(() => import("@/components/cadus/CaseSimView"));
+const RxCheckView = lazy(() => import("@/components/cadus/RxCheckView"));
+const GuidelineWatchView = lazy(() => import("@/components/cadus/GuidelineWatchView"));
+const ReportExplainView = lazy(() => import("@/components/cadus/ReportExplainView"));
+const SafetyView = lazy(() => import("@/components/cadus/SafetyView"));
+const HistoryView = lazy(() => import("@/components/cadus/HistoryView"));
+const PrivacyView = lazy(() => import("@/components/cadus/PrivacyView"));
 const lazyFallback = <p className="cx-set-hint cx-lazy" role="status">Loading…</p>;
-import CrewReadingView from "@/components/cadus/CrewReadingView";
 import CrewPlainDialog from "@/components/cadus/CrewPlainDialog";
-import CrewMistakesView from "@/components/cadus/CrewMistakesView";
-import CrewExamView from "@/components/cadus/CrewExamView";
 import CrewTranslateDialog from "@/components/cadus/CrewTranslateDialog";
 import CrewShareCardDialog from "@/components/cadus/CrewShareCardDialog";
-import CrewSchedulesView from "@/components/cadus/CrewSchedulesView";
-import CrewWorkspacesView from "@/components/cadus/CrewWorkspacesView";
 import CrewFactCheckDialog from "@/components/cadus/CrewFactCheckDialog";
-import CrewDigestView from "@/components/cadus/CrewDigestView";
-import CrewCompareView from "@/components/cadus/CrewCompareView";
-import CrewVoiceView from "@/components/cadus/CrewVoiceView";
-import CrewTemplatesView from "@/components/cadus/CrewTemplatesView";
-import CrewTimelineView from "@/components/cadus/CrewTimelineView";
 import CrewHandoffDialog from "@/components/cadus/CrewHandoffDialog";
-import CrewNotesView from "@/components/cadus/CrewNotesView";
-import CrewCheckinsView from "@/components/cadus/CrewCheckinsView";
-import CrewStatsView from "@/components/cadus/CrewStatsView";
-import CrewRoomsView from "@/components/cadus/CrewRoomsView";
-import CrewDrillView from "@/components/cadus/CrewDrillView";
 import CrewImproveDialog from "@/components/cadus/CrewImproveDialog";
-import CrewQuizView from "@/components/cadus/CrewQuizView";
-import CrewCaseRoundView from "@/components/cadus/CrewCaseRoundView";
 import CrewCardSettings from "@/components/cadus/CrewCardSettings";
-import CrewPacks from "@/components/cadus/CrewPacks";
-import SickDayView from "@/components/cadus/SickDayView";
-import LabRangesView from "@/components/cadus/LabRangesView";
 import { backupDue } from "@/lib/cadus/clinic26";
 import PersonalSettings from "@/components/cadus/PersonalSettings";
 import { CADUS_CHAT_CSS } from "@/components/cadus/cadus-chat-styles";
@@ -391,37 +449,11 @@ import {
   readNotes, saveNotes, addNote, readCheckins, saveCheckins, dueCheckins, dateKey, readDrill, bestStreak, readCaseRounds, readRooms, readQuizResults, type CrewNotes, type CheckIns, type CrewStats,
   readMemory, saveMemory, addFact, rememberFrom as crewRememberFrom, readRatings, saveRatings, rateCrew, unrateCrew, ratingSummary, type CrewFact, type CrewRating,
 } from "@/lib/cadus/crew";
-import CrewSecondOpinionView from "@/components/cadus/CrewSecondOpinionView";
 import CrewKnowledge from "@/components/cadus/CrewKnowledge";
 import { CrewImportDialog, CrewPasteImport, CrewShareDialog } from "@/components/cadus/CrewShare";
-import CrewHuddleView from "@/components/cadus/CrewHuddleView";
-import CrewDebateView from "@/components/cadus/CrewDebateView";
-import CrewPlaybookView from "@/components/cadus/CrewPlaybookView";
-import CrewBuilder from "@/components/cadus/CrewBuilder";
-import PodcastView from "@/components/cadus/PodcastView";
 import { VoiceSettings } from "@/components/cadus/AudioParts";
-import { CADUS_CLINIC20_CSS, CADUS_CLINIC21_CSS, CADUS_CLINIC22_CSS, CADUS_CLINIC23_CSS, CADUS_CLINIC24_CSS, CADUS_CLINIC25_CSS, CADUS_CLINIC26_CSS, CADUS_CLINIC27_CSS, CADUS_CLINIC28_CSS, CADUS_CLINIC29_CSS, CADUS_CLINIC30_CSS, CADUS_CLINIC31_CSS, CADUS_CLINIC32_CSS, CADUS_CLINIC34_CSS, CADUS_CLINIC35_CSS, CADUS_CLINIC36_CSS, CADUS_CLINIC37_CSS, CADUS_CLINIC38_CSS, CADUS_CLINIC39_CSS, CADUS_CLINIC40_CSS, CADUS_CLINIC41_CSS, CADUS_CLINIC42_CSS, CADUS_CLINIC43_CSS, CADUS_CLINIC44_CSS, CADUS_CLINIC45_CSS, CADUS_CLINIC46_CSS, CADUS_CLINIC47_CSS, CADUS_CLINIC48_CSS, CADUS_CREW_CSS, CADUS_CREWPLUS_CSS, CADUS_VOICE_CSS } from "@/components/cadus/cadus-crew-styles";
-import TranslatorView from "@/components/cadus/TranslatorView";
-import PathwaysView from "@/components/cadus/PathwaysView";
-import FlashcardsView from "@/components/cadus/FlashcardsView";
-import CompareView from "@/components/cadus/CompareView";
+import { CADUS_CLINIC20_CSS, CADUS_CLINIC21_CSS, CADUS_CLINIC22_CSS, CADUS_CLINIC23_CSS, CADUS_CLINIC24_CSS, CADUS_CLINIC25_CSS, CADUS_CLINIC26_CSS, CADUS_CLINIC27_CSS, CADUS_CLINIC28_CSS, CADUS_CLINIC29_CSS, CADUS_CLINIC30_CSS, CADUS_CLINIC31_CSS, CADUS_CLINIC32_CSS, CADUS_CLINIC34_CSS, CADUS_CLINIC35_CSS, CADUS_CLINIC36_CSS, CADUS_CLINIC37_CSS, CADUS_CLINIC38_CSS, CADUS_CLINIC39_CSS, CADUS_CLINIC40_CSS, CADUS_CLINIC41_CSS, CADUS_CLINIC42_CSS, CADUS_CLINIC43_CSS, CADUS_CLINIC44_CSS, CADUS_CLINIC45_CSS, CADUS_CLINIC46_CSS, CADUS_CLINIC47_CSS, CADUS_CLINIC48_CSS, CADUS_CLINIC49_CSS, CADUS_CREW_CSS, CADUS_CREWPLUS_CSS, CADUS_VOICE_CSS } from "@/components/cadus/cadus-crew-styles";
 import { CADUS_STUDIO_CSS, CADUS_TODAY_CSS, CADUS_WARD_CSS, CADUS_BEDSIDE_CSS } from "@/components/cadus/cadus-studio-styles";
-import MedRecView from "@/components/cadus/MedRecView";
-import PresentCoachView from "@/components/cadus/PresentCoachView";
-import TodayView from "@/components/cadus/TodayView";
-import DischargeView from "@/components/cadus/DischargeView";
-import HandoverView from "@/components/cadus/HandoverView";
-import DifferentialView from "@/components/cadus/DifferentialView";
-import StudyPlanView from "@/components/cadus/StudyPlanView";
-import EcgView from "@/components/cadus/EcgView";
-import AntibioticView from "@/components/cadus/AntibioticView";
-import ProcedureView from "@/components/cadus/ProcedureView";
-import PoisonView from "@/components/cadus/PoisonView";
-import InfusionView from "@/components/cadus/InfusionView";
-import ConvertView from "@/components/cadus/ConvertView";
-import AbgView from "@/components/cadus/AbgView";
-import LogbookView from "@/components/cadus/LogbookView";
-import FollowUpView from "@/components/cadus/FollowUpView";
 import { ABX_KEY, ECG_KEY, POISON_KEY, PROC_KEY } from "@/lib/cadus/clinicalAi";
 import { FOLLOWUP_KEY, LOG_KEY } from "@/lib/cadus/records";
 import { STUDYPLAN_KEY } from "@/lib/cadus/studyplan";
@@ -440,17 +472,13 @@ import { hasLetterhead, letterheadLines, readLetterhead, saveLetterhead, SIGNED_
 import { contentWords, institutionPayload, readInstitution, saveInstitution, type Institution } from "@/lib/cadus/institution";
 import { caseLabel, caseSummary, newCase, newEntry, readCases, saveCases, type PatientCase } from "@/lib/cadus/cases";
 import { isWallpaper, wallpaperCss, WALLPAPERS, type WallpaperId } from "@/lib/cadus/wallpaper";
-import CaseView from "@/components/cadus/CaseView";
-import LearnView from "@/components/cadus/LearnView";
 import { readLearn, saveLearn, type LearnState } from "@/lib/cadus/learn";
-import DrugsView from "@/components/cadus/DrugsView";
 import ShareDialog from "@/components/cadus/ShareDialog";
 import type { Shared } from "@/lib/cadus/share";
 import { printMarkdown } from "@/lib/cadus/printdoc";
 import { evidenceRecords, evidenceSources, readReading, type Paper } from "@/lib/cadus/pubmed";
 import { localDate, readWard } from "@/lib/cadus/wardlist";
 import ResearchView, { type ResearchTab } from "@/components/cadus/ResearchView";
-import WardView from "@/components/cadus/WardView";
 import InstitutionSettings from "@/components/cadus/InstitutionSettings";
 import LetterheadSettings from "@/components/cadus/LetterheadSettings";
 import { CADUS_PRO_CSS } from "@/components/cadus/cadus-pro-styles";
@@ -459,29 +487,18 @@ import { CADUS_WS_CSS } from "@/components/cadus/cadus-ws-styles";
 import { CADUS_CLINIC_CSS } from "@/components/cadus/cadus-clinic-styles";
 import { CADUS_LOOKS_CSS, LOOKS } from "@/components/cadus/cadus-looks-styles";
 import { CADUS_PLUS_CSS } from "@/components/cadus/cadus-plus-styles";
-import ScribeView from "@/components/cadus/ScribeView";
 import ProfileSetup, { PROFILE_SETUP_CSS } from "@/components/cadus/ProfileSetup";
 import { fetchRemoteProfile, pushRemoteProfile } from "@/lib/cadus/profileSync";
 import { NOTES_KEY as NOTES_KEY_EXPORT } from "@/lib/cadus/scribe";
 import { LEAFLETS_KEY as LEAFLETS_KEY_EXPORT } from "@/lib/cadus/leaflets";
 import { RX_KEY as RX_KEY_EXPORT } from "@/lib/cadus/formulary";
 import { LEARN_KEY as LEARN_KEY_EXPORT } from "@/lib/cadus/learn";
-import EmergencyView from "@/components/cadus/EmergencyView";
-import PaedsView from "@/components/cadus/PaedsView";
-import LeafletsView from "@/components/cadus/LeafletsView";
-import CaseSimView from "@/components/cadus/CaseSimView";
-import RxCheckView from "@/components/cadus/RxCheckView";
-import GuidelineWatchView from "@/components/cadus/GuidelineWatchView";
-import ReportExplainView from "@/components/cadus/ReportExplainView";
 import { CADUS_LABS_CSS } from "@/components/cadus/cadus-labs-styles";
 import { EXPLAINS_KEY, RXCHECKS_KEY, SIMS_KEY, WATCH_KEY } from "@/lib/cadus/labs";
 type LookId = (typeof LOOKS)[number]["id"];
 import { CADUS_VERSION, LEGAL_PATH } from "@/lib/cadus/legal";
 import { PLAN_BY_ID, limitsOf, planFor, planOf, priceText, type PlanId } from "@/lib/cadus/plans";
 import SourcesPanel from "@/components/cadus/SourcesPanel";
-import SafetyView from "@/components/cadus/SafetyView";
-import HistoryView from "@/components/cadus/HistoryView";
-import PrivacyView from "@/components/cadus/PrivacyView";
 import Onboarding, { type OnboardingResult } from "@/components/cadus/Onboarding";
 import Tour, { type TourStep } from "@/components/cadus/Tour";
 import { AUDIT_KEY, auditStats, clearAudit, readAudit, recordAudit, type AuditEntry } from "@/lib/cadus/audit";
@@ -499,9 +516,9 @@ type ModeId =
   | "admission" | "progress" | "opnote" | "death" | "certificate" | "rx" | "evidence";
 /** "groq" only appears in chats saved before Cadus became Claude-only. */
 type Provider = "claude" | "groq" | "library";
-type View = "chat" | "crew" | "second" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "debate" | "playbooks" | "podcasts" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan" | "ecg" | "abx" | "procedure" | "poison" | "infusions" | "convert" | "abg" | "logbook" | "followups" | "audiolib" | "rxwrite" | "labtrend" | "daily" | "letters" | "adr" | "mccd" | "mnemonics" | "generics" | "opd" | "imagequiz" | "dosecard" | "oncall" | "journal" | "stats" | "roster" | "records" | "voiceround" | "revnotes" | "analytics" | "preop" | "messages" | "preglact" | "pillchart" | "vaccines" | "diet" | "icd" | "consent" | "insulin" | "transfusion" | "mlc" | "tb" | "antenatal" | "ventilator" | "teleconsult" | "bills" | "bite" | "needlestick" | "imnci" | "cme" | "appointments" | "stock" | "screening" | "kidney" | "sam" | "contacts" | "accounts" | "thyroid" | "backup" | "ncd" | "anaemia" | "dengue" | "electrolytes" | "obsemergency" | "infection" | "asthma" | "milestones" | "contraception" | "palliative" | "imaging" | "ivfluids" | "sickday" | "labranges" | "burns" | "jaundice" | "stroke" | "bundles" | "alcohol" | "dfoot" | "heat" | "wound" | "anticoag" | "fevers" | "elderly" | "quitsmoking" | "croup" | "rheumatic" | "weight" | "hypo" | "gdm" | "infantfeed" | "antidep" | "eyeent" | "vte" | "headache" | "skin" | "gout" | "pnuti" | "ckd" | "preterm" | "epilepsy" | "childfever" | "cirrhosis" | "dementia" | "htnemergency" | "ugib" | "aki" | "hepbc" | "nrp" | "pain" | "bone" | "hrt" | "syncope" | "hf" | "af" | "lipids" | "pedvt" | "hiv" | "preeclampsia" | "sleep" | "urticaria" | "anaphylaxis" | "trauma" | "tox" | "ptx" | "fluids" | "steroid" | "refeed" | "backpain" | "acs" | "childfluids" | "agitation" | "suicide" | "headinjury" | "abdomen" | "fneutro" | "meningitis" | "quizbattle" | "caseround" | "statusepi" | "sodium" | "attack" | "bridging" | "oncoemerg" | "spirometry" | "thyroidstorm" | "sickle" | "rooms" | "drill" | "hyperk" | "pancreatitis" | "paedsepsis" | "airway" | "rhabdo" | "hypothermia" | "paeddka" | "retention" | "crewnotes" | "checkins" | "crewstats" | "preghtn" | "stones" | "paedabx" | "opioid" | "cellulitis" | "kawasaki" | "endocarditis" | "bell" | "crewcompare" | "crewvoice" | "crewtemplates" | "crewtimeline" | "pph" | "neosepsis" | "renalabx" | "braindeath" | "septicjoint" | "neohypo" | "altitude" | "serotonin" | "crewworkspaces" | "crewdigest" | "paedasthma" | "dkahhs" | "ansteroid" | "ironb12" | "tdm" | "contrast" | "pressure" | "hyperemesis" | "crewschedules" | "bronchiolitis" | "ectopic" | "febseizure" | "torsion" | "mgbs" | "hypercal" | "deprescribe" | "limb" | "delirium" | "childrash" | "sorethroat" | "fallship" | "crewmistakes" | "crewexam" | "vertigo" | "pulmedema" | "acls" | "scorpion" | "pericarditis" | "pcos" | "epds" | "redeye" | "biliary" | "tirads" | "pregvte" | "nephrotic" | "crewreading" | "leprosy" | "tinea" | "acne" | "tetanus" | "cxscreen" | "labourguide" | "dmard" | "tls" | "bph" | "haemorrhoids" | "psoriasis" | "hepatitisae" | "crewtimer" | "lungnodule" | "itp" | "parkinson" | "breast" | "childbowel" | "adhd" | "infertility" | "oa" | "rhinitis" | "gerd" | "shoulder" | "carpal" | "crewteach" | "crewgoals" | "cough" | "haematuria" | "lfts" | "lymphnodes" | "aub" | "amenorrhoea" | "vagdischarge" | "utichild" | "highcounts" | "pad" | "hairloss" | "vitiligo" | "crewpaths" | "diarrhoea" | "sleepapnoea" | "weightloss" | "polyuria" | "shortstature" | "incontinence" | "dysmenorrhoea" | "groin" | "rls" | "raynaud" | "scabies" | "neuropathy" | "crewradar" | "crewcheat" | "haemoptysis" | "legswelling" | "palpitations" | "tremor" | "limp" | "rap" | "miscarriage" | "mastitis" | "epistaxis" | "mouthulcers" | "heelpain" | "gynaecomastia" | "crewspot" | "crewguess" | "crewnotesquiz" | "crewglossary" | "dysphagia" | "fatigue" | "fuo" | "pruritus" | "puberty" | "adnexal" | "prolapse" | "mastalgia" | "hoarseness" | "tinnitus" | "warts" | "paronychia" | "crewvs" | "crewddx" | "crewlecture" | "crewinbox";
+type View = "chat" | "crew" | "second" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "debate" | "playbooks" | "podcasts" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan" | "ecg" | "abx" | "procedure" | "poison" | "infusions" | "convert" | "abg" | "logbook" | "followups" | "audiolib" | "rxwrite" | "labtrend" | "daily" | "letters" | "adr" | "mccd" | "mnemonics" | "generics" | "opd" | "imagequiz" | "dosecard" | "oncall" | "journal" | "stats" | "roster" | "records" | "voiceround" | "revnotes" | "analytics" | "preop" | "messages" | "preglact" | "pillchart" | "vaccines" | "diet" | "icd" | "consent" | "insulin" | "transfusion" | "mlc" | "tb" | "antenatal" | "ventilator" | "teleconsult" | "bills" | "bite" | "needlestick" | "imnci" | "cme" | "appointments" | "stock" | "screening" | "kidney" | "sam" | "contacts" | "accounts" | "thyroid" | "backup" | "ncd" | "anaemia" | "dengue" | "electrolytes" | "obsemergency" | "infection" | "asthma" | "milestones" | "contraception" | "palliative" | "imaging" | "ivfluids" | "sickday" | "labranges" | "burns" | "jaundice" | "stroke" | "bundles" | "alcohol" | "dfoot" | "heat" | "wound" | "anticoag" | "fevers" | "elderly" | "quitsmoking" | "croup" | "rheumatic" | "weight" | "hypo" | "gdm" | "infantfeed" | "antidep" | "eyeent" | "vte" | "headache" | "skin" | "gout" | "pnuti" | "ckd" | "preterm" | "epilepsy" | "childfever" | "cirrhosis" | "dementia" | "htnemergency" | "ugib" | "aki" | "hepbc" | "nrp" | "pain" | "bone" | "hrt" | "syncope" | "hf" | "af" | "lipids" | "pedvt" | "hiv" | "preeclampsia" | "sleep" | "urticaria" | "anaphylaxis" | "trauma" | "tox" | "ptx" | "fluids" | "steroid" | "refeed" | "backpain" | "acs" | "childfluids" | "agitation" | "suicide" | "headinjury" | "abdomen" | "fneutro" | "meningitis" | "quizbattle" | "caseround" | "statusepi" | "sodium" | "attack" | "bridging" | "oncoemerg" | "spirometry" | "thyroidstorm" | "sickle" | "rooms" | "drill" | "hyperk" | "pancreatitis" | "paedsepsis" | "airway" | "rhabdo" | "hypothermia" | "paeddka" | "retention" | "crewnotes" | "checkins" | "crewstats" | "preghtn" | "stones" | "paedabx" | "opioid" | "cellulitis" | "kawasaki" | "endocarditis" | "bell" | "crewcompare" | "crewvoice" | "crewtemplates" | "crewtimeline" | "pph" | "neosepsis" | "renalabx" | "braindeath" | "septicjoint" | "neohypo" | "altitude" | "serotonin" | "crewworkspaces" | "crewdigest" | "paedasthma" | "dkahhs" | "ansteroid" | "ironb12" | "tdm" | "contrast" | "pressure" | "hyperemesis" | "crewschedules" | "bronchiolitis" | "ectopic" | "febseizure" | "torsion" | "mgbs" | "hypercal" | "deprescribe" | "limb" | "delirium" | "childrash" | "sorethroat" | "fallship" | "crewmistakes" | "crewexam" | "vertigo" | "pulmedema" | "acls" | "scorpion" | "pericarditis" | "pcos" | "epds" | "redeye" | "biliary" | "tirads" | "pregvte" | "nephrotic" | "crewreading" | "leprosy" | "tinea" | "acne" | "tetanus" | "cxscreen" | "labourguide" | "dmard" | "tls" | "bph" | "haemorrhoids" | "psoriasis" | "hepatitisae" | "crewtimer" | "lungnodule" | "itp" | "parkinson" | "breast" | "childbowel" | "adhd" | "infertility" | "oa" | "rhinitis" | "gerd" | "shoulder" | "carpal" | "crewteach" | "crewgoals" | "cough" | "haematuria" | "lfts" | "lymphnodes" | "aub" | "amenorrhoea" | "vagdischarge" | "utichild" | "highcounts" | "pad" | "hairloss" | "vitiligo" | "crewpaths" | "diarrhoea" | "sleepapnoea" | "weightloss" | "polyuria" | "shortstature" | "incontinence" | "dysmenorrhoea" | "groin" | "rls" | "raynaud" | "scabies" | "neuropathy" | "crewradar" | "crewcheat" | "haemoptysis" | "legswelling" | "palpitations" | "tremor" | "limp" | "rap" | "miscarriage" | "mastitis" | "epistaxis" | "mouthulcers" | "heelpain" | "gynaecomastia" | "crewspot" | "crewguess" | "crewnotesquiz" | "crewglossary" | "dysphagia" | "fatigue" | "fuo" | "pruritus" | "puberty" | "adnexal" | "prolapse" | "mastalgia" | "hoarseness" | "tinnitus" | "warts" | "paronychia" | "crewvs" | "crewddx" | "crewlecture" | "crewinbox" | "jaundicewu" | "proteinuria" | "splenomegaly" | "pancytopenia" | "varicose" | "otitisexterna" | "dryeye" | "perianal" | "neckpain" | "hyperhidrosis" | "sebderm" | "halitosis" | "crewsmart" | "crewrapid" | "crewlevels" | "crewsyllabus";
 /** Views reached from the Tools hub, so the hub stays highlighted in the sidebar. */
-const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today", "discharge", "handover", "ddx", "studyplan", "podcasts", "ecg", "abx", "procedure", "poison", "infusions", "convert", "abg", "logbook", "followups", "audiolib", "rxwrite", "labtrend", "daily", "letters", "adr", "mccd", "mnemonics", "generics", "opd", "imagequiz", "dosecard", "oncall", "journal", "stats", "roster", "records", "voiceround", "revnotes", "analytics", "preop", "messages", "preglact", "pillchart", "vaccines", "diet", "icd", "consent", "insulin", "transfusion", "mlc", "tb", "antenatal", "ventilator", "teleconsult", "bills", "bite", "needlestick", "imnci", "cme", "appointments", "stock", "screening", "kidney", "sam", "contacts", "accounts", "thyroid", "backup", "ncd", "anaemia", "dengue", "electrolytes", "obsemergency", "infection", "asthma", "milestones", "contraception", "palliative", "imaging", "ivfluids", "sickday", "labranges", "burns", "jaundice", "stroke", "bundles", "alcohol", "dfoot", "heat", "wound", "anticoag", "fevers", "elderly", "quitsmoking", "croup", "rheumatic", "weight", "hypo", "gdm", "infantfeed", "antidep", "eyeent", "vte", "headache", "skin", "gout", "pnuti", "ckd", "preterm", "epilepsy", "childfever", "cirrhosis", "dementia", "htnemergency", "ugib", "aki", "hepbc", "nrp", "pain", "bone", "hrt", "syncope", "hf", "af", "lipids", "pedvt", "hiv", "preeclampsia", "sleep", "urticaria", "anaphylaxis", "trauma", "tox", "ptx", "fluids", "steroid", "refeed", "backpain", "acs", "childfluids", "agitation", "suicide", "headinjury", "abdomen", "fneutro", "meningitis", "statusepi", "sodium", "attack", "bridging", "oncoemerg", "spirometry", "thyroidstorm", "sickle", "hyperk", "pancreatitis", "paedsepsis", "airway", "rhabdo", "hypothermia", "paeddka", "retention", "preghtn", "stones", "paedabx", "opioid", "cellulitis", "kawasaki", "endocarditis", "bell", "pph", "neosepsis", "renalabx", "braindeath", "septicjoint", "neohypo", "altitude", "serotonin", "paedasthma", "dkahhs", "ansteroid", "ironb12", "tdm", "contrast", "pressure", "hyperemesis", "bronchiolitis", "ectopic", "febseizure", "torsion", "mgbs", "hypercal", "deprescribe", "limb", "delirium", "childrash", "sorethroat", "fallship", "vertigo", "pulmedema", "acls", "scorpion", "pericarditis", "pcos", "epds", "redeye", "biliary", "tirads", "pregvte", "nephrotic", "leprosy", "tinea", "acne", "tetanus", "cxscreen", "labourguide", "dmard", "tls", "bph", "haemorrhoids", "psoriasis", "hepatitisae", "lungnodule", "itp", "parkinson", "breast", "childbowel", "adhd", "infertility", "oa", "rhinitis", "gerd", "shoulder", "carpal", "cough", "haematuria", "lfts", "lymphnodes", "aub", "amenorrhoea", "vagdischarge", "utichild", "highcounts", "pad", "hairloss", "vitiligo", "diarrhoea", "sleepapnoea", "weightloss", "polyuria", "shortstature", "incontinence", "dysmenorrhoea", "groin", "rls", "raynaud", "scabies", "neuropathy", "haemoptysis", "legswelling", "palpitations", "tremor", "limp", "rap", "miscarriage", "mastitis", "epistaxis", "mouthulcers", "heelpain", "gynaecomastia", "dysphagia", "fatigue", "fuo", "pruritus", "puberty", "adnexal", "prolapse", "mastalgia", "hoarseness", "tinnitus", "warts", "paronychia"]);
+const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today", "discharge", "handover", "ddx", "studyplan", "podcasts", "ecg", "abx", "procedure", "poison", "infusions", "convert", "abg", "logbook", "followups", "audiolib", "rxwrite", "labtrend", "daily", "letters", "adr", "mccd", "mnemonics", "generics", "opd", "imagequiz", "dosecard", "oncall", "journal", "stats", "roster", "records", "voiceround", "revnotes", "analytics", "preop", "messages", "preglact", "pillchart", "vaccines", "diet", "icd", "consent", "insulin", "transfusion", "mlc", "tb", "antenatal", "ventilator", "teleconsult", "bills", "bite", "needlestick", "imnci", "cme", "appointments", "stock", "screening", "kidney", "sam", "contacts", "accounts", "thyroid", "backup", "ncd", "anaemia", "dengue", "electrolytes", "obsemergency", "infection", "asthma", "milestones", "contraception", "palliative", "imaging", "ivfluids", "sickday", "labranges", "burns", "jaundice", "stroke", "bundles", "alcohol", "dfoot", "heat", "wound", "anticoag", "fevers", "elderly", "quitsmoking", "croup", "rheumatic", "weight", "hypo", "gdm", "infantfeed", "antidep", "eyeent", "vte", "headache", "skin", "gout", "pnuti", "ckd", "preterm", "epilepsy", "childfever", "cirrhosis", "dementia", "htnemergency", "ugib", "aki", "hepbc", "nrp", "pain", "bone", "hrt", "syncope", "hf", "af", "lipids", "pedvt", "hiv", "preeclampsia", "sleep", "urticaria", "anaphylaxis", "trauma", "tox", "ptx", "fluids", "steroid", "refeed", "backpain", "acs", "childfluids", "agitation", "suicide", "headinjury", "abdomen", "fneutro", "meningitis", "statusepi", "sodium", "attack", "bridging", "oncoemerg", "spirometry", "thyroidstorm", "sickle", "hyperk", "pancreatitis", "paedsepsis", "airway", "rhabdo", "hypothermia", "paeddka", "retention", "preghtn", "stones", "paedabx", "opioid", "cellulitis", "kawasaki", "endocarditis", "bell", "pph", "neosepsis", "renalabx", "braindeath", "septicjoint", "neohypo", "altitude", "serotonin", "paedasthma", "dkahhs", "ansteroid", "ironb12", "tdm", "contrast", "pressure", "hyperemesis", "bronchiolitis", "ectopic", "febseizure", "torsion", "mgbs", "hypercal", "deprescribe", "limb", "delirium", "childrash", "sorethroat", "fallship", "vertigo", "pulmedema", "acls", "scorpion", "pericarditis", "pcos", "epds", "redeye", "biliary", "tirads", "pregvte", "nephrotic", "leprosy", "tinea", "acne", "tetanus", "cxscreen", "labourguide", "dmard", "tls", "bph", "haemorrhoids", "psoriasis", "hepatitisae", "lungnodule", "itp", "parkinson", "breast", "childbowel", "adhd", "infertility", "oa", "rhinitis", "gerd", "shoulder", "carpal", "cough", "haematuria", "lfts", "lymphnodes", "aub", "amenorrhoea", "vagdischarge", "utichild", "highcounts", "pad", "hairloss", "vitiligo", "diarrhoea", "sleepapnoea", "weightloss", "polyuria", "shortstature", "incontinence", "dysmenorrhoea", "groin", "rls", "raynaud", "scabies", "neuropathy", "haemoptysis", "legswelling", "palpitations", "tremor", "limp", "rap", "miscarriage", "mastitis", "epistaxis", "mouthulcers", "heelpain", "gynaecomastia", "dysphagia", "fatigue", "fuo", "pruritus", "puberty", "adnexal", "prolapse", "mastalgia", "hoarseness", "tinnitus", "warts", "paronychia", "jaundicewu", "proteinuria", "splenomegaly", "pancytopenia", "varicose", "otitisexterna", "dryeye", "perianal", "neckpain", "hyperhidrosis", "sebderm", "halitosis"]);
 type ToolTab = "all" | "clinical" | "documentation" | "learning";
 type SettingsTab = "general" | "personal" | "letterhead" | "institution" | "data" | "shortcuts" | "about";
 type StyleId = "concise" | "balanced" | "detailed";
@@ -1171,11 +1188,17 @@ function friendlyError(raw: string): string {
   if (typeof navigator !== "undefined" && navigator.onLine === false) return "You're offline. Reconnect to ask Cadus; calculators, your ward list, cases and saved answers still work.";
   // PubMed's own messages (busy, unreachable) are already plain.
   if (/PubMed/.test(raw)) return raw;
+  // Update 49: the Worker asks guests to sign in (daily limit, or a feature that needs an account).
+  if (/sign in/i.test(raw)) return raw;
   if (/fetch|network|Failed to send|load failed/i.test(raw)) return "Couldn't reach Cadus. Check your connection and try again.";
   if (/No AI key|not configured/i.test(raw)) return "Cadus isn't configured yet. The site owner needs to add the AI key in Cloudflare.";
   if (/rate|busy|429/i.test(raw)) return "Cadus is busy right now. Please try again in a moment.";
   return raw || "Something went wrong. Please try again.";
 }
+
+/** Update 49: free messages a day without an account (the Worker enforces the same number). */
+const GUEST_DAILY = 5;
+const GUEST_USAGE_KEY = "cadus3.guestUsage";
 
 /** The main mode of a chat: the first specialised tool the user picked in it. */
 function sessionMode(s: Session): ModeId {
@@ -1281,8 +1304,9 @@ export default function CadusAI() {
   const limits = limitsOf(plan);
   const isPro = plan === "professional" || plan === "enterprise";
   const plansHref = isCadusHost() ? "/plans" : "/ai-assistant/plans";
-  // Cadus asks for an account first: without one, the sign-in page.
-  const gated = !user;
+  // Update 49: anyone can chat without an account (like ChatGPT); images, files, voice, tools, Crew and
+  // Deep Dive need a free account, and guests get GUEST_DAILY messages a day (also enforced by the Worker).
+  const guest = !user;
   const systemDark = useMedia("(prefers-color-scheme: dark)");
   const isDesktop = useMedia("(min-width: 900px)");
   const narrowDesk = useMedia("(max-width: 1599px)");
@@ -1512,6 +1536,9 @@ export default function CadusAI() {
   const [crewShare, setCrewShare] = useState<CrewMember | null>(null);
   const [crewImport, setCrewImport] = useState<CrewMember | null>(null);
   const [mention, setMention] = useState<CrewMember | null>(null);
+  /** Update 49: why a guest is being asked to sign in (null when the dialog is closed). */
+  const [loginNeed, setLoginNeed] = useState<string | null>(null);
+  const [guestUsage, setGuestUsage] = useState<{ date: string; count: number }>(() => readJSON<{ date: string; count: number }>(GUEST_USAGE_KEY, { date: "", count: 0 }));
   const [atMenu, setAtMenu] = useState<{ q: string; i: number } | null>(null);
   const [huddleInit, setHuddleInit] = useState<string[] | undefined>(undefined);
   /** An answer sent to Flashcards ("Make flashcards"). */
@@ -2430,6 +2457,15 @@ export default function CadusAI() {
     // Attachments in the composer go with what you type there, not with suggestion chips.
     const atts = extra?.files ?? (textOverride === undefined ? attachments : []);
     if ((!raw && !atts.length) || pending) return Promise.resolve(null);
+    if (guest) {
+      if (atts.length) { setLoginNeed("upload images and files"); return Promise.resolve(null); }
+      if (crew || m !== "general") { setLoginNeed("use Cadus tools and Crew assistants"); return Promise.resolve(null); }
+      if (prefs.answerMode === "deep" && textOverride === undefined) { setLoginNeed("use Deep Dive research"); return Promise.resolve(null); }
+      const used = guestUsage.date === today() ? guestUsage.count : 0;
+      if (used >= GUEST_DAILY) { setLoginNeed("keep chatting today"); return Promise.resolve(null); }
+      const nu = { date: today(), count: used + 1 };
+      setGuestUsage(nu); writeJSON(GUEST_USAGE_KEY, nu);
+    }
     if (usage.date === today() && usage.count >= limits.questionsPerDay) {
       setUpgrade({ reason: `You've used today's ${limits.questionsPerDay} questions on the ${PLAN_BY_ID[plan].name} plan.`, feature: "questions" });
       return Promise.resolve(null);
@@ -2690,6 +2726,10 @@ export default function CadusAI() {
     setPop(null);
   };
   const openView = (v: View) => { setView(v); setSidebarOpen(false); setPop(null); };
+  // Guests stay in the chat: any other page, mode or Crew assistant asks them to sign in first.
+  useEffect(() => { if (guest && view !== "chat") { setView("chat"); setLoginNeed(view === "crew" || String(view).startsWith("crew") ? "use Cadus Crew" : "use Cadus's clinical tools"); } }, [guest, view]);
+  useEffect(() => { if (guest && mode !== "general") { setMode("general"); setLoginNeed("use specialist modes"); } }, [guest, mode]);
+  useEffect(() => { if (guest && (mention || crewNext)) { setMention(null); setCrewNext(""); setLoginNeed("chat with Cadus Crew assistants"); } }, [guest, mention, crewNext]);
   const openDrugs = (opts: { tab?: "reference" | "prescriber"; query?: string } = {}) => {
     setDrugsInit({ ...opts, key: Date.now() });
     setView("drugs");
@@ -2923,6 +2963,7 @@ export default function CadusAI() {
   const onFiles = async (list?: FileList | File[] | null) => {
     const files = Array.from(list ?? []);
     if (!files.length) return;
+    if (guest) { setPop(null); setLoginNeed("upload images and files"); return; }
     setPop(null);
     let next = attachments;
     let added = 0;
@@ -3116,6 +3157,7 @@ export default function CadusAI() {
     return undefined;
   };
   const startVoice = async (asMode?: ModeId) => {
+    if (guest) { setLoginNeed("use voice"); return; }
     if (!voiceSupported()) { toast(IN_DESKTOP_APP ? NO_DICTATION : "Voice mode needs a browser with speech recognition, such as Chrome, Edge or Safari"); return; }
     if (pending) { toast("Wait for the current answer to finish"); return; }
     const m = asMode ?? mode;
@@ -3215,6 +3257,7 @@ export default function CadusAI() {
   };
 
   const toggleVoice = () => {
+    if (guest) { setLoginNeed("use voice typing"); return; }
     const SR = speechRecognition();
     if (!SR) { toast(NO_DICTATION); return; }
     if (listening) { recRef.current?.stop(); return; }
@@ -3304,6 +3347,10 @@ export default function CadusAI() {
       { key: "a:crewddx", label: "Differential Coach", hint: "Write a differential for a case and get it scored", icon: Stethoscope, run: () => openView("crewddx") },
       { key: "a:crewlecture", label: "Lecture to Notes", hint: "Paste a lecture, get notes, key points and flashcards", icon: NotebookText, run: () => openView("crewlecture") },
       { key: "a:crewinbox", label: "Question Inbox", hint: "Questions saved for later (/later), answered all at once", icon: Inbox, run: () => openView("crewinbox") },
+      { key: "a:crewsmart", label: "Daily Smart Review", hint: "Due flashcards, mistakes and glossary terms in one session", icon: Brain, run: () => openView("crewsmart") },
+      { key: "a:crewrapid", label: "Rapid Fire", hint: "60-second true or false round", icon: Zap, run: () => openView("crewrapid") },
+      { key: "a:crewlevels", label: "Explain at 3 Levels", hint: "Simple, MBBS and specialist explanations", icon: Layers2, run: () => openView("crewlevels") },
+      { key: "a:crewsyllabus", label: "Syllabus Tracker", hint: "NEET-PG subject checklists and progress", icon: ListChecks, run: () => openView("crewsyllabus") },
       { key: "a:deep", label: prefs.answerMode === "deep" ? "Turn off Deep Dive" : "Deep Dive: a cited research report", hint: "PubMed and guidelines, step by step", icon: Telescope, run: () => { setPrefs((p) => ({ ...p, answerMode: p.answerMode === "deep" ? "auto" : "deep" })); focusComposer(); } },
       ...ANSWER_MODES.filter((am) => am.id !== "deep" && am.id !== prefs.answerMode).map((am) => ({ key: `a:mode:${am.id}`, label: `Mode: ${am.label}`, hint: am.desc, icon: am.icon, run: () => { setPrefs((p) => ({ ...p, answerMode: am.id })); focusComposer(); } })),
       { key: "a:newproj", label: "New project", icon: FolderPlus, run: () => newProject() },
@@ -3608,6 +3655,18 @@ export default function CadusAI() {
       { key: "a:tinnitus", label: "Tinnitus", hint: "Pulsatile, one-sided, sudden hearing loss, wax, ototoxic drugs, CBT", icon: Ear, run: () => openView("tinnitus") },
       { key: "a:warts", label: "Warts and Molluscum", hint: "Common, plantar, facial and genital warts, molluscum, salicylic acid, cryotherapy", icon: Sparkle, run: () => openView("warts") },
       { key: "a:paronychia", label: "Paronychia and Ingrown Toenail", hint: "Acute and chronic paronychia, herpetic whitlow, ingrown toenail stages, phenolisation", icon: Hand, run: () => openView("paronychia") },
+      { key: "a:jaundicewu", label: "Jaundice Work-up", hint: "Unconjugated vs hepatocellular vs cholestatic, Gilbert's, cholangitis, hepatitis A and E", icon: FlaskConical, run: () => openView("jaundicewu") },
+      { key: "a:proteinuria", label: "Proteinuria Work-up: ACR", hint: "ACR A1 to A3, nephrotic syndrome, ACE inhibitor, SGLT2 inhibitor, referral", icon: Droplet, run: () => openView("proteinuria") },
+      { key: "a:splenomegaly", label: "Splenomegaly", hint: "Big spleen in India: CML, kala-azar, malaria, portal hypertension, thalassaemia", icon: Activity, run: () => openView("splenomegaly") },
+      { key: "a:pancytopenia", label: "Pancytopenia", hint: "Febrile neutropenia, blasts, megaloblastic anaemia, drugs, hypersplenism, bone marrow", icon: Droplets, run: () => openView("pancytopenia") },
+      { key: "a:varicose", label: "Varicose Veins: CEAP", hint: "CEAP class, bleeding, ulcers, thrombophlebitis, endothermal ablation, compression", icon: Footprints, run: () => openView("varicose") },
+      { key: "a:otitisexterna", label: "Otitis Externa and Ear Wax", hint: "Antibiotic-steroid drops, otomycosis, necrotising otitis externa, wax softening, microsuction", icon: Ear, run: () => openView("otitisexterna") },
+      { key: "a:dryeye", label: "Dry Eye and Blepharitis", hint: "Red flags, lid hygiene, artificial tears, meibomian gland dysfunction, screens", icon: Eye, run: () => openView("dryeye") },
+      { key: "a:perianal", label: "Perianal Abscess and Pilonidal Sinus", hint: "Incision and drainage, fistula, Crohn's, Fournier's gangrene, pilonidal surgery", icon: Scissors, run: () => openView("perianal") },
+      { key: "a:neckpain", label: "Neck Pain", hint: "Canadian C-spine, myelopathy, dissection, radiculopathy, mechanical neck pain", icon: User, run: () => openView("neckpain") },
+      { key: "a:hyperhidrosis", label: "Hyperhidrosis: Excess Sweating", hint: "Primary vs secondary sweating, HDSS, aluminium chloride, iontophoresis, oxybutynin, botulinum toxin", icon: Droplets, run: () => openView("hyperhidrosis") },
+      { key: "a:sebderm", label: "Seborrhoeic Dermatitis and Dandruff", hint: "Ketoconazole shampoo and cream, cradle cap, flares, HIV", icon: Sparkle, run: () => openView("sebderm") },
+      { key: "a:halitosis", label: "Halitosis: Bad Breath", hint: "Tongue cleaning, gum disease, dry mouth, tonsil stones, DKA, uraemia, nasal foreign body", icon: Smile, run: () => openView("halitosis") },
       { key: "a:present", label: "Presentation Coach: practise presenting a case", hint: "Ward round, long case, SBAR; scored with a model answer", icon: Presentation, run: () => openView("present") },
       { key: "a:compare", label: "Compare over time: what changed between two studies", hint: "X-rays, ECGs, scans, reports and wound photos", icon: History, run: () => openView("compare") },
       { key: "a:newcase", label: "New patient case", hint: "Start a de-identified case sheet", icon: ClipboardList, run: () => { const c = newCase(); setCases((l) => [c, ...l]); openCases(c.id); } },
@@ -3702,6 +3761,12 @@ export default function CadusAI() {
 
   const composer = (placement: "hero" | "dock") => (
     <div ref={composerRef} className={`cx-composer ${placement === "hero" ? "is-hero" : ""} ${listening ? "is-rec" : ""}`}>
+      {guest && (
+        <div className="cx-guest-bar" data-guest="bar">
+          <span>Chatting as a guest · <b data-guest="left">{Math.max(0, GUEST_DAILY - (guestUsage.date === today() ? guestUsage.count : 0))}</b> of {GUEST_DAILY} free messages left today</span>
+          <a href={`${signInHref}?mode=signup&next=${encodeURIComponent(typeof window === "undefined" ? "/" : window.location.pathname)}`} data-guest="bar-signup">Sign up free</a>
+        </div>
+      )}
       {attachments.length > 0 && (
         <div className="cx-read-pick" role="radiogroup" aria-label="What is attached">
           <span>Read as</span>
@@ -3764,7 +3829,7 @@ export default function CadusAI() {
         </div>
       )}
       {(() => {
-        if (mention || ROLEPLAY.has(mode) || view !== "chat" || (activeId ? !!active?.crewId : !!crewNext) || input.trim().length < 15 || input.startsWith("/")) return null;
+        if (guest || mention || ROLEPLAY.has(mode) || view !== "chat" || (activeId ? !!active?.crewId : !!crewNext) || input.trim().length < 15 || input.startsWith("/")) return null;
         const sug = bestCrewFor(input, crewMine);
         if (!sug || suggestHidden === sug.c.id) return null;
         return (
@@ -3868,7 +3933,7 @@ export default function CadusAI() {
       {pop === "add" && (
         <div className={`cx-pop cx-add-menu ${placement === "hero" ? "down" : "up"}`} data-pop="add" role="menu" style={{ maxHeight: menuMax }}>
           <button className="cx-pop-i" onClick={() => { setPop(null); fileRef.current?.click(); }}><Paperclip size={16} /> Add photos and files <span className="r">Images, PDFs</span></button>
-          <button className="cx-pop-i" onClick={() => { setPop(null); setCameraOpen(true); }}><Camera size={16} /> Take a photo</button>
+          <button className="cx-pop-i" onClick={() => { setPop(null); if (guest) { setLoginNeed("upload images and files"); return; } setCameraOpen(true); }}><Camera size={16} /> Take a photo</button>
           <div className="cx-pop-sep" />
           {!ROLEPLAY.has(mode) && mode !== "slides" && (
             <button className="cx-pop-i" onClick={() => { setThink((v) => !v); setPop(null); focusComposer(); }}>
@@ -4281,6 +4346,18 @@ export default function CadusAI() {
     { id: "tinnitus", icon: Ear, tone: "violet", title: "Tinnitus", sub: "Pulsatile, one-sided, sudden loss", go: () => openView("tinnitus") },
     { id: "warts", icon: Sparkle, tone: "lime", title: "Warts & Molluscum", sub: "Salicylic acid, cryotherapy", go: () => openView("warts") },
     { id: "paronychia", icon: Hand, tone: "amber", title: "Paronychia & Ingrown Toenail", sub: "Soaks, drainage, nail care", go: () => openView("paronychia") },
+    { id: "jaundicewu", icon: FlaskConical, tone: "amber", title: "Jaundice Work-up", sub: "Pattern, ultrasound, emergencies", go: () => openView("jaundicewu") },
+    { id: "proteinuria", icon: Droplet, tone: "sky", title: "Proteinuria Work-up", sub: "ACR bands, ACE inhibitor, SGLT2i", go: () => openView("proteinuria") },
+    { id: "splenomegaly", icon: Activity, tone: "violet", title: "Splenomegaly", sub: "Causes by size, tests", go: () => openView("splenomegaly") },
+    { id: "pancytopenia", icon: Droplets, tone: "rose", title: "Pancytopenia", sub: "B12, aplasia, leukaemia", go: () => openView("pancytopenia") },
+    { id: "varicose", icon: Footprints, tone: "sky", title: "Varicose Veins", sub: "CEAP, ablation, ulcers", go: () => openView("varicose") },
+    { id: "otitisexterna", icon: Ear, tone: "amber", title: "Otitis Externa & Ear Wax", sub: "Drops, wick, wax removal", go: () => openView("otitisexterna") },
+    { id: "dryeye", icon: Eye, tone: "teal", title: "Dry Eye & Blepharitis", sub: "Lid hygiene, lubricants", go: () => openView("dryeye") },
+    { id: "perianal", icon: Scissors, tone: "rose", title: "Perianal Abscess & Pilonidal", sub: "Drain early, fistula, Fournier's", go: () => openView("perianal") },
+    { id: "neckpain", icon: User, tone: "violet", title: "Neck Pain", sub: "Red flags, radiculopathy", go: () => openView("neckpain") },
+    { id: "hyperhidrosis", icon: Droplets, tone: "sky", title: "Hyperhidrosis", sub: "Aluminium chloride, iontophoresis", go: () => openView("hyperhidrosis") },
+    { id: "sebderm", icon: Sparkle, tone: "amber", title: "Seborrhoeic Dermatitis & Dandruff", sub: "Ketoconazole, cradle cap", go: () => openView("sebderm") },
+    { id: "halitosis", icon: Smile, tone: "lime", title: "Halitosis (Bad Breath)", sub: "Tongue, gums, other causes", go: () => openView("halitosis") },
   ];
   const backupNeeded = view !== "backup" && backupDue();
   /** The More drawer: every tool, grouped by what it is for (update 24). */
@@ -4356,6 +4433,14 @@ export default function CadusAI() {
         { label: "Tinnitus", title: "Tinnitus", icon: Ear, on: view === "tinnitus", go: () => openView("tinnitus") },
         { label: "Warts & Molluscum", title: "Warts & Molluscum", icon: Sparkle, on: view === "warts", go: () => openView("warts") },
         { label: "Paronychia & Ingrown Toenail", title: "Paronychia & Ingrown Toenail", icon: Hand, on: view === "paronychia", go: () => openView("paronychia") },
+        { label: "Varicose Veins", title: "Varicose Veins", icon: Footprints, on: view === "varicose", go: () => openView("varicose") },
+        { label: "Otitis Externa & Ear Wax", title: "Otitis Externa & Ear Wax", icon: Ear, on: view === "otitisexterna", go: () => openView("otitisexterna") },
+        { label: "Dry Eye & Blepharitis", title: "Dry Eye & Blepharitis", icon: Eye, on: view === "dryeye", go: () => openView("dryeye") },
+        { label: "Perianal Abscess & Pilonidal", title: "Perianal Abscess & Pilonidal", icon: Scissors, on: view === "perianal", go: () => openView("perianal") },
+        { label: "Neck Pain", title: "Neck Pain", icon: User, on: view === "neckpain", go: () => openView("neckpain") },
+        { label: "Hyperhidrosis", title: "Hyperhidrosis", icon: Droplets, on: view === "hyperhidrosis", go: () => openView("hyperhidrosis") },
+        { label: "Seborrhoeic Dermatitis & Dandruff", title: "Seborrhoeic Dermatitis & Dandruff", icon: Sparkle, on: view === "sebderm", go: () => openView("sebderm") },
+        { label: "Halitosis (Bad Breath)", title: "Halitosis (Bad Breath)", icon: Smile, on: view === "halitosis", go: () => openView("halitosis") },
       ] },
     { id: "practice", label: "Practice", icon: BriefcaseMedical, items: [
         { label: "Appointments", title: "Appointments", icon: CalendarPlus, on: view === "appointments", go: () => openView("appointments") },
@@ -4577,6 +4662,10 @@ export default function CadusAI() {
         { label: "Dysphagia", title: "Dysphagia", icon: Utensils, on: view === "dysphagia", go: () => openView("dysphagia") },
         { label: "Tired All the Time", title: "Tired All the Time", icon: BatteryLow, on: view === "fatigue", go: () => openView("fatigue") },
         { label: "Fever of Unknown Origin", title: "Fever of Unknown Origin", icon: Thermometer, on: view === "fuo", go: () => openView("fuo") },
+        { label: "Jaundice Work-up", title: "Jaundice Work-up", icon: FlaskConical, on: view === "jaundicewu", go: () => openView("jaundicewu") },
+        { label: "Proteinuria Work-up", title: "Proteinuria Work-up", icon: Droplet, on: view === "proteinuria", go: () => openView("proteinuria") },
+        { label: "Splenomegaly", title: "Splenomegaly", icon: Activity, on: view === "splenomegaly", go: () => openView("splenomegaly") },
+        { label: "Pancytopenia", title: "Pancytopenia", icon: Droplets, on: view === "pancytopenia", go: () => openView("pancytopenia") },
       ] },
     { id: "documents", label: "Documents & Legal", icon: ScrollText, items: [
         { label: "Scribe", title: "Scribe: dictated notes", icon: Mic, on: view === "scribe", go: () => openView("scribe") },
@@ -4976,6 +5065,8 @@ export default function CadusAI() {
             ["teach", GraduationCap, "Teach-back", "Explain it, get graded", () => openView("crewteach")],
             ["spot", SearchCheck, "Spot the Error", "Find the hidden mistakes", () => openView("crewspot")],
             ["ddx", Stethoscope, "Differential Coach", "Build a differential, get scored", () => openView("crewddx")],
+            ["smart", Brain, "Daily Smart Review", "Due cards, mistakes and terms", () => openView("crewsmart")],
+            ["rapid", Zap, "Rapid Fire", "60 seconds of true or false", () => openView("crewrapid")],
             ["guess", Dices, "Guess the Diagnosis", "Ask questions, name the diagnosis", () => openView("crewguess")],
             ["notesquiz", BookOpenCheck, "Quiz from Notes", "MCQs from your saved notes", () => openView("crewnotesquiz")],
           ]],
@@ -4983,6 +5074,7 @@ export default function CadusAI() {
             ["rooms", MessagesSquare, "Chat rooms", "Group chat with assistants", () => openView("rooms")],
             ["compare", Columns3, "Compare", "Same question, side by side", () => openView("crewcompare")],
             ["vs", Columns2, "Compare Conditions", "Two conditions side by side", () => openView("crewvs")],
+            ["levels", Layers2, "Explain at 3 Levels", "Simple, student, specialist", () => openView("crewlevels")],
             ["inbox", Inbox, crewInbox.some((x) => !x.answer) ? `Question Inbox (${inboxPending(crewInbox).length})` : "Question Inbox", "Save questions, answer later", () => openView("crewinbox")],
             ["voice", Mic, "Voice chat", "Talk and listen", () => openView("crewvoice")],
             ["prompts", LibraryBig, "Prompt templates", "Reusable prompts with blanks", () => { setTemplatesCrew(""); openView("crewtemplates"); }],
@@ -5001,6 +5093,7 @@ export default function CadusAI() {
             ["lecture", NotebookText, "Lecture to Notes", "Notes and flashcards from a lecture", () => openView("crewlecture")],
           ]],
           ["Track", "amber", [
+            ["syllabus", ListChecks, "Syllabus Tracker", "Subject checklists and progress", () => openView("crewsyllabus")],
             ["radar", Radar, "Weak Topic Radar", "Your weakest topics, fix-it plan", () => openView("crewradar")],
             ["stats", Award, "Stats & badges", "Level, badges, leaderboard", () => openView("crewstats")],
             ["timeline", ScrollText, "Timeline", "Everything by date, export", () => openView("crewtimeline")],
@@ -5327,6 +5420,8 @@ export default function CadusAI() {
   );
 
   const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+  // The Worker's own guest limit (or an expired sign-in) comes back as an error asking to sign in.
+  useEffect(() => { if (guest && lastAssistant?.error && /sign in/i.test(lastAssistant.content)) setLoginNeed("keep chatting today"); }, [lastAssistant?.id, lastAssistant?.error]); // eslint-disable-line react-hooks/exhaustive-deps
   /** For each answer: the question it answers and any interactions between the drugs it names. */
   const answerContext = useMemo(() => {
     const out: Record<string, { q: string; ix: IxMatch[] }> = {};
@@ -5906,9 +6001,7 @@ export default function CadusAI() {
     ? <div className="cx-av">{(user.name || user.email || "U").slice(0, 1).toUpperCase()}</div>
     : <div className="cx-av guest"><Users size={15} /></div>;
 
-  // Without an account, the sign-in page (shared and trust pages stay open).
-  useEffect(() => { if (gated) window.location.replace(`${signInHref}?next=${encodeURIComponent(window.location.pathname + window.location.search)}`); }, [gated]); // eslint-disable-line react-hooks/exhaustive-deps
-  if (!gated && setupState !== "done") {
+  if (!guest && setupState !== "done") {
     return (
       <div className={`cx ${dark ? "cx-dark" : "cx-light"} ans-sans`} data-look={prefs.look}>
         <style>{CADUS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + PROFILE_SETUP_CSS}</style>
@@ -5920,14 +6013,6 @@ export default function CadusAI() {
       </div>
     );
   }
-  if (gated) {
-    return (
-      <div className={`cx cx-gate ${dark ? "cx-dark" : "cx-light"}`} data-look={prefs.look}>
-        <style>{CADUS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS}</style>
-        <div className="cx-gate-in"><CadusMark size={36} /><p>Taking you to sign in…</p><a className="cx-btn primary" href={signInHref}>Sign in to Cadus <ArrowRight size={14} /></a></div>
-      </div>
-    );
-  }
 
   return (
     <div
@@ -5936,7 +6021,7 @@ export default function CadusAI() {
       style={{ ["--acc" as string]: dark ? accent.dark : accent.light, ["--fs" as string]: `${fontSize}px`, ["--fs-u" as string]: `${sansSize}px` }}
       {...dropHandlers}
     >
-      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS + CADUS_CREWPLUS_CSS + CADUS_VOICE_CSS + CADUS_CLINIC20_CSS + CADUS_CLINIC21_CSS + CADUS_CLINIC22_CSS + CADUS_CLINIC23_CSS + CADUS_CLINIC24_CSS + CADUS_CLINIC25_CSS + CADUS_CLINIC26_CSS + CADUS_CLINIC27_CSS + CADUS_CLINIC28_CSS + CADUS_CLINIC29_CSS + CADUS_CLINIC30_CSS + CADUS_CLINIC31_CSS + CADUS_CLINIC32_CSS + CADUS_CLINIC34_CSS + CADUS_CLINIC35_CSS + CADUS_CLINIC36_CSS + CADUS_CLINIC37_CSS + CADUS_CLINIC38_CSS + CADUS_CLINIC39_CSS + CADUS_CLINIC40_CSS + CADUS_CLINIC41_CSS + CADUS_CLINIC42_CSS + CADUS_CLINIC43_CSS + CADUS_CLINIC44_CSS + CADUS_CLINIC45_CSS + CADUS_CLINIC46_CSS + CADUS_CLINIC47_CSS + CADUS_CLINIC48_CSS}</style>
+      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS + CADUS_CREWPLUS_CSS + CADUS_VOICE_CSS + CADUS_CLINIC20_CSS + CADUS_CLINIC21_CSS + CADUS_CLINIC22_CSS + CADUS_CLINIC23_CSS + CADUS_CLINIC24_CSS + CADUS_CLINIC25_CSS + CADUS_CLINIC26_CSS + CADUS_CLINIC27_CSS + CADUS_CLINIC28_CSS + CADUS_CLINIC29_CSS + CADUS_CLINIC30_CSS + CADUS_CLINIC31_CSS + CADUS_CLINIC32_CSS + CADUS_CLINIC34_CSS + CADUS_CLINIC35_CSS + CADUS_CLINIC36_CSS + CADUS_CLINIC37_CSS + CADUS_CLINIC38_CSS + CADUS_CLINIC39_CSS + CADUS_CLINIC40_CSS + CADUS_CLINIC41_CSS + CADUS_CLINIC42_CSS + CADUS_CLINIC43_CSS + CADUS_CLINIC44_CSS + CADUS_CLINIC45_CSS + CADUS_CLINIC46_CSS + CADUS_CLINIC47_CSS + CADUS_CLINIC48_CSS + CADUS_CLINIC49_CSS}</style>
 
       {/* ============================================== sidebar */}
       <div className={`cx-scrim ${sidebarOpen ? "on" : ""}`} onClick={() => setSidebarOpen(false)} />
@@ -6555,6 +6640,22 @@ export default function CadusAI() {
                 : view === "crewddx" ? [Stethoscope, "Differential Coach"]
                 : view === "crewlecture" ? [NotebookText, "Lecture to Notes"]
                 : view === "crewinbox" ? [Inbox, "Question Inbox"]
+                : view === "jaundicewu" ? [FlaskConical, "Jaundice Work-up"]
+                : view === "proteinuria" ? [Droplet, "Proteinuria Work-up"]
+                : view === "splenomegaly" ? [Activity, "Splenomegaly"]
+                : view === "pancytopenia" ? [Droplets, "Pancytopenia"]
+                : view === "varicose" ? [Footprints, "Varicose Veins"]
+                : view === "otitisexterna" ? [Ear, "Otitis Externa & Ear Wax"]
+                : view === "dryeye" ? [Eye, "Dry Eye & Blepharitis"]
+                : view === "perianal" ? [Scissors, "Perianal Abscess & Pilonidal"]
+                : view === "neckpain" ? [User, "Neck Pain"]
+                : view === "hyperhidrosis" ? [Droplets, "Hyperhidrosis"]
+                : view === "sebderm" ? [Sparkle, "Seborrhoeic Dermatitis & Dandruff"]
+                : view === "halitosis" ? [Smile, "Halitosis (Bad Breath)"]
+                : view === "crewsmart" ? [Brain, "Daily Smart Review"]
+                : view === "crewrapid" ? [Zap, "Rapid Fire"]
+                : view === "crewlevels" ? [Layers2, "Explain at 3 Levels"]
+                : view === "crewsyllabus" ? [ListChecks, "Syllabus Tracker"]
                 : view === "crewcompare" ? [Columns3, "Assistant Compare"]
                 : view === "crewvoice" ? [Mic, "Voice Chat"]
                 : view === "crewtemplates" ? [LibraryBig, "Prompt Templates"]
@@ -6619,6 +6720,12 @@ export default function CadusAI() {
                 )}
               </div>
             )}
+            {guest && (
+              <div className="cx-guest-acts">
+                <a className="cx-btn sm" href={`${signInHref}?next=${encodeURIComponent(window.location.pathname)}`} data-guest="login"><LogIn size={14} /> Log in</a>
+                <a className="cx-btn sm primary" href={`${signInHref}?mode=signup&next=${encodeURIComponent(window.location.pathname)}`} data-guest="signup">Sign up free</a>
+              </div>
+            )}
             <button className="cx-ib cx-dt" title={dark ? "Light theme" : "Dark theme"} onClick={() => setPrefs((p) => ({ ...p, theme: dark ? "light" : "dark" }))} aria-label="Toggle theme">
               {dark ? <Sun size={18} /> : <Moon size={18} />}
             </button>
@@ -6636,7 +6743,7 @@ export default function CadusAI() {
             setAtBottom(near);
           }}
         >
-          {view === "calculators" ? (
+          <Suspense fallback={lazyFallback}>{view === "calculators" ? (
             <ClinicalCalculators
               key={toolsInit.key}
               initialCalc={toolsInit.calc}
@@ -7163,6 +7270,18 @@ export default function CadusAI() {
             : view === "tinnitus" ? <Suspense fallback={lazyFallback}><TinnitusView /></Suspense>
             : view === "warts" ? <Suspense fallback={lazyFallback}><WartsView /></Suspense>
             : view === "paronychia" ? <Suspense fallback={lazyFallback}><ParonychiaView /></Suspense>
+            : view === "jaundicewu" ? <Suspense fallback={lazyFallback}><JaundiceWorkupView /></Suspense>
+            : view === "proteinuria" ? <Suspense fallback={lazyFallback}><ProteinuriaView /></Suspense>
+            : view === "splenomegaly" ? <Suspense fallback={lazyFallback}><SplenomegalyView /></Suspense>
+            : view === "pancytopenia" ? <Suspense fallback={lazyFallback}><PancytopeniaView /></Suspense>
+            : view === "varicose" ? <Suspense fallback={lazyFallback}><VaricoseView /></Suspense>
+            : view === "otitisexterna" ? <Suspense fallback={lazyFallback}><OtitisExternaView /></Suspense>
+            : view === "dryeye" ? <Suspense fallback={lazyFallback}><DryEyeView /></Suspense>
+            : view === "perianal" ? <Suspense fallback={lazyFallback}><PerianalView /></Suspense>
+            : view === "neckpain" ? <Suspense fallback={lazyFallback}><NeckPainView /></Suspense>
+            : view === "hyperhidrosis" ? <Suspense fallback={lazyFallback}><HyperhidrosisView /></Suspense>
+            : view === "sebderm" ? <Suspense fallback={lazyFallback}><SebDermView /></Suspense>
+            : view === "halitosis" ? <Suspense fallback={lazyFallback}><HalitosisView /></Suspense>
             : view === "today" ? (
               <TodayView
                 name={firstName}
@@ -7331,6 +7450,71 @@ export default function CadusAI() {
                   focusComposer();
                 }}
               />
+            )
+            : view === "crewsmart" ? (
+              <Suspense fallback={lazyFallback}>
+              <CrewSmartView notes={crewNotes} setNotes={setCrewNotes} mistakes={crewMistakes} setMistakes={setCrewMistakes} glossary={glossary} setGlossary={setGlossary} />
+              </Suspense>
+            )
+            : view === "crewrapid" ? (
+              <Suspense fallback={lazyFallback}>
+              <CrewRapidView
+                mine={crewMine}
+                ask={async (c, q) => {
+                  const r = await invokeCadus({ action: "chat", message: q, mode: "general", history: [], crew: crewPayload(c), model: prefs.model, language: prefs.language, search: limits.sources && !!c.sources, ...(profilePayload(profile) ? { profile: profilePayload(profile) } : {}) });
+                  if (!r?.message) throw new Error("No answer came back");
+                  return String(r.message);
+                }}
+                canAsk={(n) => {
+                  if (usage.date === today() && usage.count + n > limits.questionsPerDay) { setUpgrade({ reason: `You have used today's ${limits.questionsPerDay} questions on the ${PLAN_BY_ID[plan].name} plan.`, feature: "questions" }); return false; }
+                  setUsage((u) => (u.date === today() ? { ...u, count: u.count + n } : { date: today(), count: n }));
+                  return true;
+                }}
+                friendlyError={friendlyError}
+                toast={toast}
+                onMistake={(mm) => setCrewMistakes((l) => addMistake(l, mm))}
+              />
+              </Suspense>
+            )
+            : view === "crewlevels" ? (
+              <Suspense fallback={lazyFallback}>
+              <CrewLevelsView
+                mine={crewMine}
+                ask={async (c, q) => {
+                  const r = await invokeCadus({ action: "chat", message: q, mode: "general", history: [], crew: crewPayload(c), model: prefs.model, language: prefs.language, search: limits.sources && !!c.sources, ...(profilePayload(profile) ? { profile: profilePayload(profile) } : {}) });
+                  if (!r?.message) throw new Error("No answer came back");
+                  return String(r.message);
+                }}
+                canAsk={(n) => {
+                  if (usage.date === today() && usage.count + n > limits.questionsPerDay) { setUpgrade({ reason: `You have used today's ${limits.questionsPerDay} questions on the ${PLAN_BY_ID[plan].name} plan.`, feature: "questions" }); return false; }
+                  setUsage((u) => (u.date === today() ? { ...u, count: u.count + n } : { date: today(), count: n }));
+                  return true;
+                }}
+                friendlyError={friendlyError}
+                toast={toast}
+                onNote={(cid, text, title) => setCrewNotes((n) => addNote(n, cid, text, title.slice(0, 80)))}
+              />
+              </Suspense>
+            )
+            : view === "crewsyllabus" ? (
+              <Suspense fallback={lazyFallback}>
+              <CrewSyllabusView
+                mine={crewMine}
+                ask={async (c, q) => {
+                  const r = await invokeCadus({ action: "chat", message: q, mode: "general", history: [], crew: crewPayload(c), model: prefs.model, language: prefs.language, search: limits.sources && !!c.sources, ...(profilePayload(profile) ? { profile: profilePayload(profile) } : {}) });
+                  if (!r?.message) throw new Error("No answer came back");
+                  return String(r.message);
+                }}
+                canAsk={(n) => {
+                  if (usage.date === today() && usage.count + n > limits.questionsPerDay) { setUpgrade({ reason: `You have used today's ${limits.questionsPerDay} questions on the ${PLAN_BY_ID[plan].name} plan.`, feature: "questions" }); return false; }
+                  setUsage((u) => (u.date === today() ? { ...u, count: u.count + n } : { date: today(), count: n }));
+                  return true;
+                }}
+                friendlyError={friendlyError}
+                toast={toast}
+                onRevise={(c, prompt) => { startCrew(c); setInput(prompt); }}
+              />
+              </Suspense>
             )
             : view === "crewvs" ? (
               <Suspense fallback={lazyFallback}>
@@ -7908,7 +8092,7 @@ export default function CadusAI() {
             : view === "project" ? renderProject()
             : view === "decks" ? renderDecks()
             : isHome ? renderHome()
-            : renderThread()}
+            : renderThread()}</Suspense>
         </div>
 
         {showDock && (
@@ -8512,6 +8696,23 @@ export default function CadusAI() {
       {shareItem && <ShareDialog item={shareItem} onClose={() => setShareItem(null)} toast={toast} dark={dark} />}
       {crewShare && <CrewShareDialog c={crewShare} base={`${window.location.origin}${window.location.pathname}`} badge={<CrewBadge c={crewShare} size={44} />} dark={dark} onClose={() => setCrewShare(null)} toast={toast} />}
       {crewSettings && <CrewCardSettings c={crewSettings} style={crewStyles[crewSettings.id]} org={crewOrg} badge={<CrewBadge c={crewSettings} size={44} />} onStyle={(st) => setCrewStyles((m) => setStyle(m, crewSettings.id, st))} onOrg={setCrewOrg} memory={crewMemory} onMemory={setCrewMemory} onClose={() => setCrewSettings(null)} />}
+      {loginNeed && (
+        <div className="cx-overlay center" onMouseDown={() => setLoginNeed(null)}>
+          <div className="cx-dialog cx-cs cx-login-need" role="dialog" aria-modal="true" aria-labelledby="cx-ln-t" onMouseDown={(e) => e.stopPropagation()} data-guest="dialog">
+            <div className="cx-dialog-h">
+              <div className="cx-crew-dh"><span className="cx-fc-ic"><Lock size={22} /></span><div><h3 id="cx-ln-t">Sign in to {loginNeed}</h3><p>Chatting with Cadus is free without an account. A free account adds images and files, voice, 300+ clinical tools, Cadus Crew, Deep Dive research, and more messages every day.</p></div></div>
+              <button className="cx-ib" onClick={() => setLoginNeed(null)} aria-label="Close"><X size={18} /></button>
+            </div>
+            <div className="cx-dialog-b">
+              <div className="cx-sc-acts">
+                <a className="cx-btn primary" href={`${signInHref}?mode=signup&next=${encodeURIComponent(window.location.pathname)}`} data-guest="dialog-signup"><UserPlus size={14} /> Create a free account</a>
+                <a className="cx-btn" href={`${signInHref}?next=${encodeURIComponent(window.location.pathname)}`} data-guest="dialog-login"><LogIn size={14} /> Log in</a>
+                <button className="cx-btn" onClick={() => setLoginNeed(null)} data-guest="dialog-close">Keep chatting</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {caseMsg !== null && (
         <Suspense fallback={null}>
         <CrewCaseDialog

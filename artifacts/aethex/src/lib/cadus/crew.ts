@@ -2530,3 +2530,137 @@ export function addInbox(list: InboxItem[], q: string, mine: CrewMember[], crewI
   return [{ id: `ib-${now.toString(36)}${Math.random().toString(36).slice(2, 5)}`, q: t, crewId: cid, at: now }, ...list].slice(0, 200);
 }
 export const inboxPending = (l: InboxItem[]) => l.filter((x) => !x.answer);
+
+/* ------------------------------------------------------------------ Update 49: daily smart review */
+
+export type SmartItem =
+  | { kind: "card"; key: string; noteId: string; idx: number; front: string; back: string }
+  | { kind: "mistake"; key: string; id: string; q: string; options: string[]; answer: number; why: string }
+  | { kind: "term"; key: string; id: string; term: string; def: string };
+/** Today's mixed review: due flashcards first, then open mistakes, then a few glossary terms (oldest-reviewed first). */
+export function smartQueue(notes: CrewNotes, mistakes: Mistake[], glossary: GlossTerm[], today: string, max = { cards: 10, mistakes: 5, terms: 5 }): SmartItem[] {
+  const cards: SmartItem[] = [];
+  for (const n of notes.notes) (n.cards ?? []).forEach((c, i) => { if (c.due <= today && cards.length < max.cards) cards.push({ kind: "card", key: `c:${n.id}:${i}`, noteId: n.id, idx: i, front: c.front, back: c.back }); });
+  const mk: SmartItem[] = dueMistakes(mistakes).slice(0, max.mistakes).map((m) => ({ kind: "mistake", key: `m:${m.id}`, id: m.id, q: m.q, options: m.options, answer: m.answer, why: m.why }));
+  const terms: SmartItem[] = [...glossary].sort((a, b) => a.at - b.at).slice(0, max.terms).map((g) => ({ kind: "term", key: `g:${g.id}`, id: g.id, term: g.term, def: g.def }));
+  return [...cards, ...mk, ...terms];
+}
+export interface SmartDay { done: number; right: number; total: number }
+export const SMART_KEY = "cadus3.crewSmart";
+export function readSmart(): Record<string, SmartDay> {
+  try { const v = JSON.parse(localStorage.getItem(SMART_KEY) || "{}"); return v && typeof v === "object" && !Array.isArray(v) ? v : {}; } catch { return {}; }
+}
+export function saveSmart(d: Record<string, SmartDay>) {
+  try { const keys = Object.keys(d).sort().slice(-120); localStorage.setItem(SMART_KEY, JSON.stringify(Object.fromEntries(keys.map((k) => [k, d[k]])))); } catch { /* blocked */ }
+}
+/** Days in a row with a finished review, ending today (or yesterday if today's isn't done yet). */
+export function smartStreak(days: Record<string, SmartDay>, today: string): number {
+  const ok = (k: string) => (days[k]?.done ?? 0) > 0 && days[k].done >= days[k].total;
+  let k = ok(today) ? today : addDays(today, -1), n = 0;
+  while (ok(k)) { n++; k = addDays(k, -1); }
+  return n;
+}
+
+/* ------------------------------------------------------------------ Update 49: rapid fire */
+
+export interface RapidQ { s: string; t: boolean; why: string }
+export function rapidPrompt(topic: string, level: QuizLevel, n = 20): string {
+  return [
+    `Write ${n} short true-or-false statements on: ${topic.trim().slice(0, 200)}, at ${level === "easy" ? "MBBS" : level === "hard" ? "hard NEET-PG/INI-CET" : "NEET-PG"} level.`,
+    "Each statement under 20 words, a single clear fact (doses, signs, associations, drugs of choice, numbers). About half true and half false; false ones should be plausible (a changed number, drug or association).",
+    'Reply with ONLY a JSON array: [{"s": "statement", "t": true, "why": "one short line"}].',
+  ].join("\n\n");
+}
+export function parseRapid(reply: string): RapidQ[] {
+  const t = String(reply ?? "");
+  const a = t.indexOf("["), b = t.lastIndexOf("]");
+  if (a < 0 || b <= a) return [];
+  try {
+    const v = JSON.parse(t.slice(a, b + 1));
+    return (Array.isArray(v) ? v : []).map((x: any) => ({ s: clip(x?.s, 300), t: x?.t === true || x?.t === "true", why: clip(x?.why, 300), ok: typeof x?.t === "boolean" || x?.t === "true" || x?.t === "false" })).filter((x: RapidQ & { ok: boolean }) => x.s && x.ok).map(({ s, t: tt, why }: RapidQ) => ({ s, t: tt, why })).slice(0, 40);
+  } catch { return []; }
+}
+/** Rapid-fire score: 10 per right answer, +2 per answer in a streak of 3 or more, −5 per wrong answer (never below 0). */
+export function rapidScore(answers: boolean[]): { score: number; right: number; wrong: number; bestStreak: number } {
+  let score = 0, run = 0, best = 0, right = 0, wrong = 0;
+  for (const ok of answers) {
+    if (ok) { right++; run++; best = Math.max(best, run); score += 10 + (run >= 3 ? 2 : 0); }
+    else { wrong++; run = 0; score -= 5; }
+  }
+  return { score: Math.max(0, score), right, wrong, bestStreak: best };
+}
+export interface RapidBest { topic: string; score: number; at: number }
+export const RAPID_KEY = "cadus3.crewRapid";
+export function readRapid(): RapidBest[] {
+  try { const v = JSON.parse(localStorage.getItem(RAPID_KEY) || "[]"); return (Array.isArray(v) ? v : []).filter((x) => x && typeof x.topic === "string").slice(0, 50); } catch { return []; }
+}
+/** Keeps the best score per topic (case-insensitive); returns the new list and whether this is a new best. */
+export function recordRapid(list: RapidBest[], topic: string, score: number, now = Date.now()): { list: RapidBest[]; best: boolean } {
+  const k = topic.trim().toLowerCase();
+  const i = list.findIndex((x) => x.topic.toLowerCase() === k);
+  if (i >= 0 && list[i].score >= score) return { list, best: false };
+  const item = { topic: clip(topic, 120), score, at: now };
+  return { list: [item, ...list.filter((_, j) => j !== i)].slice(0, 50), best: true };
+}
+export function saveRapid(l: RapidBest[]) { try { localStorage.setItem(RAPID_KEY, JSON.stringify(l.slice(0, 50))); } catch { /* blocked */ } }
+
+/* ------------------------------------------------------------------ Update 49: explain at 3 levels */
+
+export interface ThreeLevels { simple: string; student: string; expert: string }
+export function levelsPrompt(topic: string): string {
+  return [
+    `Explain "${topic.trim().slice(0, 200)}" at three levels.`,
+    '"simple": for a 12-year-old or a patient, 60–100 words, an everyday analogy, no jargon. "student": for an MBBS student, 150–250 words, mechanism, key features and management in short markdown bullets. "expert": for a postgraduate or specialist, 200–300 words, pathophysiology detail, nuances, current guideline points, numbers and controversies, in markdown.',
+    'Reply with ONLY JSON: {"simple": "…", "student": "…", "expert": "…"}.',
+  ].join("\n\n");
+}
+export function parseLevels(reply: string): ThreeLevels | null {
+  const t = String(reply ?? "");
+  const a = t.indexOf("{"), b = t.lastIndexOf("}");
+  if (a < 0 || b <= a) return null;
+  try {
+    const v = JSON.parse(t.slice(a, b + 1));
+    const r = { simple: clip(v.simple, 3000), student: clip(v.student, 5000), expert: clip(v.expert, 6000) };
+    return r.simple && r.student && r.expert ? r : null;
+  } catch { return null; }
+}
+export const levelsMarkdown = (topic: string, l: ThreeLevels) => `## ${topic}\n\n### Simply put\n${l.simple}\n\n### For an MBBS student\n${l.student}\n\n### For a specialist\n${l.expert}`;
+
+/* ------------------------------------------------------------------ Update 49: syllabus tracker */
+
+export interface SyllabusTopic { t: string; done: boolean }
+export type Syllabus = Record<string, { topics: SyllabusTopic[]; at: number }>;
+export const SYLLABUS_KEY = "cadus3.crewSyllabus";
+export function readSyllabus(): Syllabus {
+  try {
+    const v = JSON.parse(localStorage.getItem(SYLLABUS_KEY) || "{}");
+    const names = EXAM_SUBJECTS.map((s) => s[0]);
+    const out: Syllabus = {};
+    for (const n of names) if (v?.[n] && Array.isArray(v[n].topics)) out[n] = { at: Number(v[n].at) || 0, topics: v[n].topics.filter((x: any) => x && typeof x.t === "string").slice(0, 60).map((x: any) => ({ t: clip(x.t, 160), done: x.done === true })) };
+    return out;
+  } catch { return {}; }
+}
+export function saveSyllabus(s: Syllabus) { try { localStorage.setItem(SYLLABUS_KEY, JSON.stringify(s)); } catch { /* blocked */ } }
+export function syllabusPrompt(subject: string, exam: string): string {
+  return [
+    `List the high-yield topics in ${subject} for ${exam || "NEET-PG"} preparation in India, as a checklist a student can tick off.`,
+    "Give 18–30 topics, each a short specific title (under 10 words), ordered from most to least frequently tested; group related small topics into one line.",
+    'Reply with ONLY a JSON array of strings: ["topic", "topic", …].',
+  ].join("\n\n");
+}
+export function parseSyllabus(reply: string): SyllabusTopic[] {
+  const t = String(reply ?? "");
+  const a = t.indexOf("["), b = t.lastIndexOf("]");
+  if (a < 0 || b <= a) return [];
+  try {
+    const v = JSON.parse(t.slice(a, b + 1));
+    const seen = new Set<string>();
+    return (Array.isArray(v) ? v : []).map((x: unknown) => clip(typeof x === "string" ? x : (x as any)?.t, 160)).filter((x: string) => x && !seen.has(x.toLowerCase()) && seen.add(x.toLowerCase())).slice(0, 40).map((x: string) => ({ t: x, done: false }));
+  } catch { return []; }
+}
+export function syllabusProgress(s: Syllabus): { subjects: number; done: number; total: number; pct: number } {
+  const all = Object.values(s).flatMap((x) => x.topics);
+  const done = all.filter((x) => x.done).length;
+  return { subjects: Object.keys(s).length, done, total: all.length, pct: all.length ? Math.round((100 * done) / all.length) : 0 };
+}
+export const syllabusRevisePrompt = (subject: string, topic: string) => `Revise "${topic}" (${subject}) with me for NEET-PG: the 8–10 most-tested facts in short bullets, one table if it helps, the common traps, then 3 single-best-answer MCQs one at a time — wait for my answer before the next.`;

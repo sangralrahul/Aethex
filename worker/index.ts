@@ -26,6 +26,8 @@ import { serveDownload, type R2Bucket } from "./downloads";
 import { handleStore, runStoreScheduled, type StoreEnv } from "./store";
 import { handleTranscribe, type AiBinding } from "./transcribe";
 import { handleVoice, voiceEnabled, type VoiceEnv } from "./voice";
+import { guestGate, requireAccount } from "./guest";
+import { cadusHome, hostRobots, hostSitemap } from "./seo";
 import "./names/cadus";
 import "../supabase/functions/cadus/index.ts";
 import "./names/analyze-drug-interactions";
@@ -70,6 +72,14 @@ export default {
     // The download page lives at downloads.aethex.in. (/downloads/latest.json stays here for the desktop app.)
     if ((url.pathname === "/downloads" || url.pathname === "/downloads/") && /^(?:www\.|cadus\.)?aethex\.in$/.test(url.hostname)) {
       return new Response(null, { status: 301, headers: { location: "https://downloads.aethex.in/", "cache-control": "public, max-age=3600" } });
+    }
+
+    // Search engines: each subdomain gets its own robots.txt and sitemap; Cadus's home page gets its own
+    // title, description and preview tags in the HTML itself (not only after the app's JavaScript runs).
+    if (url.pathname === "/robots.txt") { const r = hostRobots(url.hostname); if (r) return r; }
+    if (url.pathname === "/sitemap.xml") { const r = hostSitemap(url.hostname); if (r) return r; }
+    if (url.pathname === "/" && request.method === "GET" && /^(?:www\.)?cadus\.aethex\.in$/.test(url.hostname)) {
+      return cadusHome(await env.ASSETS.fetch(new Request(new URL("/", url), request)));
     }
 
     if (url.pathname === "/api/health" && url.searchParams.get("live") === "1") {
@@ -118,6 +128,8 @@ export default {
       const origin = request.headers.get("origin");
       if (origin && !ALLOWED_ORIGIN.test(origin)) return json({ error: "Origin not allowed" }, 403);
       if (request.method === "POST" && !origin) return json({ error: "Origin required" }, 403);
+      const needs = await requireAccount(request, env);
+      if (needs) return needs;
       return handleTranscribe(request, env.AI, env);
     }
 
@@ -147,7 +159,14 @@ export default {
       if (origin && !ALLOWED_ORIGIN.test(origin)) return json({ error: "Origin not allowed" }, 403);
       useEnv(env);
       try {
-        return await handler(request);
+        // Without an account: plain Cadus chat only, a few messages a day (worker/guest.ts).
+        const g = await guestGate(request, env, name);
+        if (g.response) return g.response;
+        const res = await handler(g.request);
+        if (!g.setCookie) return res;
+        const h = new Headers(res.headers);
+        h.append("set-cookie", g.setCookie);
+        return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
       } catch (e) {
         console.error(`api/fn/${match[1]} failed`, e);
         return json({ error: "The AI service hit an unexpected error. Please try again." }, 500);

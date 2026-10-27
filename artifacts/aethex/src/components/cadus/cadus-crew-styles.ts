@@ -1149,3 +1149,47 @@ export const CADUS_CLINIC48_CSS = `
 .cx-ddx .cx-sim-stats,.cx-spot .cx-sim-stats,.cx-guess .cx-sim-stats{margin-bottom:14px}
 .cx-vs .cx-crew-chips .cx-set-hint{align-self:center}
 `;
+
+export const CADUS_CLINIC49_CSS = `
+.cx-guest-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 10px;margin:-2px 0 8px;padding:6px 10px;border-radius:10px;background:color-mix(in srgb,var(--primary) 7%,var(--surface));font-size:12.5px;color:var(--t2)}
+.cx-guest-bar b{color:var(--text)}
+.cx-guest-bar a{font-weight:600;color:var(--primary);text-decoration:none;white-space:nowrap}
+.cx-guest-acts{display:flex;align-items:center;gap:6px;flex:none}
+.cx-guest-acts .cx-btn{display:inline-flex;align-items:center;gap:5px;text-decoration:none;white-space:nowrap}
+@media (max-width:560px){.cx-guest-acts .cx-btn:first-child{display:none}}
+.cx-login-need .cx-sc-acts a{text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.cx-smart-card,.cx-rf-card{margin-top:12px;padding:18px;border:1px solid var(--line);border-radius:16px;background:var(--surface);display:flex;flex-direction:column;gap:12px}
+.cx-smart-top,.cx-rf-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.cx-smart-top small,.cx-rf-top small{color:var(--t3)}
+.cx-smart-card .cx-goal-bar.sm{width:100%}
+.cx-smart-tag{font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;background:var(--line);color:var(--t2)}
+.cx-smart-tag.k-card{background:color-mix(in srgb,var(--primary) 12%,var(--surface));color:var(--primary)}
+.cx-smart-tag.k-mistake{background:color-mix(in srgb,var(--danger) 12%,var(--surface));color:var(--danger)}
+.cx-smart-tag.k-term{background:color-mix(in srgb,var(--ok) 12%,var(--surface));color:var(--ok)}
+.cx-smart-q{font-size:17px;line-height:1.45}
+.cx-smart-a{margin:0;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,var(--ok) 8%,var(--surface));line-height:1.5}
+.cx-smart-opts{display:flex;flex-direction:column;gap:6px}
+.cx-smart-opts .cx-btn{justify-content:flex-start;text-align:left;white-space:normal}
+.cx-btn.ok{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,var(--surface))}
+.cx-btn.no{border-color:var(--danger);background:color-mix(in srgb,var(--danger) 10%,var(--surface))}
+.cx-rf-time{display:inline-flex;align-items:center;gap:5px;font-weight:700;font-variant-numeric:tabular-nums}
+.cx-rf-time.low{color:var(--danger)}
+.cx-rf-s{margin:0;font-size:19px;line-height:1.45;font-weight:600;min-height:3em}
+.cx-rf-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cx-rf-btns .cx-btn{justify-content:center;padding:14px;font-size:16px}
+.cx-rf-wrong{margin:8px 0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.cx-rf-bests{margin-top:12px}
+.cx-rf-bests summary{cursor:pointer;font-weight:600}
+.cx-lv-out{margin-top:14px;display:flex;flex-direction:column;gap:10px}
+.cx-lv-out h2{margin:0}
+.cx-syl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:12px 0}
+.cx-syl-sub{display:flex;flex-direction:column;align-items:flex-start;gap:5px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--text);font:inherit;text-align:left;cursor:pointer}
+.cx-syl-sub.on{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary) inset}
+.cx-syl-sub b{font-size:13px}
+.cx-syl-sub small{font-size:11.5px;color:var(--t3)}
+.cx-syl-sub .cx-goal-bar.sm{width:100%}
+.cx-syl-list{list-style:none;margin:6px 0 12px;padding:0;display:flex;flex-direction:column;gap:4px}
+.cx-syl-list li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.cx-syl-list li .cx-pa-mine{flex:1;min-width:0}
+.cx-smart .cx-sim-stats,.cx-syl .cx-sim-stats{margin-bottom:14px}
+`;

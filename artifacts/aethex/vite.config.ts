@@ -51,6 +51,47 @@ function spaRouteFallbacks(): Plugin {
   };
 }
 
+/**
+ * Update 49: search-engine heads for the main public pages. Each gets its own copy of index.html
+ * (served for /shop as shop.html) with its title, description, canonical link and preview tags in
+ * the HTML itself, so crawlers and link previews see them without running the app.
+ */
+const SEO_PAGES: { file: string; path: string; title: string; description: string }[] = [
+  { file: "shop.html", path: "/shop", title: "Medical devices and supplies | Aethex Store", description: "Genuine BP monitors, stethoscopes, glucometers, oximeters, orthopaedic supports and diagnostic instruments from verified brands, with cash on delivery across India." },
+  { file: "brands.html", path: "/brands", title: "Brands we stock | Aethex Store", description: "OMRON, Dr Trust, Tynor, Accu-Chek, Rossmax, 3M Littmann, MDF Instruments and HEINE, and for hospitals and colleges BD, Mindray, Ambu, Laerdal, 3B Scientific, Narang Medical, Magnus, Remi, Borosil and more." },
+  { file: "books.html", path: "/books", title: "Medical books for every course | Aethex", description: "Textbooks, reviews and exam books for MBBS, MD/MS, nursing, dental, pharmacy, physiotherapy, AYUSH and allied health, with the publishers' latest editions and prices." },
+  { file: "study-hub.html", path: "/study-hub", title: "Study Hub — NEET-PG, NExT, FMGE & USMLE preparation | Aethex", description: "Question banks, mock tests, flashcards, a medical knowledge hub and a clinical case every day, plus a comparison of coaching platforms, books and free resources." },
+  { file: "contact.html", path: "/contact", title: "Contact us | Aethex", description: "Questions about an order, a product, returns or Cadus: write to the Aethex team." },
+  { file: "ai-assistant/index.html", path: "/ai-assistant", title: "Cadus: clinical AI assistant for doctors and medical students in India", description: "Ask Cadus clinical questions free, no sign-up needed for simple chat. Safety-reviewed answers with sources, 300+ clinical tools and calculators, NEET-PG practice and Cadus Crew assistants." },
+];
+function seoPages(): Plugin {
+  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+  return {
+    name: "aethex-seo-pages",
+    closeBundle() {
+      const indexFile = path.join(buildOutDir, "index.html");
+      if (!fs.existsSync(indexFile)) return;
+      const base = fs.readFileSync(indexFile, "utf8");
+      for (const p of SEO_PAGES) {
+        const url = `https://aethex.in${p.path}`;
+        let html = base
+          .replace(/<title>[^<]*<\/title>/, `<title>${esc(p.title)}</title>`)
+          .replace(/<meta\s+name="description"\s+content="[^"]*"\s*\/?>/, `<meta name="description" content="${esc(p.description)}" />`)
+          .replace(/<link rel="canonical" href="[^"]*"\s*\/?>/, `<link rel="canonical" href="${url}" />`);
+        const meta = (attr: string, key: string, value: string) => { html = html.replace(new RegExp(`<meta\\s+${attr}="${key}"\\s+content="[^"]*"\\s*\\/?>`), `<meta ${attr}="${key}" content="${esc(value)}" />`); };
+        meta("property", "og:url", url);
+        meta("property", "og:title", p.title);
+        meta("property", "og:description", p.description);
+        meta("name", "twitter:title", p.title);
+        meta("name", "twitter:description", p.description);
+        const out = path.join(buildOutDir, p.file);
+        fs.mkdirSync(path.dirname(out), { recursive: true });
+        fs.writeFileSync(out, html);
+      }
+    },
+  };
+}
+
 export default defineConfig({
   base: basePath,
   plugins: [
@@ -144,6 +185,7 @@ export default defineConfig({
     }),
     appShell(),
     spaRouteFallbacks(),
+    seoPages(),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [
