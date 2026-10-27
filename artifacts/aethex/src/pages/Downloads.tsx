@@ -297,6 +297,8 @@ const TOOLS: [string, string][] = [
   ["Delirium & 4AT", "v"], ["Childhood Rashes", "y"], ["Sore Throat & Ear Infection", "t"], ["Falls & Hip Fracture", "v"],
   ["Vertigo & HINTS", "t"], ["Acute Pulmonary Oedema", "r"], ["Arrhythmias (ACLS)", "y"], ["Scorpion Sting", "r"], ["Pericarditis & Myocarditis", "v"], ["PCOS", "v"], ["Postnatal Depression (EPDS)", "t"], ["Red Eye & Acute Glaucoma", "r"],
   ["Cholecystitis & Cholangitis", "y"], ["Thyroid Nodule (TI-RADS)", "t"], ["VTE Risk in Pregnancy", "v"], ["Nephrotic Syndrome in Children", "y"],
+  ["Leprosy (MDT)", "y"], ["Tinea & Dermatophytosis", "t"], ["Acne Treatment Ladder", "r"], ["Tetanus", "v"], ["Cervical Cancer Screening", "v"], ["WHO Labour Care Guide", "t"], ["DMARD Monitoring", "y"], ["Tumour Lysis Syndrome", "r"],
+  ["BPH & LUTS (IPSS)", "t"], ["Haemorrhoids & Anal Fissure", "y"], ["Psoriasis", "v"], ["Acute Viral Hepatitis (A & E)", "r"],
 ];
 
 /**

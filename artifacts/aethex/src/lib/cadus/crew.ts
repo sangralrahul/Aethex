@@ -1732,3 +1732,120 @@ export async function readShareCodeZ(code: string, modes: string[]): Promise<Cre
     return cleanCrew({ id: "", name: o.n, tagline: o.t, instructions: o.i, starters: o.s, icon: o.ic, tone: o.to, mode: o.m, sources: !!o.src, avatar: o.av, greeting: o.gr, signoff: o.so, importedAt: Date.now() }, modes);
   } catch { return null; }
 }
+
+/* ------------------------------------------------------------------ Update 43: assistant version history */
+
+export interface CrewVersion { at: number; name: string; tagline: string; instructions: string; starters: string[] }
+export const VERSIONS_KEY = "cadus3.crewVersions";
+export const VERSIONS_MAX = 10;
+export function readVersions(): Record<string, CrewVersion[]> {
+  try {
+    const v = JSON.parse(localStorage.getItem(VERSIONS_KEY) || "{}");
+    if (!v || typeof v !== "object" || Array.isArray(v)) return {};
+    const out: Record<string, CrewVersion[]> = {};
+    for (const [k, l] of Object.entries(v).slice(0, 200)) if (Array.isArray(l)) out[k] = l.filter((x) => x && typeof x.instructions === "string").slice(0, VERSIONS_MAX).map((x) => ({ at: Number(x.at) || 0, name: clip(x.name, 80), tagline: clip(x.tagline, 160), instructions: clip(x.instructions, 4000), starters: Array.isArray(x.starters) ? x.starters.map((s: unknown) => clip(s, 200)).slice(0, 6) : [] }));
+    return out;
+  } catch { return {}; }
+}
+export function saveVersions(m: Record<string, CrewVersion[]>) { try { localStorage.setItem(VERSIONS_KEY, JSON.stringify(m)); } catch { /* blocked */ } }
+const snap = (c: Pick<CrewMember, "name" | "tagline" | "instructions" | "starters">, at: number): CrewVersion => ({ at, name: c.name, tagline: c.tagline ?? "", instructions: c.instructions, starters: [...(c.starters ?? [])] });
+/** Keeps the previous version when an assistant's words change (newest first, up to 10). */
+export function recordVersion(m: Record<string, CrewVersion[]>, id: string, prev: Pick<CrewMember, "name" | "tagline" | "instructions" | "starters">, next: Pick<CrewMember, "name" | "tagline" | "instructions" | "starters">, now = Date.now()): Record<string, CrewVersion[]> {
+  const same = prev.name === next.name && (prev.tagline ?? "") === (next.tagline ?? "") && prev.instructions === next.instructions && (prev.starters ?? []).join("\n") === (next.starters ?? []).join("\n");
+  if (same || !id) return m;
+  return { ...m, [id]: [snap(prev, now), ...(m[id] ?? [])].slice(0, VERSIONS_MAX) };
+}
+export type DiffLine = { type: "same" | "add" | "del"; text: string };
+/** A line diff (longest common subsequence) from a to b. */
+export function lineDiff(a: string, b: string): DiffLine[] {
+  const x = a.split("\n"), y = b.split("\n");
+  if (x.length * y.length > 250000) return [...x.map((t) => ({ type: "del" as const, text: t })), ...y.map((t) => ({ type: "add" as const, text: t }))];
+  const n = x.length, mm = y.length;
+  const L: number[][] = Array.from({ length: n + 1 }, () => new Array(mm + 1).fill(0));
+  for (let i = n - 1; i >= 0; i--) for (let j = mm - 1; j >= 0; j--) L[i][j] = x[i] === y[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+  const out: DiffLine[] = [];
+  let i = 0, j = 0;
+  while (i < n && j < mm) {
+    if (x[i] === y[j]) { out.push({ type: "same", text: x[i] }); i++; j++; }
+    else if (L[i + 1][j] >= L[i][j + 1]) out.push({ type: "del", text: x[i++] });
+    else out.push({ type: "add", text: y[j++] });
+  }
+  while (i < n) out.push({ type: "del", text: x[i++] });
+  while (j < mm) out.push({ type: "add", text: y[j++] });
+  return out;
+}
+export const diffStats = (d: DiffLine[]) => ({ added: d.filter((x) => x.type === "add").length, removed: d.filter((x) => x.type === "del").length });
+
+/* ------------------------------------------------------------------ Update 43: study timer (pomodoro) */
+
+export interface PomoSession { at: number; crewId: string; topic: string; minutes: number }
+export const POMO_KEY = "cadus3.crewPomodoro";
+export function readPomo(): PomoSession[] {
+  try { const v = JSON.parse(localStorage.getItem(POMO_KEY) || "[]"); return (Array.isArray(v) ? v : []).filter((x) => x && Number(x.minutes) > 0).slice(0, 500).map((x) => ({ at: Number(x.at) || 0, crewId: String(x.crewId ?? ""), topic: clip(x.topic, 120), minutes: Math.min(240, Math.round(Number(x.minutes))) })); } catch { return []; }
+}
+export function savePomo(l: PomoSession[]) { try { localStorage.setItem(POMO_KEY, JSON.stringify(l.slice(0, 500))); } catch { /* blocked */ } }
+export function pomoStats(list: PomoSession[], now: Date): { todayMin: number; todaySessions: number; weekMin: number; streak: number } {
+  const key = (t: number) => dateKey(new Date(t));
+  const today = dateKey(now);
+  const days = new Set(list.map((s) => key(s.at)));
+  const todays = list.filter((s) => key(s.at) === today);
+  const weekAgo = now.getTime() - 7 * 86400000;
+  let streak = 0;
+  for (let d = new Date(now.getFullYear(), now.getMonth(), now.getDate()); ; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1)) {
+    if (days.has(dateKey(d))) streak++;
+    else if (dateKey(d) !== today) break;
+    if (streak > 365) break;
+  }
+  return { todayMin: todays.reduce((a, s) => a + s.minutes, 0), todaySessions: todays.length, weekMin: list.filter((s) => s.at >= weekAgo).reduce((a, s) => a + s.minutes, 0), streak };
+}
+export const pomoQuizPrompt = (topic: string, minutes: number) => `I just studied ${topic || "this topic"} for ${minutes} minute${minutes === 1 ? "" : "s"}. Quiz me now: ask 5 short questions one at a time (mix recall, a clinical scenario and a dose or number), wait for my answer each time, then score me and tell me the 3 points to revise.`;
+export const mmss = (ms: number) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`; };
+
+/* ------------------------------------------------------------------ Update 43: slash commands */
+
+export const SLASH_CMDS: { cmd: string; hint: string; arg: string }[] = [
+  { cmd: "mcq", hint: "5 exam MCQs on a topic", arg: "topic" },
+  { cmd: "viva", hint: "Viva questions on a topic, one at a time", arg: "topic" },
+  { cmd: "explain", hint: "Explain a topic simply, step by step", arg: "topic" },
+  { cmd: "ddx", hint: "Differential diagnosis for a presentation", arg: "case" },
+  { cmd: "flowchart", hint: "A management flowchart", arg: "topic" },
+  { cmd: "table", hint: "Last answer as a table", arg: "" },
+  { cmd: "shorter", hint: "Last answer in under 120 words", arg: "" },
+  { cmd: "mnemonic", hint: "Last answer with mnemonics", arg: "" },
+  { cmd: "patient", hint: "Last answer for a patient", arg: "" },
+  { cmd: "recap", hint: "Key points and to-dos from this chat", arg: "" },
+];
+export const matchSlash = (typed: string) => { const q = typed.replace(/^\//, "").toLowerCase(); return SLASH_CMDS.filter((c) => c.cmd.startsWith(q)); };
+/** Expands a slash command: a message to send, the recap action, or null if it isn't one (or needs a missing topic). */
+export function expandSlash(text: string, lastAnswer: string): { send: string } | { action: "recap" } | { error: string } | null {
+  const m = /^\/([a-z]+)\b\s*([\s\S]*)$/i.exec(text.trim());
+  if (!m) return null;
+  const cmd = SLASH_CMDS.find((c) => c.cmd === m[1].toLowerCase());
+  if (!cmd) return null;
+  const arg = m[2].trim();
+  if (cmd.cmd === "recap") return { action: "recap" };
+  if (cmd.arg && !arg) return { error: `Add a ${cmd.arg} after /${cmd.cmd}, e.g. /${cmd.cmd} ${cmd.arg === "case" ? "fever with rash in a 6-year-old" : "heart failure"}` };
+  const remix: Record<string, string> = { table: "table", shorter: "shorter", mnemonic: "mnemonic", patient: "patient" };
+  if (remix[cmd.cmd]) return lastAnswer ? { send: remixPrompt(remix[cmd.cmd], lastAnswer) } : { error: `/${cmd.cmd} works on the last answer: ask something first` };
+  const out: Record<string, string> = {
+    mcq: `Give me 5 single-best-answer MCQs (NEET-PG style) on ${arg}, with 4 options each. Put the answers with a one-line explanation at the end.`,
+    viva: `Act as a viva examiner on ${arg}. Ask me one question at a time, wait for my answer, then give feedback and ask the next. 5 questions in all.`,
+    explain: `Explain ${arg} simply and step by step, as to a final-year student: the key idea first, then mechanism, clinical relevance and one example.`,
+    ddx: `Give a ranked differential diagnosis for: ${arg}. For each: the key clue for and against, and the one test that best separates it. Flag any can't-miss diagnoses first.`,
+    flowchart: `Give a step-by-step management flowchart for ${arg}, using arrows (→) and decision points, with doses where relevant.`,
+  };
+  return { send: out[cmd.cmd] };
+}
+
+/* ------------------------------------------------------------------ Update 43: chat recap */
+
+export function recapPrompt(msgs: { role: string; content: string }[]): string {
+  const t = msgs.map((x) => `${x.role === "user" ? "Me" : "Assistant"}: ${x.content}`).join("\n\n");
+  const tail = t.length > 12000 ? `…${t.slice(-12000)}` : t;
+  return [
+    "Recap the conversation below for my notes. Use exactly these headings:",
+    "## Key points\n(5–8 bullets)\n## Doses and numbers\n(every dose, value and threshold mentioned, exactly as given; 'None' if none)\n## To do\n(actions or things to check)\n## Revise later\n(2–4 topics or questions to look up)",
+    "Do not add anything that was not in the conversation.",
+    `<conversation>\n${tail}\n</conversation>`,
+  ].join("\n\n");
+}

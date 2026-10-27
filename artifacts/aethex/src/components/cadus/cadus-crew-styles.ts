@@ -943,3 +943,34 @@ export const CADUS_CLINIC42_CSS = `
 .cx-epds .cx-nihss>*,.cx-epds .cx-select,.cx-tirads .cx-nihss>*,.cx-tirads .cx-select{min-width:0;max-width:100%}
 .cx-epds .cx-select,.cx-tirads .cx-select{width:100%;text-overflow:ellipsis}
 `;
+
+/* Update 43: version history, study timer, slash menu, recap. */
+export const CADUS_CLINIC43_CSS = `
+.cx-vh{display:grid;grid-template-columns:minmax(0,220px) minmax(0,1fr);gap:12px}
+.cx-vh-list{display:flex;flex-direction:column;gap:6px}
+.cx-vh-i{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--text);font:inherit;text-align:left;cursor:pointer}
+.cx-vh-i small{color:var(--t2)}
+.cx-vh-i.on{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 7%,var(--surface))}
+.cx-vh-main{min-width:0}
+.cx-vh-diff{max-height:360px;overflow:auto;margin:8px 0;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-size:12.5px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+.cx-vh-diff .add{display:block;background:color-mix(in srgb,var(--ok) 14%,transparent)}
+.cx-vh-diff .del{display:block;background:color-mix(in srgb,var(--danger) 12%,transparent);text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--danger) 50%,transparent)}
+.cx-vh-diff .same{display:block;color:var(--t2)}
+@media (max-width:640px){.cx-vh{grid-template-columns:minmax(0,1fr)}.cx-vh-list{flex-direction:row;overflow-x:auto}.cx-vh-i{flex:none}}
+.cx-pomo .cx-sim-stats{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:640px){.cx-pomo .cx-sim-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.cx-pomo .cx-sim-stats small{display:inline-flex;align-items:center;gap:4px}
+.cx-pomo-clock{position:relative;display:grid;place-items:center;width:220px;height:220px;max-width:70vw;max-height:70vw;margin:18px auto;border-radius:50%;text-align:center}
+.cx-pomo-ring{position:absolute;inset:0;border-radius:50%;background:conic-gradient(var(--primary) var(--p,0%),var(--line) 0);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 10px),#000 calc(100% - 9px));mask:radial-gradient(farthest-side,transparent calc(100% - 10px),#000 calc(100% - 9px))}
+.cx-pomo-clock.brk .cx-pomo-ring{background:conic-gradient(var(--ok) var(--p,0%),var(--line) 0)}
+.cx-pomo-clock b{font-size:44px;font-variant-numeric:tabular-nums;letter-spacing:.02em;align-self:end}
+.cx-pomo-clock small{align-self:start;max-width:160px;color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cx-pomo .cx-sc-acts{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:8px 0}
+.cx-pomo [data-pom="done"] .cx-sc-acts{justify-content:flex-start}
+.cx-pomo-list{margin:6px 0 0;padding-left:18px;color:var(--t2)}
+.cx-pomo-list b{color:var(--text)}
+.cx-at.cx-slash button>span:not(.cx-crew-badge){flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:2px 8px}
+.cx-slash button em{color:var(--t3);font-style:normal}
+.cx-slash button small{flex-basis:100%;color:var(--t2)}
+[data-rc="busy"]{display:flex;align-items:center;gap:6px}
+`;
