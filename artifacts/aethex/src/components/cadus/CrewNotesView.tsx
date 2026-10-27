@@ -3,9 +3,9 @@
  * flashcards and reviewed with spaced repetition (Leitner boxes). Stays on this device.
  */
 import { useMemo, useState, type ReactNode } from "react";
-import { Check, Copy, Layers, Loader2, RotateCcw, Search, Trash2, X } from "lucide-react";
+import { Check, Copy, Layers, Loader2, RotateCcw, Search, Share2, Trash2, X } from "lucide-react";
 import { MdBlock } from "./LiveAnswer";
-import { dateKey, deleteNote, dueCards, findCrew, flashcardPrompt, parseCards, reviewCard, type CrewMember, type CrewNotes, type Flashcard } from "@/lib/cadus/crew";
+import { canCompress, dateKey, deckShareCode, deleteNote, dueCards, findCrew, flashcardPrompt, parseCards, reviewCard, type CrewMember, type CrewNotes, type Flashcard } from "@/lib/cadus/crew";
 
 export default function CrewNotesView({ mine, notes, setNotes, badge, ask, canAsk, friendlyError, toast }: {
   mine: CrewMember[];
@@ -23,6 +23,17 @@ export default function CrewNotesView({ mine, notes, setNotes, badge, ask, canAs
   const [busy, setBusy] = useState("");
   const [review, setReview] = useState<{ noteId: string; idx: number }[] | null>(null);
   const [flip, setFlip] = useState(false);
+  /** Update 45: a shareable link for one note's flashcards. */
+  const [deckLink, setDeckLink] = useState<{ id: string; link: string } | null>(null);
+  const shareDeck = async (id: string) => {
+    const n = notes.notes.find((x) => x.id === id);
+    if (!n?.cards?.length) return;
+    if (!canCompress()) { toast("Sharing decks isn't supported in this browser"); return; }
+    try {
+      const code = await deckShareCode({ title: n.title, crewId: n.crewId, cards: n.cards.map((c) => ({ front: c.front, back: c.back })) });
+      setDeckLink({ id, link: `${window.location.origin}${window.location.pathname}?deck=${code}` });
+    } catch { toast("Couldn't make a link for this deck"); }
+  };
   const today = dateKey();
   const list = useMemo(() => notes.notes.filter((n) => (!who || n.crewId === who) && (!q.trim() || `${n.title} ${n.text}`.toLowerCase().includes(q.trim().toLowerCase()))), [notes, q, who]);
   const crewIds = [...new Set(notes.notes.map((n) => n.crewId))];
@@ -89,9 +100,17 @@ export default function CrewNotesView({ mine, notes, setNotes, badge, ask, canAs
               <div className="cx-sc-acts">
                 <button className="cx-btn" onClick={() => void makeCards(n.id)} disabled={busy === n.id} data-cn="cards">{busy === n.id ? <Loader2 size={14} className="cx-rot" /> : <Layers size={14} />} {n.cards?.length ? "Remake flashcards" : "Make flashcards"}</button>
                 {n.cards?.length ? <button className="cx-btn" onClick={() => startReview(n.id)} data-cn="review-one"><RotateCcw size={14} /> Review this note</button> : null}
+                {n.cards?.length ? <button className="cx-btn" onClick={() => void shareDeck(n.id)} data-cn="share-deck"><Share2 size={14} /> Share deck</button> : null}
                 <button className="cx-btn" onClick={() => { void navigator.clipboard?.writeText(n.text); toast("Copied"); }}><Copy size={14} /> Copy</button>
                 <button className="cx-btn" onClick={() => { setNotes((s) => deleteNote(s, n.id)); setOpenId(""); }} data-cn="delete"><Trash2 size={14} /> Delete</button>
               </div>
+              {deckLink?.id === n.id && (
+                <div className="cx-qb-share" data-cn="deck-box">
+                  <input className="cx-input" readOnly value={deckLink.link} onFocus={(e) => e.currentTarget.select()} aria-label="Deck link" data-cn="deck-link" />
+                  <button className="cx-btn" onClick={() => { void navigator.clipboard?.writeText(deckLink.link); toast("Deck link copied"); }} data-cn="deck-copy"><Copy size={14} /> Copy</button>
+                  <a className="cx-btn" href={`https://wa.me/?text=${encodeURIComponent(`${n.cards?.length ?? 0} flashcards on "${n.title}" for Cadus: ${deckLink.link}`.slice(0, 3800))}`} target="_blank" rel="noopener noreferrer" data-cn="deck-wa">WhatsApp</a>
+                </div>
+              )}
             </div>
           )}
         </div>); })}</div>

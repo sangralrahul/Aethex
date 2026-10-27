@@ -301,6 +301,9 @@ const TOOLS: [string, string][] = [
   ["BPH & LUTS (IPSS)", "t"], ["Haemorrhoids & Anal Fissure", "y"], ["Psoriasis", "v"], ["Acute Viral Hepatitis (A & E)", "r"],
   ["Lung Nodule (Fleischner)", "t"], ["ITP (Immune Thrombocytopenia)", "r"], ["Parkinson's Disease Medicines", "v"], ["Breast Lump & Screening", "r"], ["Constipation & Enuresis (Children)", "y"], ["ADHD in Children", "v"], ["Infertility Work-up", "t"], ["Knee & Hip Osteoarthritis", "y"],
   ["Allergic Rhinitis & Sinusitis", "t"], ["GERD & Heartburn", "r"], ["Shoulder Pain", "y"], ["Carpal Tunnel Syndrome", "v"],
+  ["Chronic Cough", "s"], ["Haematuria Work-up", "r"], ["Abnormal LFTs", "y"], ["Lymphadenopathy", "v"],
+  ["Abnormal Uterine Bleeding", "t"], ["Amenorrhoea", "s"], ["Vaginal Discharge & STI", "r"], ["UTI in Children", "y"],
+  ["High Blood Counts", "v"], ["Peripheral Arterial Disease (ABPI)", "t"], ["Hair Loss (Alopecia)", "s"], ["Vitiligo", "r"],
 ];
 
 /**

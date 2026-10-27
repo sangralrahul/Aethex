@@ -1939,3 +1939,130 @@ export function explainPrompt(term: string, context: string): string {
     context ? `It appeared in this text:\n"""${context.slice(0, 1200)}"""` : "",
   ].filter(Boolean).join("\n\n");
 }
+
+/* ------------------------------------------------------------------ Update 45: diagram it */
+
+export function diagramPrompt(kind: "flowchart" | "mindmap", text: string): string {
+  const how = kind === "mindmap"
+    ? "a Mermaid mindmap (start with the line `mindmap`, then `  root((Topic))` and indented branches, at most 4 levels and 25 nodes)"
+    : "a Mermaid flowchart (start with `flowchart TD`; short node labels in square brackets, decisions in curly braces, labelled arrows like -->|yes|, at most 20 nodes)";
+  return [
+    `Turn the medical text below into ${how}. Keep doses and key numbers in the labels. Use only plain words in labels (no quotes, parentheses inside labels are fine, no HTML, no special characters like # or ;).`,
+    "Reply with ONLY the Mermaid code in a ```mermaid block, nothing else.",
+    `<text>\n${text.slice(0, 6000)}\n</text>`,
+  ].join("\n\n");
+}
+/** The Mermaid code from a reply, or "" if it isn't a flowchart or mindmap. */
+export function extractMermaid(reply: string): string {
+  const t = String(reply ?? "");
+  const m = /```(?:mermaid)?\s*\n([\s\S]*?)```/.exec(t);
+  const code = (m ? m[1] : t).replace(/%%\{[\s\S]*?\}%%/g, "").replace(/<[^>]*>/g, "").trim();
+  if (!/^(flowchart|graph)\s+(TD|TB|LR|RL|BT)\b|^mindmap\b/.test(code)) return "";
+  return code.slice(0, 6000);
+}
+
+/* ------------------------------------------------------------------ Update 45: learning paths */
+
+export interface PathTask { text: string; done: boolean }
+export interface LearningPath { id: string; crewId: string; topic: string; createdAt: number; days: { title: string; tasks: PathTask[] }[] }
+export const PATHS_KEY = "cadus3.crewPaths";
+export function pathPrompt(topic: string, days: number): string {
+  return [
+    `Make a ${days}-day learning path for a medical student on: ${topic.trim().slice(0, 200)}. Build from basics to clinical application and exam practice; the last day is revision and a self-test.`,
+    'Reply with ONLY JSON: {"days": [{"title": "short day title", "tasks": ["3–4 concrete tasks, each under 15 words"]}]}.',
+  ].join("\n\n");
+}
+export function parsePath(text: string, days: number): { title: string; tasks: PathTask[] }[] {
+  const t = String(text ?? "");
+  const s = t.indexOf("{"), e = t.lastIndexOf("}");
+  if (s < 0 || e <= s) return [];
+  try {
+    const o = JSON.parse(t.slice(s, e + 1));
+    const list = Array.isArray(o?.days) ? o.days : [];
+    return list.slice(0, days).map((d: { title?: unknown; tasks?: unknown }, i: number) => ({ title: clip(d?.title, 80) || `Day ${i + 1}`, tasks: (Array.isArray(d?.tasks) ? d.tasks : []).map((x: unknown) => clip(x, 160)).filter(Boolean).slice(0, 6).map((x: string) => ({ text: x, done: false })) })).filter((d: { tasks: PathTask[] }) => d.tasks.length);
+  } catch { return []; }
+}
+export function readPaths(): LearningPath[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(PATHS_KEY) || "[]");
+    return (Array.isArray(v) ? v : []).filter((p) => p && Array.isArray(p.days)).slice(0, 20).map((p) => ({ id: String(p.id), crewId: String(p.crewId ?? ""), topic: clip(p.topic, 200), createdAt: Number(p.createdAt) || 0, days: p.days.slice(0, 14).map((d: { title?: unknown; tasks?: unknown }) => ({ title: clip(d?.title, 80), tasks: (Array.isArray(d?.tasks) ? d.tasks : []).slice(0, 6).map((x: { text?: unknown; done?: unknown }) => ({ text: clip(x?.text, 160), done: x?.done === true })) })) }));
+  } catch { return []; }
+}
+export function savePaths(l: LearningPath[]) { try { localStorage.setItem(PATHS_KEY, JSON.stringify(l.slice(0, 20))); } catch { /* blocked */ } }
+export const pathProgress = (p: LearningPath) => { const all = p.days.flatMap((d) => d.tasks); const done = all.filter((x) => x.done).length; return { done, total: all.length, pct: all.length ? Math.round((done / all.length) * 100) : 0 }; };
+/** Which day of the path today is (0-based), from the day it was made. */
+export function pathToday(p: LearningPath, now: Date): number {
+  const start = new Date(p.createdAt); const a = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate()); const b = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.max(0, Math.min(p.days.length - 1, Math.round((b - a) / 86400000)));
+}
+export const dayPrompt = (p: LearningPath, i: number) => `Day ${i + 1} of my ${p.days.length}-day learning path on ${p.topic}: "${p.days[i]?.title}". Teach me today's tasks step by step, then ask me 3 questions to check I understood:\n${(p.days[i]?.tasks ?? []).map((t) => `- ${t.text}`).join("\n")}`;
+
+/* ------------------------------------------------------------------ Update 45: share flashcard decks */
+
+export interface DeckShare { title: string; cards: { front: string; back: string }[]; crewId: string }
+export async function deckShareCode(d: DeckShare): Promise<string> {
+  const json = JSON.stringify({ v: 1, t: d.title, k: d.crewId, c: d.cards.slice(0, 60).map((x) => [x.front, x.back]) });
+  return toB64url(await pipeBytes(new TextEncoder().encode(json), new CompressionStream("deflate-raw")));
+}
+export async function readDeckShare(code: string): Promise<DeckShare | null> {
+  try {
+    if (!code || code.length > 40000 || !/^[A-Za-z0-9_-]+$/.test(code)) return null;
+    const o = JSON.parse(new TextDecoder().decode(await pipeBytes(fromB64url(code), new DecompressionStream("deflate-raw"))));
+    if (!o || o.v !== 1 || !Array.isArray(o.c)) return null;
+    const cards = o.c.filter((x: unknown) => Array.isArray(x) && typeof x[0] === "string" && typeof x[1] === "string").slice(0, 60).map((x: [string, string]) => ({ front: clip(x[0], 400), back: clip(x[1], 800) })).filter((x: { front: string; back: string }) => x.front && x.back);
+    if (!cards.length) return null;
+    return { title: clip(o.t, 120) || "Shared deck", crewId: String(o.k ?? ""), cards };
+  } catch { return null; }
+}
+
+/* ------------------------------------------------------------------ Update 45: smart assistant suggestions */
+
+/** Topic patterns for the built-in assistants, most specific first (ties go to the earlier rule). */
+const SUGGEST_RULES: [RegExp, string][] = [
+  [/\b(x-?ray|ct scan|ct head|mri|ultrasound|usg|radiograph\w*|consolidation|opacity)\b/, "crew-radiology"],
+  [/\b(child|children|infant|baby|neonat\w*|newborn|toddler|paediatric|pediatric|\d+[- ]?(month|year)s?[- ]old (boy|girl))\b/, "crew-paeds"],
+  [/\b(pregnan\w*|antenatal|labou?r|postpartum|obstetric\w*|menstrua\w*|periods?|gyna?ec\w*|pcos|uterus|ovar\w*|contracepti\w*)\b/, "crew-obg"],
+  [/\b(chest pain|myocardial|angina|heart failure|murmur|troponin|cardiac|statin|hypertension|blood pressure)\b/, "crew-cardio"],
+  [/\b(ecg|ekg|st[- ]elevation|st[- ]depression|qrs|qtc|arrhythmi\w*|atrial fibrillation|heart block|tachycardia|bradycardia)\b/, "crew-ecg"],
+  [/\b(neet|inicet|ini-cet|fmge|mcqs?)\b/, "crew-neetpg"],
+  [/\b(viva|oral exam)\b/, "crew-viva"],
+  [/\b(thesis|dissertation|sample size|study design|statistic\w*|p[- ]value)\b/, "crew-thesis"],
+  [/\b(anatomy|physiology|biochem\w*|plexus|nerve supply|embryolog\w*|histolog\w*)\b/, "crew-firstyear"],
+  [/\b(antibiotic\w*|antimicrobial\w*|culture report|sensitivity report)\b/, "crew-abx"],
+  [/\b(pneumonia|asthma|copd|spirometry|pleural|tuberculosis|tb|cough|lungs?|inhaler\w*)\b/, "crew-pulm"],
+  [/\b(diabet\w*|insulin|hba1c|thyroid|cortisol|adrenal|pituitary|endocrin\w*)\b/, "crew-endo"],
+  [/\b(kidney|renal|creatinine|egfr|dialysis|proteinuria|nephr\w*|potassium|sodium)\b/, "crew-nephro"],
+  [/\b(stroke|seizures?|epilep\w*|headache|migraine|neuropath\w*|parkinson\w*|dementia|paralysis|numbness)\b/, "crew-neuro"],
+  [/\b(rash\w*|itch\w*|skin|eczema|psoriasis|acne|tinea|ringworm|urticaria|vitiligo|hair loss|alopecia)\b/, "crew-derm"],
+  [/\b(eyes?|vision|retina\w*|glaucoma|cataract|conjunctiv\w*)\b/, "crew-ophthal"],
+  [/\b(ears?|nose|throat|tonsil\w*|sinus\w*|hearing|vertigo|epistaxis)\b/, "crew-ent"],
+  [/\b(fracture\w*|bones?|joints?|knee|hip|shoulder|back pain|sprain|orthop\w*)\b/, "crew-ortho"],
+  [/\b(depress\w*|anxiety|suicid\w*|psychos\w*|schizo\w*|bipolar|insomnia|panic)\b/, "crew-psych"],
+  [/\b(liver|jaundice|hepatitis|cirrhosis|gi bleed|stomach|abdominal pain|diarrho?ea|vomiting|pancrea\w*|ibd|crohn\w*)\b/, "crew-gastro"],
+  [/\b(cancer|tumou?rs?|chemo\w*|oncolog\w*|malignan\w*|lymphoma|leukaemia|leukemia)\b/, "crew-onco"],
+  [/\b(arthritis|lupus|sle|gout|vasculitis|rheumat\w*)\b/, "crew-rheum"],
+  [/\b(tooth|teeth|dental|gums?|extraction)\b/, "crew-dental"],
+  [/\b(anaesth\w*|anesth\w*|intubat\w*|epidural|spinal block)\b/, "crew-anaes"],
+  [/\b(icu|ventilat\w*|vasopressor\w*|abg|septic shock)\b/, "crew-icu"],
+  [/\b(appendic\w*|hernia|surgery|surgical|wound|abscess|cholecyst\w*)\b/, "crew-surgery"],
+  [/\b(snake ?bite|poisoning|overdose|anaphylaxis|trauma|emergency|burns?)\b/, "crew-ed"],
+  [/\b(elderly|older adults?|frail\w*|falls)\b/, "crew-geri"],
+  [/\b(post-?mortem|autopsy|medico-?legal|mlc|inquest)\b/, "crew-forensic"],
+  [/\b(vaccin\w*|epidemiolog\w*|outbreak|national programme|public health)\b/, "crew-psm"],
+  [/\b(drug interactions?|side effects?|doses?|dosage)\b/, "crew-pharmacist"],
+];
+/** The Crew assistant that best fits a question, if one clearly does: your own assistants by name, then topic rules for the built-in ones. */
+export function bestCrewFor(text: string, mine: CrewMember[]): { c: CrewMember; score: number } | null {
+  const t = String(text ?? "").toLowerCase();
+  if (t.trim().length < 15) return null;
+  for (const c of mine) {
+    const words = c.name.toLowerCase().match(/[a-z]{4,}/g) ?? [];
+    if (words.length && words.every((w) => t.includes(w))) return { c, score: 5 };
+  }
+  const hits = new Map<string, number>();
+  SUGGEST_RULES.forEach(([re, id], i) => { const m = t.match(new RegExp(re.source, "g")); if (m) hits.set(id, (hits.get(id) ?? 0) + m.length * 10 - i * 0.01); });
+  const best = [...hits.entries()].sort((a, b) => b[1] - a[1])[0];
+  if (!best) return null;
+  const c = findCrew(best[0], mine);
+  return c ? { c, score: Math.round(best[1] / 10) } : null;
+}
