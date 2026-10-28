@@ -9139,7 +9139,8 @@ export default function CadusAI() {
         />
       )}
       {crewImport && <CrewImportDialog c={crewImport} badge={<CrewBadge c={crewImport} size={44} />} already={crewMine.some((x) => x.name === crewImport.name)} onAdd={() => addImported(crewImport)} onClose={() => setCrewImport(null)} />}
-      {onboardOpen && (
+      {/* The welcome and first-run setup show only once signed in; guests go straight to chat. */}
+      {onboardOpen && !guest && (
         <Onboarding
           languages={LANGUAGES}
           language={prefs.language}
