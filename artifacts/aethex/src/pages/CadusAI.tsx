@@ -8,7 +8,7 @@ import {
   type ComponentProps, type ComponentType, type ReactNode, type DragEvent as ReactDragEvent, type FocusEvent as ReactFocusEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent,
 } from "react";
 import {
-  AlertTriangle, Cloud, Network, PenLine,  Layers2, Lock, UserPlus,  BatteryLow, Columns2, Inbox, NotebookText, Sparkle,  BookA, Dices, User,  Radar,  Route,  Loader2, Highlighter, Puzzle, Scan, Sprout,  Armchair, Fingerprint, Slash,  Orbit, Venus, Wand2,  SpellCheck,  Bed, AlarmClock,  Mountain, Briefcase, SearchCheck, UserRoundPen,  Smile, Columns3, LibraryBig, Snowflake, MessagesSquare, GlassWater, LifeBuoy, Trophy, Package, StickyNote, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ArrowUpRight, Bookmark, BookmarkCheck, BookOpen, BookOpenCheck, Brain, Gauge,
+  AlertTriangle, Rocket,  Cloud, Network, PenLine,  Layers2, Lock, UserPlus,  BatteryLow, Columns2, Inbox, NotebookText, Sparkle,  BookA, Dices, User,  Radar,  Route,  Loader2, Highlighter, Puzzle, Scan, Sprout,  Armchair, Fingerprint, Slash,  Orbit, Venus, Wand2,  SpellCheck,  Bed, AlarmClock,  Mountain, Briefcase, SearchCheck, UserRoundPen,  Smile, Columns3, LibraryBig, Snowflake, MessagesSquare, GlassWater, LifeBuoy, Trophy, Package, StickyNote, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ArrowUpRight, Bookmark, BookmarkCheck, BookOpen, BookOpenCheck, Brain, Gauge,
   Calculator, Camera, Check, ChevronDown, ChevronRight, ChevronsUpDown, CircleQuestionMark, ClipboardCheck, ClipboardList, Copy, CornerDownRight,
   Flame, Languages, Mail, MessageCircleQuestion, Target, UserCog, UserRound,
   Archive, ArchiveRestore, AudioLines, Bell, ChevronLeft, Ellipsis, FileDown, FilePen, Lightbulb, MessageSquareDashed, Paperclip, Share2,
@@ -187,6 +187,22 @@ const CrewSmartView = lazy(() => import("@/components/cadus/CrewSmartView"));
 const CrewRapidView = lazy(() => import("@/components/cadus/CrewRapidView"));
 const CrewLevelsView = lazy(() => import("@/components/cadus/CrewLevelsView"));
 const CrewSyllabusView = lazy(() => import("@/components/cadus/CrewSyllabusView"));
+const HyperthyroidView = lazy(() => import("@/components/cadus/HyperthyroidView"));
+const PleuralEffusionView = lazy(() => import("@/components/cadus/PleuralEffusionView"));
+const RheumatoidView = lazy(() => import("@/components/cadus/RheumatoidView"));
+const AdrenalView = lazy(() => import("@/components/cadus/AdrenalView"));
+const WristView = lazy(() => import("@/components/cadus/WristView"));
+const KneeInjuryView = lazy(() => import("@/components/cadus/KneeInjuryView"));
+const RetinopathyView = lazy(() => import("@/components/cadus/RetinopathyView"));
+const HearingLossView = lazy(() => import("@/components/cadus/HearingLossView"));
+const VitaminDView = lazy(() => import("@/components/cadus/VitaminDView"));
+const GastroenteritisView = lazy(() => import("@/components/cadus/GastroenteritisView"));
+const AnaemiaPregnancyView = lazy(() => import("@/components/cadus/AnaemiaPregnancyView"));
+const SecondaryHtnView = lazy(() => import("@/components/cadus/SecondaryHtnView"));
+const CrewOsceView = lazy(() => import("@/components/cadus/CrewOsceView"));
+const CrewGraderView = lazy(() => import("@/components/cadus/CrewGraderView"));
+const CrewDrugCardsView = lazy(() => import("@/components/cadus/CrewDrugCardsView"));
+const CrewSprintView = lazy(() => import("@/components/cadus/CrewSprintView"));
 const LupusView = lazy(() => import("@/components/cadus/LupusView"));
 const PmrGcaView = lazy(() => import("@/components/cadus/PmrGcaView"));
 const BronchiectasisView = lazy(() => import("@/components/cadus/BronchiectasisView"));
@@ -489,7 +505,7 @@ import {
   readNotes, saveNotes, addNote, readCheckins, saveCheckins, dueCheckins, dateKey, readDrill, bestStreak, readCaseRounds, readRooms, readQuizResults, type CrewNotes, type CheckIns, type CrewStats,
   readMemory, saveMemory, addFact, rememberFrom as crewRememberFrom, readRatings, saveRatings, rateCrew, unrateCrew, ratingSummary, type CrewFact, type CrewRating,
 } from "@/lib/cadus/crew";
-import { CADUS_CLINIC20_CSS, CADUS_CLINIC21_CSS, CADUS_CLINIC22_CSS, CADUS_CLINIC23_CSS, CADUS_CLINIC24_CSS, CADUS_CLINIC25_CSS, CADUS_CLINIC26_CSS, CADUS_CLINIC27_CSS, CADUS_CLINIC28_CSS, CADUS_CLINIC29_CSS, CADUS_CLINIC30_CSS, CADUS_CLINIC31_CSS, CADUS_CLINIC32_CSS, CADUS_CLINIC34_CSS, CADUS_CLINIC35_CSS, CADUS_CLINIC36_CSS, CADUS_CLINIC37_CSS, CADUS_CLINIC38_CSS, CADUS_CLINIC39_CSS, CADUS_CLINIC40_CSS, CADUS_CLINIC41_CSS, CADUS_CLINIC42_CSS, CADUS_CLINIC43_CSS, CADUS_CLINIC44_CSS, CADUS_CLINIC45_CSS, CADUS_CLINIC46_CSS, CADUS_CLINIC47_CSS, CADUS_CLINIC48_CSS, CADUS_CLINIC49_CSS, CADUS_CLINIC50_CSS, CADUS_CLINIC51_CSS, CADUS_CREW_CSS, CADUS_CREWPLUS_CSS, CADUS_VOICE_CSS } from "@/components/cadus/cadus-crew-styles";
+import { CADUS_CLINIC20_CSS, CADUS_CLINIC21_CSS, CADUS_CLINIC22_CSS, CADUS_CLINIC23_CSS, CADUS_CLINIC24_CSS, CADUS_CLINIC25_CSS, CADUS_CLINIC26_CSS, CADUS_CLINIC27_CSS, CADUS_CLINIC28_CSS, CADUS_CLINIC29_CSS, CADUS_CLINIC30_CSS, CADUS_CLINIC31_CSS, CADUS_CLINIC32_CSS, CADUS_CLINIC34_CSS, CADUS_CLINIC35_CSS, CADUS_CLINIC36_CSS, CADUS_CLINIC37_CSS, CADUS_CLINIC38_CSS, CADUS_CLINIC39_CSS, CADUS_CLINIC40_CSS, CADUS_CLINIC41_CSS, CADUS_CLINIC42_CSS, CADUS_CLINIC43_CSS, CADUS_CLINIC44_CSS, CADUS_CLINIC45_CSS, CADUS_CLINIC46_CSS, CADUS_CLINIC47_CSS, CADUS_CLINIC48_CSS, CADUS_CLINIC49_CSS, CADUS_CLINIC50_CSS, CADUS_CLINIC51_CSS, CADUS_CLINIC53_CSS, CADUS_CREW_CSS, CADUS_CREWPLUS_CSS, CADUS_VOICE_CSS } from "@/components/cadus/cadus-crew-styles";
 import { CADUS_STUDIO_CSS, CADUS_TODAY_CSS, CADUS_WARD_CSS, CADUS_BEDSIDE_CSS } from "@/components/cadus/cadus-studio-styles";
 import { ABX_KEY, ECG_KEY, POISON_KEY, PROC_KEY } from "@/lib/cadus/clinicalAi";
 import { FOLLOWUP_KEY, LOG_KEY } from "@/lib/cadus/records";
@@ -550,12 +566,12 @@ type ModeId =
   | "admission" | "progress" | "opnote" | "death" | "certificate" | "rx" | "evidence";
 /** "groq" only appears in chats saved before Cadus became Claude-only. */
 type Provider = "claude" | "groq" | "library";
-type View = "chat" | "crew" | "second" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "debate" | "playbooks" | "podcasts" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan" | "ecg" | "abx" | "procedure" | "poison" | "infusions" | "convert" | "abg" | "logbook" | "followups" | "audiolib" | "rxwrite" | "labtrend" | "daily" | "letters" | "adr" | "mccd" | "mnemonics" | "generics" | "opd" | "imagequiz" | "dosecard" | "oncall" | "journal" | "stats" | "roster" | "records" | "voiceround" | "revnotes" | "analytics" | "preop" | "messages" | "preglact" | "pillchart" | "vaccines" | "diet" | "icd" | "consent" | "insulin" | "transfusion" | "mlc" | "tb" | "antenatal" | "ventilator" | "teleconsult" | "bills" | "bite" | "needlestick" | "imnci" | "cme" | "appointments" | "stock" | "screening" | "kidney" | "sam" | "contacts" | "accounts" | "thyroid" | "backup" | "ncd" | "anaemia" | "dengue" | "electrolytes" | "obsemergency" | "infection" | "asthma" | "milestones" | "contraception" | "palliative" | "imaging" | "ivfluids" | "sickday" | "labranges" | "burns" | "jaundice" | "stroke" | "bundles" | "alcohol" | "dfoot" | "heat" | "wound" | "anticoag" | "fevers" | "elderly" | "quitsmoking" | "croup" | "rheumatic" | "weight" | "hypo" | "gdm" | "infantfeed" | "antidep" | "eyeent" | "vte" | "headache" | "skin" | "gout" | "pnuti" | "ckd" | "preterm" | "epilepsy" | "childfever" | "cirrhosis" | "dementia" | "htnemergency" | "ugib" | "aki" | "hepbc" | "nrp" | "pain" | "bone" | "hrt" | "syncope" | "hf" | "af" | "lipids" | "pedvt" | "hiv" | "preeclampsia" | "sleep" | "urticaria" | "anaphylaxis" | "trauma" | "tox" | "ptx" | "fluids" | "steroid" | "refeed" | "backpain" | "acs" | "childfluids" | "agitation" | "suicide" | "headinjury" | "abdomen" | "fneutro" | "meningitis" | "quizbattle" | "caseround" | "statusepi" | "sodium" | "attack" | "bridging" | "oncoemerg" | "spirometry" | "thyroidstorm" | "sickle" | "rooms" | "drill" | "hyperk" | "pancreatitis" | "paedsepsis" | "airway" | "rhabdo" | "hypothermia" | "paeddka" | "retention" | "crewnotes" | "checkins" | "crewstats" | "preghtn" | "stones" | "paedabx" | "opioid" | "cellulitis" | "kawasaki" | "endocarditis" | "bell" | "crewcompare" | "crewvoice" | "crewtemplates" | "crewtimeline" | "pph" | "neosepsis" | "renalabx" | "braindeath" | "septicjoint" | "neohypo" | "altitude" | "serotonin" | "crewworkspaces" | "crewdigest" | "paedasthma" | "dkahhs" | "ansteroid" | "ironb12" | "tdm" | "contrast" | "pressure" | "hyperemesis" | "crewschedules" | "bronchiolitis" | "ectopic" | "febseizure" | "torsion" | "mgbs" | "hypercal" | "deprescribe" | "limb" | "delirium" | "childrash" | "sorethroat" | "fallship" | "crewmistakes" | "crewexam" | "vertigo" | "pulmedema" | "acls" | "scorpion" | "pericarditis" | "pcos" | "epds" | "redeye" | "biliary" | "tirads" | "pregvte" | "nephrotic" | "crewreading" | "leprosy" | "tinea" | "acne" | "tetanus" | "cxscreen" | "labourguide" | "dmard" | "tls" | "bph" | "haemorrhoids" | "psoriasis" | "hepatitisae" | "crewtimer" | "lungnodule" | "itp" | "parkinson" | "breast" | "childbowel" | "adhd" | "infertility" | "oa" | "rhinitis" | "gerd" | "shoulder" | "carpal" | "crewteach" | "crewgoals" | "cough" | "haematuria" | "lfts" | "lymphnodes" | "aub" | "amenorrhoea" | "vagdischarge" | "utichild" | "highcounts" | "pad" | "hairloss" | "vitiligo" | "crewpaths" | "diarrhoea" | "sleepapnoea" | "weightloss" | "polyuria" | "shortstature" | "incontinence" | "dysmenorrhoea" | "groin" | "rls" | "raynaud" | "scabies" | "neuropathy" | "crewradar" | "crewcheat" | "haemoptysis" | "legswelling" | "palpitations" | "tremor" | "limp" | "rap" | "miscarriage" | "mastitis" | "epistaxis" | "mouthulcers" | "heelpain" | "gynaecomastia" | "crewspot" | "crewguess" | "crewnotesquiz" | "crewglossary" | "dysphagia" | "fatigue" | "fuo" | "pruritus" | "puberty" | "adnexal" | "prolapse" | "mastalgia" | "hoarseness" | "tinnitus" | "warts" | "paronychia" | "crewvs" | "crewddx" | "crewlecture" | "crewinbox" | "jaundicewu" | "proteinuria" | "splenomegaly" | "pancytopenia" | "varicose" | "otitisexterna" | "dryeye" | "perianal" | "neckpain" | "hyperhidrosis" | "sebderm" | "halitosis" | "crewsmart" | "crewrapid" | "crewlevels" | "crewsyllabus" | "lupus" | "pmrgca" | "bronchiectasis" | "prolactin" | "ankle" | "triggerfinger" | "skinlump" | "phimosis" | "ed" | "hiccups" | "legcramps" | "insectbite" | "crewconcept" | "crewoneliners" | "crewsocratic" | "crewlong";
+type View = "chat" | "crew" | "second" | "tools" | "library" | "projects" | "project" | "decks" | "calculators" | "practice" | "research" | "ward" | "cases" | "drugs" | "safety" | "history" | "privacy" | "scribe" | "emergency" | "paeds" | "leaflets" | "simulator" | "rxcheck" | "watch" | "explain" | "huddle" | "debate" | "playbooks" | "podcasts" | "translate" | "pathways" | "flashcards" | "compare" | "medrec" | "present" | "today" | "discharge" | "handover" | "ddx" | "studyplan" | "ecg" | "abx" | "procedure" | "poison" | "infusions" | "convert" | "abg" | "logbook" | "followups" | "audiolib" | "rxwrite" | "labtrend" | "daily" | "letters" | "adr" | "mccd" | "mnemonics" | "generics" | "opd" | "imagequiz" | "dosecard" | "oncall" | "journal" | "stats" | "roster" | "records" | "voiceround" | "revnotes" | "analytics" | "preop" | "messages" | "preglact" | "pillchart" | "vaccines" | "diet" | "icd" | "consent" | "insulin" | "transfusion" | "mlc" | "tb" | "antenatal" | "ventilator" | "teleconsult" | "bills" | "bite" | "needlestick" | "imnci" | "cme" | "appointments" | "stock" | "screening" | "kidney" | "sam" | "contacts" | "accounts" | "thyroid" | "backup" | "ncd" | "anaemia" | "dengue" | "electrolytes" | "obsemergency" | "infection" | "asthma" | "milestones" | "contraception" | "palliative" | "imaging" | "ivfluids" | "sickday" | "labranges" | "burns" | "jaundice" | "stroke" | "bundles" | "alcohol" | "dfoot" | "heat" | "wound" | "anticoag" | "fevers" | "elderly" | "quitsmoking" | "croup" | "rheumatic" | "weight" | "hypo" | "gdm" | "infantfeed" | "antidep" | "eyeent" | "vte" | "headache" | "skin" | "gout" | "pnuti" | "ckd" | "preterm" | "epilepsy" | "childfever" | "cirrhosis" | "dementia" | "htnemergency" | "ugib" | "aki" | "hepbc" | "nrp" | "pain" | "bone" | "hrt" | "syncope" | "hf" | "af" | "lipids" | "pedvt" | "hiv" | "preeclampsia" | "sleep" | "urticaria" | "anaphylaxis" | "trauma" | "tox" | "ptx" | "fluids" | "steroid" | "refeed" | "backpain" | "acs" | "childfluids" | "agitation" | "suicide" | "headinjury" | "abdomen" | "fneutro" | "meningitis" | "quizbattle" | "caseround" | "statusepi" | "sodium" | "attack" | "bridging" | "oncoemerg" | "spirometry" | "thyroidstorm" | "sickle" | "rooms" | "drill" | "hyperk" | "pancreatitis" | "paedsepsis" | "airway" | "rhabdo" | "hypothermia" | "paeddka" | "retention" | "crewnotes" | "checkins" | "crewstats" | "preghtn" | "stones" | "paedabx" | "opioid" | "cellulitis" | "kawasaki" | "endocarditis" | "bell" | "crewcompare" | "crewvoice" | "crewtemplates" | "crewtimeline" | "pph" | "neosepsis" | "renalabx" | "braindeath" | "septicjoint" | "neohypo" | "altitude" | "serotonin" | "crewworkspaces" | "crewdigest" | "paedasthma" | "dkahhs" | "ansteroid" | "ironb12" | "tdm" | "contrast" | "pressure" | "hyperemesis" | "crewschedules" | "bronchiolitis" | "ectopic" | "febseizure" | "torsion" | "mgbs" | "hypercal" | "deprescribe" | "limb" | "delirium" | "childrash" | "sorethroat" | "fallship" | "crewmistakes" | "crewexam" | "vertigo" | "pulmedema" | "acls" | "scorpion" | "pericarditis" | "pcos" | "epds" | "redeye" | "biliary" | "tirads" | "pregvte" | "nephrotic" | "crewreading" | "leprosy" | "tinea" | "acne" | "tetanus" | "cxscreen" | "labourguide" | "dmard" | "tls" | "bph" | "haemorrhoids" | "psoriasis" | "hepatitisae" | "crewtimer" | "lungnodule" | "itp" | "parkinson" | "breast" | "childbowel" | "adhd" | "infertility" | "oa" | "rhinitis" | "gerd" | "shoulder" | "carpal" | "crewteach" | "crewgoals" | "cough" | "haematuria" | "lfts" | "lymphnodes" | "aub" | "amenorrhoea" | "vagdischarge" | "utichild" | "highcounts" | "pad" | "hairloss" | "vitiligo" | "crewpaths" | "diarrhoea" | "sleepapnoea" | "weightloss" | "polyuria" | "shortstature" | "incontinence" | "dysmenorrhoea" | "groin" | "rls" | "raynaud" | "scabies" | "neuropathy" | "crewradar" | "crewcheat" | "haemoptysis" | "legswelling" | "palpitations" | "tremor" | "limp" | "rap" | "miscarriage" | "mastitis" | "epistaxis" | "mouthulcers" | "heelpain" | "gynaecomastia" | "crewspot" | "crewguess" | "crewnotesquiz" | "crewglossary" | "dysphagia" | "fatigue" | "fuo" | "pruritus" | "puberty" | "adnexal" | "prolapse" | "mastalgia" | "hoarseness" | "tinnitus" | "warts" | "paronychia" | "crewvs" | "crewddx" | "crewlecture" | "crewinbox" | "jaundicewu" | "proteinuria" | "splenomegaly" | "pancytopenia" | "varicose" | "otitisexterna" | "dryeye" | "perianal" | "neckpain" | "hyperhidrosis" | "sebderm" | "halitosis" | "crewsmart" | "crewrapid" | "crewlevels" | "crewsyllabus" | "lupus" | "pmrgca" | "bronchiectasis" | "prolactin" | "ankle" | "triggerfinger" | "skinlump" | "phimosis" | "ed" | "hiccups" | "legcramps" | "insectbite" | "crewconcept" | "crewoneliners" | "crewsocratic" | "crewlong" | "hyperthyroid" | "pleural" | "rheumatoid" | "adrenal" | "wrist" | "kneeinjury" | "retinopathy" | "hearing" | "vitamind" | "gastroenteritis" | "anaemiapreg" | "sechtn" | "crewosce" | "crewgrader" | "crewdrugcards" | "crewsprint";
 /** Views reached from the Tools hub, so the hub stays highlighted in the sidebar. */
 /** Tool pages that are not clinical content (no trust bar under them). */
 const TRUST_SKIP = new Set<string>(["tools", "projects", "project", "decks", "roster", "accounts", "bills", "backup", "appointments", "stock", "analytics", "contacts", "cme", "logbook", "records", "messages", "opd", "followups", "flashcards", "studyplan", "podcasts", "revnotes", "daily", "imagequiz", "mnemonics", "journal", "stats", "research", "scribe", "translate", "present", "today", "audiolib", "voiceround", "simulator", "watch"]);
 const hasLetterheadSaved = () => { try { const v = JSON.parse(localStorage.getItem("cadus3.letterhead") || "null"); return !!(v && (v.name || v.hospital)); } catch { return false; } };
-const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today", "discharge", "handover", "ddx", "studyplan", "podcasts", "ecg", "abx", "procedure", "poison", "infusions", "convert", "abg", "logbook", "followups", "audiolib", "rxwrite", "labtrend", "daily", "letters", "adr", "mccd", "mnemonics", "generics", "opd", "imagequiz", "dosecard", "oncall", "journal", "stats", "roster", "records", "voiceround", "revnotes", "analytics", "preop", "messages", "preglact", "pillchart", "vaccines", "diet", "icd", "consent", "insulin", "transfusion", "mlc", "tb", "antenatal", "ventilator", "teleconsult", "bills", "bite", "needlestick", "imnci", "cme", "appointments", "stock", "screening", "kidney", "sam", "contacts", "accounts", "thyroid", "backup", "ncd", "anaemia", "dengue", "electrolytes", "obsemergency", "infection", "asthma", "milestones", "contraception", "palliative", "imaging", "ivfluids", "sickday", "labranges", "burns", "jaundice", "stroke", "bundles", "alcohol", "dfoot", "heat", "wound", "anticoag", "fevers", "elderly", "quitsmoking", "croup", "rheumatic", "weight", "hypo", "gdm", "infantfeed", "antidep", "eyeent", "vte", "headache", "skin", "gout", "pnuti", "ckd", "preterm", "epilepsy", "childfever", "cirrhosis", "dementia", "htnemergency", "ugib", "aki", "hepbc", "nrp", "pain", "bone", "hrt", "syncope", "hf", "af", "lipids", "pedvt", "hiv", "preeclampsia", "sleep", "urticaria", "anaphylaxis", "trauma", "tox", "ptx", "fluids", "steroid", "refeed", "backpain", "acs", "childfluids", "agitation", "suicide", "headinjury", "abdomen", "fneutro", "meningitis", "statusepi", "sodium", "attack", "bridging", "oncoemerg", "spirometry", "thyroidstorm", "sickle", "hyperk", "pancreatitis", "paedsepsis", "airway", "rhabdo", "hypothermia", "paeddka", "retention", "preghtn", "stones", "paedabx", "opioid", "cellulitis", "kawasaki", "endocarditis", "bell", "pph", "neosepsis", "renalabx", "braindeath", "septicjoint", "neohypo", "altitude", "serotonin", "paedasthma", "dkahhs", "ansteroid", "ironb12", "tdm", "contrast", "pressure", "hyperemesis", "bronchiolitis", "ectopic", "febseizure", "torsion", "mgbs", "hypercal", "deprescribe", "limb", "delirium", "childrash", "sorethroat", "fallship", "vertigo", "pulmedema", "acls", "scorpion", "pericarditis", "pcos", "epds", "redeye", "biliary", "tirads", "pregvte", "nephrotic", "leprosy", "tinea", "acne", "tetanus", "cxscreen", "labourguide", "dmard", "tls", "bph", "haemorrhoids", "psoriasis", "hepatitisae", "lungnodule", "itp", "parkinson", "breast", "childbowel", "adhd", "infertility", "oa", "rhinitis", "gerd", "shoulder", "carpal", "cough", "haematuria", "lfts", "lymphnodes", "aub", "amenorrhoea", "vagdischarge", "utichild", "highcounts", "pad", "hairloss", "vitiligo", "diarrhoea", "sleepapnoea", "weightloss", "polyuria", "shortstature", "incontinence", "dysmenorrhoea", "groin", "rls", "raynaud", "scabies", "neuropathy", "haemoptysis", "legswelling", "palpitations", "tremor", "limp", "rap", "miscarriage", "mastitis", "epistaxis", "mouthulcers", "heelpain", "gynaecomastia", "dysphagia", "fatigue", "fuo", "pruritus", "puberty", "adnexal", "prolapse", "mastalgia", "hoarseness", "tinnitus", "warts", "paronychia", "jaundicewu", "proteinuria", "splenomegaly", "pancytopenia", "varicose", "otitisexterna", "dryeye", "perianal", "neckpain", "hyperhidrosis", "sebderm", "halitosis", "lupus", "pmrgca", "bronchiectasis", "prolactin", "ankle", "triggerfinger", "skinlump", "phimosis", "ed", "hiccups", "legcramps", "insectbite"]);
+const TOOL_VIEWS = new Set<View>(["tools", "ward", "research", "drugs", "calculators", "projects", "project", "decks", "scribe", "emergency", "paeds", "leaflets", "simulator", "rxcheck", "watch", "explain", "translate", "pathways", "flashcards", "compare", "medrec", "present", "today", "discharge", "handover", "ddx", "studyplan", "podcasts", "ecg", "abx", "procedure", "poison", "infusions", "convert", "abg", "logbook", "followups", "audiolib", "rxwrite", "labtrend", "daily", "letters", "adr", "mccd", "mnemonics", "generics", "opd", "imagequiz", "dosecard", "oncall", "journal", "stats", "roster", "records", "voiceround", "revnotes", "analytics", "preop", "messages", "preglact", "pillchart", "vaccines", "diet", "icd", "consent", "insulin", "transfusion", "mlc", "tb", "antenatal", "ventilator", "teleconsult", "bills", "bite", "needlestick", "imnci", "cme", "appointments", "stock", "screening", "kidney", "sam", "contacts", "accounts", "thyroid", "backup", "ncd", "anaemia", "dengue", "electrolytes", "obsemergency", "infection", "asthma", "milestones", "contraception", "palliative", "imaging", "ivfluids", "sickday", "labranges", "burns", "jaundice", "stroke", "bundles", "alcohol", "dfoot", "heat", "wound", "anticoag", "fevers", "elderly", "quitsmoking", "croup", "rheumatic", "weight", "hypo", "gdm", "infantfeed", "antidep", "eyeent", "vte", "headache", "skin", "gout", "pnuti", "ckd", "preterm", "epilepsy", "childfever", "cirrhosis", "dementia", "htnemergency", "ugib", "aki", "hepbc", "nrp", "pain", "bone", "hrt", "syncope", "hf", "af", "lipids", "pedvt", "hiv", "preeclampsia", "sleep", "urticaria", "anaphylaxis", "trauma", "tox", "ptx", "fluids", "steroid", "refeed", "backpain", "acs", "childfluids", "agitation", "suicide", "headinjury", "abdomen", "fneutro", "meningitis", "statusepi", "sodium", "attack", "bridging", "oncoemerg", "spirometry", "thyroidstorm", "sickle", "hyperk", "pancreatitis", "paedsepsis", "airway", "rhabdo", "hypothermia", "paeddka", "retention", "preghtn", "stones", "paedabx", "opioid", "cellulitis", "kawasaki", "endocarditis", "bell", "pph", "neosepsis", "renalabx", "braindeath", "septicjoint", "neohypo", "altitude", "serotonin", "paedasthma", "dkahhs", "ansteroid", "ironb12", "tdm", "contrast", "pressure", "hyperemesis", "bronchiolitis", "ectopic", "febseizure", "torsion", "mgbs", "hypercal", "deprescribe", "limb", "delirium", "childrash", "sorethroat", "fallship", "vertigo", "pulmedema", "acls", "scorpion", "pericarditis", "pcos", "epds", "redeye", "biliary", "tirads", "pregvte", "nephrotic", "leprosy", "tinea", "acne", "tetanus", "cxscreen", "labourguide", "dmard", "tls", "bph", "haemorrhoids", "psoriasis", "hepatitisae", "lungnodule", "itp", "parkinson", "breast", "childbowel", "adhd", "infertility", "oa", "rhinitis", "gerd", "shoulder", "carpal", "cough", "haematuria", "lfts", "lymphnodes", "aub", "amenorrhoea", "vagdischarge", "utichild", "highcounts", "pad", "hairloss", "vitiligo", "diarrhoea", "sleepapnoea", "weightloss", "polyuria", "shortstature", "incontinence", "dysmenorrhoea", "groin", "rls", "raynaud", "scabies", "neuropathy", "haemoptysis", "legswelling", "palpitations", "tremor", "limp", "rap", "miscarriage", "mastitis", "epistaxis", "mouthulcers", "heelpain", "gynaecomastia", "dysphagia", "fatigue", "fuo", "pruritus", "puberty", "adnexal", "prolapse", "mastalgia", "hoarseness", "tinnitus", "warts", "paronychia", "jaundicewu", "proteinuria", "splenomegaly", "pancytopenia", "varicose", "otitisexterna", "dryeye", "perianal", "neckpain", "hyperhidrosis", "sebderm", "halitosis", "lupus", "pmrgca", "bronchiectasis", "prolactin", "ankle", "triggerfinger", "skinlump", "phimosis", "ed", "hiccups", "legcramps", "insectbite", "hyperthyroid", "pleural", "rheumatoid", "adrenal", "wrist", "kneeinjury", "retinopathy", "hearing", "vitamind", "gastroenteritis", "anaemiapreg", "sechtn"]);
 type ToolTab = "all" | "clinical" | "documentation" | "learning";
 type SettingsTab = "general" | "personal" | "letterhead" | "institution" | "data" | "shortcuts" | "about";
 type StyleId = "concise" | "balanced" | "detailed";
@@ -3392,6 +3408,10 @@ export default function CadusAI() {
       { key: "a:crewoneliners", label: "High-Yield One-Liners", hint: "Exam one-liners on a topic, cover and recall", icon: ListOrdered, run: () => openView("crewoneliners") },
       { key: "a:crewsocratic", label: "Socratic Tutor", hint: "Learn a topic by answering one question at a time", icon: MessageCircleQuestion, run: () => openView("crewsocratic") },
       { key: "a:crewlong", label: "Long Answer Writer", hint: "MBBS university 5, 10 and 15-mark model answers", icon: PenLine, run: () => openView("crewlong") },
+      { key: "a:crewosce", label: "OSCE Station Practice", hint: "Timed OSCE stations in every subject with an examiner checklist", icon: ClipboardCheck, run: () => openView("crewosce") },
+      { key: "a:crewgrader", label: "Answer Grader", hint: "Paste a written answer and get it marked like an examiner", icon: GraduationCap, run: () => openView("crewgrader") },
+      { key: "a:crewdrugcards", label: "Drug Cards", hint: "One-page drug cards, a deck, flashcards and printing", icon: Pill, run: () => openView("crewdrugcards") },
+      { key: "a:crewsprint", label: "Revision Sprint", hint: "A 25-minute guided revision on any topic in any subject", icon: Rocket, run: () => openView("crewsprint") },
       { key: "a:deep", label: prefs.answerMode === "deep" ? "Turn off Deep Dive" : "Deep Dive: a cited research report", hint: "PubMed and guidelines, step by step", icon: Telescope, run: () => { setPrefs((p) => ({ ...p, answerMode: p.answerMode === "deep" ? "auto" : "deep" })); focusComposer(); } },
       ...ANSWER_MODES.filter((am) => am.id !== "deep" && am.id !== prefs.answerMode).map((am) => ({ key: `a:mode:${am.id}`, label: `Mode: ${am.label}`, hint: am.desc, icon: am.icon, run: () => { setPrefs((p) => ({ ...p, answerMode: am.id })); focusComposer(); } })),
       { key: "a:newproj", label: "New project", icon: FolderPlus, run: () => newProject() },
@@ -3720,6 +3740,18 @@ export default function CadusAI() {
       { key: "a:hiccups", label: "Persistent Hiccups", hint: "Over 48 hours: causes, tests, PPI, baclofen, gabapentin, metoclopramide", icon: Wind, run: () => openView("hiccups") },
       { key: "a:legcramps", label: "Nocturnal Leg Cramps", hint: "Rule out DVT, RLS and claudication, diuretics and statins, calf stretches, quinine rules", icon: Footprints, run: () => openView("legcramps") },
       { key: "a:insectbite", label: "Insect Bites and Stings", hint: "Anaphylaxis, bee and wasp swarms, large local reactions, tick removal, venom immunotherapy", icon: Bug, run: () => openView("insectbite") },
+      { key: "a:hyperthyroid", label: "Hyperthyroidism and Graves' Disease", hint: "Cause, propranolol, carbimazole and PTU in pregnancy, agranulocytosis warning, radioiodine, eye disease", icon: Thermometer, run: () => openView("hyperthyroid") },
+      { key: "a:pleural", label: "Pleural Effusion: Light's Criteria", hint: "Transudate vs exudate, pH and chest drain, ADA for TB, malignant effusion", icon: Wind, run: () => openView("pleural") },
+      { key: "a:rheumatoid", label: "Rheumatoid Arthritis: ACR/EULAR and DAS28", hint: "2010 classification score, DAS28-ESR, methotrexate start, treat to target", icon: Hand, run: () => openView("rheumatoid") },
+      { key: "a:adrenal", label: "Cushing's and Adrenal Incidentaloma", hint: "Dexamethasone suppression test, exogenous steroids, HU and size, metanephrines, aldosterone", icon: FlaskConical, run: () => openView("adrenal") },
+      { key: "a:wrist", label: "Scaphoid and Wrist Injuries", hint: "Suspected scaphoid fracture with a normal X-ray, distal radius fractures, fragility fractures", icon: Bone, run: () => openView("wrist") },
+      { key: "a:kneeinjury", label: "Knee Ligament and Meniscus Injuries", hint: "Ottawa knee rule, ACL, meniscus, MCL, patellar dislocation, locked knee", icon: Footprints, run: () => openView("kneeinjury") },
+      { key: "a:retinopathy", label: "Diabetic Retinopathy Screening", hint: "NPDR, PDR, macular oedema, referral urgency, screening intervals, pregnancy", icon: Eye, run: () => openView("retinopathy") },
+      { key: "a:hearing", label: "Hearing Loss: Tuning Forks and Sudden SNHL", hint: "Rinne and Weber, sudden sensorineural loss steroids, wax, asymmetry MRI, children", icon: Ear, run: () => openView("hearing") },
+      { key: "a:vitamind", label: "Vitamin D Deficiency", hint: "25(OH)D bands, 60,000 IU loading and maintenance, toxicity, high calcium", icon: Sun, run: () => openView("vitamind") },
+      { key: "a:gastroenteritis", label: "Acute Gastroenteritis in Adults", hint: "Dehydration plans, ORS, azithromycin for dysentery, cholera, C. difficile, red flags", icon: Droplets, run: () => openView("gastroenteritis") },
+      { key: "a:anaemiapreg", label: "Anaemia in Pregnancy", hint: "Hb grades, Anaemia Mukt Bharat IFA, IV iron, transfusion thresholds, thalassaemia trait", icon: Baby, run: () => openView("anaemiapreg") },
+      { key: "a:sechtn", label: "Secondary Hypertension Work-up", hint: "Young or resistant BP, aldosteronism, phaeochromocytoma, renovascular, OSA, coarctation", icon: HeartPulse, run: () => openView("sechtn") },
       { key: "a:present", label: "Presentation Coach: practise presenting a case", hint: "Ward round, long case, SBAR; scored with a model answer", icon: Presentation, run: () => openView("present") },
       { key: "a:compare", label: "Compare over time: what changed between two studies", hint: "X-rays, ECGs, scans, reports and wound photos", icon: History, run: () => openView("compare") },
       { key: "a:newcase", label: "New patient case", hint: "Start a de-identified case sheet", icon: ClipboardList, run: () => { const c = newCase(); setCases((l) => [c, ...l]); openCases(c.id); } },
@@ -4423,6 +4455,18 @@ export default function CadusAI() {
     { id: "hiccups", icon: Wind, tone: "teal", title: "Persistent Hiccups", sub: "Causes, PPI, baclofen", go: () => openView("hiccups") },
     { id: "legcramps", icon: Footprints, tone: "violet", title: "Nocturnal Leg Cramps", sub: "Stretching, drug causes, quinine", go: () => openView("legcramps") },
     { id: "insectbite", icon: Bug, tone: "lime", title: "Insect Bites & Stings", sub: "Anaphylaxis, large local, ticks", go: () => openView("insectbite") },
+    { id: "hyperthyroid", icon: Thermometer, tone: "rose", title: "Hyperthyroidism & Graves'", sub: "Carbimazole, PTU, RAI", go: () => openView("hyperthyroid") },
+    { id: "pleural", icon: Wind, tone: "sky", title: "Pleural Effusion", sub: "Light's criteria, ADA, drain", go: () => openView("pleural") },
+    { id: "rheumatoid", icon: Hand, tone: "violet", title: "Rheumatoid Arthritis", sub: "ACR/EULAR, DAS28, methotrexate", go: () => openView("rheumatoid") },
+    { id: "adrenal", icon: FlaskConical, tone: "amber", title: "Cushing's & Adrenal Incidentaloma", sub: "Screening tests, HU, size", go: () => openView("adrenal") },
+    { id: "wrist", icon: Bone, tone: "teal", title: "Scaphoid & Wrist Injuries", sub: "Snuffbox, MRI, radius", go: () => openView("wrist") },
+    { id: "kneeinjury", icon: Footprints, tone: "lime", title: "Knee Ligament & Meniscus", sub: "Ottawa knee, ACL, locked knee", go: () => openView("kneeinjury") },
+    { id: "retinopathy", icon: Eye, tone: "sky", title: "Diabetic Retinopathy Screening", sub: "Grades, referral, next screen", go: () => openView("retinopathy") },
+    { id: "hearing", icon: Ear, tone: "amber", title: "Hearing Loss", sub: "Tuning forks, sudden SNHL", go: () => openView("hearing") },
+    { id: "vitamind", icon: Sun, tone: "amber", title: "Vitamin D Deficiency", sub: "Levels, loading, maintenance", go: () => openView("vitamind") },
+    { id: "gastroenteritis", icon: Droplets, tone: "teal", title: "Acute Gastroenteritis (Adults)", sub: "ORS, dysentery, cholera", go: () => openView("gastroenteritis") },
+    { id: "anaemiapreg", icon: Baby, tone: "rose", title: "Anaemia in Pregnancy", sub: "IFA, IV iron, transfusion", go: () => openView("anaemiapreg") },
+    { id: "sechtn", icon: HeartPulse, tone: "violet", title: "Secondary Hypertension", sub: "Clues and targeted tests", go: () => openView("sechtn") },
   ];
   const backupNeeded = view !== "backup" && backupDue();
   /** The More drawer: every tool, grouped by what it is for (update 24). */
@@ -4516,6 +4560,13 @@ export default function CadusAI() {
         { label: "Persistent Hiccups", title: "Persistent Hiccups", icon: Wind, on: view === "hiccups", go: () => openView("hiccups") },
         { label: "Nocturnal Leg Cramps", title: "Nocturnal Leg Cramps", icon: Footprints, on: view === "legcramps", go: () => openView("legcramps") },
         { label: "Insect Bites & Stings", title: "Insect Bites & Stings", icon: Bug, on: view === "insectbite", go: () => openView("insectbite") },
+        { label: "Rheumatoid Arthritis", title: "Rheumatoid Arthritis", icon: Hand, on: view === "rheumatoid", go: () => openView("rheumatoid") },
+        { label: "Scaphoid & Wrist Injuries", title: "Scaphoid & Wrist Injuries", icon: Bone, on: view === "wrist", go: () => openView("wrist") },
+        { label: "Knee Ligament & Meniscus", title: "Knee Ligament & Meniscus", icon: Footprints, on: view === "kneeinjury", go: () => openView("kneeinjury") },
+        { label: "Diabetic Retinopathy Screening", title: "Diabetic Retinopathy Screening", icon: Eye, on: view === "retinopathy", go: () => openView("retinopathy") },
+        { label: "Hearing Loss", title: "Hearing Loss", icon: Ear, on: view === "hearing", go: () => openView("hearing") },
+        { label: "Vitamin D Deficiency", title: "Vitamin D Deficiency", icon: Sun, on: view === "vitamind", go: () => openView("vitamind") },
+        { label: "Acute Gastroenteritis (Adults)", title: "Acute Gastroenteritis (Adults)", icon: Droplets, on: view === "gastroenteritis", go: () => openView("gastroenteritis") },
       ] },
     { id: "practice", label: "Practice", icon: BriefcaseMedical, items: [
         { label: "Appointments", title: "Appointments", icon: CalendarPlus, on: view === "appointments", go: () => openView("appointments") },
@@ -4700,6 +4751,7 @@ export default function CadusAI() {
         { label: "Ovarian Cyst (Adnexal Mass)", title: "Ovarian Cyst (Adnexal Mass)", icon: Venus, on: view === "adnexal", go: () => openView("adnexal") },
         { label: "Pelvic Organ Prolapse", title: "Pelvic Organ Prolapse", icon: Venus, on: view === "prolapse", go: () => openView("prolapse") },
         { label: "Breast Pain (Mastalgia)", title: "Breast Pain (Mastalgia)", icon: Venus, on: view === "mastalgia", go: () => openView("mastalgia") },
+        { label: "Anaemia in Pregnancy", title: "Anaemia in Pregnancy", icon: Baby, on: view === "anaemiapreg", go: () => openView("anaemiapreg") },
       ] },
     { id: "diagnosis", label: "Diagnosis & Evidence", icon: Microscope, items: [
         { label: "Research", title: "Research", icon: Microscope, on: view === "research", go: () => openResearch(), tour: "research" },
@@ -4743,6 +4795,10 @@ export default function CadusAI() {
         { label: "Pancytopenia", title: "Pancytopenia", icon: Droplets, on: view === "pancytopenia", go: () => openView("pancytopenia") },
         { label: "Lupus (SLE)", title: "Lupus (SLE)", icon: Sun, on: view === "lupus", go: () => openView("lupus") },
         { label: "Hyperprolactinaemia", title: "Hyperprolactinaemia", icon: FlaskConical, on: view === "prolactin", go: () => openView("prolactin") },
+        { label: "Hyperthyroidism & Graves'", title: "Hyperthyroidism & Graves'", icon: Thermometer, on: view === "hyperthyroid", go: () => openView("hyperthyroid") },
+        { label: "Pleural Effusion", title: "Pleural Effusion", icon: Wind, on: view === "pleural", go: () => openView("pleural") },
+        { label: "Cushing's & Adrenal Incidentaloma", title: "Cushing's & Adrenal Incidentaloma", icon: FlaskConical, on: view === "adrenal", go: () => openView("adrenal") },
+        { label: "Secondary Hypertension", title: "Secondary Hypertension", icon: HeartPulse, on: view === "sechtn", go: () => openView("sechtn") },
       ] },
     { id: "documents", label: "Documents & Legal", icon: ScrollText, items: [
         { label: "Scribe", title: "Scribe: dictated notes", icon: Mic, on: view === "scribe", go: () => openView("scribe") },
@@ -5162,6 +5218,9 @@ export default function CadusAI() {
             ["rapid", Zap, "Rapid Fire", "60 seconds of true or false", () => openView("crewrapid")],
             ["oneliners", ListOrdered, "One-Liners", "High-yield facts, cover and recall", () => openView("crewoneliners")],
             ["socratic", MessageCircleQuestion, "Socratic Tutor", "Learn by answering questions", () => openView("crewsocratic")],
+            ["osce", ClipboardCheck, "OSCE Stations", "Timed station, examiner checklist", () => openView("crewosce")],
+            ["grader", GraduationCap, "Answer Grader", "Your written answer, marked", () => openView("crewgrader")],
+            ["sprint", Rocket, "Revision Sprint", "25 minutes, any subject", () => openView("crewsprint")],
             ["guess", Dices, "Guess the Diagnosis", "Ask questions, name the diagnosis", () => openView("crewguess")],
             ["notesquiz", BookOpenCheck, "Quiz from Notes", "MCQs from your saved notes", () => openView("crewnotesquiz")],
           ]],
@@ -5187,6 +5246,7 @@ export default function CadusAI() {
             ["paths", Route, "Learning Paths", "A day-by-day plan for a topic", () => openView("crewpaths")],
             ["cheat", FileText, "Cheat Sheets", "One printable page per topic", () => openView("crewcheat")],
             ["glossary", BookA, "My Glossary", "Terms you saved, revise them", () => openView("crewglossary")],
+            ["drugcards", Pill, "Drug Cards", "One page per drug, a deck", () => openView("crewdrugcards")],
             ["lecture", NotebookText, "Lecture to Notes", "Notes and flashcards from a lecture", () => openView("crewlecture")],
           ]],
           ["Track", "amber", [
@@ -6118,7 +6178,7 @@ export default function CadusAI() {
       style={{ ["--acc" as string]: dark ? accent.dark : accent.light, ["--fs" as string]: `${fontSize}px`, ["--fs-u" as string]: `${sansSize}px` }}
       {...dropHandlers}
     >
-      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS + CADUS_CREWPLUS_CSS + CADUS_VOICE_CSS + CADUS_CLINIC20_CSS + CADUS_CLINIC21_CSS + CADUS_CLINIC22_CSS + CADUS_CLINIC23_CSS + CADUS_CLINIC24_CSS + CADUS_CLINIC25_CSS + CADUS_CLINIC26_CSS + CADUS_CLINIC27_CSS + CADUS_CLINIC28_CSS + CADUS_CLINIC29_CSS + CADUS_CLINIC30_CSS + CADUS_CLINIC31_CSS + CADUS_CLINIC32_CSS + CADUS_CLINIC34_CSS + CADUS_CLINIC35_CSS + CADUS_CLINIC36_CSS + CADUS_CLINIC37_CSS + CADUS_CLINIC38_CSS + CADUS_CLINIC39_CSS + CADUS_CLINIC40_CSS + CADUS_CLINIC41_CSS + CADUS_CLINIC42_CSS + CADUS_CLINIC43_CSS + CADUS_CLINIC44_CSS + CADUS_CLINIC45_CSS + CADUS_CLINIC46_CSS + CADUS_CLINIC47_CSS + CADUS_CLINIC48_CSS + CADUS_CLINIC49_CSS + CADUS_CLINIC50_CSS + CADUS_CLINIC51_CSS}</style>
+      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS + CADUS_CREWPLUS_CSS + CADUS_VOICE_CSS + CADUS_CLINIC20_CSS + CADUS_CLINIC21_CSS + CADUS_CLINIC22_CSS + CADUS_CLINIC23_CSS + CADUS_CLINIC24_CSS + CADUS_CLINIC25_CSS + CADUS_CLINIC26_CSS + CADUS_CLINIC27_CSS + CADUS_CLINIC28_CSS + CADUS_CLINIC29_CSS + CADUS_CLINIC30_CSS + CADUS_CLINIC31_CSS + CADUS_CLINIC32_CSS + CADUS_CLINIC34_CSS + CADUS_CLINIC35_CSS + CADUS_CLINIC36_CSS + CADUS_CLINIC37_CSS + CADUS_CLINIC38_CSS + CADUS_CLINIC39_CSS + CADUS_CLINIC40_CSS + CADUS_CLINIC41_CSS + CADUS_CLINIC42_CSS + CADUS_CLINIC43_CSS + CADUS_CLINIC44_CSS + CADUS_CLINIC45_CSS + CADUS_CLINIC46_CSS + CADUS_CLINIC47_CSS + CADUS_CLINIC48_CSS + CADUS_CLINIC49_CSS + CADUS_CLINIC50_CSS + CADUS_CLINIC51_CSS + CADUS_CLINIC53_CSS}</style>
 
       {/* ============================================== sidebar */}
       <div className={`cx-scrim ${sidebarOpen ? "on" : ""}`} onClick={() => setSidebarOpen(false)} />
@@ -6761,6 +6821,22 @@ export default function CadusAI() {
                 : view === "hiccups" ? [Wind, "Persistent Hiccups"]
                 : view === "legcramps" ? [Footprints, "Nocturnal Leg Cramps"]
                 : view === "insectbite" ? [Bug, "Insect Bites & Stings"]
+                : view === "hyperthyroid" ? [Thermometer, "Hyperthyroidism & Graves'"]
+                : view === "pleural" ? [Wind, "Pleural Effusion"]
+                : view === "rheumatoid" ? [Hand, "Rheumatoid Arthritis"]
+                : view === "adrenal" ? [FlaskConical, "Cushing's & Adrenal Incidentaloma"]
+                : view === "wrist" ? [Bone, "Scaphoid & Wrist Injuries"]
+                : view === "kneeinjury" ? [Footprints, "Knee Ligament & Meniscus"]
+                : view === "retinopathy" ? [Eye, "Diabetic Retinopathy Screening"]
+                : view === "hearing" ? [Ear, "Hearing Loss"]
+                : view === "vitamind" ? [Sun, "Vitamin D Deficiency"]
+                : view === "gastroenteritis" ? [Droplets, "Acute Gastroenteritis (Adults)"]
+                : view === "anaemiapreg" ? [Baby, "Anaemia in Pregnancy"]
+                : view === "sechtn" ? [HeartPulse, "Secondary Hypertension"]
+                : view === "crewosce" ? [ClipboardCheck, "OSCE Station Practice"]
+                : view === "crewgrader" ? [GraduationCap, "Answer Grader"]
+                : view === "crewdrugcards" ? [Pill, "Drug Cards"]
+                : view === "crewsprint" ? [Rocket, "Revision Sprint"]
                 : view === "crewconcept" ? [Network, "Concept Map"]
                 : view === "crewoneliners" ? [ListOrdered, "High-Yield One-Liners"]
                 : view === "crewsocratic" ? [MessageCircleQuestion, "Socratic Tutor"]
@@ -7407,6 +7483,18 @@ export default function CadusAI() {
             : view === "hiccups" ? <Suspense fallback={lazyFallback}><HiccupsView /></Suspense>
             : view === "legcramps" ? <Suspense fallback={lazyFallback}><LegCrampsView /></Suspense>
             : view === "insectbite" ? <Suspense fallback={lazyFallback}><InsectBiteView /></Suspense>
+            : view === "hyperthyroid" ? <Suspense fallback={lazyFallback}><HyperthyroidView /></Suspense>
+            : view === "pleural" ? <Suspense fallback={lazyFallback}><PleuralEffusionView /></Suspense>
+            : view === "rheumatoid" ? <Suspense fallback={lazyFallback}><RheumatoidView /></Suspense>
+            : view === "adrenal" ? <Suspense fallback={lazyFallback}><AdrenalView /></Suspense>
+            : view === "wrist" ? <Suspense fallback={lazyFallback}><WristView /></Suspense>
+            : view === "kneeinjury" ? <Suspense fallback={lazyFallback}><KneeInjuryView /></Suspense>
+            : view === "retinopathy" ? <Suspense fallback={lazyFallback}><RetinopathyView /></Suspense>
+            : view === "hearing" ? <Suspense fallback={lazyFallback}><HearingLossView /></Suspense>
+            : view === "vitamind" ? <Suspense fallback={lazyFallback}><VitaminDView /></Suspense>
+            : view === "gastroenteritis" ? <Suspense fallback={lazyFallback}><GastroenteritisView /></Suspense>
+            : view === "anaemiapreg" ? <Suspense fallback={lazyFallback}><AnaemiaPregnancyView /></Suspense>
+            : view === "sechtn" ? <Suspense fallback={lazyFallback}><SecondaryHtnView /></Suspense>
             : view === "today" ? (
               <TodayView
                 name={firstName}
@@ -7653,6 +7741,92 @@ export default function CadusAI() {
                 friendlyError={friendlyError}
                 toast={toast}
                 onNote={(cid, text, title) => setCrewNotes((n) => addNote(n, cid, text, title.slice(0, 80)))}
+              />
+              </Suspense>
+            )
+            : view === "crewosce" ? (
+              <Suspense fallback={lazyFallback}>
+              <CrewOsceView
+                mine={crewMine}
+                ask={async (c, q) => {
+                  const r = await invokeCadus({ action: "chat", message: q, mode: "general", history: [], crew: crewPayload(c), model: prefs.model, language: prefs.language, search: limits.sources && !!c.sources, ...(profilePayload(profile) ? { profile: profilePayload(profile) } : {}) });
+                  if (!r?.message) throw new Error("No answer came back");
+                  return String(r.message);
+                }}
+                canAsk={(n) => {
+                  if (usage.date === today() && usage.count + n > limits.questionsPerDay) { setUpgrade({ reason: `You have used today's ${limits.questionsPerDay} questions on the ${PLAN_BY_ID[plan].name} plan.`, feature: "questions" }); return false; }
+                  setUsage((u) => (u.date === today() ? { ...u, count: u.count + n } : { date: today(), count: n }));
+                  return true;
+                }}
+                friendlyError={friendlyError}
+                toast={toast}
+                onNote={(cid, text, title) => setCrewNotes((n) => addNote(n, cid, text, title.slice(0, 80)))}
+              />
+              </Suspense>
+            )
+            : view === "crewgrader" ? (
+              <Suspense fallback={lazyFallback}>
+              <CrewGraderView
+                mine={crewMine}
+                ask={async (c, q) => {
+                  const r = await invokeCadus({ action: "chat", message: q, mode: "general", history: [], crew: crewPayload(c), model: prefs.model, language: prefs.language, search: limits.sources && !!c.sources, ...(profilePayload(profile) ? { profile: profilePayload(profile) } : {}) });
+                  if (!r?.message) throw new Error("No answer came back");
+                  return String(r.message);
+                }}
+                canAsk={(n) => {
+                  if (usage.date === today() && usage.count + n > limits.questionsPerDay) { setUpgrade({ reason: `You have used today's ${limits.questionsPerDay} questions on the ${PLAN_BY_ID[plan].name} plan.`, feature: "questions" }); return false; }
+                  setUsage((u) => (u.date === today() ? { ...u, count: u.count + n } : { date: today(), count: n }));
+                  return true;
+                }}
+                friendlyError={friendlyError}
+                toast={toast}
+                onNote={(cid, text, title) => setCrewNotes((n) => addNote(n, cid, text, title.slice(0, 80)))}
+              />
+              </Suspense>
+            )
+            : view === "crewdrugcards" ? (
+              <Suspense fallback={lazyFallback}>
+              <CrewDrugCardsView
+                mine={crewMine}
+                ask={async (c, q) => {
+                  const r = await invokeCadus({ action: "chat", message: q, mode: "general", history: [], crew: crewPayload(c), model: prefs.model, language: prefs.language, search: limits.sources && !!c.sources, ...(profilePayload(profile) ? { profile: profilePayload(profile) } : {}) });
+                  if (!r?.message) throw new Error("No answer came back");
+                  return String(r.message);
+                }}
+                canAsk={(n) => {
+                  if (usage.date === today() && usage.count + n > limits.questionsPerDay) { setUpgrade({ reason: `You have used today's ${limits.questionsPerDay} questions on the ${PLAN_BY_ID[plan].name} plan.`, feature: "questions" }); return false; }
+                  setUsage((u) => (u.date === today() ? { ...u, count: u.count + n } : { date: today(), count: n }));
+                  return true;
+                }}
+                friendlyError={friendlyError}
+                toast={toast}
+                onSave={(cid, text, title, cards) => setCrewNotes((n) => {
+                  const m = addNote(n, cid, text, title.slice(0, 80));
+                  if (m === n || !cards.length) return m;
+                  const [first, ...rest] = m.notes;
+                  return { ...m, notes: [{ ...first, cards: cards.map((c) => ({ front: c.front, back: c.back, box: 1, due: dateKey() })) }, ...rest] };
+                })}
+              />
+              </Suspense>
+            )
+            : view === "crewsprint" ? (
+              <Suspense fallback={lazyFallback}>
+              <CrewSprintView
+                mine={crewMine}
+                ask={async (c, q) => {
+                  const r = await invokeCadus({ action: "chat", message: q, mode: "general", history: [], crew: crewPayload(c), model: prefs.model, language: prefs.language, search: limits.sources && !!c.sources, ...(profilePayload(profile) ? { profile: profilePayload(profile) } : {}) });
+                  if (!r?.message) throw new Error("No answer came back");
+                  return String(r.message);
+                }}
+                canAsk={(n) => {
+                  if (usage.date === today() && usage.count + n > limits.questionsPerDay) { setUpgrade({ reason: `You have used today's ${limits.questionsPerDay} questions on the ${PLAN_BY_ID[plan].name} plan.`, feature: "questions" }); return false; }
+                  setUsage((u) => (u.date === today() ? { ...u, count: u.count + n } : { date: today(), count: n }));
+                  return true;
+                }}
+                friendlyError={friendlyError}
+                toast={toast}
+                onNote={(cid, text, title) => setCrewNotes((n) => addNote(n, cid, text, title.slice(0, 80)))}
+                onMistake={(mm) => setCrewMistakes((l) => addMistake(l, mm))}
               />
               </Suspense>
             )

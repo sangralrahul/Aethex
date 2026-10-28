@@ -2762,3 +2762,148 @@ export function longAnswerPrompt(question: string, marks: number, subject: strin
   ].join("\n\n");
 }
 export const cleanLongAnswer = (reply: string) => String(reply ?? "").replace(/^```(?:markdown|md)?\s*/i, "").replace(/```\s*$/, "").trim().slice(0, 20000);
+
+/* ------------------------------------------------------------------ Update 53: every subject */
+
+/** Every subject the Crew study tools offer: the 19 MBBS / NEET-PG subjects, then specialties,
+ * allied health and international exams. EXAM_SUBJECTS (used by the syllabus and exam countdown)
+ * stays the 19 MBBS subjects. */
+export const SUBJECT_GROUPS: [string, string[]][] = [
+  ["MBBS / NEET-PG", EXAM_SUBJECTS.map((s) => s[0])],
+  ["Clinical specialties", ["Respiratory Medicine", "Cardiology", "Neurology", "Nephrology", "Gastroenterology & Hepatology", "Endocrinology", "Rheumatology", "Haematology", "Medical Oncology", "Infectious Diseases", "Emergency Medicine", "Critical Care", "Neonatology", "Geriatrics", "Family Medicine", "Physical Medicine & Rehabilitation", "Radiotherapy", "Nuclear Medicine", "Transfusion Medicine", "Neurosurgery", "Urology", "Plastic Surgery", "Cardiothoracic Surgery", "Paediatric Surgery", "Surgical Gastroenterology", "Vascular Surgery", "Surgical Oncology", "Reproductive Medicine", "Palliative Medicine", "Sports Medicine", "Clinical Genetics", "Medical Ethics (AETCOM)"]],
+  ["Allied health", ["Nursing", "Pharmacy (PharmD)", "Dentistry (BDS)", "Physiotherapy", "Public Health (MPH)", "Nutrition & Dietetics", "Medical Laboratory Technology", "Optometry", "Ayurveda (BAMS)", "Homoeopathy (BHMS)"]],
+  ["International exams", ["USMLE Step 1", "USMLE Step 2 CK", "PLAB 1", "PLAB 2", "AMC", "FMGE / NExT"]],
+];
+export const ALL_SUBJECTS: string[] = SUBJECT_GROUPS.flatMap((g) => g[1]);
+const subjectLine = (subject: string) => (subject ? ` (${subject.slice(0, 60)})` : "");
+const jsonOf = (reply: string, open: "{" | "[") => {
+  const t = String(reply ?? "");
+  const a = t.indexOf(open), b = t.lastIndexOf(open === "{" ? "}" : "]");
+  if (a < 0 || b <= a) return null;
+  try { return JSON.parse(t.slice(a, b + 1)); } catch { return null; }
+};
+const strs = (v: unknown, n: number, len: number) => (Array.isArray(v) ? v.filter((x) => typeof x === "string" && x.trim()).slice(0, n).map((x: string) => clip(x, len)) : []);
+
+/* ------------------------------------------------------------------ Update 53: OSCE station */
+
+export const OSCE_TYPES = ["History taking", "Clinical examination", "Counselling / communication", "Procedure", "Data interpretation", "Emergency management"] as const;
+export interface OsceItem { item: string; marks: number }
+export interface OsceStation { title: string; task: string; scenario: string; minutes: number; checklist: OsceItem[]; examinerNotes: string; pitfalls: string[] }
+export function oscePrompt(subject: string, type: string, topic: string): string {
+  return [
+    `Create one OSCE station for an Indian MBBS final-year / internship exam${subjectLine(subject)}: type "${type}"${topic.trim() ? `, on "${topic.trim().slice(0, 160)}"` : ", on a common, high-yield condition"}.`,
+    '"task": the candidate instructions exactly as posted on the door (2–4 sentences). "scenario": what the simulated patient or examiner knows (age, presentation, answers to likely questions, findings or data) — 80–160 words. "minutes": 5–10. "checklist": 10–16 observable items with marks (1 or 2 each; include introduction and consent, the key clinical points, safety-netting and closure). "examinerNotes": a short model performance. "pitfalls": 3–5 common mistakes.',
+    'Reply with ONLY JSON: {"title": "…", "task": "…", "scenario": "…", "minutes": 8, "checklist": [{"item": "…", "marks": 1}], "examinerNotes": "…", "pitfalls": ["…"]}.',
+  ].join("\n\n");
+}
+export function parseOsce(reply: string): OsceStation | null {
+  const v = jsonOf(reply, "{");
+  if (!v || typeof v !== "object") return null;
+  const checklist: OsceItem[] = (Array.isArray(v.checklist) ? v.checklist : []).filter((x: any) => x && typeof x.item === "string" && x.item.trim()).slice(0, 20).map((x: any) => ({ item: clip(x.item, 240), marks: Math.max(1, Math.min(3, Math.round(Number(x.marks) || 1))) }));
+  const r: OsceStation = { title: clip(v.title, 140), task: clip(v.task, 1200), scenario: clip(v.scenario, 2400), minutes: Math.max(3, Math.min(15, Math.round(Number(v.minutes) || 8))), checklist, examinerNotes: clip(v.examinerNotes, 2400), pitfalls: strs(v.pitfalls, 6, 240) };
+  return r.task && checklist.length >= 4 ? r : null;
+}
+export function osceMarkPrompt(st: OsceStation, attempt: string): string {
+  return [
+    `Mark this OSCE attempt strictly against the checklist. Station: "${st.title}". Task: ${st.task}`,
+    `Checklist (index: item):\n${st.checklist.map((c, i) => `${i}: ${c.item}`).join("\n")}`,
+    `Candidate's attempt (what they said or did, typed):\n${attempt.trim().slice(0, 6000)}`,
+    'Reply with ONLY JSON: {"done": [indexes of checklist items clearly covered], "feedback": "2–4 sentences: what went well and the most important thing to improve"}.',
+  ].join("\n\n");
+}
+export function parseOsceMark(reply: string, n: number): { done: number[]; feedback: string } | null {
+  const v = jsonOf(reply, "{");
+  if (!v || !Array.isArray(v.done)) return null;
+  const done = [...new Set(v.done.map((x: unknown) => Math.round(Number(x))).filter((x: number) => Number.isInteger(x) && x >= 0 && x < n))] as number[];
+  return { done: done.sort((a, b) => a - b), feedback: clip(v.feedback, 1500) };
+}
+export const osceScore = (st: OsceStation, done: number[]) => {
+  const total = st.checklist.reduce((a, c) => a + c.marks, 0);
+  const got = st.checklist.reduce((a, c, i) => a + (done.includes(i) ? c.marks : 0), 0);
+  return { got, total, pct: total ? Math.round((100 * got) / total) : 0 };
+};
+export const osceMarkdown = (st: OsceStation, done: number[]) => {
+  const sc = osceScore(st, done);
+  return `## OSCE: ${st.title}\n\n**Task:** ${st.task}\n\n**Score:** ${sc.got}/${sc.total} (${sc.pct}%)\n\n${st.checklist.map((c, i) => `- [${done.includes(i) ? "x" : " "}] ${c.item} (${c.marks})`).join("\n")}\n\n**Model performance:** ${st.examinerNotes}${st.pitfalls.length ? `\n\n**Pitfalls:**\n${st.pitfalls.map((p) => `- ${p}`).join("\n")}` : ""}`;
+};
+
+/* ------------------------------------------------------------------ Update 53: answer grader */
+
+export interface Graded { score: number; outOf: number; verdict: string; strengths: string[]; missing: string[]; errors: string[]; structure: string[]; outline: string }
+export function gradePrompt(question: string, marks: number, subject: string, answer: string): string {
+  return [
+    `You are a strict but fair Indian MBBS university examiner${subjectLine(subject)}. Grade this written answer out of ${marks} marks.`,
+    `Question: "${question.trim().slice(0, 500)}"`,
+    `Student's answer:\n${answer.trim().slice(0, 8000)}`,
+    "Mark for content (correct, complete, specific facts and numbers), structure (definition, headings, points, diagrams, conclusion) and presentation. Give half marks where earned. Be specific: name the exact missing points.",
+    `Reply with ONLY JSON: {"score": number (0 to ${marks}, steps of 0.5), "outOf": ${marks}, "verdict": "one sentence", "strengths": ["…"], "missing": ["key points not covered"], "errors": ["factual mistakes, with the correction"], "structure": ["how to present it better"], "outline": "a model answer outline in markdown headings and bullets"}.`,
+  ].join("\n\n");
+}
+export function parseGrade(reply: string, marks: number): Graded | null {
+  const v = jsonOf(reply, "{");
+  if (!v || typeof v !== "object") return null;
+  const raw = Number(v.score);
+  if (!Number.isFinite(raw)) return null;
+  const score = Math.max(0, Math.min(marks, Math.round(raw * 2) / 2));
+  return { score, outOf: marks, verdict: clip(v.verdict, 400), strengths: strs(v.strengths, 8, 300), missing: strs(v.missing, 12, 300), errors: strs(v.errors, 8, 300), structure: strs(v.structure, 6, 300), outline: clip(v.outline, 6000) };
+}
+export const gradeMarkdown = (q: string, g: Graded) => `## Graded answer: ${q}\n\n**Score:** ${g.score}/${g.outOf} — ${g.verdict}${g.strengths.length ? `\n\n### Strengths\n${g.strengths.map((x) => `- ${x}`).join("\n")}` : ""}${g.missing.length ? `\n\n### Missing points\n${g.missing.map((x) => `- ${x}`).join("\n")}` : ""}${g.errors.length ? `\n\n### Errors\n${g.errors.map((x) => `- ${x}`).join("\n")}` : ""}${g.structure.length ? `\n\n### Presentation\n${g.structure.map((x) => `- ${x}`).join("\n")}` : ""}${g.outline ? `\n\n### Model outline\n${g.outline}` : ""}`;
+
+/* ------------------------------------------------------------------ Update 53: drug cards */
+
+export interface DrugCard { drug: string; drugClass: string; mechanism: string; uses: string[]; dose: string; adverse: string[]; contraindications: string[]; interactions: string[]; monitoring: string; pearls: string[] }
+export function drugCardPrompt(drug: string, subject: string): string {
+  return [
+    `Make a one-page revision drug card for "${drug.trim().slice(0, 80)}" for Indian medical exams and practice${subjectLine(subject)}.`,
+    'Fields: "drug" (generic name), "drugClass", "mechanism" (1–2 sentences), "uses" (3–6, most important first), "dose" (usual adult dose and route; child dose if commonly used), "adverse" (4–8, the exam favourites first), "contraindications" (2–5), "interactions" (2–5), "monitoring" (one line, or ""), "pearls" (3–5 high-yield exam one-liners: drug of choice for, antidote, eponyms, numbers).',
+    'Reply with ONLY JSON: {"drug": "…", "drugClass": "…", "mechanism": "…", "uses": ["…"], "dose": "…", "adverse": ["…"], "contraindications": ["…"], "interactions": ["…"], "monitoring": "…", "pearls": ["…"]}.',
+  ].join("\n\n");
+}
+export function parseDrugCard(reply: string): DrugCard | null {
+  const v = jsonOf(reply, "{");
+  if (!v || typeof v !== "object") return null;
+  const c: DrugCard = { drug: clip(v.drug, 80), drugClass: clip(v.drugClass, 160), mechanism: clip(v.mechanism, 600), uses: strs(v.uses, 8, 200), dose: clip(v.dose, 500), adverse: strs(v.adverse, 10, 200), contraindications: strs(v.contraindications, 6, 200), interactions: strs(v.interactions, 6, 200), monitoring: clip(v.monitoring, 300), pearls: strs(v.pearls, 6, 240) };
+  return c.drug && c.mechanism && c.uses.length ? c : null;
+}
+export const drugCardMarkdown = (c: DrugCard) => `## ${c.drug}\n\n*${c.drugClass}*\n\n**Mechanism:** ${c.mechanism}\n\n**Uses**\n${c.uses.map((x) => `- ${x}`).join("\n")}\n\n**Dose:** ${c.dose}\n\n**Adverse effects**\n${c.adverse.map((x) => `- ${x}`).join("\n")}${c.contraindications.length ? `\n\n**Contraindications**\n${c.contraindications.map((x) => `- ${x}`).join("\n")}` : ""}${c.interactions.length ? `\n\n**Interactions**\n${c.interactions.map((x) => `- ${x}`).join("\n")}` : ""}${c.monitoring ? `\n\n**Monitoring:** ${c.monitoring}` : ""}${c.pearls.length ? `\n\n**Exam pearls**\n${c.pearls.map((x) => `- ${x}`).join("\n")}` : ""}`;
+/** Flashcards from a drug card, for Crew notes review. */
+export const drugCardFlashcards = (c: DrugCard) => [
+  { front: `${c.drug}: class and mechanism?`, back: `${c.drugClass}. ${c.mechanism}` },
+  { front: `${c.drug}: main uses?`, back: c.uses.join("; ") },
+  { front: `${c.drug}: key adverse effects?`, back: c.adverse.join("; ") },
+  ...c.pearls.slice(0, 3).map((p, i) => ({ front: `${c.drug}: exam pearl ${i + 1}`, back: p })),
+];
+export const DRUG_CARDS_KEY = "cadus3.crewDrugCards";
+export function readDrugCards(): DrugCard[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(DRUG_CARDS_KEY) || "[]");
+    return Array.isArray(v) ? v.map((x) => parseDrugCard(JSON.stringify(x))).filter((x): x is DrugCard => !!x).slice(0, 200) : [];
+  } catch { return []; }
+}
+export function saveDrugCards(list: DrugCard[]) { try { localStorage.setItem(DRUG_CARDS_KEY, JSON.stringify(list.slice(0, 200))); } catch { /* blocked */ } }
+export const addDrugCard = (list: DrugCard[], c: DrugCard) => [c, ...list.filter((x) => x.drug.toLowerCase() !== c.drug.toLowerCase())].slice(0, 200);
+
+/* ------------------------------------------------------------------ Update 53: revision sprint */
+
+export interface SprintQ { q: string; options: string[]; answer: number; why: string }
+export interface Sprint { topic: string; keyPoints: string[]; questions: SprintQ[]; recap: string[] }
+export const SPRINT_PHASES: [string, number][] = [["Key points", 10], ["Quick questions", 10], ["Recap", 5]];
+export function sprintPrompt(subject: string, topic: string): string {
+  return [
+    `Plan a 25-minute revision sprint on "${topic.trim().slice(0, 160)}"${subjectLine(subject)} for an Indian medical student.`,
+    '"keyPoints": 10–14 high-yield points, each one short line with specific facts and numbers. "questions": 6 single-best-answer MCQs (4 options, "answer" is the 0-based index, "why" one sentence) testing those points. "recap": 5 lines to read last — the things most likely to be asked.',
+    'Reply with ONLY JSON: {"keyPoints": ["…"], "questions": [{"q": "…", "options": ["…", "…", "…", "…"], "answer": 0, "why": "…"}], "recap": ["…"]}.',
+  ].join("\n\n");
+}
+export function parseSprint(reply: string, topic: string): Sprint | null {
+  const v = jsonOf(reply, "{");
+  if (!v || typeof v !== "object") return null;
+  const questions: SprintQ[] = (Array.isArray(v.questions) ? v.questions : []).filter((x: any) => x && typeof x.q === "string" && Array.isArray(x.options) && x.options.length >= 2).slice(0, 10).map((x: any) => {
+    const options = x.options.slice(0, 5).map((o: unknown) => clip(o, 200));
+    const answer = Math.round(Number(x.answer));
+    return { q: clip(x.q, 500), options, answer: Number.isInteger(answer) && answer >= 0 && answer < options.length ? answer : -1, why: clip(x.why, 400) };
+  }).filter((x: SprintQ) => x.answer >= 0);
+  const s: Sprint = { topic: clip(topic, 160), keyPoints: strs(v.keyPoints, 16, 300), questions, recap: strs(v.recap, 8, 300) };
+  return s.keyPoints.length >= 3 && questions.length >= 2 ? s : null;
+}
+export const sprintMarkdown = (s: Sprint, right: number) => `## Revision sprint: ${s.topic}\n\n**Score:** ${right}/${s.questions.length}\n\n### Key points\n${s.keyPoints.map((x) => `- ${x}`).join("\n")}\n\n### Recap\n${s.recap.map((x) => `- ${x}`).join("\n")}`;

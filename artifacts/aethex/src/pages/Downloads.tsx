@@ -319,6 +319,9 @@ const TOOLS: [string, string][] = [
   ["Lupus (SLE)", "s"], ["PMR & Giant Cell Arteritis", "r"], ["Bronchiectasis", "y"], ["Hyperprolactinaemia", "v"],
   ["Ankle Sprain & Foot Injuries", "t"], ["Trigger Finger & De Quervain's", "s"], ["Skin Lumps (Lipoma & Cyst)", "r"], ["Phimosis & Balanitis", "y"],
   ["Erectile Dysfunction", "v"], ["Persistent Hiccups", "t"], ["Nocturnal Leg Cramps", "s"], ["Insect Bites & Stings", "r"],
+  ["Hyperthyroidism & Graves'", "y"], ["Pleural Effusion", "v"], ["Rheumatoid Arthritis", "t"], ["Cushing's & Adrenal Incidentaloma", "s"],
+  ["Scaphoid & Wrist Injuries", "r"], ["Knee Ligament & Meniscus", "y"], ["Diabetic Retinopathy Screening", "v"], ["Hearing Loss", "t"],
+  ["Vitamin D Deficiency", "s"], ["Acute Gastroenteritis (Adults)", "r"], ["Anaemia in Pregnancy", "y"], ["Secondary Hypertension", "v"],
 ];
 
 /**

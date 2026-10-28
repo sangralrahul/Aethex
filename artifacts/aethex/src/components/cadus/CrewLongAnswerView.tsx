@@ -4,7 +4,8 @@
  */
 import { useState } from "react";
 import { Copy, Loader2, PenLine, Printer, Save } from "lucide-react";
-import { allCrew, cleanLongAnswer, EXAM_SUBJECTS, findCrew, LONG_MARKS, longAnswerPrompt, type CrewMember } from "@/lib/cadus/crew";
+import { allCrew, cleanLongAnswer, findCrew, LONG_MARKS, longAnswerPrompt, type CrewMember } from "@/lib/cadus/crew";
+import SubjectSelect from "./SubjectSelect";
 import { printMarkdown } from "@/lib/cadus/printdoc";
 import { readLetterhead } from "@/lib/cadus/letterhead";
 import { MdBlock } from "./LiveAnswer";
@@ -43,7 +44,7 @@ export default function CrewLongAnswerView({ mine, ask, canAsk, friendlyError, t
       <label className="cx-field"><span>Question</span><textarea className="cx-input" rows={2} value={q} onChange={(e) => setQ(e.target.value.slice(0, 400))} placeholder="e.g. Describe the aetiology, clinical features and management of acute pancreatitis." data-la="q" /></label>
       <div className="cx-c23-row">
         <label className="cx-field"><span>Marks</span><select className="cx-select" value={marks} onChange={(e) => setMarks(Number(e.target.value))} data-la="marks">{LONG_MARKS.map((m) => <option key={m} value={m}>{m} marks</option>)}</select></label>
-        <label className="cx-field"><span>Subject</span><select className="cx-select" value={subject} onChange={(e) => setSubject(e.target.value)} data-la="subject"><option value="">Any</option>{EXAM_SUBJECTS.map((s) => <option key={s[0]} value={s[0]}>{s[0]}</option>)}</select></label>
+        <label className="cx-field"><span>Subject</span><SubjectSelect value={subject} onChange={setSubject} data="la" anyLabel="Any" /></label>
         <label className="cx-field"><span>University (optional)</span><input className="cx-input" value={uni} onChange={(e) => setUni(e.target.value.slice(0, 80))} placeholder="e.g. RGUHS" data-la="uni" /></label>
         <label className="cx-field"><span>Assistant</span><select className="cx-select" value={crewId} onChange={(e) => setCrewId(e.target.value)} data-la="crew">{allCrew(mine).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
       </div>
