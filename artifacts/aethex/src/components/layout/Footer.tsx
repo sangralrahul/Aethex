@@ -4,6 +4,7 @@ import { ArrowRight, Download, Hospital } from "lucide-react";
 import { cadusUrl, downloadsUrl } from "@/lib/host";
 import { BUSINESS } from "@/config/business";
 import { Logo } from "./Navbar";
+import { ClosingBand, TRUST_ITEMS } from "@/components/home/PlatformHero";
 
 const COLS: { title: string; links: { href: string; label: string; external?: boolean }[] }[] = [
   {
@@ -57,8 +58,13 @@ export function Footer() {
   const [location] = useLocation();
   if (location === "/ai-assistant") return null;
   return (
+    <>
+    <ClosingBand />
     <footer className="ax-foot no-print">
       <div className="ax-wrap">
+        <ul className="ax-foot-trust" data-site="trust">
+          {TRUST_ITEMS.map(({ icon: I, t, d }) => <li key={t}><span className="ic"><I size={18} /></span><span><b>{t}</b><small>{d}</small></span></li>)}
+        </ul>
         <div className="ax-foot-top">
           <div className="ax-foot-brand">
             <Logo />
@@ -93,5 +99,6 @@ export function Footer() {
         </div>
       </div>
     </footer>
+    </>
   );
 }

@@ -1,6 +1,6 @@
 /**
- * aethex.in: the homepage. A storefront first (categories, deals, products),
- * with Cadus and the Study Hub alongside, in the site style (light, Inter,
+ * aethex.in: the homepage. The whole platform first (update 54: PlatformHero, Pillars), then the
+ * storefront (categories, deals, products), with Cadus and the Study Hub alongside, in the site style (light, Inter,
  * deep teal). Styles: src/site.css (home section, classes ax-h-*).
  */
 import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
@@ -21,6 +21,7 @@ import { BUSINESS } from "@/config/business";
 import { formatINR } from "@/lib/utils";
 import { cadusUrl, downloadsUrl } from "@/lib/host";
 import { getTodaysCase } from "@/data/clinicalCases";
+import { PlatformHero, Pillars } from "@/components/home/PlatformHero";
 
 type Icon = ComponentType<LucideProps>;
 const still = () => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -198,7 +199,9 @@ export default function Home() {
 
   return (
     <div className="ax-home">
-      <h1 className="sr-only">Aethex: genuine medical supplies, the Cadus clinical assistant and NEET-PG study tools for India's doctors and medical students</h1>
+      {/* the whole platform first (update 54), then the store */}
+      <PlatformHero />
+      <Pillars />
       {/* category bar */}
       <nav className="ax-h-catbar" aria-label="Shop categories">
         <div className="ax-wrap">
@@ -207,8 +210,9 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* hero */}
+      {/* store hero */}
       <section className="ax-h-hero">
+        <div className="ax-wrap"><div className="ax-sec-head left"><span className="ax-kicker">Medical store</span><h2>Shop genuine medical supplies</h2></div></div>
         <div className="ax-wrap ax-h-hero-grid">
           <div className="ax-h-main">
             <form className="ax-h-search" role="search" onSubmit={(e) => { e.preventDefault(); const t = q.trim(); navigate(t ? `/shop?search=${encodeURIComponent(t)}` : "/shop"); }}>

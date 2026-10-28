@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 import "./site.css";
+import "./site-pro.css";
 import "./shop.css";
 import "./buy.css";
 import { installAiBridge } from "@/lib/ai-bridge";

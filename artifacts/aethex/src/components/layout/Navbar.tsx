@@ -18,6 +18,8 @@ import { useWishlist } from "@/hooks/use-wishlist";
 import { useAbandonedCartTracker } from "@/hooks/use-abandoned-cart-tracker";
 import CadusMark from "@/components/cadus/CadusMark";
 import { cadusUrl, downloadsUrl, loginUrl } from "@/lib/host";
+import { FREE_DELIVERY_FROM } from "@/lib/store/rules";
+import { formatINR } from "@/lib/utils";
 
 type Icon = ComponentType<LucideProps>;
 type Item = { href: string; label: string; hint?: string; icon: Icon; external?: boolean };
@@ -192,6 +194,17 @@ export function Navbar({ inner = false }: { inner?: boolean }) {
 
   return (
     <>
+      {/* Update 54: a slim bar with the store promises, above the header on every aethex.in page. */}
+      <div className="ax-ann no-print" data-site="announce">
+        <div className="ax-wrap ax-ann-in">
+          <span><BadgeCheck size={14} /> Genuine brands</span>
+          <span className="dot" aria-hidden="true">·</span>
+          <span>Cash on delivery across India</span>
+          <span className="dot hide-sm" aria-hidden="true">·</span>
+          <span className="hide-sm">Free delivery from {formatINR(FREE_DELIVERY_FROM)}</span>
+          <a href={cadusUrl("/")} className="go">New: Cadus clinical AI — try it free <span aria-hidden="true">→</span></a>
+        </div>
+      </div>
       <header className={`ax-head no-print ${scrolled ? "scrolled" : ""} ${inner ? "inner" : ""}`}>
         <div className="ax-wrap ax-head-in">
           <Logo />
