@@ -316,6 +316,9 @@ const TOOLS: [string, string][] = [
   ["Jaundice Work-up", "v"], ["Proteinuria Work-up", "t"], ["Splenomegaly", "s"], ["Pancytopenia", "r"],
   ["Varicose Veins", "y"], ["Otitis Externa & Ear Wax", "v"], ["Dry Eye & Blepharitis", "t"], ["Perianal Abscess & Pilonidal", "s"],
   ["Neck Pain", "r"], ["Hyperhidrosis", "y"], ["Seborrhoeic Dermatitis & Dandruff", "v"], ["Halitosis (Bad Breath)", "t"],
+  ["Lupus (SLE)", "s"], ["PMR & Giant Cell Arteritis", "r"], ["Bronchiectasis", "y"], ["Hyperprolactinaemia", "v"],
+  ["Ankle Sprain & Foot Injuries", "t"], ["Trigger Finger & De Quervain's", "s"], ["Skin Lumps (Lipoma & Cyst)", "r"], ["Phimosis & Balanitis", "y"],
+  ["Erectile Dysfunction", "v"], ["Persistent Hiccups", "t"], ["Nocturnal Leg Cramps", "s"], ["Insect Bites & Stings", "r"],
 ];
 
 /**

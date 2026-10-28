@@ -2664,3 +2664,101 @@ export function syllabusProgress(s: Syllabus): { subjects: number; done: number;
   return { subjects: Object.keys(s).length, done, total: all.length, pct: all.length ? Math.round((100 * done) / all.length) : 0 };
 }
 export const syllabusRevisePrompt = (subject: string, topic: string) => `Revise "${topic}" (${subject}) with me for NEET-PG: the 8–10 most-tested facts in short bullets, one table if it helps, the common traps, then 3 single-best-answer MCQs one at a time — wait for my answer before the next.`;
+
+/* ------------------------------------------------------------------ Update 50: concept map */
+
+export interface ConceptBranch { label: string; items: string[] }
+export interface ConceptMap { center: string; branches: ConceptBranch[]; links: string[] }
+export function conceptPrompt(topic: string): string {
+  return [
+    `Make a concept map of "${topic.trim().slice(0, 200)}" for a medical student.`,
+    "5 to 7 branches chosen from: Definition, Causes / risk factors, Pathophysiology, Clinical features, Investigations, Treatment, Complications, Prognosis, Differentials. Each branch has 3–6 short items (under 12 words each, specific, with numbers or drug names where useful).",
+    "Add 2–4 cross-links: one-line statements that connect two branches (e.g. \"Pathophysiology → Treatment: ACE inhibitors block the RAAS overdrive\").",
+    'Reply with ONLY JSON: {"center": "…", "branches": [{"label": "…", "items": ["…"]}], "links": ["…"]}.',
+  ].join("\n\n");
+}
+export function parseConcept(reply: string): ConceptMap | null {
+  const t = String(reply ?? "");
+  const a = t.indexOf("{"), b = t.lastIndexOf("}");
+  if (a < 0 || b <= a) return null;
+  try {
+    const v = JSON.parse(t.slice(a, b + 1));
+    const branches: ConceptBranch[] = (Array.isArray(v.branches) ? v.branches : [])
+      .filter((x: any) => x && typeof x.label === "string" && Array.isArray(x.items))
+      .slice(0, 8)
+      .map((x: any) => ({ label: clip(x.label, 60), items: x.items.filter((i: unknown) => typeof i === "string" && i.trim()).slice(0, 8).map((i: string) => clip(i, 200)) }))
+      .filter((x: ConceptBranch) => x.label && x.items.length);
+    const links = (Array.isArray(v.links) ? v.links : []).filter((x: unknown) => typeof x === "string" && x.trim()).slice(0, 6).map((x: string) => clip(x, 240));
+    const center = clip(v.center, 120);
+    return center && branches.length >= 2 ? { center, branches, links } : null;
+  } catch { return null; }
+}
+export const conceptMarkdown = (m: ConceptMap) => `## ${m.center} — concept map\n\n${m.branches.map((b) => `### ${b.label}\n${b.items.map((i) => `- ${i}`).join("\n")}`).join("\n\n")}${m.links.length ? `\n\n### Connections\n${m.links.map((l) => `- ${l}`).join("\n")}` : ""}`;
+
+/* ------------------------------------------------------------------ Update 50: high-yield one-liners */
+
+export interface OneLiner { q: string; a: string }
+export function onelinerPrompt(topic: string, count = 20): string {
+  return [
+    `Give ${Math.max(10, Math.min(30, count))} high-yield one-liners on "${topic.trim().slice(0, 200)}" for NEET-PG / INI-CET revision.`,
+    "Each is a short cue and its answer, the way toppers revise: \"Drug of choice for absence seizures\" → \"Ethosuximide (valproate if GTCS too)\". Prefer the most frequently tested facts: drugs of choice, investigations of choice, most common, pathognomonic signs, eponyms, numbers. No repeats.",
+    'Reply with ONLY a JSON array: [{"q": "cue", "a": "answer"}].',
+  ].join("\n\n");
+}
+export function parseOneliners(reply: string): OneLiner[] {
+  const t = String(reply ?? "");
+  const a = t.indexOf("["), b = t.lastIndexOf("]");
+  if (a < 0 || b <= a) return [];
+  try {
+    const v = JSON.parse(t.slice(a, b + 1));
+    const seen = new Set<string>();
+    return (Array.isArray(v) ? v : [])
+      .filter((x: any) => x && typeof x.q === "string" && typeof x.a === "string" && x.q.trim() && x.a.trim())
+      .map((x: any) => ({ q: clip(x.q, 240), a: clip(x.a, 240) }))
+      .filter((x: OneLiner) => { const k = x.q.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; })
+      .slice(0, 30);
+  } catch { return []; }
+}
+export const onelinersMarkdown = (topic: string, list: OneLiner[], title = "High-yield one-liners") => `## ${title}: ${topic}\n\n${list.map((x, i) => `${i + 1}. **${x.q}** — ${x.a}`).join("\n")}`;
+
+/* ------------------------------------------------------------------ Update 50: Socratic tutor */
+
+export interface SocraticTurn { q: string; a: string; feedback?: string }
+export interface SocraticReply { feedback: string; question: string; done: boolean; summary: string; score: number }
+export const SOCRATIC_MAX = 6;
+export function socraticPrompt(topic: string, level: string, turns: SocraticTurn[]): string {
+  const history = turns.map((t, i) => `Q${i + 1}: ${t.q}\nStudent: ${t.a || "(no answer)"}`).join("\n\n");
+  const last = turns.length >= SOCRATIC_MAX;
+  return [
+    `You are a Socratic medical tutor teaching "${topic.trim().slice(0, 200)}" to ${level || "an MBBS student"}. Don't lecture: lead the student to understanding with one short question at a time, building from basics (mechanism) to application (a patient).`,
+    history ? `So far:\n\n${history}` : "This is the start: ask the first question.",
+    turns.length ? "Give brief feedback on the student's last answer (1–3 sentences: what was right, gently correct what was wrong, add the one missing idea), then ask the next question that builds on it. If they were stuck, give a hint inside the question." : "",
+    last ? 'This is the end: set "done" to true, leave "question" empty, write a 4–6 bullet markdown "summary" of what they worked out and what to revise, and a "score" from 0 to 10 for their reasoning.' : 'Set "done" to false, "summary" to "" and "score" to 0.',
+    'Reply with ONLY JSON: {"feedback": "…", "question": "…", "done": false, "summary": "", "score": 0}.',
+  ].filter(Boolean).join("\n\n");
+}
+export function parseSocratic(reply: string): SocraticReply | null {
+  const t = String(reply ?? "");
+  const a = t.indexOf("{"), b = t.lastIndexOf("}");
+  if (a < 0 || b <= a) return null;
+  try {
+    const v = JSON.parse(t.slice(a, b + 1));
+    const r: SocraticReply = { feedback: clip(v.feedback, 1500), question: clip(v.question, 600), done: v.done === true, summary: clip(v.summary, 3000), score: Math.max(0, Math.min(10, Math.round(Number(v.score) || 0))) };
+    return r.question || r.done ? r : null;
+  } catch { return null; }
+}
+export const socraticMarkdown = (topic: string, turns: SocraticTurn[], summary: string) => `## Socratic session: ${topic}\n\n${turns.map((x, i) => `**Q${i + 1}. ${x.q}**\n\nMy answer: ${x.a || "—"}${x.feedback ? `\n\n> ${x.feedback}` : ""}`).join("\n\n")}${summary ? `\n\n### What I worked out\n${summary}` : ""}`;
+
+/* ------------------------------------------------------------------ Update 50: long answer writer */
+
+export const LONG_MARKS = [5, 10, 15] as const;
+export function longAnswerPrompt(question: string, marks: number, subject: string, university: string): string {
+  const words = marks >= 15 ? "900–1200" : marks >= 10 ? "600–800" : "300–400";
+  return [
+    `Write a model answer for this ${marks}-mark ${subject ? `${subject} ` : ""}long-answer question from an Indian MBBS university exam${university ? ` (${university.slice(0, 80)})` : ""}: "${question.trim().slice(0, 400)}".`,
+    `About ${words} words, in the structure examiners reward: a one-line definition or introduction; then numbered markdown headings (as relevant: classification, aetiology, pathogenesis, clinical features, investigations, management, complications, prevention); bullet points, not paragraphs; one table where a comparison helps; standard textbook facts (Harrison, Robbins, Bailey & Love, Williams, Nelson, KD Tripathi).`,
+    'Where a diagram earns marks, add a blockquote starting "Diagram to draw:" that describes exactly what to draw and label. End with a "Key points to underline" list of 4–6 must-mention terms and a one-line conclusion.',
+    "Reply in markdown only.",
+  ].join("\n\n");
+}
+export const cleanLongAnswer = (reply: string) => String(reply ?? "").replace(/^```(?:markdown|md)?\s*/i, "").replace(/```\s*$/, "").trim().slice(0, 20000);
