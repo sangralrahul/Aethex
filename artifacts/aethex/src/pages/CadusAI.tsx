@@ -5,7 +5,7 @@
  */
 import {
   lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState,
-  type ReactNode, type DragEvent as ReactDragEvent, type FocusEvent as ReactFocusEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent,
+  type ComponentProps, type ComponentType, type ReactNode, type DragEvent as ReactDragEvent, type FocusEvent as ReactFocusEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent,
 } from "react";
 import {
   AlertTriangle, Cloud, Network, PenLine,  Layers2, Lock, UserPlus,  BatteryLow, Columns2, Inbox, NotebookText, Sparkle,  BookA, Dices, User,  Radar,  Route,  Loader2, Highlighter, Puzzle, Scan, Sprout,  Armchair, Fingerprint, Slash,  Orbit, Venus, Wand2,  SpellCheck,  Bed, AlarmClock,  Mountain, Briefcase, SearchCheck, UserRoundPen,  Smile, Columns3, LibraryBig, Snowflake, MessagesSquare, GlassWater, LifeBuoy, Trophy, Package, StickyNote, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ArrowUpRight, Bookmark, BookmarkCheck, BookOpen, BookOpenCheck, Brain, Gauge,
@@ -35,8 +35,7 @@ import {
 import { invokeAi } from "@/lib/ai-functions";
 import { useUserAuth } from "@/hooks/use-user-auth";
 import CadusMark, { CADUS_ICON_DATA_URL } from "@/components/cadus/CadusMark";
-import CameraModal from "@/components/cadus/CameraModal";
-import PresentationViewer, { type PresentationData } from "@/components/cadus/PresentationViewer";
+import type { PresentationData } from "@/components/cadus/PresentationViewer";
 import { CADUS_CSS } from "@/components/cadus/cadus-styles";
 import { markdownToText, renderMarkdown } from "@/lib/cadus-markdown";
 import {
@@ -45,9 +44,7 @@ import {
 } from "@/lib/medlib/library";
 import { queryTerms } from "@/lib/medlib/text";
 import { isCadusHost, mainUrl } from "@/lib/host";
-import ClinicalCalculators, { InteractionNotice, type ToolsTab } from "@/components/cadus/ClinicalCalculators";
-import PracticeView from "@/components/cadus/PracticeView";
-import ProfileDialog from "@/components/cadus/ProfileDialog";
+import type { ToolsTab } from "@/components/cadus/ClinicalCalculators";
 import { CADUS_TOOLS_CSS } from "@/components/cadus/cadus-tools-styles";
 import { CALC_BY_ID, CALCULATORS, suggestCalculators } from "@/lib/cadus/calculators";
 import { checkText, type IxMatch } from "@/lib/cadus/interactions";
@@ -59,11 +56,9 @@ import {
 } from "@/lib/cadus/profile";
 import { CASE_MODES, looksLikeCase, WARD_ACTIONS } from "@/lib/cadus/ward";
 import { LiveAnswer, MdBlock } from "@/components/cadus/LiveAnswer";
-import CanvasPanel, { type CanvasDoc } from "@/components/cadus/CanvasPanel";
+import type { CanvasDoc } from "@/components/cadus/CanvasPanel";
 import VoiceMode, { speakable, voiceSupported, type VoicePersona } from "@/components/cadus/VoiceMode";
-import RecordsView, { type RecordIncoming } from "@/components/cadus/RecordsView";
-import CrewVersionsDialog from "@/components/cadus/CrewVersionsDialog";
-import CrewRecapDialog from "@/components/cadus/CrewRecapDialog";
+import type { RecordIncoming } from "@/components/cadus/RecordsView";
 /* Update 44: newer tools load on demand to keep the first load small. */
 const LungNoduleView = lazy(() => import("@/components/cadus/LungNoduleView"));
 const ItpView = lazy(() => import("@/components/cadus/ItpView"));
@@ -140,6 +135,42 @@ const CrewVsView = lazy(() => import("@/components/cadus/CrewVsView"));
 const CrewDdxView = lazy(() => import("@/components/cadus/CrewDdxView"));
 const CrewLectureView = lazy(() => import("@/components/cadus/CrewLectureView"));
 const CrewInboxView = lazy(() => import("@/components/cadus/CrewInboxView"));
+// Update 51: parts that are not on the first screen load on demand, each inside its own Suspense,
+// so opening Cadus downloads far less (no diagrams, calculators, settings or dialogs up front).
+function lazyPart<T extends ComponentType<any>>(load: () => Promise<{ default: T }>) {
+  const L = lazy(load);
+  const Part = (props: ComponentProps<T>) => <Suspense fallback={null}><L {...props} /></Suspense>;
+  return Part;
+}
+const CameraModal = lazyPart(() => import("@/components/cadus/CameraModal"));
+const PresentationViewer = lazyPart(() => import("@/components/cadus/PresentationViewer"));
+const ClinicalCalculators = lazyPart(() => import("@/components/cadus/ClinicalCalculators"));
+const InteractionNotice = lazyPart(() => import("@/components/cadus/ClinicalCalculators").then((m) => ({ default: m.InteractionNotice })));
+const ProfileDialog = lazyPart(() => import("@/components/cadus/ProfileDialog"));
+const CanvasPanel = lazyPart(() => import("@/components/cadus/CanvasPanel"));
+const RecordsView = lazyPart(() => import("@/components/cadus/RecordsView"));
+const CrewVersionsDialog = lazyPart(() => import("@/components/cadus/CrewVersionsDialog"));
+const CrewRecapDialog = lazyPart(() => import("@/components/cadus/CrewRecapDialog"));
+const CrewPlainDialog = lazyPart(() => import("@/components/cadus/CrewPlainDialog"));
+const CrewTranslateDialog = lazyPart(() => import("@/components/cadus/CrewTranslateDialog"));
+const CrewShareCardDialog = lazyPart(() => import("@/components/cadus/CrewShareCardDialog"));
+const CrewFactCheckDialog = lazyPart(() => import("@/components/cadus/CrewFactCheckDialog"));
+const CrewHandoffDialog = lazyPart(() => import("@/components/cadus/CrewHandoffDialog"));
+const CrewImproveDialog = lazyPart(() => import("@/components/cadus/CrewImproveDialog"));
+const CrewCardSettings = lazyPart(() => import("@/components/cadus/CrewCardSettings"));
+const PersonalSettings = lazyPart(() => import("@/components/cadus/PersonalSettings"));
+const CrewKnowledge = lazyPart(() => import("@/components/cadus/CrewKnowledge"));
+const ShareDialog = lazyPart(() => import("@/components/cadus/ShareDialog"));
+const InstitutionSettings = lazyPart(() => import("@/components/cadus/InstitutionSettings"));
+const LetterheadSettings = lazyPart(() => import("@/components/cadus/LetterheadSettings"));
+const SourcesPanel = lazyPart(() => import("@/components/cadus/SourcesPanel"));
+const CrewImportDialog = lazyPart(() => import("@/components/cadus/CrewShare").then((m) => ({ default: m.CrewImportDialog })));
+const CrewPasteImport = lazyPart(() => import("@/components/cadus/CrewShare").then((m) => ({ default: m.CrewPasteImport })));
+const CrewShareDialog = lazyPart(() => import("@/components/cadus/CrewShare").then((m) => ({ default: m.CrewShareDialog })));
+const VoiceSettings = lazyPart(() => import("@/components/cadus/AudioParts").then((m) => ({ default: m.VoiceSettings })));
+const ResearchView = lazyPart(() => import("@/components/cadus/ResearchView"));
+const Onboarding = lazyPart(() => import("@/components/cadus/Onboarding"));
+const Tour = lazyPart(() => import("@/components/cadus/Tour"));
 const JaundiceView = lazy(() => import("@/components/cadus/JaundiceView"));
 const ProteinuriaView = lazy(() => import("@/components/cadus/ProteinuriaView"));
 const SplenomegalyView = lazy(() => import("@/components/cadus/SplenomegalyView"));
@@ -435,15 +466,7 @@ const SafetyView = lazy(() => import("@/components/cadus/SafetyView"));
 const HistoryView = lazy(() => import("@/components/cadus/HistoryView"));
 const PrivacyView = lazy(() => import("@/components/cadus/PrivacyView"));
 const lazyFallback = <p className="cx-set-hint cx-lazy" role="status">Loading…</p>;
-import CrewPlainDialog from "@/components/cadus/CrewPlainDialog";
-import CrewTranslateDialog from "@/components/cadus/CrewTranslateDialog";
-import CrewShareCardDialog from "@/components/cadus/CrewShareCardDialog";
-import CrewFactCheckDialog from "@/components/cadus/CrewFactCheckDialog";
-import CrewHandoffDialog from "@/components/cadus/CrewHandoffDialog";
-import CrewImproveDialog from "@/components/cadus/CrewImproveDialog";
-import CrewCardSettings from "@/components/cadus/CrewCardSettings";
 import { backupDue } from "@/lib/cadus/clinic26";
-import PersonalSettings from "@/components/cadus/PersonalSettings";
 import { CADUS_CHAT_CSS } from "@/components/cadus/cadus-chat-styles";
 import { closePartialMarkdown, createTextStore, streamCadus, StreamUnavailable, type DeepStep } from "@/lib/cadus/stream";
 import {
@@ -466,10 +489,7 @@ import {
   readNotes, saveNotes, addNote, readCheckins, saveCheckins, dueCheckins, dateKey, readDrill, bestStreak, readCaseRounds, readRooms, readQuizResults, type CrewNotes, type CheckIns, type CrewStats,
   readMemory, saveMemory, addFact, rememberFrom as crewRememberFrom, readRatings, saveRatings, rateCrew, unrateCrew, ratingSummary, type CrewFact, type CrewRating,
 } from "@/lib/cadus/crew";
-import CrewKnowledge from "@/components/cadus/CrewKnowledge";
-import { CrewImportDialog, CrewPasteImport, CrewShareDialog } from "@/components/cadus/CrewShare";
-import { VoiceSettings } from "@/components/cadus/AudioParts";
-import { CADUS_CLINIC20_CSS, CADUS_CLINIC21_CSS, CADUS_CLINIC22_CSS, CADUS_CLINIC23_CSS, CADUS_CLINIC24_CSS, CADUS_CLINIC25_CSS, CADUS_CLINIC26_CSS, CADUS_CLINIC27_CSS, CADUS_CLINIC28_CSS, CADUS_CLINIC29_CSS, CADUS_CLINIC30_CSS, CADUS_CLINIC31_CSS, CADUS_CLINIC32_CSS, CADUS_CLINIC34_CSS, CADUS_CLINIC35_CSS, CADUS_CLINIC36_CSS, CADUS_CLINIC37_CSS, CADUS_CLINIC38_CSS, CADUS_CLINIC39_CSS, CADUS_CLINIC40_CSS, CADUS_CLINIC41_CSS, CADUS_CLINIC42_CSS, CADUS_CLINIC43_CSS, CADUS_CLINIC44_CSS, CADUS_CLINIC45_CSS, CADUS_CLINIC46_CSS, CADUS_CLINIC47_CSS, CADUS_CLINIC48_CSS, CADUS_CLINIC49_CSS, CADUS_CLINIC50_CSS, CADUS_CREW_CSS, CADUS_CREWPLUS_CSS, CADUS_VOICE_CSS } from "@/components/cadus/cadus-crew-styles";
+import { CADUS_CLINIC20_CSS, CADUS_CLINIC21_CSS, CADUS_CLINIC22_CSS, CADUS_CLINIC23_CSS, CADUS_CLINIC24_CSS, CADUS_CLINIC25_CSS, CADUS_CLINIC26_CSS, CADUS_CLINIC27_CSS, CADUS_CLINIC28_CSS, CADUS_CLINIC29_CSS, CADUS_CLINIC30_CSS, CADUS_CLINIC31_CSS, CADUS_CLINIC32_CSS, CADUS_CLINIC34_CSS, CADUS_CLINIC35_CSS, CADUS_CLINIC36_CSS, CADUS_CLINIC37_CSS, CADUS_CLINIC38_CSS, CADUS_CLINIC39_CSS, CADUS_CLINIC40_CSS, CADUS_CLINIC41_CSS, CADUS_CLINIC42_CSS, CADUS_CLINIC43_CSS, CADUS_CLINIC44_CSS, CADUS_CLINIC45_CSS, CADUS_CLINIC46_CSS, CADUS_CLINIC47_CSS, CADUS_CLINIC48_CSS, CADUS_CLINIC49_CSS, CADUS_CLINIC50_CSS, CADUS_CLINIC51_CSS, CADUS_CREW_CSS, CADUS_CREWPLUS_CSS, CADUS_VOICE_CSS } from "@/components/cadus/cadus-crew-styles";
 import { CADUS_STUDIO_CSS, CADUS_TODAY_CSS, CADUS_WARD_CSS, CADUS_BEDSIDE_CSS } from "@/components/cadus/cadus-studio-styles";
 import { ABX_KEY, ECG_KEY, POISON_KEY, PROC_KEY } from "@/lib/cadus/clinicalAi";
 import { FOLLOWUP_KEY, LOG_KEY } from "@/lib/cadus/records";
@@ -490,14 +510,11 @@ import { contentWords, institutionPayload, readInstitution, saveInstitution, typ
 import { caseLabel, caseSummary, newCase, newEntry, readCases, saveCases, type PatientCase } from "@/lib/cadus/cases";
 import { isWallpaper, wallpaperCss, WALLPAPERS, type WallpaperId } from "@/lib/cadus/wallpaper";
 import { readLearn, saveLearn, type LearnState } from "@/lib/cadus/learn";
-import ShareDialog from "@/components/cadus/ShareDialog";
 import type { Shared } from "@/lib/cadus/share";
 import { printMarkdown } from "@/lib/cadus/printdoc";
 import { evidenceRecords, evidenceSources, readReading, type Paper } from "@/lib/cadus/pubmed";
 import { localDate, readWard } from "@/lib/cadus/wardlist";
-import ResearchView, { type ResearchTab } from "@/components/cadus/ResearchView";
-import InstitutionSettings from "@/components/cadus/InstitutionSettings";
-import LetterheadSettings from "@/components/cadus/LetterheadSettings";
+import type { ResearchTab } from "@/components/cadus/ResearchView";
 import { CADUS_PRO_CSS } from "@/components/cadus/cadus-pro-styles";
 import { CADUS_REF_CSS } from "@/components/cadus/cadus-ref-styles";
 import { CADUS_WS_CSS } from "@/components/cadus/cadus-ws-styles";
@@ -508,16 +525,16 @@ import ProfileSetup, { PROFILE_SETUP_CSS } from "@/components/cadus/ProfileSetup
 import { fetchRemoteProfile, pushRemoteProfile } from "@/lib/cadus/profileSync";
 import { NOTES_KEY as NOTES_KEY_EXPORT } from "@/lib/cadus/scribe";
 import { LEAFLETS_KEY as LEAFLETS_KEY_EXPORT } from "@/lib/cadus/leaflets";
-import { RX_KEY as RX_KEY_EXPORT } from "@/lib/cadus/formulary";
+// The prescriptions key (same as RX_KEY in formulary.ts), without loading the drug database.
+const RX_KEY_EXPORT = "cadus3.rx";
 import { LEARN_KEY as LEARN_KEY_EXPORT } from "@/lib/cadus/learn";
 import { CADUS_LABS_CSS } from "@/components/cadus/cadus-labs-styles";
 import { EXPLAINS_KEY, RXCHECKS_KEY, SIMS_KEY, WATCH_KEY } from "@/lib/cadus/labs";
 type LookId = (typeof LOOKS)[number]["id"];
 import { CADUS_VERSION, LEGAL_PATH } from "@/lib/cadus/legal";
 import { PLAN_BY_ID, limitsOf, planFor, planOf, priceText, type PlanId } from "@/lib/cadus/plans";
-import SourcesPanel from "@/components/cadus/SourcesPanel";
-import Onboarding, { type OnboardingResult } from "@/components/cadus/Onboarding";
-import Tour, { type TourStep } from "@/components/cadus/Tour";
+import type { OnboardingResult } from "@/components/cadus/Onboarding";
+import type { TourStep } from "@/components/cadus/Tour";
 import { AUDIT_KEY, auditStats, clearAudit, readAudit, recordAudit, type AuditEntry } from "@/lib/cadus/audit";
 import { ONBOARD_KEY, practicePayload, readFlag, setFlag, specialtyTools, TOUR_KEY, type Units } from "@/lib/cadus/onboarding";
 import { liftKeyPoints, referenceForDocument, referenceToPlain } from "@/lib/cadus/reference";
@@ -6101,7 +6118,7 @@ export default function CadusAI() {
       style={{ ["--acc" as string]: dark ? accent.dark : accent.light, ["--fs" as string]: `${fontSize}px`, ["--fs-u" as string]: `${sansSize}px` }}
       {...dropHandlers}
     >
-      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS + CADUS_CREWPLUS_CSS + CADUS_VOICE_CSS + CADUS_CLINIC20_CSS + CADUS_CLINIC21_CSS + CADUS_CLINIC22_CSS + CADUS_CLINIC23_CSS + CADUS_CLINIC24_CSS + CADUS_CLINIC25_CSS + CADUS_CLINIC26_CSS + CADUS_CLINIC27_CSS + CADUS_CLINIC28_CSS + CADUS_CLINIC29_CSS + CADUS_CLINIC30_CSS + CADUS_CLINIC31_CSS + CADUS_CLINIC32_CSS + CADUS_CLINIC34_CSS + CADUS_CLINIC35_CSS + CADUS_CLINIC36_CSS + CADUS_CLINIC37_CSS + CADUS_CLINIC38_CSS + CADUS_CLINIC39_CSS + CADUS_CLINIC40_CSS + CADUS_CLINIC41_CSS + CADUS_CLINIC42_CSS + CADUS_CLINIC43_CSS + CADUS_CLINIC44_CSS + CADUS_CLINIC45_CSS + CADUS_CLINIC46_CSS + CADUS_CLINIC47_CSS + CADUS_CLINIC48_CSS + CADUS_CLINIC49_CSS + CADUS_CLINIC50_CSS}</style>
+      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS + CADUS_CREWPLUS_CSS + CADUS_VOICE_CSS + CADUS_CLINIC20_CSS + CADUS_CLINIC21_CSS + CADUS_CLINIC22_CSS + CADUS_CLINIC23_CSS + CADUS_CLINIC24_CSS + CADUS_CLINIC25_CSS + CADUS_CLINIC26_CSS + CADUS_CLINIC27_CSS + CADUS_CLINIC28_CSS + CADUS_CLINIC29_CSS + CADUS_CLINIC30_CSS + CADUS_CLINIC31_CSS + CADUS_CLINIC32_CSS + CADUS_CLINIC34_CSS + CADUS_CLINIC35_CSS + CADUS_CLINIC36_CSS + CADUS_CLINIC37_CSS + CADUS_CLINIC38_CSS + CADUS_CLINIC39_CSS + CADUS_CLINIC40_CSS + CADUS_CLINIC41_CSS + CADUS_CLINIC42_CSS + CADUS_CLINIC43_CSS + CADUS_CLINIC44_CSS + CADUS_CLINIC45_CSS + CADUS_CLINIC46_CSS + CADUS_CLINIC47_CSS + CADUS_CLINIC48_CSS + CADUS_CLINIC49_CSS + CADUS_CLINIC50_CSS + CADUS_CLINIC51_CSS}</style>
 
       {/* ============================================== sidebar */}
       <div className={`cx-scrim ${sidebarOpen ? "on" : ""}`} onClick={() => setSidebarOpen(false)} />

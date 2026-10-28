@@ -212,6 +212,16 @@ export default defineConfig({
   build: {
     outDir: buildOutDir,
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        // Update 51: the icons go in one file instead of ~200 tiny ones, so the first load needs
+        // far fewer requests (each round trip is slow on mobile networks in India).
+        manualChunks(id) {
+          if (id.includes("node_modules/lucide-react/")) return "icons";
+          return undefined;
+        },
+      },
+    },
   },
   server: {
     port,

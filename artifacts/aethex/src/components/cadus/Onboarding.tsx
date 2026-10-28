@@ -18,6 +18,7 @@ export interface OnboardingResult {
 }
 
 const STEPS = ["Welcome", "Your role", "About you", "Preferences", "Ready"];
+const STEP_HINTS = ["What Cadus is", "Pitch answers at your level", "Specialty, state, registration", "Units, medicines, language", "Start using Cadus"];
 
 export default function Onboarding({ languages, language: initialLanguage, profile: initial, units: initialUnits = "conventional", nlem: initialNlem = true, onDone, onCancel }: {
   languages: string[];
@@ -87,7 +88,24 @@ export default function Onboarding({ languages, language: initialLanguage, profi
 
   return (
     <div className="cx-overlay center cx-ob-wrap">
-      <div className="cx-dialog cx-ob" role="dialog" aria-modal="true" aria-labelledby="cx-ob-title" ref={boxRef} onKeyDown={trapTab}>
+      <div className="cx-dialog cx-ob cx-ob-pro" role="dialog" aria-modal="true" aria-labelledby="cx-ob-title" ref={boxRef} onKeyDown={trapTab}>
+        <aside className="cx-ob-side" aria-hidden="true">
+          <div className="cx-ob-glow"><i /><i /></div>
+          <div className="cx-ob-brand">
+            <span className="cx-ob-logo"><CadusMark size={30} /><em /><em /></span>
+            <span><b>Cadus</b><small>Clinical AI by Aethex</small></span>
+          </div>
+          <ol className="cx-ob-steps">
+            {STEPS.map((s, i) => (
+              <li key={s} className={i < step ? "done" : i === step ? "on" : ""}>
+                <span className="cx-ob-sn">{i < step ? <Check size={13} strokeWidth={3} /> : i + 1}</span>
+                <span><b>{s}</b><small>{STEP_HINTS[i]}</small></span>
+              </li>
+            ))}
+          </ol>
+          <p className="cx-ob-side-f"><ShieldCheck size={14} /> Kept on this device. Change anything later in Settings.</p>
+        </aside>
+        <div className="cx-ob-main">
         <div className="cx-ob-top">
           <div className="cx-ob-prog" aria-label={`Step ${step + 1} of ${STEPS.length}`}>
             {STEPS.map((s, i) => <span key={s} className={i < step ? "done" : i === step ? "on" : ""} title={s} />)}
@@ -96,14 +114,14 @@ export default function Onboarding({ languages, language: initialLanguage, profi
         </div>
 
         {step === 0 && (
-          <div className="cx-ob-b">
-            <CadusMark size={44} />
+          <div className="cx-ob-b cx-ob-anim" key={step}>
+            <span className="cx-ob-kick">Step 1 of {STEPS.length} · Welcome</span>
             <h2 id="cx-ob-title" tabIndex={-1}>Welcome to Cadus</h2>
             <p className="cx-ob-lead">Clinical AI for doctors, nurses, pharmacists and medical students in India.</p>
             <ul className="cx-ob-why">
-              <li><ShieldCheck size={18} /><span><b>Checked twice.</b> A second model reviews every clinical answer for doses, interactions and red flags before you see it.</span></li>
-              <li><BookOpenText size={18} /><span><b>Sourced.</b> Guidelines and PubMed papers with their PMIDs, with labels for how strong the evidence is.</span></li>
-              <li><LockKeyhole size={18} /><span><b>Private.</b> Chats and patient lists stay on this device, and identifiers are hidden before anything is sent.</span></li>
+              <li style={{ ["--d" as string]: "120ms" }}><ShieldCheck size={18} /><span><b>Checked twice.</b> A second model reviews every clinical answer for doses, interactions and red flags before you see it.</span></li>
+              <li style={{ ["--d" as string]: "200ms" }}><BookOpenText size={18} /><span><b>Sourced.</b> Guidelines and PubMed papers with their PMIDs, with labels for how strong the evidence is.</span></li>
+              <li style={{ ["--d" as string]: "280ms" }}><LockKeyhole size={18} /><span><b>Private.</b> Chats and patient lists stay on this device, and identifiers are hidden before anything is sent.</span></li>
             </ul>
             <button type="button" className={`cx-tg cx-ob-ack ${ack ? "on" : ""}`} role="checkbox" aria-checked={ack} onClick={() => setAck(!ack)}>
               <span className="cx-tg-box" aria-hidden />
@@ -113,7 +131,7 @@ export default function Onboarding({ languages, language: initialLanguage, profi
         )}
 
         {step === 1 && (
-          <div className="cx-ob-b">
+          <div className="cx-ob-b cx-ob-anim" key={step}>
             <h2 id="cx-ob-title" tabIndex={-1}>What best describes you?</h2>
             <p className="cx-ob-lead">Cadus pitches every answer at your level and puts the tools you use most on the home page.</p>
             <div className="cx-roles" role="radiogroup" aria-label="Role">
@@ -128,7 +146,7 @@ export default function Onboarding({ languages, language: initialLanguage, profi
         )}
 
         {step === 2 && (
-          <div className="cx-ob-b">
+          <div className="cx-ob-b cx-ob-anim" key={step}>
             <h2 id="cx-ob-title" tabIndex={-1}>About you</h2>
             <p className="cx-ob-lead">All optional. Your registration is never sent to the AI; it shows on your profile as self-declared.</p>
             <div className="cx-ob-form">
@@ -193,7 +211,7 @@ export default function Onboarding({ languages, language: initialLanguage, profi
         )}
 
         {step === 3 && (
-          <div className="cx-ob-b">
+          <div className="cx-ob-b cx-ob-anim" key={step}>
             <h2 id="cx-ob-title" tabIndex={-1}>How you practise</h2>
             <p className="cx-ob-lead">Cadus follows these in every answer. You can change them in Settings.</p>
             <div className="cx-ob-form">
@@ -220,7 +238,7 @@ export default function Onboarding({ languages, language: initialLanguage, profi
         )}
 
         {step === 4 && (
-          <div className="cx-ob-b">
+          <div className="cx-ob-b cx-ob-anim" key={step}>
             <span className="cx-ob-done"><Check size={22} strokeWidth={2.6} /></span>
             <h2 id="cx-ob-title" tabIndex={-1}>You're set</h2>
             <p className="cx-ob-lead">
@@ -243,6 +261,7 @@ export default function Onboarding({ languages, language: initialLanguage, profi
               <button type="button" className="cx-btn primary" onClick={() => finish(true)}>Take the tour <ArrowRight size={15} /></button>
             </>
           )}
+        </div>
         </div>
       </div>
     </div>

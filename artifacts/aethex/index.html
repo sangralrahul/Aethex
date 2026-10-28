@@ -92,28 +92,37 @@
       />
     </noscript>
 
-    <!-- Google Tag Manager -->
-    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-    })(window,document,'script','dataLayer','GTM-M64XRCC2');</script>
-    <!-- End Google Tag Manager -->
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-3LZGZDJBN9"></script>
+    <!-- Analytics and ads load after the page is up (first tap, scroll or key, or a few seconds
+         after load), so they never slow the first screen. Same tags and IDs as before. -->
+    <meta name="google-adsense-account" content="ca-pub-9324422503851860" />
     <script>
       window.dataLayer = window.dataLayer || [];
-      function gtag() {
-        dataLayer.push(arguments);
-      }
+      function gtag() { dataLayer.push(arguments); }
       gtag("js", new Date());
       gtag("config", "G-3LZGZDJBN9");
+      (function () {
+        var started = false;
+        function add(src, cross) {
+          var s = document.createElement("script");
+          s.async = true; s.src = src;
+          if (cross) s.crossOrigin = "anonymous";
+          document.head.appendChild(s);
+        }
+        function go() {
+          if (started) return;
+          started = true;
+          dataLayer.push({ "gtm.start": new Date().getTime(), event: "gtm.js" });
+          add("https://www.googletagmanager.com/gtm.js?id=GTM-M64XRCC2");
+          add("https://www.googletagmanager.com/gtag/js?id=G-3LZGZDJBN9");
+          add("https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9324422503851860", true);
+        }
+        ["pointerdown", "keydown", "scroll", "touchstart"].forEach(function (e) {
+          addEventListener(e, go, { once: true, passive: true });
+        });
+        function later() { setTimeout(go, 3500); }
+        if (document.readyState === "complete") later(); else addEventListener("load", later);
+      })();
     </script>
-    <script
-      async
-      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9324422503851860"
-      crossorigin="anonymous"
-    ></script>
   </head>
   <body>
     <!-- Google Tag Manager (noscript) -->
