@@ -1,11 +1,10 @@
 /**
  * aethex.in (update 59): the front door to Aethex: five full-screen dashboards, each with its own living background,
- * one click into that platform (find., store., study., hospitals. and medicalcolleges.aethex.in), a Cadus bar, and the
- * footer. Nothing else. Styles: src/site-hub.css (hb-*).
+ * one click into that platform (find., store., study., hospitals. and medicalcolleges.aethex.in). No header, no footer,
+ * nothing else; Cadus is inside every portal. Styles: src/site-hub.css (hb-*).
  */
 import type { ReactNode } from "react";
 import { ArrowRight, Building2, CalendarCheck, GraduationCap, Hospital, ShoppingBag } from "lucide-react";
-import CadusMark from "@/components/cadus/CadusMark";
 import { useSeo } from "@/hooks/use-seo";
 import { portalUrl, type Portal } from "@/lib/host";
 
@@ -113,12 +112,6 @@ export default function Hub() {
             </a>
           ))}
         </div>
-        <a href={go("cadus")} className="hb-cadus-bar" data-portal="cadus">
-          <span className="mk"><CadusMark size={22} variant="mono" color="currentColor" /></span>
-          <b>Cadus is in every one of them.</b>
-          <span>Clinical answers with sources, 320+ bedside tools, and study assistants, free to try.</span>
-          <em>Open Cadus <ArrowRight size={16} /></em>
-        </a>
       </section>
 
     </div>

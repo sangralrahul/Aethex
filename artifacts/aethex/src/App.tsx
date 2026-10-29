@@ -350,9 +350,21 @@ function Router() {
             : portal === "hospitals" ? <BulkPortal segment="hospital" />
             : portal === "medicalcolleges" ? <BulkPortal segment="college" />
             : <Hub />;
+          // aethex.in itself (update 61) shows the five dashboards and nothing else: no header, no footer.
+          if (!portal) {
+            return (
+              <div className="ax-site ax-hub">
+                <main>
+                  <Suspense fallback={<PageLoading />}>
+                    <Hub />
+                  </Suspense>
+                </main>
+              </div>
+            );
+          }
           return (
 
-            <div className={`ax-site${portal ? ` ax-portal-${portal}` : " ax-hub"}`}>
+            <div className={`ax-site ax-portal-${portal}`}>
               <Navbar />
               <main>
                 <Suspense fallback={<PageLoading />}>

@@ -439,8 +439,9 @@
 @media (max-width:640px){.hb-search .q,.fd-search .q{flex:none}.hb-search label,.fd-search label{height:50px}.fd-pform .fd-sess input{width:auto;flex:1}}
 
 /* ------------------------------------------------------------------ the five dashboards (update 59) */
-.hb-mosaic{background:#0b1220;padding-bottom:0}
-.hb-tiles{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-template-rows:minmax(300px,calc((100vh - 150px)/2)) minmax(300px,calc((100vh - 150px)/2));gap:6px;padding:6px}
+.hb-mosaic{min-height:100vh;min-height:100dvh;background:#0b1220}
+.ax-hub,.ax-hub main{background:#0b1220}
+.hb-tiles{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-template-rows:minmax(300px,calc((100vh - 60px)/2)) minmax(300px,calc((100vh - 60px)/2));gap:20px;padding:20px}
 .hb-tile{position:relative;display:flex;align-items:flex-end;grid-column:span 2;min-height:300px;border-radius:18px;overflow:hidden;color:#fff;text-decoration:none;isolation:isolate;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);transition:transform .5s cubic-bezier(.2,.8,.2,1),box-shadow .5s}
 .hb-tile:nth-child(4),.hb-tile:nth-child(5){grid-column:span 3}
 .hb-tile:hover{transform:scale(1.012);box-shadow:inset 0 0 0 2px rgba(255,255,255,.35),0 30px 60px -30px rgba(0,0,0,.8);z-index:2}
@@ -501,12 +502,12 @@
 .hb-searchband h2{margin:0;color:#fff;font-size:clamp(24px,2.6vw,34px);font-weight:750}
 .hb-searchband .hb-search{margin-top:22px}
 @media (max-width:1100px){
-  .hb-tiles{grid-template-columns:1fr 1fr;grid-template-rows:none}
+  .hb-tiles{grid-template-columns:1fr 1fr;grid-template-rows:none;gap:16px;padding:16px}
   .hb-tile,.hb-tile:nth-child(4),.hb-tile:nth-child(5){grid-column:span 1;min-height:320px}
   .hb-tile:nth-child(5){grid-column:span 2}
 }
 @media (max-width:640px){
-  .hb-tiles{grid-template-columns:1fr;gap:6px;padding:6px}
+  .hb-tiles{grid-template-columns:1fr;gap:12px;padding:12px}
   .hb-tile,.hb-tile:nth-child(5){grid-column:span 1;min-height:280px}
   .hb-tile .txt{padding:20px}
   .hb-tile .fl{max-width:26%;top:16px!important;left:auto!important;right:16px;opacity:.9}
