@@ -1431,3 +1431,28 @@ export const CADUS_CLINIC53_CSS = `
 .cx-sp-done h3{margin:0 0 4px}
 @media (max-width:560px){.cx-sp-phases{grid-template-columns:1fr}}
 `;
+
+/* Update 55: a compact sign-in dialog that fits laptop screens (perks in two columns, side panel balanced). */
+export const CADUS_CLINIC55_CSS = `
+.cx-dialog.cx-ln-pro{width:min(860px,calc(100vw - 32px));max-width:none;grid-template-columns:280px minmax(0,1fr)}
+.cx-ln-mark{background:#fff;color:#0b1220;border:0}
+.cx-ln-side{justify-content:flex-start;gap:18px;padding:28px 26px}
+.cx-ln-side .cx-ln-bottom{margin-top:auto}
+.cx-ln-side .cx-ln-feat{margin:4px 0 0}
+.cx-ln-quote{margin:0;font-size:14.5px}
+.cx-ln-side>.cx-ln-quote,.cx-ln-side>.cx-ln-trust{margin-top:0}
+.cx-ln-side .cx-ln-bottom{display:flex;flex-direction:column;gap:14px}
+.cx-ln-main{padding:28px 30px 20px;gap:10px}
+.cx-ln-main h3{font-size:21px}
+.cx-ln-sub{font-size:13.5px}
+.cx-ln-perks{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;margin:8px 0 6px}
+.cx-ln-perks li:last-child{grid-column:1 / -1}
+.cx-ln-perks b{font-size:13px}
+.cx-ln-perks small{font-size:11.5px;line-height:1.35}
+.cx-ln-pi{width:30px;height:30px;border-radius:9px}
+.cx-ln-acts{flex-direction:row;margin-top:8px}
+.cx-ln-acts .cx-btn{flex:1;padding:11px 12px;font-size:14px}
+.cx-ln-guest{font-size:12.5px;padding:4px 8px}
+@media (max-height:760px){.cx-ln-perks small,.cx-ln-side .cx-ln-feat{display:none}.cx-ln-perks{gap:8px 14px}}
+@media (max-width:640px){.cx-dialog.cx-ln-pro{grid-template-columns:1fr}.cx-ln-perks{grid-template-columns:1fr}.cx-ln-perks li:last-child{grid-column:auto}.cx-ln-acts{flex-direction:column}}
+`;

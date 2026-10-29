@@ -505,7 +505,7 @@ import {
   readNotes, saveNotes, addNote, readCheckins, saveCheckins, dueCheckins, dateKey, readDrill, bestStreak, readCaseRounds, readRooms, readQuizResults, type CrewNotes, type CheckIns, type CrewStats,
   readMemory, saveMemory, addFact, rememberFrom as crewRememberFrom, readRatings, saveRatings, rateCrew, unrateCrew, ratingSummary, type CrewFact, type CrewRating,
 } from "@/lib/cadus/crew";
-import { CADUS_CLINIC20_CSS, CADUS_CLINIC21_CSS, CADUS_CLINIC22_CSS, CADUS_CLINIC23_CSS, CADUS_CLINIC24_CSS, CADUS_CLINIC25_CSS, CADUS_CLINIC26_CSS, CADUS_CLINIC27_CSS, CADUS_CLINIC28_CSS, CADUS_CLINIC29_CSS, CADUS_CLINIC30_CSS, CADUS_CLINIC31_CSS, CADUS_CLINIC32_CSS, CADUS_CLINIC34_CSS, CADUS_CLINIC35_CSS, CADUS_CLINIC36_CSS, CADUS_CLINIC37_CSS, CADUS_CLINIC38_CSS, CADUS_CLINIC39_CSS, CADUS_CLINIC40_CSS, CADUS_CLINIC41_CSS, CADUS_CLINIC42_CSS, CADUS_CLINIC43_CSS, CADUS_CLINIC44_CSS, CADUS_CLINIC45_CSS, CADUS_CLINIC46_CSS, CADUS_CLINIC47_CSS, CADUS_CLINIC48_CSS, CADUS_CLINIC49_CSS, CADUS_CLINIC50_CSS, CADUS_CLINIC51_CSS, CADUS_CLINIC53_CSS, CADUS_CREW_CSS, CADUS_CREWPLUS_CSS, CADUS_VOICE_CSS } from "@/components/cadus/cadus-crew-styles";
+import { CADUS_CLINIC20_CSS, CADUS_CLINIC21_CSS, CADUS_CLINIC22_CSS, CADUS_CLINIC23_CSS, CADUS_CLINIC24_CSS, CADUS_CLINIC25_CSS, CADUS_CLINIC26_CSS, CADUS_CLINIC27_CSS, CADUS_CLINIC28_CSS, CADUS_CLINIC29_CSS, CADUS_CLINIC30_CSS, CADUS_CLINIC31_CSS, CADUS_CLINIC32_CSS, CADUS_CLINIC34_CSS, CADUS_CLINIC35_CSS, CADUS_CLINIC36_CSS, CADUS_CLINIC37_CSS, CADUS_CLINIC38_CSS, CADUS_CLINIC39_CSS, CADUS_CLINIC40_CSS, CADUS_CLINIC41_CSS, CADUS_CLINIC42_CSS, CADUS_CLINIC43_CSS, CADUS_CLINIC44_CSS, CADUS_CLINIC45_CSS, CADUS_CLINIC46_CSS, CADUS_CLINIC47_CSS, CADUS_CLINIC48_CSS, CADUS_CLINIC49_CSS, CADUS_CLINIC50_CSS, CADUS_CLINIC51_CSS, CADUS_CLINIC53_CSS, CADUS_CLINIC55_CSS, CADUS_CREW_CSS, CADUS_CREWPLUS_CSS, CADUS_VOICE_CSS } from "@/components/cadus/cadus-crew-styles";
 import { CADUS_STUDIO_CSS, CADUS_TODAY_CSS, CADUS_WARD_CSS, CADUS_BEDSIDE_CSS } from "@/components/cadus/cadus-studio-styles";
 import { ABX_KEY, ECG_KEY, POISON_KEY, PROC_KEY } from "@/lib/cadus/clinicalAi";
 import { FOLLOWUP_KEY, LOG_KEY } from "@/lib/cadus/records";
@@ -6178,7 +6178,7 @@ export default function CadusAI() {
       style={{ ["--acc" as string]: dark ? accent.dark : accent.light, ["--fs" as string]: `${fontSize}px`, ["--fs-u" as string]: `${sansSize}px` }}
       {...dropHandlers}
     >
-      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS + CADUS_CREWPLUS_CSS + CADUS_VOICE_CSS + CADUS_CLINIC20_CSS + CADUS_CLINIC21_CSS + CADUS_CLINIC22_CSS + CADUS_CLINIC23_CSS + CADUS_CLINIC24_CSS + CADUS_CLINIC25_CSS + CADUS_CLINIC26_CSS + CADUS_CLINIC27_CSS + CADUS_CLINIC28_CSS + CADUS_CLINIC29_CSS + CADUS_CLINIC30_CSS + CADUS_CLINIC31_CSS + CADUS_CLINIC32_CSS + CADUS_CLINIC34_CSS + CADUS_CLINIC35_CSS + CADUS_CLINIC36_CSS + CADUS_CLINIC37_CSS + CADUS_CLINIC38_CSS + CADUS_CLINIC39_CSS + CADUS_CLINIC40_CSS + CADUS_CLINIC41_CSS + CADUS_CLINIC42_CSS + CADUS_CLINIC43_CSS + CADUS_CLINIC44_CSS + CADUS_CLINIC45_CSS + CADUS_CLINIC46_CSS + CADUS_CLINIC47_CSS + CADUS_CLINIC48_CSS + CADUS_CLINIC49_CSS + CADUS_CLINIC50_CSS + CADUS_CLINIC51_CSS + CADUS_CLINIC53_CSS}</style>
+      <style>{CADUS_CSS + CADUS_TOOLS_CSS + CADUS_CHAT_CSS + CADUS_PRO_CSS + CADUS_REF_CSS + CADUS_WS_CSS + CADUS_CLINIC_CSS + CADUS_LOOKS_CSS + CADUS_PLUS_CSS + CADUS_LABS_CSS + CADUS_CREW_CSS + CADUS_STUDIO_CSS + CADUS_TODAY_CSS + CADUS_WARD_CSS + CADUS_BEDSIDE_CSS + CADUS_CREWPLUS_CSS + CADUS_VOICE_CSS + CADUS_CLINIC20_CSS + CADUS_CLINIC21_CSS + CADUS_CLINIC22_CSS + CADUS_CLINIC23_CSS + CADUS_CLINIC24_CSS + CADUS_CLINIC25_CSS + CADUS_CLINIC26_CSS + CADUS_CLINIC27_CSS + CADUS_CLINIC28_CSS + CADUS_CLINIC29_CSS + CADUS_CLINIC30_CSS + CADUS_CLINIC31_CSS + CADUS_CLINIC32_CSS + CADUS_CLINIC34_CSS + CADUS_CLINIC35_CSS + CADUS_CLINIC36_CSS + CADUS_CLINIC37_CSS + CADUS_CLINIC38_CSS + CADUS_CLINIC39_CSS + CADUS_CLINIC40_CSS + CADUS_CLINIC41_CSS + CADUS_CLINIC42_CSS + CADUS_CLINIC43_CSS + CADUS_CLINIC44_CSS + CADUS_CLINIC45_CSS + CADUS_CLINIC46_CSS + CADUS_CLINIC47_CSS + CADUS_CLINIC48_CSS + CADUS_CLINIC49_CSS + CADUS_CLINIC50_CSS + CADUS_CLINIC51_CSS + CADUS_CLINIC53_CSS + CADUS_CLINIC55_CSS}</style>
 
       {/* ============================================== sidebar */}
       <div className={`cx-scrim ${sidebarOpen ? "on" : ""}`} onClick={() => setSidebarOpen(false)} />
@@ -9090,14 +9090,16 @@ export default function CadusAI() {
           <div className="cx-overlay center cx-ln-ov" onMouseDown={() => setLoginNeed(null)}>
             <div className="cx-dialog cx-login-need cx-ln-pro" role="dialog" aria-modal="true" aria-labelledby="cx-ln-t" onMouseDown={(e) => e.stopPropagation()} data-guest="dialog">
               <aside className="cx-ln-side" aria-hidden="true">
-                <div className="cx-ln-brand"><span className="cx-ln-mark"><Sparkles size={18} /></span><span><b>Cadus</b><small>Clinical AI by Aethex</small></span></div>
+                <div className="cx-ln-brand"><span className="cx-ln-mark"><CadusMark size={22} variant="mono" color="currentColor" /></span><span><b>Cadus</b><small>Clinical AI by Aethex</small></span></div>
                 <p className="cx-ln-feat">Built for doctors and medical students in India: clinical answers, bedside tools and exam preparation in one place.</p>
+                <div className="cx-ln-bottom">
                 <p className="cx-ln-quote">Answers checked by a second review, with the sources to prove it.</p>
                 <ul className="cx-ln-trust">
                   <li><ShieldCheck size={14} /> Private by design</li>
                   <li><Check size={14} /> Free for doctors and students</li>
                   <li><Check size={14} /> No card needed</li>
                 </ul>
+                </div>
               </aside>
               <div className="cx-ln-main">
                 <button className="cx-ib cx-ln-x" onClick={() => setLoginNeed(null)} aria-label="Close"><X size={18} /></button>

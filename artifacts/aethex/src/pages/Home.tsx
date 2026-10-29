@@ -21,7 +21,7 @@ import { BUSINESS } from "@/config/business";
 import { formatINR } from "@/lib/utils";
 import { cadusUrl, downloadsUrl } from "@/lib/host";
 import { getTodaysCase } from "@/data/clinicalCases";
-import { PlatformHero, Pillars } from "@/components/home/PlatformHero";
+import { BrandMarquee, PlatformHero, ProductMarquee, Showcase, useReveal } from "@/components/home/PlatformHero";
 
 type Icon = ComponentType<LucideProps>;
 const still = () => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -126,7 +126,7 @@ function ProductRail() {
   const track = useRef<HTMLDivElement>(null);
   const scroll = (d: number) => track.current?.scrollBy({ left: d * track.current.clientWidth * 0.8, behavior: "smooth" });
   return (
-    <section className="ax-h-sec">
+    <section className="ax-h-sec" data-rv>
       <div className="ax-wrap">
         <div className="ax-h-title">
           <h2>Popular with doctors and families</h2>
@@ -190,6 +190,7 @@ export default function Home() {
   const [q, setQ] = useState("");
   const todays = useMemo(() => getTodaysCase(), []);
   const { data: store } = useStore();
+  useReveal(store);
   // The brands of the everyday range; the hospital and college makers are on /brands.
   const homeBrands = useMemo(() => {
     if (!store) return [];
@@ -201,7 +202,8 @@ export default function Home() {
     <div className="ax-home">
       {/* the whole platform first (update 54), then the store */}
       <PlatformHero />
-      <Pillars />
+      <Showcase />
+      <ProductMarquee />
       {/* category bar */}
       <nav className="ax-h-catbar" aria-label="Shop categories">
         <div className="ax-wrap">
@@ -249,7 +251,7 @@ export default function Home() {
       </section>
 
       {/* categories */}
-      <section className="ax-h-sec">
+      <section className="ax-h-sec" data-rv>
         <div className="ax-wrap">
           <div className="ax-h-title"><h2>Shop by category</h2><Link href="/shop" className="ax-link">All categories <ArrowRight size={16} /></Link></div>
           <CategoryTiles />
@@ -260,7 +262,7 @@ export default function Home() {
       <ProductRail />
 
       {/* hospitals and medical colleges: bulk buying */}
-      <section className="ax-h-sec">
+      <section className="ax-h-sec" data-rv>
         <div className="ax-wrap">
           <div className="ax-h-title"><h2>Buying for a hospital or medical college?</h2></div>
           <div className="ax-h-inst">
@@ -279,7 +281,7 @@ export default function Home() {
       </section>
 
       {/* Cadus + Study banners */}
-      <section className="ax-h-sec">
+      <section className="ax-h-sec" data-rv>
         <div className="ax-wrap ax-h-duo">
           <div className="ax-h-ban cadus">
             <div>
@@ -317,7 +319,7 @@ export default function Home() {
       </section>
 
       {/* tools */}
-      <section className="ax-h-sec">
+      <section className="ax-h-sec" data-rv>
         <div className="ax-wrap">
           <div className="ax-h-title"><h2>Free clinical tools</h2><Link href="/tools" className="ax-link">All tools <ArrowRight size={16} /></Link></div>
           <div className="ax-h-tools">
@@ -329,7 +331,7 @@ export default function Home() {
       </section>
 
       {/* brands */}
-      {(!store || homeBrands.length > 0) && <section className="ax-h-sec">
+      {(!store || homeBrands.length > 0) && <section className="ax-h-sec" data-rv>
         <div className="ax-wrap">
           <div className="ax-h-title"><h2>Shop by brand</h2><Link href="/brands" className="ax-link">All brands <ArrowRight size={16} /></Link></div>
           <div className="ax-h-brandgrid">
@@ -341,7 +343,7 @@ export default function Home() {
       </section>}
 
       {/* testimonials */}
-      <section className="ax-h-sec ax-h-quotes-sec">
+      <section className="ax-h-sec ax-h-quotes-sec" data-rv>
         <div className="ax-wrap">
           <div className="ax-h-title"><h2>What doctors are saying</h2></div>
           <div className="ax-quotes">
@@ -356,13 +358,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* brands strip */}
-      {(store?.brands.length ?? 0) > 0 && <section className="ax-h-brands">
-        <div className="ax-wrap">
-          <small>Verified brands we stock</small>
-          <div>{(store?.brands ?? []).map((b) => <Link key={b.slug} href={`/brand/${b.slug}`}>{b.name}</Link>)}</div>
-        </div>
-      </section>}
+      {/* brands: a scrolling strip (update 55) */}
+      <BrandMarquee />
     </div>
   );
 }
