@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useSeo } from "@/hooks/use-seo";
 import { Link } from "wouter";
 import {
   Clock, ChevronLeft, ChevronRight, Flag, CheckCircle2,
@@ -43,6 +44,7 @@ const MOCK_QUESTIONS = Array.from({ length: 20 }, (_, i) => ({
 type Phase = "intro" | "exam" | "result";
 
 export default function MockTest() {
+  useSeo({ title: "Mock tests: timed NEET-PG practice exams | Aethex Study", description: "Timed mock tests with instant scoring and explanations for NEET-PG, INI-CET and FMGE.", path: "/mock-test" });
   const [phase, setPhase] = useState<Phase>("intro");
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});

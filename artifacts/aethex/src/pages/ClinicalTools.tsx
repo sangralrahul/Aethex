@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useSeo } from "@/hooks/use-seo";
 import { PageHero } from "@/components/PageHero";
 import { Link } from "wouter";
 import {
@@ -268,6 +269,7 @@ function ToolCard({ tool }: { tool: Tool }) {
 
 /* ── Page ─────────────────────────────────────────────────────────── */
 export default function ClinicalTools() {
+  useSeo({ title: "Free clinical tools: calculators, drug reference and checkers | Aethex", description: "Medical calculators, drug reference, interaction checker, dosage calculator and more, free for doctors and students.", path: "/tools" });
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<CategoryId>("all");
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useSeo } from "@/hooks/use-seo";
 import { PageHero } from "@/components/PageHero";
 import {
   Brain, Clock, CheckCircle2, XCircle, ChevronRight, BarChart3,
@@ -788,6 +789,7 @@ function QuickTest({ onExit }: { onExit: () => void }) {
 type Mode = "hub" | "practice" | "quicktest";
 
 export default function NeetPg() {
+  useSeo({ title: "NEET-PG preparation: subjects, PYQs and study plans | Aethex Study", description: "Prepare for NEET-PG with subject-wise plans, previous-year questions, mock tests and flashcards on Aethex Study.", path: "/neet-pg" });
   const [mode, setMode] = useState<Mode>("hub");
   const [subjectFilter, setSubjectFilter] = useState<typeof FILTER_TABS[number]>("All");
 

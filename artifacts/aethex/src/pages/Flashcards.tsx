@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useSeo } from "@/hooks/use-seo";
 import { Link, useRoute } from "wouter";
 import { Brain, RotateCcw, ChevronLeft, Check, X } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
@@ -6,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useFlashcards } from "@/hooks/use-flashcards";
 
 export default function Flashcards() {
+  useSeo({ title: "Flashcards: spaced revision for medical exams | Aethex Study", description: "Spaced-repetition flashcards for every medical subject.", path: "/flashcards" });
   const [, params] = useRoute("/flashcards/:deckId");
   const deckId = params?.deckId;
 

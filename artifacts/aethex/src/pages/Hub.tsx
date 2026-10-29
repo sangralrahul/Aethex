@@ -3,7 +3,7 @@
  * Cadus (cadus.aethex.in), the Store (store.aethex.in), Study (study.aethex.in), Find a doctor (find.aethex.in),
  * Hospitals (hospitals.aethex.in) and Medical colleges (medicalcolleges.aethex.in). Styles: src/site-hub.css (hb-*).
  */
-import { useState, type ComponentType, type FormEvent } from "react";
+import { useState, type ComponentType, type FormEvent, type ReactNode } from "react";
 import {
   ArrowRight, BadgeCheck, Baby, BookOpen, Bone, Brain, Building2, Calculator, CalendarCheck, Ear, Eye, Flower2, GraduationCap, HeartPulse,
   Hospital, MapPin, Package, Search, ShieldCheck, ShoppingBag, Smile, Sparkles, Star, Stethoscope, Thermometer, Truck, UserPlus, Video,
@@ -24,15 +24,82 @@ const TESTIMONIALS = [
   { quote: "Cadus helped me cross-reference a rare neuro case at 11 PM — the depth of the response was remarkable. This platform is what Indian medicine has been waiting for.", name: "Dr. Vikram Nair", role: "Neurologist, Chennai", initials: "VN" },
 ];
 
-const PORTALS: { id: Portal; icon: Icon | "cadus"; tone: string; title: string; text: string; host: string; points: string[]; cta: string }[] = [
-  { id: "cadus", icon: "cadus", tone: "ink", title: "Cadus", text: "Clinical answers you can check, with sources, and 320+ bedside tools.", host: "cadus.aethex.in", points: ["Doses and interactions", "Safety-reviewed answers", "Cadus Crew for exams"], cta: "Open Cadus" },
-  { id: "find", icon: CalendarCheck, tone: "sky", title: "Find a doctor", text: "Search doctors by city and specialty and book a clinic visit or video consult.", host: "find.aethex.in", points: ["Checked registrations", "Free slots only", "Doctors list free"], cta: "Find a doctor" },
-  { id: "store", icon: ShoppingBag, tone: "teal", title: "Medical store", text: "Genuine instruments, monitors and supplies from verified brands.", host: "store.aethex.in", points: ["Cash on delivery", `Free delivery from ${formatINR(FREE_DELIVERY_FROM)}`, "Medical books"], cta: "Shop now" },
-  { id: "study", icon: GraduationCap, tone: "violet", title: "Study", text: "NEET-PG preparation, mock tests, flashcards and a knowledge hub for every subject.", host: "study.aethex.in", points: ["Timed mock tests", "Case of the day", "Every subject"], cta: "Start studying" },
-  { id: "hospitals", icon: Hospital, tone: "navy", title: "For hospitals", text: "Furniture, ICU, emergency and diagnostic equipment: one list, one quotation.", host: "hospitals.aethex.in", points: ["Bank transfer or PO", "Every ward", "Delivered across India"], cta: "Get a quotation" },
-  { id: "medicalcolleges", icon: Building2, tone: "amber", title: "For medical colleges", text: "Skills trainers, manikins, anatomy models, lab equipment and books.", host: "medicalcolleges.aethex.in", points: ["Skills labs", "Anatomy and labs", "One quotation"], cta: "Equip your college" },
-];
 const CONCERN_ICON = [Thermometer, Baby, Flower2, Sparkles, Smile, Bone, Ear, Eye, HeartPulse, Brain];
+
+/* ------------------------------------------------------------------ the living backgrounds of the five tiles */
+const IMG = (n: string) => `${import.meta.env.BASE_URL}product-images/${n}.jpg`;
+/** A product photo floating in the tile, with its own drift. */
+const Float = ({ n, x, y, w, d }: { n: string; x: number; y: number; w: number; d: number }) => (
+  <img src={IMG(n)} alt="" loading="lazy" decoding="async" className="fl" style={{ left: `${x}%`, top: `${y}%`, width: w, animationDuration: `${d}s`, animationDelay: `${-d / 3}s` }} />
+);
+const FindArt = () => (
+  <>
+    <svg className="map" viewBox="0 0 600 400" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs><pattern id="hbGrid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="rgba(255,255,255,.14)" /></pattern></defs>
+      <rect width="600" height="400" fill="url(#hbGrid)" />
+      <path d="M-20 300 C 120 250, 180 330, 320 270 S 520 200, 640 240" fill="none" stroke="rgba(255,255,255,.35)" strokeWidth="6" strokeLinecap="round" />
+      <path d="M200 -20 C 230 100, 170 180, 260 260 S 330 380, 300 440" fill="none" stroke="rgba(255,255,255,.28)" strokeWidth="5" strokeLinecap="round" />
+      {[[150, 120], [330, 200], [470, 110], [250, 320], [520, 300]].map(([x, y], i) => (
+        <g key={i} className="pin" style={{ animationDelay: `${i * 0.7}s` }} transform={`translate(${x} ${y})`}>
+          <circle className="ring" r="10" fill="none" stroke="#5de0ff" strokeWidth="2" />
+          <circle r="7" fill="#14bef0" stroke="#fff" strokeWidth="2.5" />
+        </g>
+      ))}
+    </svg>
+    <Float n="stethoscope" x={62} y={42} w={160} d={11} />
+  </>
+);
+const StoreArt = () => (
+  <>
+    <Float n="bp-monitor" x={50} y={8} w={140} d={12} />
+    <Float n="otoscope" x={76} y={4} w={120} d={14} />
+    <Float n="oximeter" x={78} y={50} w={110} d={10} />
+    <Float n="nebulizer" x={52} y={54} w={120} d={13} />
+    <Float n="glucometer" x={66} y={30} w={100} d={9} />
+  </>
+);
+const StudyArt = () => (
+  <>
+    <div className="cards">
+      {["Drug of choice in absence seizures?", "Nerve injured in a humerus fracture?", "Most common cause of nephrotic syndrome in children?"].map((q, i) => (
+        <div key={q} className="mcq" style={{ animationDelay: `${i * 2.2}s` }}><small>NEET-PG · Q{i + 1}</small><b>{q}</b><span /><span className="ok" /><span /></div>
+      ))}
+    </div>
+    <Float n="test-books" x={64} y={46} w={160} d={12} />
+    <svg className="pring" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,.18)" strokeWidth="10" /><circle className="prog" cx="60" cy="60" r="50" fill="none" stroke="#c4b5fd" strokeWidth="10" strokeLinecap="round" strokeDasharray="314" /></svg>
+  </>
+);
+const HospitalArt = () => (
+  <>
+    <svg className="ecg" viewBox="0 0 800 200" preserveAspectRatio="none" aria-hidden="true">
+      <path className="trace" d="M0 100 H120 L140 60 L160 140 L180 100 H300 L315 20 L330 180 L345 100 H470 L490 70 L510 130 L525 100 H650 L665 30 L680 170 L695 100 H800" fill="none" stroke="#5eead4" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+    <Float n="ecg" x={52} y={8} w={150} d={13} />
+    <Float n="xray-viewer" x={76} y={48} w={140} d={11} />
+    <div className="vitals"><span><small>HR</small><b>72</b></span><span><small>SpO₂</small><b>98%</b></span><span><small>BP</small><b>118/76</b></span></div>
+  </>
+);
+const CollegeArt = () => (
+  <>
+    <svg className="helix" viewBox="0 0 600 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      {Array.from({ length: 14 }, (_, i) => {
+        const x = 20 + i * 44, y1 = 150 + Math.sin(i * 0.9) * 70, y2 = 150 - Math.sin(i * 0.9) * 70;
+        return <g key={i} className="rung" style={{ animationDelay: `${i * 0.18}s` }}><line x1={x} y1={y1} x2={x} y2={y2} stroke="rgba(255,255,255,.35)" strokeWidth="3" /><circle cx={x} cy={y1} r="7" fill="#fcd34d" /><circle cx={x} cy={y2} r="7" fill="#fff" /></g>;
+      })}
+    </svg>
+    <Float n="surgical-set" x={52} y={8} w={140} d={12} />
+    <Float n="lab-coat" x={78} y={6} w={120} d={14} />
+    <Float n="medical-book" x={66} y={50} w={130} d={10} />
+  </>
+);
+
+const TILES: { id: Portal; kicker: string; title: string; text: string; cta: string; icon: ReactNode; art: ReactNode }[] = [
+  { id: "find", kicker: "For patients", title: "Find a doctor", text: "Search by city and specialty. Book a clinic visit or a video consult.", cta: "Book now", icon: <CalendarCheck size={26} />, art: <FindArt /> },
+  { id: "store", kicker: "For everyone", title: "Medical store", text: "Genuine instruments, monitors and supplies. Cash on delivery across India.", cta: "Shop now", icon: <ShoppingBag size={26} />, art: <StoreArt /> },
+  { id: "study", kicker: "For students", title: "Study", text: "NEET-PG preparation, mock tests, flashcards and every subject.", cta: "Start studying", icon: <GraduationCap size={26} />, art: <StudyArt /> },
+  { id: "hospitals", kicker: "For institutions", title: "Hospitals", text: "Furniture, ICU, emergency and diagnostics: one list, one quotation.", cta: "Get a quotation", icon: <Hospital size={26} />, art: <HospitalArt /> },
+  { id: "medicalcolleges", kicker: "For institutions", title: "Medical colleges", text: "Skills labs, manikins, anatomy models and lab equipment.", cta: "Equip your college", icon: <Building2 size={26} />, art: <CollegeArt /> },
+];
 type Scope = "doctors" | "products" | "study";
 
 export default function Hub() {
@@ -55,10 +122,35 @@ export default function Hub() {
 
   return (
     <div className="hb" data-home="hub">
-      <section className="hb-hero" data-home="platform">
+      {/* The five dashboards: full-screen, each with its own living background; one click opens that platform. */}
+      <section className="hb-mosaic" data-home="platform" aria-label="Choose your Aethex">
+        <h1 className="sr-only">Aethex: find doctors, the medical store, study, hospitals and medical colleges, with Cadus in every one</h1>
+        <div className="hb-tiles">
+          {TILES.map((t) => (
+            <a key={t.id} href={go(t.id)} className={`hb-tile ${t.id}`} data-portal={t.id} aria-label={`${t.title}: ${t.text}`}>
+              <div className="bg" aria-hidden="true">{t.art}</div>
+              <div className="veil" aria-hidden="true" />
+              <div className="txt">
+                <span className="ic">{t.icon}</span>
+                <small className="k">{t.kicker}</small>
+                <b>{t.title}</b>
+                <p>{t.text}</p>
+                <em>{t.cta} <ArrowRight size={18} /></em>
+              </div>
+            </a>
+          ))}
+        </div>
+        <a href={go("cadus")} className="hb-cadus-bar" data-portal="cadus">
+          <span className="mk"><CadusMark size={22} variant="mono" color="currentColor" /></span>
+          <b>Cadus is in every one of them.</b>
+          <span>Clinical answers with sources, 320+ bedside tools, and study assistants, free to try.</span>
+          <em>Open Cadus <ArrowRight size={16} /></em>
+        </a>
+      </section>
+
+      <section className="hb-hero hb-searchband" data-home="search-band">
         <div className="ax-wrap">
-          <h1>Your home for health, medicine and medical learning.</h1>
-          <p className="sub">Book doctors. Buy genuine medical supplies. Ask clinical questions. Prepare for NEET-PG. All with one Aethex account.</p>
+          <h2>Find what you need in one search.</h2>
           <form className="hb-search" onSubmit={submit} role="search" data-home="search">
             <div className="scopes" role="tablist">
               {([["doctors", "Doctors", Stethoscope], ["products", "Products", Package], ["study", "Study", BookOpen]] as const).map(([id, label, I]) => (
@@ -77,26 +169,6 @@ export default function Hub() {
             <li><Truck size={16} /> Cash on delivery</li>
             <li><Sparkles size={16} /> Cadus free to try</li>
           </ul>
-        </div>
-      </section>
-
-      <section className="hb-sec hb-portals-sec" data-home="portals">
-        <div className="ax-wrap">
-          <div className="hb-portals">
-            {PORTALS.map((p) => {
-              const I = p.icon;
-              return (
-                <a key={p.id} href={go(p.id)} className={`hb-portal ${p.tone}`} data-portal={p.id}>
-                  <span className="art">{I === "cadus" ? <CadusMark size={34} variant="mono" color="currentColor" /> : <I size={32} />}</span>
-                  <b>{p.title}</b>
-                  <small className="host">{p.host}</small>
-                  <p>{p.text}</p>
-                  <ul>{p.points.map((x) => <li key={x}>{x}</li>)}</ul>
-                  <em>{p.cta} <ArrowRight size={15} /></em>
-                </a>
-              );
-            })}
-          </div>
         </div>
       </section>
 

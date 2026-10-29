@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { useSeo } from "@/hooks/use-seo";
 import { PageHero } from "@/components/PageHero";
 import { mainUrl } from "@/lib/host";
 import { motion } from "framer-motion";
@@ -46,6 +47,7 @@ interface InstitutionHubProps {
 }
 
 export default function InstitutionHub({ mode }: InstitutionHubProps = {}) {
+  useSeo({ title: "Hospitals and medical colleges directory | Aethex", description: "A directory of hospitals and medical colleges across India on Aethex.", path: "/institutions" });
   const [formData, setFormData] = useState({
     institutionName: "",
     type: "medical_college",

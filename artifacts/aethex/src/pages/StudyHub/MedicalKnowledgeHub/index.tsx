@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useSeo } from "@/hooks/use-seo";
 import { Link } from "wouter";
 import { Search, BookOpen, Building2, ArrowRight, Zap, Brain, FlaskConical, Stethoscope, ChevronRight } from "lucide-react";
 import { medicalSubjects } from "@/data/medicalSubjects";
@@ -21,6 +22,7 @@ function HubSearchResult({ label, category, href }: { label: string; category: s
 }
 
 export default function MedicalKnowledgeHub() {
+  useSeo({ title: "Medical Knowledge Hub: subjects, topics and conditions | Aethex Study", description: "Browse every subject, topic and condition in the Aethex Medical Knowledge Hub.", path: "/study-hub/medical-knowledge-hub" });
   const [query, setQuery] = useState("");
 
   const searchResults = useMemo(() => {

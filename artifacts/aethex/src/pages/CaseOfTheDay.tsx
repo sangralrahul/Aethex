@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSeo } from "@/hooks/use-seo";
 import { PageHero } from "@/components/PageHero";
 import { Link } from "wouter";
 import {
@@ -37,6 +38,7 @@ function VitalBadge({ icon: Icon, label, value }: { icon: React.ElementType; lab
 }
 
 export default function CaseOfTheDay() {
+  useSeo({ title: "Case of the day: one clinical case, every day | Aethex Study", description: "A new clinical case every day, with questions and an explained answer.", path: "/case-of-the-day" });
   const [selectedOption, setSelectedOption] = useState<"A" | "B" | "C" | "D" | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [caseData, setCaseData] = useState<ClinicalCase>(getTodaysCase());
