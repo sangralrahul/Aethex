@@ -1,119 +1,69 @@
 /**
- * aethex.in (update 59): the front door to Aethex: five full-screen dashboards, each with its own living background,
- * one click into that platform (find., store., study., hospitals. and medicalcolleges.aethex.in). No header, no footer,
- * nothing else; Cadus is inside every portal. Styles: src/site-hub.css (hb-*).
+ * aethex.in (update 62): the front door to Aethex. A clean white launcher: the logo, one headline, and five cards,
+ * one per platform (find., store., study., hospitals. and medicalcolleges.aethex.in), with the catalogue's own
+ * product photos, three facts each and a button. A soft animated background, cards that rise in, photos that drift.
+ * Cadus is inside every portal (and on the header button). Styles: src/site-hub.css (hb-*).
  */
 import type { ReactNode } from "react";
-import { ArrowRight, Building2, CalendarCheck, GraduationCap, Hospital, ShoppingBag } from "lucide-react";
+import { ArrowRight, Building2, CalendarCheck, Check, GraduationCap, Hospital, ShieldCheck, ShoppingBag, Sparkles } from "lucide-react";
+import { Logo } from "@/components/layout/Navbar";
 import { useSeo } from "@/hooks/use-seo";
-import { portalUrl, type Portal } from "@/lib/host";
+import { cadusUrl, loginUrl, mainUrl, portalUrl, type Portal } from "@/lib/host";
+import { FREE_DELIVERY_FROM } from "@/lib/store/rules";
+import { formatINR } from "@/lib/utils";
 
-
-/* ------------------------------------------------------------------ the living backgrounds of the five tiles */
 const IMG = (n: string) => `${import.meta.env.BASE_URL}product-images/${n}.jpg`;
-/** A product photo floating in the tile, with its own drift. */
-const Float = ({ n, x, y, w, d }: { n: string; x: number; y: number; w: number; d: number }) => (
-  <img src={IMG(n)} alt="" loading="lazy" decoding="async" className="fl" style={{ left: `${x}%`, top: `${y}%`, width: w, animationDuration: `${d}s`, animationDelay: `${-d / 3}s` }} />
-);
-const FindArt = () => (
-  <>
-    <svg className="map" viewBox="0 0 600 400" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-      <defs><pattern id="hbGrid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="rgba(255,255,255,.14)" /></pattern></defs>
-      <rect width="600" height="400" fill="url(#hbGrid)" />
-      <path d="M-20 300 C 120 250, 180 330, 320 270 S 520 200, 640 240" fill="none" stroke="rgba(255,255,255,.35)" strokeWidth="6" strokeLinecap="round" />
-      <path d="M200 -20 C 230 100, 170 180, 260 260 S 330 380, 300 440" fill="none" stroke="rgba(255,255,255,.28)" strokeWidth="5" strokeLinecap="round" />
-      {[[150, 120], [330, 200], [470, 110], [250, 320], [520, 300]].map(([x, y], i) => (
-        <g key={i} className="pin" style={{ animationDelay: `${i * 0.7}s` }} transform={`translate(${x} ${y})`}>
-          <circle className="ring" r="10" fill="none" stroke="#5de0ff" strokeWidth="2" />
-          <circle r="7" fill="#14bef0" stroke="#fff" strokeWidth="2.5" />
-        </g>
-      ))}
-    </svg>
-    <Float n="stethoscope" x={62} y={42} w={160} d={11} />
-  </>
-);
-const StoreArt = () => (
-  <>
-    <Float n="bp-monitor" x={50} y={8} w={140} d={12} />
-    <Float n="otoscope" x={76} y={4} w={120} d={14} />
-    <Float n="oximeter" x={78} y={50} w={110} d={10} />
-    <Float n="nebulizer" x={52} y={54} w={120} d={13} />
-    <Float n="glucometer" x={66} y={30} w={100} d={9} />
-  </>
-);
-const StudyArt = () => (
-  <>
-    <div className="cards">
-      {["Drug of choice in absence seizures?", "Nerve injured in a humerus fracture?", "Most common cause of nephrotic syndrome in children?"].map((q, i) => (
-        <div key={q} className="mcq" style={{ animationDelay: `${i * 2.2}s` }}><small>NEET-PG · Q{i + 1}</small><b>{q}</b><span /><span className="ok" /><span /></div>
-      ))}
-    </div>
-    <Float n="test-books" x={66} y={48} w={150} d={12} />
-    <svg className="pring" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,.18)" strokeWidth="10" /><circle className="prog" cx="60" cy="60" r="50" fill="none" stroke="#c4b5fd" strokeWidth="10" strokeLinecap="round" strokeDasharray="314" /></svg>
-  </>
-);
-const HospitalArt = () => (
-  <>
-    <svg className="ecg" viewBox="0 0 800 200" preserveAspectRatio="none" aria-hidden="true">
-      <path className="trace" d="M0 100 H120 L140 60 L160 140 L180 100 H300 L315 20 L330 180 L345 100 H470 L490 70 L510 130 L525 100 H650 L665 30 L680 170 L695 100 H800" fill="none" stroke="#5eead4" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
-    </svg>
-    <Float n="ecg" x={34} y={8} w={140} d={13} />
-    <Float n="xray-viewer" x={76} y={48} w={140} d={11} />
-    <div className="vitals"><span><small>HR</small><b>72</b></span><span><small>SpO₂</small><b>98%</b></span><span><small>BP</small><b>118/76</b></span></div>
-  </>
-);
-const CollegeArt = () => (
-  <>
-    <svg className="helix" viewBox="0 0 600 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-      {Array.from({ length: 14 }, (_, i) => {
-        const x = 20 + i * 44, y1 = 150 + Math.sin(i * 0.9) * 70, y2 = 150 - Math.sin(i * 0.9) * 70;
-        return <g key={i} className="rung" style={{ animationDelay: `${i * 0.18}s` }}><line x1={x} y1={y1} x2={x} y2={y2} stroke="rgba(255,255,255,.35)" strokeWidth="3" /><circle cx={x} cy={y1} r="7" fill="#fcd34d" /><circle cx={x} cy={y2} r="7" fill="#fff" /></g>;
-      })}
-    </svg>
-    <Float n="surgical-set" x={52} y={8} w={140} d={12} />
-    <Float n="lab-coat" x={78} y={6} w={120} d={14} />
-    <Float n="medical-book" x={66} y={50} w={130} d={10} />
-  </>
-);
 
-const TILES: { id: Portal; kicker: string; title: string; text: string; cta: string; icon: ReactNode; art: ReactNode }[] = [
-  { id: "find", kicker: "For patients", title: "Find a doctor", text: "Search by city and specialty. Book a clinic visit or a video consult.", cta: "Book now", icon: <CalendarCheck size={26} />, art: <FindArt /> },
-  { id: "store", kicker: "For everyone", title: "Medical store", text: "Genuine instruments, monitors and supplies. Cash on delivery across India.", cta: "Shop now", icon: <ShoppingBag size={26} />, art: <StoreArt /> },
-  { id: "study", kicker: "For students", title: "Study", text: "NEET-PG preparation, mock tests, flashcards and every subject.", cta: "Start studying", icon: <GraduationCap size={26} />, art: <StudyArt /> },
-  { id: "hospitals", kicker: "For institutions", title: "Hospitals", text: "Furniture, ICU, emergency and diagnostics: one list, one quotation.", cta: "Get a quotation", icon: <Hospital size={26} />, art: <HospitalArt /> },
-  { id: "medicalcolleges", kicker: "For institutions", title: "Medical colleges", text: "Skills labs, manikins, anatomy models and lab equipment.", cta: "Equip your college", icon: <Building2 size={26} />, art: <CollegeArt /> },
+const CARDS: { id: Portal; tone: string; icon: ReactNode; photo: string; title: string; who: string; points: string[]; cta: string }[] = [
+  { id: "find", tone: "blue", icon: <CalendarCheck size={20} />, photo: "stethoscope", title: "Find a doctor", who: "For patients", points: ["Search by city and specialty", "Clinic visit or video consult", "Every registration checked"], cta: "Book now" },
+  { id: "store", tone: "teal", icon: <ShoppingBag size={20} />, photo: "bp-monitor", title: "Medical store", who: "For everyone", points: ["Genuine, verified brands", "Cash on delivery across India", `Free delivery from ${formatINR(FREE_DELIVERY_FROM)}`], cta: "Shop now" },
+  { id: "study", tone: "violet", icon: <GraduationCap size={20} />, photo: "test-books", title: "Study", who: "For students", points: ["NEET-PG preparation", "Mock tests and flashcards", "Every subject, every exam"], cta: "Start studying" },
+  { id: "hospitals", tone: "cyan", icon: <Hospital size={20} />, photo: "ecg", title: "Hospitals", who: "For institutions", points: ["ICU, emergency and furniture", "One list, one quotation", "Bank transfer or purchase order"], cta: "Get a quotation" },
+  { id: "medicalcolleges", tone: "amber", icon: <Building2 size={20} />, photo: "surgical-set", title: "Medical colleges", who: "For institutions", points: ["Skills labs and manikins", "Anatomy models and lab equipment", "Textbooks for every course"], cta: "Equip your college" },
 ];
 
 export default function Hub() {
   useSeo({
-    title: "Aethex: find doctors, medical supplies, Cadus clinical AI and NEET-PG study, in one place",
-    description: "Aethex for India's doctors, patients and medical students: book doctors, shop genuine medical supplies, ask Cadus clinical questions and prepare for NEET-PG.",
+    title: "Aethex: find doctors, medical supplies, study and Cadus clinical AI, in one place",
+    description: "Aethex for India's patients, doctors, students, hospitals and medical colleges: book doctors, shop genuine medical supplies, prepare for NEET-PG and ask Cadus. One account, five platforms.",
     path: "/",
   });
-  const go = (p: Portal, path = "/") => portalUrl(p, path);
-
+  const year = new Date().getFullYear();
   return (
     <div className="hb" data-home="hub">
-      {/* The five dashboards: full-screen, each with its own living background; one click opens that platform. */}
-      <section className="hb-mosaic" data-home="platform" aria-label="Choose your Aethex">
-        <h1 className="sr-only">Aethex: find doctors, the medical store, study, hospitals and medical colleges, with Cadus in every one</h1>
-        <div className="hb-tiles">
-          {TILES.map((t) => (
-            <a key={t.id} href={go(t.id)} className={`hb-tile ${t.id}`} data-portal={t.id} aria-label={`${t.title}: ${t.text}`}>
-              <div className="bg" aria-hidden="true">{t.art}</div>
-              <div className="veil" aria-hidden="true" />
-              <div className="txt">
-                <span className="ic">{t.icon}</span>
-                <small className="k">{t.kicker}</small>
-                <b>{t.title}</b>
-                <p>{t.text}</p>
-                <em>{t.cta} <ArrowRight size={18} /></em>
-              </div>
-            </a>
-          ))}
-        </div>
+      <div className="hb-bg" aria-hidden="true"><i /><i /><i /><svg className="pulse" viewBox="0 0 1600 120" preserveAspectRatio="none"><path d="M0 60 H520 L540 20 L560 100 L580 60 H1040 L1060 30 L1080 90 L1100 60 H1600" fill="none" stroke="currentColor" strokeWidth="2" /></svg></div>
+
+      <header className="hb-top">
+        <Logo />
+        <nav aria-label="Account">
+          <a href={loginUrl("/")}>Sign in</a>
+          <a href={cadusUrl("/")} className="p" data-home="cta-cadus"><Sparkles size={15} /> Try Cadus free</a>
+        </nav>
+      </header>
+
+      <section className="hb-intro" data-home="platform">
+        <span className="hb-badge">One account · Five platforms</span>
+        <h1>Everything medical, in one place.</h1>
+        <p>Choose the platform you need. Cadus, the clinical assistant, is inside every one.</p>
       </section>
 
+      <section className="hb-cards" aria-label="Aethex platforms">
+        {CARDS.map((c, i) => (
+          <a key={c.id} href={portalUrl(c.id)} className={`hb-card ${c.tone}`} data-portal={c.id} style={{ animationDelay: `${0.12 + i * 0.09}s` }}>
+            <span className="ph"><img src={IMG(c.photo)} alt="" loading="eager" decoding="async" style={{ animationDelay: `${-i * 1.7}s` }} /></span>
+            <span className="ic">{c.icon}</span>
+            <b>{c.title}</b>
+            <small>{c.who}</small>
+            <ul>{c.points.map((p) => <li key={p}><Check size={14} /> {p}</li>)}</ul>
+            <em>{c.cta} <ArrowRight size={15} /></em>
+          </a>
+        ))}
+      </section>
+
+      <footer className="hb-foot">
+        <span><ShieldCheck size={14} /> © {year} Clavix Technologies Private Limited · Made in India for medical professionals</span>
+        <nav aria-label="Legal"><a href={mainUrl("/privacy-policy")}>Privacy</a><a href={mainUrl("/terms-of-service")}>Terms</a><a href={mainUrl("/contact")}>Contact</a></nav>
+      </footer>
     </div>
   );
 }
