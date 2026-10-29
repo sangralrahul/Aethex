@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Component, Suspense, lazy, useState, useEffect, type ComponentType, type ReactNode } from "react";
-import { isLoginHost, isCadusHost, isAuthHost, isMainHost, isDownloadsHost, isAethexDomain, downloadsUrl, loginUrl, cadusUrl } from "@/lib/host";
+import { isLoginHost, isCadusHost, isAuthHost, isMainHost, isDownloadsHost, isAethexDomain, downloadsUrl, loginUrl, cadusUrl, currentPortal } from "@/lib/host";
 import { reloadFresh } from "@/lib/fresh-start";
 
 
@@ -90,6 +90,14 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 
 const Home = lazyPage(() => import("@/pages/Home"));
+const Hub = lazyPage(() => import("@/pages/Hub"));
+const FindHome = lazyPage(() => import("@/pages/find/FindHome"));
+const FindDoctors = lazyPage(() => import("@/pages/find/FindDoctors"));
+const DoctorPage = lazyPage(() => import("@/pages/find/DoctorPage"));
+const ListPractice = lazyPage(() => import("@/pages/find/ListPractice"));
+const Practice = lazyPage(() => import("@/pages/find/Practice"));
+const MyAppointments = lazyPage(() => import("@/pages/find/MyAppointments"));
+const FindAdmin = lazyPage(() => import("@/pages/find/FindAdmin"));
 const Products = lazyPage(() => import("@/pages/Products"));
 const ProductDetail = lazyPage(() => import("@/pages/ProductDetail"));
 const BookDetail = lazyPage(() => import("@/pages/BookDetail"));
@@ -334,13 +342,21 @@ function Router() {
             return null;
           }
 
+          // Update 58: aethex.in is the front door (Hub); each portal subdomain opens on its own home page.
+          const portal = currentPortal();
+          const page = portal === "store" ? <Home />
+            : portal === "study" ? <StudyHub />
+            : portal === "find" ? <FindHome />
+            : portal === "hospitals" ? <BulkPortal segment="hospital" />
+            : portal === "medicalcolleges" ? <BulkPortal segment="college" />
+            : <Hub />;
           return (
 
-            <div className="ax-site">
+            <div className={`ax-site${portal ? ` ax-portal-${portal}` : " ax-hub"}`}>
               <Navbar />
               <main>
                 <Suspense fallback={<PageLoading />}>
-                  <Home />
+                  {page}
                 </Suspense>
               </main>
               <Footer />
@@ -368,6 +384,16 @@ function Router() {
             <main className="relative z-[1]">
               <Suspense fallback={<PageLoading />}>
               <Switch>
+
+                {/* Aethex Find (find.aethex.in): doctors, bookings, the practice dashboard (update 58) */}
+                <Route path="/store" component={Home} />
+                <Route path="/find" component={FindHome} />
+                <Route path="/doctors" component={FindDoctors} />
+                <Route path="/doctor/:slug" component={DoctorPage} />
+                <Route path="/list-your-practice" component={ListPractice} />
+                <Route path="/practice" component={Practice} />
+                <Route path="/appointments" component={MyAppointments} />
+                <Route path="/admin/doctors" component={FindAdmin} />
 
                 {/* Books Library */}
                 <Route path="/books" component={MedicalBooks} />

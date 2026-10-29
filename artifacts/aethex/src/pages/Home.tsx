@@ -297,7 +297,6 @@ export default function Home() {
   useSeo({
     title: "Aethex: medical equipment and supplies for doctors, clinics and hospitals in India",
     description: "Genuine stethoscopes, diagnostic sets, BP monitors, hospital and lab equipment and medical books from verified brands, with cash on delivery across India.",
-    path: "/",
   });
   const { store, error, refetch, cats, deals, picks } = useHomeData();
   useReveal(store);

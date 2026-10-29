@@ -27,7 +27,8 @@ import { handleStore, runStoreScheduled, type StoreEnv } from "./store";
 import { handleTranscribe, type AiBinding } from "./transcribe";
 import { handleVoice, voiceEnabled, type VoiceEnv } from "./voice";
 import { guestGate, requireAccount } from "./guest";
-import { cadusHome, hostRobots, hostSitemap } from "./seo";
+import { cadusHome, hostRobots, hostSitemap, portalHome, portalOf } from "./seo";
+import { handleFind, type FindEnv } from "./find";
 import "./names/cadus";
 import "../supabase/functions/cadus/index.ts";
 import "./names/analyze-drug-interactions";
@@ -39,7 +40,7 @@ import "../supabase/functions/predict-symptoms/index.ts";
 import "./names/analyze-radiology";
 import "../supabase/functions/analyze-radiology/index.ts";
 
-interface Env extends AuthEnv, StoreEnv, VoiceEnv {
+interface Env extends AuthEnv, StoreEnv, VoiceEnv, FindEnv {
   ASSETS: { fetch: (request: Request) => Promise<Response> };
   ANTHROPIC_API_KEY?: string;
   /** R2 bucket "aethex-downloads": the desktop installers. */
@@ -81,6 +82,10 @@ export default {
     if (url.pathname === "/" && request.method === "GET" && /^(?:www\.)?cadus\.aethex\.in$/.test(url.hostname)) {
       return cadusHome(await env.ASSETS.fetch(new Request(new URL("/", url), request)));
     }
+    // store., study., find., hospitals. and medicalcolleges.aethex.in: their own title and preview tags on the home page.
+    if (url.pathname === "/" && request.method === "GET" && portalOf(url.hostname)) {
+      return portalHome(await env.ASSETS.fetch(new Request(new URL("/", url), request)), portalOf(url.hostname)!);
+    }
 
     if (url.pathname === "/api/health" && url.searchParams.get("live") === "1") {
       // Tries the Anthropic and ElevenLabs keys for real (a one-token message and a voices list),
@@ -104,6 +109,19 @@ export default {
       } catch (e) {
         console.error(`${url.pathname} failed`, e);
         return json({ error: "The account service hit an unexpected error. Please try again." }, 500);
+      }
+    }
+
+    // Aethex Find: doctors listing their practice, search and bookings (worker/find.ts).
+    if (url.pathname.startsWith("/api/find/")) {
+      const origin = request.headers.get("origin");
+      if (origin && !ALLOWED_ORIGIN.test(origin)) return json({ error: "Origin not allowed" }, 403);
+      if (request.method !== "GET" && request.method !== "HEAD" && !origin) return json({ error: "Origin required" }, 403);
+      try {
+        return await handleFind(request, env);
+      } catch (e) {
+        console.error(`${url.pathname} failed`, e);
+        return json({ error: "Find a doctor hit an unexpected error. Please try again." }, 500);
       }
     }
 

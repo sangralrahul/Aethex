@@ -28,8 +28,11 @@ export interface SeoOptions {
  */
 export function useSeo({ title, description, path, image, type = "website" }: SeoOptions) {
   useEffect(() => {
-    const url = `${SITE}${path ?? window.location.pathname}`.replace(/\/+$/, "") || SITE;
-    const canonicalUrl = url === SITE ? `${SITE}/` : url;
+    // On a portal subdomain (store., study., find., hospitals., medicalcolleges.aethex.in) pages are canonical there.
+    const host = window.location.hostname;
+    const site = /^(?:store|study|find|hospitals|medicalcolleges)\.aethex\.in$/.test(host) ? `https://${host}` : SITE;
+    const url = `${site}${path ?? window.location.pathname}`.replace(/\/+$/, "") || site;
+    const canonicalUrl = url === site ? `${site}/` : url;
     const img = image ?? DEFAULT_IMAGE;
 
     document.title = title;

@@ -62,3 +62,43 @@ export async function cadusHome(res: Response): Promise<Response> {
   headers.set("cache-control", "no-cache");
   return new Response(html, { status: res.status, headers });
 }
+
+/* ------------------------------------------------------------------ the portal subdomains (update 58) */
+
+export type Portal = "store" | "study" | "find" | "hospitals" | "medicalcolleges";
+const PORTALS: Record<Portal, { title: string; desc: string; h1: string }> = {
+  store: { title: "Aethex Store: genuine medical equipment and supplies in India", desc: "Stethoscopes, diagnostic sets, BP monitors, hospital and lab equipment and medical books from verified brands, with cash on delivery across India.", h1: "Aethex Store" },
+  study: { title: "Aethex Study: NEET-PG preparation, mock tests and the medical knowledge hub", desc: "NEET-PG question banks, timed mock tests, flashcards, case of the day and a knowledge hub for every subject.", h1: "Aethex Study" },
+  find: { title: "Aethex Find: find a doctor and book an appointment", desc: "Find doctors near you by city and specialty, see their fees and timings, and book an appointment online. Doctors can list their practice free.", h1: "Aethex Find" },
+  hospitals: { title: "Aethex for Hospitals: one quotation for every ward", desc: "Hospital furniture, ICU, emergency and diagnostic equipment: send one list and get one quotation. Pay by bank transfer or purchase order.", h1: "Aethex for Hospitals" },
+  medicalcolleges: { title: "Aethex for Medical Colleges: skills labs, anatomy and lab equipment", desc: "Skills trainers, manikins, anatomy models, lab equipment and books for medical colleges: one list, one quotation.", h1: "Aethex for Medical Colleges" },
+};
+
+export function portalOf(host: string): Portal | null {
+  const h = host.replace(/^www\./, "").replace(/\.aethex\.in$/, "");
+  return h in PORTALS ? (h as Portal) : null;
+}
+
+/** The shared index.html head for a portal subdomain's home page. */
+export async function portalHome(res: Response, portal: Portal): Promise<Response> {
+  if (!res.ok || !(res.headers.get("content-type") || "").includes("text/html")) return res;
+  const p = PORTALS[portal], origin = `https://${portal}.aethex.in`;
+  let html = await res.text();
+  const meta = (attr: "name" | "property", key: string, value: string) => {
+    const re = new RegExp(`<meta\\s+${attr}="${key.replace(/[:]/g, "\\:")}"\\s+content="[^"]*"\\s*/?>`, "i");
+    const tag = `<meta ${attr}="${key}" content="${esc(value)}" />`;
+    html = re.test(html) ? html.replace(re, tag) : html.replace("</head>", `    ${tag}\n  </head>`);
+  };
+  html = html.replace(/<title>[^<]*<\/title>/i, `<title>${esc(p.title)}</title>`);
+  html = html.replace(/<meta\s*\n?\s*name="description"\s*\n?\s*content="[^"]*"\s*\n?\s*\/?>/i, `<meta name="description" content="${esc(p.desc)}" />`);
+  html = html.replace(/<link rel="canonical" href="[^"]*"\s*\/?>/i, `<link rel="canonical" href="${origin}/" />`);
+  meta("property", "og:url", `${origin}/`);
+  meta("property", "og:title", p.title);
+  meta("property", "og:description", p.desc);
+  meta("name", "twitter:title", p.title);
+  meta("name", "twitter:description", p.desc);
+  const headers = new Headers(res.headers);
+  headers.delete("content-length");
+  headers.set("cache-control", "no-cache");
+  return new Response(html, { status: res.status, headers });
+}

@@ -17,7 +17,24 @@ import { useUserAuth } from "@/hooks/use-user-auth";
 import { useWishlist } from "@/hooks/use-wishlist";
 import { useAbandonedCartTracker } from "@/hooks/use-abandoned-cart-tracker";
 import CadusMark from "@/components/cadus/CadusMark";
-import { cadusUrl, downloadsUrl, loginUrl } from "@/lib/host";
+import { cadusUrl, currentPortal, downloadsUrl, loginUrl, mainUrl, portalUrl, type Portal } from "@/lib/host";
+
+/** The portal switcher: [portal, label, path on that portal]. */
+const PORTAL_LINKS: ["hub" | Portal, string, string][] = [
+  ["hub", "Aethex", "/"], ["find", "Find a doctor", "/"], ["store", "Store", "/"], ["cadus", "Cadus", "/"],
+  ["study", "Study", "/"], ["hospitals", "Hospitals", "/"], ["medicalcolleges", "Medical colleges", "/"],
+];
+/** Which portal this page belongs to: the subdomain, or (on aethex.in) the page's section. */
+function activePortal(path: string): "hub" | Portal {
+  const p = currentPortal();
+  if (p) return p;
+  if (/^\/(find|doctors?|appointments|practice|list-your-practice)(\/|$)/.test(path)) return "find";
+  if (/^\/(store|shop|products|category|brand|brands|books|cart|wishlist|compare|orders?)(\/|$)/.test(path)) return "store";
+  if (/^\/(study-hub|neet-pg|mock-test|flashcards|case-of-the-day|cme-hub|tools|calculator|drug-reference)(\/|$)/.test(path)) return "study";
+  if (/^\/(hospitals|institutions)(\/|$)/.test(path)) return "hospitals";
+  if (/^\/medical-colleges(\/|$)/.test(path)) return "medicalcolleges";
+  return "hub";
+}
 import { FREE_DELIVERY_FROM } from "@/lib/store/rules";
 import { formatINR } from "@/lib/utils";
 
@@ -194,15 +211,17 @@ export function Navbar({ inner = false }: { inner?: boolean }) {
 
   return (
     <>
-      {/* Update 54: a slim bar with the store promises, above the header on every aethex.in page. */}
-      <div className="ax-ann no-print" data-site="announce">
+      {/* Update 58: the portal switcher: every part of Aethex, one tap away, on every page and subdomain. */}
+      <div className="ax-ann ax-portals no-print" data-site="announce">
         <div className="ax-wrap ax-ann-in">
-          <span><BadgeCheck size={14} /> Genuine brands</span>
-          <span className="dot" aria-hidden="true">·</span>
-          <span>Cash on delivery across India</span>
-          <span className="dot hide-sm" aria-hidden="true">·</span>
-          <span className="hide-sm">Free delivery from {formatINR(FREE_DELIVERY_FROM)}</span>
-          <a href={cadusUrl("/")} className="go">New: Cadus clinical AI — try it free <span aria-hidden="true">→</span></a>
+          <nav aria-label="Aethex portals">
+            {PORTAL_LINKS.map(([id, label, path]) => {
+              const here = id === activePortal(location);
+              const href = id === "hub" ? mainUrl("/") : portalUrl(id, path);
+              return <a key={id} href={href} className={here ? "on" : ""} aria-current={here ? "page" : undefined} data-portal-link={id}>{label}</a>;
+            })}
+          </nav>
+          <span className="promise hide-sm"><BadgeCheck size={14} /> Genuine brands · Cash on delivery · Free delivery from {formatINR(FREE_DELIVERY_FROM)}</span>
         </div>
       </div>
       <header className={`ax-head no-print ${scrolled ? "scrolled" : ""} ${inner ? "inner" : ""}`}>

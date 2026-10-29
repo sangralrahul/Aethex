@@ -68,6 +68,11 @@ export function loginUrl(path = "/", query?: Record<string, string>): string {
   if (query) {
     for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value);
   }
+  // From a portal subdomain (find., store., ...), come back to it after signing in.
+  const portal = currentPortal();
+  if (portal && portal !== "cadus" && !url.searchParams.has("back") && typeof window !== "undefined") {
+    url.searchParams.set("back", window.location.origin + (query?.next ?? window.location.pathname + window.location.search));
+  }
   return url.toString();
 }
 
@@ -103,4 +108,38 @@ export function authUrl(path = "/", query?: Record<string, string>): string {
     for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value);
   }
   return url.toString();
+}
+
+/* ------------------------------------------------------------------ the portals (update 58) */
+
+/**
+ * aethex.in is the front door; each part of Aethex has its own subdomain, served by the same app:
+ * store.aethex.in, study.aethex.in, find.aethex.in, hospitals.aethex.in, medicalcolleges.aethex.in
+ * and cadus.aethex.in. Off the aethex.in domain (tests, previews) each portal is an in-app route.
+ */
+export type Portal = "cadus" | "store" | "study" | "find" | "hospitals" | "medicalcolleges";
+const PORTAL_ROUTE: Record<Exclude<Portal, "cadus">, string> = {
+  store: "/store", study: "/study-hub", find: "/find", hospitals: "/hospitals", medicalcolleges: "/medical-colleges",
+};
+
+/** The portal this subdomain is, or null on aethex.in itself (and off the domain). */
+export function currentPortal(): Portal | null {
+  const h = currentHost().replace(/^www\./, "");
+  if (h === "cadus.aethex.in") return "cadus";
+  const sub = h.endsWith(".aethex.in") ? h.slice(0, -".aethex.in".length) : "";
+  return sub in PORTAL_ROUTE ? (sub as Portal) : null;
+}
+
+/** A link into a portal: its subdomain on aethex.in, or its in-app route elsewhere. */
+export function portalUrl(portal: Portal, path = "/"): string {
+  if (portal === "cadus") return cadusUrl(path);
+  const suffix = path.startsWith("/") ? path : `/${path}`;
+  if (onOtherHost()) return sameSite(suffix === "/" ? PORTAL_ROUTE[portal] : suffix);
+  return `https://${portal}.aethex.in${suffix}`;
+}
+
+/** Same-app links go through the router; a link to another subdomain is a full page load. */
+export function isSameOrigin(href: string): boolean {
+  if (typeof window === "undefined") return true;
+  try { return new URL(href, window.location.href).origin === window.location.origin; } catch { return true; }
 }

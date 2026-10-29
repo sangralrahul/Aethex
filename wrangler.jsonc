@@ -39,7 +39,13 @@
     { "pattern": "cadus.aethex.in", "custom_domain": true },
     { "pattern": "auth.aethex.in", "custom_domain": true },
     { "pattern": "login.aethex.in", "custom_domain": true },
-    { "pattern": "downloads.aethex.in", "custom_domain": true }
+    { "pattern": "downloads.aethex.in", "custom_domain": true },
+    // The portals (update 58): the store, study, find a doctor, hospitals and medical colleges.
+    { "pattern": "store.aethex.in", "custom_domain": true },
+    { "pattern": "study.aethex.in", "custom_domain": true },
+    { "pattern": "find.aethex.in", "custom_domain": true },
+    { "pattern": "hospitals.aethex.in", "custom_domain": true },
+    { "pattern": "medicalcolleges.aethex.in", "custom_domain": true }
   ],
   "observability": { "enabled": true }
 }

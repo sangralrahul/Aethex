@@ -11,7 +11,7 @@
  * once and offline. The copy is refreshed from the server on every load and
  * removed when the server says the session has ended.
  */
-import { isAethexDomain, isAuthHost, isCadusHost, isLoginHost, isMainHost } from "./host";
+import { currentPortal, isAethexDomain, isAuthHost, isCadusHost, isLoginHost, isMainHost } from "./host";
 
 export type AccountUser = { id: string; email: string; name: string; avatar?: string; createdAt?: number };
 export type AuthResult = { ok: true; user: AccountUser } | { ok: false; error: string };
@@ -138,6 +138,13 @@ export function authErrorMessage(): string {
 
 /** A path on this site: one leading slash, no scheme or host. */
 export const safePath = (p: string | null | undefined): string => (p && /^\/(?![/\\])/.test(p) ? p : "/");
+/** A return address on an aethex.in subdomain over https, from the "back" parameter. */
+const backParam = (): string | null => {
+  try {
+    const u = new URL(new URLSearchParams(window.location.search).get("back") || "");
+    return u.protocol === "https:" && /^(?:[a-z0-9-]+\.)?aethex\.in$/.test(u.hostname) && !/^(?:login|auth)\./.test(u.hostname) ? u.toString() : null;
+  } catch { return null; }
+};
 const nextParam = () => { try { return safePath(new URLSearchParams(window.location.search).get("next")); } catch { return "/"; } };
 
 /**
@@ -147,6 +154,8 @@ const nextParam = () => { try { return safePath(new URLSearchParams(window.locat
  */
 export function signedInDestination(path = nextParam()): string | null {
   if (isAuthHost()) return `https://cadus.aethex.in${safePath(path)}`;
+  // "back": a full address on one of the portal subdomains (find.aethex.in, store.aethex.in, ...).
+  if (isLoginHost()) { const b = backParam(); if (b) return b; }
   if (isLoginHost()) return `https://aethex.in${safePath(path)}`;
   return null;
 }
@@ -175,6 +184,10 @@ export function bootAccount(): { leaving: boolean; ready: Promise<void> } {
     const next = encodeURIComponent(safePath(q.get("next")));
     const go = (to: string) => { window.location.replace(to); return { leaving: true, ready: Promise.resolve() }; };
     if (isCadusHost() && (path === "/sign-in" || path === "/login")) return go(`https://auth.aethex.in/?next=${next}`);
+    const front = isMainHost() || (!!currentPortal() && currentPortal() !== "cadus");
+    const back = encodeURIComponent(window.location.origin + safePath(q.get("next")));
+    if (front && !isMainHost() && path === "/login") return go(`https://login.aethex.in/?back=${back}`);
+    if (front && !isMainHost() && path === "/signup") return go(`https://login.aethex.in/signup?back=${back}`);
     if (isMainHost() && path === "/ai-assistant/sign-in") return go(`https://auth.aethex.in/?next=${next}`);
     if (isMainHost() && path === "/login") return go(`https://login.aethex.in/?next=${next}`);
     if (isMainHost() && path === "/signup") return go(`https://login.aethex.in/signup?next=${next}`);
