@@ -15,6 +15,8 @@ export interface BulkSection {
   text: string;
   /** Store category slugs, in the order they are shown. */
   categories: string[];
+  /** A short name for the department tabs. */
+  short: string;
 }
 
 export interface SegmentPage {
@@ -51,20 +53,20 @@ export const SEGMENT_PAGES: Record<Segment, SegmentPage> = {
     tag: "Aethex for Hospitals",
     seoTitle: "Bulk medical supplies for hospitals | Aethex",
     seoDescription: "Hospital beds, ICU monitors and pumps, defibrillators and resuscitators, syringes and IV supplies, and everyday diagnostics, in bulk. Build one list and get a quotation.",
-    title: "Medical supplies for your hospital, in bulk",
-    subtitle: "Beds and ward furniture, ICU monitors and pumps, emergency and resuscitation equipment, syringes and IV supplies, and everyday diagnostics, from the makers we stock. Build one list for every ward and department, and we'll send a quotation.",
+    title: "Equip every ward, ICU and department from one quotation",
+    subtitle: "Beds and ward furniture, ICU monitors and pumps, emergency and resuscitation equipment, syringes and IV supplies, and everyday diagnostics from the makers we stock. Build one list for the whole hospital and we'll send your prices with delivery.",
     defaultQty: 5,
     sections: [
-      { id: "beds", title: "Beds and ward furniture", text: "ICU, Fowler and general beds, paediatric beds, stretchers, crash carts and trolleys, lockers, IV stands and examination tables from Narang Medical.", categories: ["hospital-furniture"] },
-      { id: "icu", title: "ICU and monitoring", text: "Patient monitors, ECG machines, syringe and infusion pumps and ventilators from Mindray and B. Braun.", categories: ["icu-equipment"] },
-      { id: "emergency", title: "Emergency and resuscitation", text: "Defibrillators, adult and baby resuscitators, laryngoscopes and blades, laryngeal masks and cervical collars for the emergency room and crash carts.", categories: ["emergency-care"] },
-      { id: "iv", title: "Syringes, needles and IV", text: "BD syringes, needles, IV cannulas, IV and extension sets, stopcocks, Vacutainer tubes and sharps containers for every ward.", categories: ["syringes-needles"] },
-      { id: "wards", title: "Vital signs at every bedside", text: "Blood pressure, oxygen saturation and temperature at every bedside and counter.", categories: ["bp-monitors", "sphygmomanometers", "pulse-oximeters", "thermometers"] },
-      { id: "diagnostics", title: "Doctors' diagnostic instruments", text: "Stethoscopes, otoscopes, ophthalmoscopes, diagnostic sets, reflex hammers and penlights.", categories: ["stethoscopes", "diagnostic-instruments"] },
-      { id: "respiratory", title: "Respiratory care", text: "Compressor and mesh nebulizers for wards and emergency.", categories: ["nebulizers"] },
-      { id: "diabetes", title: "Diabetes care", text: "Glucometers, test strips and lancets.", categories: ["diabetes-care"] },
-      { id: "scales", title: "Weighing and body composition", text: "Weighing scales and body composition monitors.", categories: ["weighing-scales"] },
-      { id: "rehab", title: "Physiotherapy and rehabilitation", text: "Supports, braces, mobility aids, pillows and pain relief for orthopaedics and physiotherapy.", categories: ["orthopaedic-supports", "rehab-mobility", "pain-relief", "pillows-cushions"] },
+      { id: "beds", short: "Beds and furniture", title: "Beds and ward furniture", text: "ICU, Fowler and general beds, paediatric beds, stretchers, crash carts and trolleys, lockers, IV stands and examination tables from Narang Medical.", categories: ["hospital-furniture"] },
+      { id: "icu", short: "ICU and monitoring", title: "ICU and monitoring", text: "Patient monitors, ECG machines, syringe and infusion pumps and ventilators from Mindray and B. Braun.", categories: ["icu-equipment"] },
+      { id: "emergency", short: "Emergency", title: "Emergency and resuscitation", text: "Defibrillators, adult and baby resuscitators, laryngoscopes and blades, laryngeal masks and cervical collars for the emergency room and crash carts.", categories: ["emergency-care"] },
+      { id: "iv", short: "Syringes and IV", title: "Syringes, needles and IV", text: "BD syringes, needles, IV cannulas, IV and extension sets, stopcocks, Vacutainer tubes and sharps containers for every ward.", categories: ["syringes-needles"] },
+      { id: "wards", short: "Vital signs", title: "Vital signs at every bedside", text: "Blood pressure, oxygen saturation and temperature at every bedside and counter.", categories: ["bp-monitors", "sphygmomanometers", "pulse-oximeters", "thermometers"] },
+      { id: "diagnostics", short: "Diagnostics", title: "Doctors' diagnostic instruments", text: "Stethoscopes, otoscopes, ophthalmoscopes, diagnostic sets, reflex hammers and penlights.", categories: ["stethoscopes", "diagnostic-instruments"] },
+      { id: "respiratory", short: "Respiratory", title: "Respiratory care", text: "Compressor and mesh nebulizers for wards and emergency.", categories: ["nebulizers"] },
+      { id: "diabetes", short: "Diabetes care", title: "Diabetes care", text: "Glucometers, test strips and lancets.", categories: ["diabetes-care"] },
+      { id: "scales", short: "Weighing", title: "Weighing and body composition", text: "Weighing scales and body composition monitors.", categories: ["weighing-scales"] },
+      { id: "rehab", short: "Rehabilitation", title: "Physiotherapy and rehabilitation", text: "Supports, braces, mobility aids, pillows and pain relief for orthopaedics and physiotherapy.", categories: ["orthopaedic-supports", "rehab-mobility", "pain-relief", "pillows-cushions"] },
     ],
     faq: COMMON_FAQ,
     other: { path: "/medical-colleges", label: "Aethex for Medical Colleges", text: "Buying for a medical college, a department or a student batch?" },
@@ -75,16 +77,16 @@ export const SEGMENT_PAGES: Record<Segment, SegmentPage> = {
     tag: "Aethex for Medical Colleges",
     seoTitle: "Bulk supplies for medical colleges | Aethex",
     seoDescription: "Stethoscopes for every student, anatomy models, skills-lab manikins and trainers, microscopes and lab equipment, and textbooks, in bulk for medical colleges. Build one list and get a quotation.",
-    title: "Supplies for medical colleges, departments and student batches",
-    subtitle: "Stethoscopes for every student, anatomy models, manikins and trainers for the skills lab, microscopes and lab equipment, and textbooks for the library. Build one list for the whole batch or department, and we'll send a quotation.",
+    title: "Equip your medical college, from the skills lab to the library",
+    subtitle: "Stethoscopes for every student, anatomy models, manikins and trainers for the skills lab, microscopes and lab equipment, and textbooks for the library. Build one list for the batch or department and we'll send your prices with delivery.",
     defaultQty: 20,
     sections: [
-      { id: "stethoscopes", title: "Stethoscopes for students and faculty", text: "3M Littmann, MDF, HEINE, Rossmax and Dr Trust, for first-year students to consultants.", categories: ["stethoscopes"] },
-      { id: "anatomy", title: "Anatomy models and charts", text: "Skeletons, spines, torsos, organ models and wall charts from 3B Scientific for the anatomy department and museum.", categories: ["anatomy-models"] },
-      { id: "simulation", title: "Skills lab manikins and trainers", text: "CPR manikins, IV and injection arms, suturing, catheterisation, birthing and airway trainers from Laerdal and 3B Scientific.", categories: ["skills-simulators"] },
-      { id: "labs", title: "Microscopes and laboratory equipment", text: "Microscopes, centrifuges, incubators, ovens, pipettes, glassware and plasticware for pathology, microbiology, biochemistry and physiology labs.", categories: ["lab-equipment"] },
-      { id: "skills", title: "Clinical skills labs", text: "BP apparatus, diagnostic sets, thermometers, oximeters and scales for teaching and OSCEs.", categories: ["sphygmomanometers", "diagnostic-instruments", "bp-monitors", "pulse-oximeters", "thermometers", "weighing-scales"] },
-      { id: "departments", title: "Teaching hospital and community medicine", text: "Nebulizers and diabetes care for the teaching hospital, health centres and camps.", categories: ["nebulizers", "diabetes-care"] },
+      { id: "stethoscopes", short: "Stethoscopes", title: "Stethoscopes for students and faculty", text: "3M Littmann, MDF, HEINE, Rossmax and Dr Trust, for first-year students to consultants.", categories: ["stethoscopes"] },
+      { id: "anatomy", short: "Anatomy", title: "Anatomy models and charts", text: "Skeletons, spines, torsos, organ models and wall charts from 3B Scientific for the anatomy department and museum.", categories: ["anatomy-models"] },
+      { id: "simulation", short: "Skills lab", title: "Skills lab manikins and trainers", text: "CPR manikins, IV and injection arms, suturing, catheterisation, birthing and airway trainers from Laerdal and 3B Scientific.", categories: ["skills-simulators"] },
+      { id: "labs", short: "Laboratory", title: "Microscopes and laboratory equipment", text: "Microscopes, centrifuges, incubators, ovens, pipettes, glassware and plasticware for pathology, microbiology, biochemistry and physiology labs.", categories: ["lab-equipment"] },
+      { id: "skills", short: "Clinical skills", title: "Clinical skills labs", text: "BP apparatus, diagnostic sets, thermometers, oximeters and scales for teaching and OSCEs.", categories: ["sphygmomanometers", "diagnostic-instruments", "bp-monitors", "pulse-oximeters", "thermometers", "weighing-scales"] },
+      { id: "departments", short: "Teaching hospital", title: "Teaching hospital and community medicine", text: "Nebulizers and diabetes care for the teaching hospital, health centres and camps.", categories: ["nebulizers", "diabetes-care"] },
     ],
     faq: [
       ...COMMON_FAQ,

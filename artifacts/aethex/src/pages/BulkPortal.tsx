@@ -11,11 +11,12 @@ import { useCallback, useEffect, useMemo, useState, type ComponentType } from "r
 import { Link, useLocation } from "wouter";
 import { sitePortal } from "@/lib/portals";
 import {
+  Accessibility, Droplet, HeartHandshake, Mail, Scale, Wind,
   Activity, ArrowRight, Banknote, BedDouble, BookOpen, Bone, Building2, CalendarClock, Check, ChevronDown, ClipboardCheck, ClipboardList, GraduationCap,
   HeartPulse, Hospital, ListChecks, ListPlus, Microscope, Minus, Package, Plus, Search, ShieldCheck, ShoppingCart, Siren, Stethoscope, Syringe, Trash2, X,
   type LucideProps,
 } from "lucide-react";
-import { PageHero } from "@/components/PageHero";
+import { BUSINESS } from "@/config/business";
 import { ProductImage } from "@/components/store/ProductImage";
 import { isBookId, itemHref } from "@/lib/store/bookdata";
 import { Dialog } from "@/components/store/Dialog";
@@ -44,6 +45,26 @@ function sectionProducts(store: StoreData, sec: BulkSection): ProductSummary[] {
   return out;
 }
 
+const HERO_PHOTOS: Record<Segment, string[]> = {
+  hospital: ["ecg", "laryngoscope", "xray-viewer", "oximeter"],
+  college: ["stethoscope", "neuro-kit", "surgical-set", "medical-book"],
+};
+const IMG = (n: string) => `${import.meta.env.BASE_URL}product-images/${n}.jpg`;
+
+const DEPT_ICONS: Record<string, ComponentType<LucideProps>> = {
+  beds: BedDouble, icu: HeartPulse, emergency: Siren, iv: Syringe, wards: Activity, diagnostics: Stethoscope, respiratory: Wind,
+  diabetes: Droplet, scales: Scale, rehab: Accessibility, stethoscopes: Stethoscope, anatomy: Bone, simulation: HeartHandshake,
+  labs: Microscope, skills: ClipboardCheck, departments: Hospital,
+};
+
+/** Brands across the page's sections, most products first. */
+function sectionBrands(store: StoreData, sections: BulkSection[]): { slug: string; name: string; n: number }[] {
+  const cats = new Set(sections.flatMap((x) => x.categories));
+  const n = new Map<string, number>();
+  for (const p of store.products) if (cats.has(p.category)) n.set(p.brand, (n.get(p.brand) ?? 0) + 1);
+  return [...n.entries()].sort((a, b) => b[1] - a[1]).map(([slug, k]) => ({ slug, name: store.brandName(slug), n: k }));
+}
+
 export default function BulkPortal({ segment }: { segment: Segment }) {
   const cfg = SEGMENT_PAGES[segment];
   useSeo({ title: cfg.seoTitle, description: cfg.seoDescription, path: cfg.path });
@@ -53,40 +74,94 @@ export default function BulkPortal({ segment }: { segment: Segment }) {
   const [done, setDone] = useState<{ id: string; email: string; emailed: boolean } | null>(null);
   const lines = useBulkLines();
   const found = useMemo(() => (store && q.trim() ? searchProducts(store.products, q, store).slice(0, 24) : []), [store, q]);
+  const depts = useMemo(() => (store ? cfg.sections.map((sec) => ({ sec, list: sectionProducts(store, sec) })).filter((d) => d.list.length) : []), [store, cfg]);
+  const brands = useMemo(() => (store ? sectionBrands(store, cfg.sections) : []), [store, cfg]);
+  const fromHash = () => { const h = typeof window === "undefined" ? "" : window.location.hash.slice(1); return cfg.sections.some((x) => x.id === h) ? h : ""; };
+  const [dept, setDept] = useState<string>(fromHash);
+  const active = depts.find((d) => d.sec.id === dept) ?? depts[0];
 
   const openQuote = () => { setDone(null); setQuote(true); };
-  const Icon = segment === "hospital" ? Hospital : GraduationCap;
-  // "/medical-colleges#list" (from a book's page) opens on the list.
+  const pick = (id: string) => {
+    setQ(""); setDept(id);
+    window.setTimeout(() => document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth", block: "start" }), 30);
+  };
+  // "#list" (from a product or a book's page) opens on the list; "#icu" and the like on that department.
   useEffect(() => {
-    if (window.location.hash !== "#list") return;
-    const t = window.setTimeout(() => document.getElementById("list")?.scrollIntoView({ block: "start" }), 250);
+    const h = window.location.hash;
+    const to = h === "#list" ? "list" : fromHash() ? "catalogue" : "";
+    if (!to) return;
+    const t = window.setTimeout(() => document.getElementById(to)?.scrollIntoView({ block: "start" }), 250);
     return () => window.clearTimeout(t);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const total = depts.reduce((n, d) => n + d.list.length, 0);
+  const who = segment === "hospital" ? "hospital" : "college";
 
   return (
-    <div className="ax-bulk">
-      <PageHero
-        tag={cfg.tag}
-        title={cfg.title}
-        subtitle={cfg.subtitle}
-        icon={<Icon className="w-7 h-7" style={{ color: "rgba(255,255,255,0.85)" }} />}
-        right={
-          <div className="ax-bulk-hero-acts">
-            <button type="button" className="ax-btn teal lg" onClick={openQuote}><ClipboardList size={17} /> Request a quote</button>
-            <a href="#how" className="ax-btn lg ghost">How it works</a>
+    <div className={`ax-bulk seg-${segment}`}>
+      <section className="ax-ihero">
+        <div className="ax-ihero-bg" aria-hidden="true"><i /><i /><i /></div>
+        <div className="ax-wrap ax-ihero-in">
+          <div className="txt">
+            <span className="eyebrow"><Icon segment={segment} /> {cfg.tag}<em>Institutional supply</em></span>
+            <h1>{cfg.title}</h1>
+            <p>{cfg.subtitle}</p>
+            <div className="ax-bulk-hero-acts">
+              <button type="button" className="ax-btn teal lg" onClick={openQuote}><ClipboardList size={17} /> Request a quotation</button>
+              <a href="#catalogue" className="ax-btn lg ghost">Browse the catalogue <ArrowRight size={16} /></a>
+              <a href="#how" className="ax-btn lg ghost subtle">How it works</a>
+            </div>
+            <dl className="facts">
+              <div><dt>{store ? total.toLocaleString("en-IN") : "…"}</dt><dd>products for {segment === "hospital" ? "hospitals" : "colleges"}</dd></div>
+              <div><dt>{store ? brands.length : "…"}</dt><dd>brands</dd></div>
+              <div><dt>{cfg.sections.length}</dt><dd>departments covered</dd></div>
+            </dl>
           </div>
-        }
-      />
+          <div className="art" aria-hidden="true">
+            {HERO_PHOTOS[segment].map((n, i) => <span key={n} className={`ph p${i}`}><img src={IMG(n)} alt="" loading="eager" decoding="async" /></span>)}
+            <div className="ticket">
+              <b><ClipboardCheck size={16} /> One list, one quotation</b>
+              <small>Every ward and department together, with delivery to your {who}.</small>
+            </div>
+          </div>
+        </div>
+      </section>
 
-      <ul className="ax-wrap ax-bulk-points" aria-label="Why order with Aethex">
+      <div className="ax-wrap"><ul className="ax-bulk-points" aria-label="Why order with Aethex">
         <li><ShieldCheck size={20} /><div><b>Genuine products</b><small>From the brands' own ranges, with the manufacturer's warranty</small></div></li>
         <li><ListChecks size={20} /><div><b>Any quantity</b><small>One list for every department, quoted together</small></div></li>
         <li><CalendarClock size={20} /><div><b>Order ahead</b><small>Pick a delivery date, or repeat every month or quarter</small></div></li>
         <li><Banknote size={20} /><div><b>Bank transfer or PO</b><small>On quotations; small orders can be cash on delivery</small></div></li>
-      </ul>
+      </ul></div>
 
-      <div className="ax-wrap ax-bulk-main">
+      <section className="ax-wrap ax-depts" aria-labelledby="depts-h">
+        <div className="ax-ihead"><span>Departments</span><h2 id="depts-h">{segment === "hospital" ? "Everything a hospital runs on" : "Everything a medical college teaches with"}</h2>
+          <p>Choose a department to see its products, then add them to one list with the quantities you need.</p></div>
+        <div className="grid">
+          {(depts.length ? depts : cfg.sections.map((sec) => ({ sec, list: [] as ProductSummary[] }))).map(({ sec, list }) => {
+            const I = DEPT_ICONS[sec.id] ?? Package;
+            const bs = store ? [...new Set(list.map((p) => store.brandName(p.brand)))].slice(0, 3) : [];
+            return (
+              <button key={sec.id} type="button" className="ax-dept" onClick={() => pick(sec.id)} data-dept-card={sec.id}>
+                <span className="ic"><I size={22} /></span>
+                <b>{sec.short}</b>
+                <small>{store ? `${list.length} product${list.length === 1 ? "" : "s"}` : " "}{bs.length ? ` · ${bs.join(", ")}` : ""}</small>
+                <ArrowRight size={16} className="go" />
+              </button>
+            );
+          })}
+          {segment === "college" && (
+            <Link href="/books" className="ax-dept">
+              <span className="ic"><BookOpen size={22} /></span><b>Textbooks</b><small>Every course, with the publishers' prices</small><ArrowRight size={16} className="go" />
+            </Link>
+          )}
+        </div>
+      </section>
+
+      <div className="ax-wrap ax-bulk-main" id="catalogue">
         <div className="ax-bulk-cat">
+          {store && <Kits segment={segment} store={store} />}
+          <div className="ax-ihead sm"><span>Catalogue</span><h2>Build your list</h2></div>
           <div className="ax-bulk-find" role="search">
             <Search size={18} aria-hidden="true" />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={segment === "hospital" ? "Search every product: ICU bed, syringe, monitor, Littmann…" : "Search every product: skeleton, microscope, CPR manikin, Littmann…"} aria-label="Search every product" />
@@ -102,17 +177,14 @@ export default function BulkPortal({ segment }: { segment: Segment }) {
             </section>
           ) : (
             <>
-              <Kits segment={segment} store={store} />
-              {cfg.sections.map((sec) => <Section key={sec.id} sec={sec} store={store} defaultQty={cfg.defaultQty} />)}
-              {segment === "college" && (
-                <section className="ax-bulk-sec">
-                  <Link href="/books" className="ax-bulk-books">
-                    <span className="ic"><BookOpen size={22} /></span>
-                    <span><b>Textbooks for the library and departments</b><small>Every course from MBBS to AYUSH, with the publishers' prices. Open a book and choose “Add to your college list”, or ask for any title.</small></span>
-                    <ArrowRight size={18} />
-                  </Link>
-                </section>
-              )}
+              <div className="ax-dtabs" role="tablist" aria-label="Departments">
+                {depts.map(({ sec, list }) => {
+                  const I = DEPT_ICONS[sec.id] ?? Package;
+                  const on = active?.sec.id === sec.id;
+                  return <button key={sec.id} type="button" role="tab" aria-selected={on} className={on ? "on" : ""} onClick={() => setDept(sec.id)} data-dept={sec.id}><I size={15} /> {sec.short} <em>{list.length}</em></button>;
+                })}
+              </div>
+              {active && <Section key={active.sec.id} sec={active.sec} list={active.list} store={store} defaultQty={cfg.defaultQty} />}
             </>
           )}
           {isLoading && !store && <p className="ax-bulk-loading">Loading products…</p>}
@@ -123,20 +195,40 @@ export default function BulkPortal({ segment }: { segment: Segment }) {
         </aside>
       </div>
 
-      <section className="ax-wrap ax-bulk-how" id="how">
-        <h2>How it works</h2>
-        <ol>
-          <li><span>1</span><b>Add products</b><small>Pick products and quantities from the sections above, or search the whole store.</small></li>
-          <li><span>2</span><b>Send your list</b><small>Add your {segment === "hospital" ? "hospital's" : "college's"} details, where to deliver and when: once, or every month or quarter.</small></li>
-          <li><span>3</span><b>Get a quotation</b><small>We email your prices for these quantities, with delivery, usually within one business day.</small></li>
-          <li><span>4</span><b>Confirm and pay</b><small>Accept the quotation and pay by bank transfer or purchase order. We deliver across India.</small></li>
-        </ol>
+      <section className="ax-bulk-how" id="how">
+        <div className="ax-wrap">
+          <div className="ax-ihead"><span>How it works</span><h2>From list to delivery in four steps</h2></div>
+          <ol>
+            <li><span>1</span><b>Add products</b><small>Pick products and quantities from the departments above, start from a ready-made list, or search the whole store.</small></li>
+            <li><span>2</span><b>Send your list</b><small>Add your {segment === "hospital" ? "hospital's" : "college's"} details, where to deliver and when: once, or every month or quarter.</small></li>
+            <li><span>3</span><b>Get a quotation</b><small>We email your prices for these quantities, with delivery, usually within one business day.</small></li>
+            <li><span>4</span><b>Confirm and pay</b><small>Accept the quotation and pay by bank transfer or purchase order. We deliver across India.</small></li>
+          </ol>
+        </div>
       </section>
 
+      {brands.length > 0 && (
+        <section className="ax-wrap ax-ibrands" aria-labelledby="brands-h">
+          <div className="ax-ihead"><span>Brands</span><h2 id="brands-h">Makers in this catalogue</h2></div>
+          <ul>{brands.slice(0, 18).map((b) => <li key={b.slug}><Link href={`/brand/${b.slug}`}>{b.name}<small>{b.n}</small></Link></li>)}</ul>
+        </section>
+      )}
+
       <section className="ax-wrap ax-bulk-faq">
-        <h2>Questions</h2>
-        <div>{cfg.faq.map((f) => <details key={f.q}><summary>{f.q}<ChevronDown size={18} /></summary><p>{f.a}</p></details>)}</div>
+        <div className="ax-ihead"><span>Questions</span><h2>Before you send a list</h2></div>
+        <div className="qs">{cfg.faq.map((f) => <details key={f.q}><summary>{f.q}<ChevronDown size={18} /></summary><p>{f.a}</p></details>)}</div>
       </section>
+
+      <div className="ax-wrap"><section className="ax-icta">
+        <div>
+          <h2>{segment === "hospital" ? "Have a requirement for your hospital?" : "Planning for a new batch or a new lab?"}</h2>
+          <p>Send your list, or simply describe what you need. We'll reply with a quotation by email.</p>
+        </div>
+        <div className="acts">
+          <button type="button" className="ax-btn teal lg" onClick={openQuote}><ClipboardList size={17} /> Request a quotation</button>
+          <a className="ax-btn lg ghost" href={`mailto:${BUSINESS.email}`}><Mail size={16} /> {BUSINESS.email}</a>
+        </div>
+      </section></div>
 
       {/* Update 65: on its own subdomain each platform links only to its own pages. */}
       {sitePortal() !== "medicalcolleges" && <section className="ax-wrap ax-bulk-other">
@@ -154,6 +246,10 @@ export default function BulkPortal({ segment }: { segment: Segment }) {
       <QuoteDialog open={quote} segment={segment} done={done} onDone={(r) => { setDone(r); bulk.clear(); }} onClose={() => setQuote(false)} />
     </div>
   );
+}
+
+function Icon({ segment }: { segment: Segment }) {
+  return segment === "hospital" ? <Hospital size={15} /> : <GraduationCap size={15} />;
 }
 
 /* ------------------------------------------------------------------ ready-made lists */
@@ -278,13 +374,11 @@ function KitDialog({ kit, store, count, setCount, onClose }: { kit: Kit; store: 
 
 /* ------------------------------------------------------------------ a section of products */
 
-function Section({ sec, store, defaultQty }: { sec: BulkSection; store: StoreData; defaultQty: number }) {
+function Section({ sec, list, store, defaultQty }: { sec: BulkSection; list: ProductSummary[]; store: StoreData; defaultQty: number }) {
   const [all, setAll] = useState(false);
-  const list = useMemo(() => sectionProducts(store, sec), [store, sec]);
-  if (!list.length) return null;
   const shown = all ? list : list.slice(0, SHOW);
   return (
-    <section className="ax-bulk-sec" id={sec.id}>
+    <section className="ax-bulk-sec" id={sec.id} role="tabpanel">
       <div className="ax-bulk-sec-h">
         <h2>{sec.title}</h2>
         <p>{sec.text}</p>

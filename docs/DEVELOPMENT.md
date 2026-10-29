@@ -214,6 +214,14 @@ switcher and no links to the other platforms. `aethex.in` itself shows only the 
 - `canonicalFor()` (used by `useSeo`) gives each page's canonical address on its own portal.
 - The floating Cadus button is hidden on every aethex.in host.
 
+### The hospitals and medical-colleges pages (update 66)
+
+`src/pages/BulkPortal.tsx`: a hero with the platform's own colour (`.ax-bulk.seg-hospital` / `.seg-college` in
+`src/shop.css`), the four assurances, a card per department, ready-made lists, then the catalogue: search, and one
+department at a time in tabs (`short` names in `src/config/institutions.ts`; `#icu` and the like open that tab).
+How it works, the brands in the catalogue (counted from the store data), questions and a closing call to action follow.
+The figures in the hero (products, brands, departments) are counted from the catalogue, never typed in.
+
 ## Aethex Doctors
 
 `worker/find.ts` (`/api/find/*`), tables in `migrations/0006_find.sql` (also created on first use). Doctors list
