@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import { X, Send, BotMessageSquare, Sparkles, Brain } from "lucide-react";
 import { invokeAi } from "@/lib/ai-functions";
-import { isCadusHost } from "@/lib/host";
+import { isCadusHost, isAethexDomain } from "@/lib/host";
 
 const STORAGE_KEY = "cadus_quick_chat_v2";
 const HIDDEN_ROUTES = ["/ai-assistant", "/cadus-standalone"];
@@ -52,7 +52,7 @@ export default function CadusQuickConsult() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const isHidden = isCadusHost() || HIDDEN_ROUTES.some(r => location === r || location.startsWith(r + "/"));
+  const isHidden = isCadusHost() || isAethexDomain() || HIDDEN_ROUTES.some(r => location === r || location.startsWith(r + "/"));
 
   useEffect(() => { saveHistory(messages); }, [messages]);
 

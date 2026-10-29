@@ -719,3 +719,29 @@
 .fd-rx .tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .fd-rx{min-width:0;overflow-wrap:anywhere}
 @media print{.fd-rx .tw{overflow:visible}}
+
+/* ------------------------------------------------------------------ update 65: each portal's own header and footer */
+.ax-plogo{gap:10px}
+.ax-ptag{display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:999px;font-size:13px;font-weight:700;letter-spacing:.01em;white-space:nowrap;color:#fff}
+.ax-ptag.store{background:#0f766e}.ax-ptag.doctors{background:#1d4ed8}.ax-ptag.study{background:#6d28d9}.ax-ptag.hospitals{background:#0e7490}.ax-ptag.medicalcolleges{background:#b45309}
+.ax-pnav{display:flex;align-items:center;gap:2px;margin-left:18px;overflow-x:auto;scrollbar-width:none;min-width:0}
+.ax-pnav::-webkit-scrollbar{display:none}
+.ax-pnav a{display:inline-flex;align-items:center;flex-shrink:0;height:38px;padding:0 12px;border-radius:9px;color:#344054;font-size:14.5px;font-weight:500;text-decoration:none;white-space:nowrap;transition:background .15s,color .15s}
+.ax-pnav a:hover{background:var(--ax-band);color:var(--ax-ink)}
+.ax-pnav a.on{color:var(--ax-ink);font-weight:650;background:var(--ax-band)}
+.ax-pcta{color:#fff!important;border:0}
+.ax-pcta.store{background:#0f766e}.ax-pcta.doctors{background:#1d4ed8}.ax-pcta.study{background:#6d28d9}.ax-pcta.hospitals{background:#0e7490}.ax-pcta.medicalcolleges{background:#b45309}
+.ax-pcta:hover{filter:brightness(1.08)}
+.ax-phead .ax-head-in{gap:12px}
+.ax-phead .ax-head-r{margin-left:auto}
+.ax-mob-b a.solo{display:flex;align-items:center;justify-content:space-between;padding:14px 4px;border-bottom:1px solid var(--ax-line);color:var(--ax-ink);font-size:16px;font-weight:550;text-decoration:none}
+.ax-pfoot .ax-foot-top{grid-template-columns:1.4fr repeat(3,1fr)}
+.ax-pfoot .ax-foot-brand p{max-width:360px}
+.ax-pmail{display:inline-block;margin-top:10px;color:var(--ax-teal-t);font-weight:600;text-decoration:none}
+@media (max-width:1180px){.ax-pnav{display:none}.ax-phead .ax-pcta{display:none}}
+@media (max-width:900px){.ax-pfoot .ax-foot-top{grid-template-columns:1fr 1fr}}
+@media (max-width:520px){.ax-ptag{height:22px;padding:0 8px;font-size:11.5px}.ax-pfoot .ax-foot-top{grid-template-columns:1fr}}
+@media (max-width:1180px){.ax-phead .ax-burger{display:grid}}
+.ax-portal-store .ec-catbar,.ax-site:has(.ax-phead[data-portal-header=store]) .ec-catbar{display:none}
+.ax-site:has(.ax-phead[data-portal-header=doctors]) .fd-subnav a.brand{display:none}
+@media (max-width:440px){.ax-phead .ax-head-in{gap:8px}.ax-phead .ax-head-r{gap:4px}.ax-phead .ax-icon.wish{display:none}.ax-plogo{gap:7px}.ax-plogo .ax-logo-mark{width:30px;height:30px}}

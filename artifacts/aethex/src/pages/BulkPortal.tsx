@@ -9,6 +9,7 @@
  */
 import { useCallback, useEffect, useMemo, useState, type ComponentType } from "react";
 import { Link, useLocation } from "wouter";
+import { sitePortal } from "@/lib/portals";
 import {
   Activity, ArrowRight, Banknote, BedDouble, BookOpen, Bone, Building2, CalendarClock, Check, ChevronDown, ClipboardCheck, ClipboardList, GraduationCap,
   HeartPulse, Hospital, ListChecks, ListPlus, Microscope, Minus, Package, Plus, Search, ShieldCheck, ShoppingCart, Siren, Stethoscope, Syringe, Trash2, X,
@@ -137,10 +138,11 @@ export default function BulkPortal({ segment }: { segment: Segment }) {
         <div>{cfg.faq.map((f) => <details key={f.q}><summary>{f.q}<ChevronDown size={18} /></summary><p>{f.a}</p></details>)}</div>
       </section>
 
-      <section className="ax-wrap ax-bulk-other">
-        <Link href={cfg.other.path}><span className="ic">{segment === "hospital" ? <GraduationCap size={20} /> : <Hospital size={20} />}</span><span><small>{cfg.other.text}</small><b>{cfg.other.label}</b></span><ArrowRight size={18} /></Link>
+      {/* Update 65: on its own subdomain each platform links only to its own pages. */}
+      {sitePortal() !== "medicalcolleges" && <section className="ax-wrap ax-bulk-other">
+        {!sitePortal() && <Link href={cfg.other.path}><span className="ic">{segment === "hospital" ? <GraduationCap size={20} /> : <Hospital size={20} />}</span><span><small>{cfg.other.text}</small><b>{cfg.other.label}</b></span><ArrowRight size={18} /></Link>}
         <Link href="/institutions"><span className="ic"><Building2 size={20} /></span><span><small>Looking for an institution?</small><b>Directory of colleges and hospitals</b></span><ArrowRight size={18} /></Link>
-      </section>
+      </section>}
 
       {lines.length > 0 && (
         <div className="ax-bulk-bar" role="region" aria-label="Your bulk list">

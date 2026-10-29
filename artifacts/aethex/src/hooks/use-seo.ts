@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { canonicalFor } from "@/lib/portals";
 
 const SITE = "https://aethex.in";
 const DEFAULT_IMAGE = `${SITE}/aethex-og.jpg`;
@@ -31,7 +32,7 @@ export function useSeo({ title, description, path, image, type = "website" }: Se
     // On a portal subdomain (store., study., find., hospitals., medicalcolleges.aethex.in) pages are canonical there.
     const host = window.location.hostname;
     const site = /^(?:store|study|doctors|hospitals|medicalcolleges)\.aethex\.in$/.test(host) ? `https://${host}` : SITE;
-    const url = `${site}${path ?? window.location.pathname}`.replace(/\/+$/, "") || site;
+    const url = canonicalFor(path ?? window.location.pathname, site).replace(/\/+$/, "") || site;
     const canonicalUrl = url === site ? `${site}/` : url;
     const img = image ?? DEFAULT_IMAGE;
 

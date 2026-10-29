@@ -4,6 +4,8 @@ import { ArrowRight, Download, Hospital } from "lucide-react";
 import { cadusUrl, downloadsUrl } from "@/lib/host";
 import { BUSINESS } from "@/config/business";
 import { Logo } from "./Navbar";
+import { PortalFooter } from "./PortalChrome";
+import { sitePortal } from "@/lib/portals";
 import { ClosingBand, TRUST_ITEMS } from "@/components/home/PlatformHero";
 
 const COLS: { title: string; links: { href: string; label: string; external?: boolean }[] }[] = [
@@ -57,6 +59,8 @@ const COLS: { title: string; links: { href: string; label: string; external?: bo
 export function Footer() {
   const [location] = useLocation();
   if (location === "/ai-assistant") return null;
+  const portal = sitePortal();
+  if (portal) return <PortalFooter portal={portal} />;
   return (
     <>
     <ClosingBand />

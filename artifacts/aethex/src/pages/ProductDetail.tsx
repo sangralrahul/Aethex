@@ -12,6 +12,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
+import { bulkListAt } from "@/lib/portals";
 import {
   ArrowLeft, BadgeCheck, BadgePercent, Banknote, BellRing, Building2, Check, ChevronLeft, ChevronRight, ClipboardList, Heart, MessageSquareText, Minus, Package, Plus, Ruler,
   PhoneCall, RotateCcw, Share2, ShieldCheck, ShoppingCart, Truck, Zap,
@@ -186,6 +187,7 @@ export default function ProductDetail() {
   // Hospital and college ranges: quoted, and kept on the bulk list of /hospitals or /medical-colleges.
   const inst = category?.audience === "institution";
   const listPage = ["anatomy-models", "skills-simulators", "lab-equipment"].includes(product.category) ? "/medical-colleges" : "/hospitals";
+  const listAt = bulkListAt(listPage, `/products/${product.slug}`);
   const listed = bulkLines.find((l) => l.productId === product.id && (l.variantId ?? null) === (variant?.id ?? null));
   const addToList = () => {
     if (variants.length > 1 && !variant) { setNeedChoice(true); document.getElementById("ax-pick")?.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
@@ -367,8 +369,10 @@ export default function ProductDetail() {
           {inst ? (
             <p className="ax-pdp-bulk">
               Ordering for a hospital or college?{" "}
-              {listed
-                ? <Link href={`${listPage}#list`} className="ax-link"><ClipboardList size={14} /> On your bulk list: open it</Link>
+              {!listAt.here
+                ? <a href={listAt.there} className="ax-link"><ClipboardList size={14} /> Build a bulk list on Aethex {listPage === "/hospitals" ? "for Hospitals" : "for Medical Colleges"}</a>
+                : listed
+                ? <a href={listAt.list} className="ax-link"><ClipboardList size={14} /> On your bulk list: open it</a>
                 : <button type="button" className="ax-link" onClick={addToList}><ClipboardList size={14} /> Add to your bulk list</button>}
             </p>
           ) : !product.priceOnRequest && product.inStock && <p className="ax-pdp-bulk">Buying for a clinic or hospital? <button type="button" className="ax-link" onClick={() => setAsk("bulk")}>Ask for a bulk price</button></p>}

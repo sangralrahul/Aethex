@@ -4,6 +4,8 @@
  * the sections open in a full-screen menu. Styles: src/site.css (ax-*).
  */
 import { SearchResults } from "@/components/shop/SearchResults";
+import { PortalHeader } from "@/components/layout/PortalChrome";
+import { sitePortal } from "@/lib/portals";
 import { useEffect, useLayoutEffect, useRef, useState, type ComponentType } from "react";
 import { Link, useLocation } from "wouter";
 import {
@@ -138,7 +140,13 @@ export function Logo() {
   );
 }
 
+/** On a portal subdomain the header shows only that platform (update 65); elsewhere the full aethex.in header. */
 export function Navbar({ inner = false }: { inner?: boolean }) {
+  const portal = sitePortal();
+  return portal ? <PortalHeader portal={portal} /> : <SiteNavbar inner={inner} />;
+}
+
+function SiteNavbar({ inner = false }: { inner?: boolean }) {
   const [location, setLocation] = useLocation();
   const { user, isLoggedIn, logout } = useUserAuth();
   const { count: wishCount } = useWishlist();

@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Component, Suspense, lazy, useState, useEffect, type ComponentType, type ReactNode } from "react";
 import { isLoginHost, isCadusHost, isAuthHost, isMainHost, isDownloadsHost, isAethexDomain, downloadsUrl, loginUrl, cadusUrl, currentPortal } from "@/lib/host";
 import { reloadFresh } from "@/lib/fresh-start";
+import { misplaced } from "@/lib/portals";
 
 
 /** The download page lives at downloads.aethex.in; aethex.in/downloads (and the
@@ -577,6 +578,14 @@ function Router() {
   );
 }
 
+/** Update 65: on the aethex.in domain every page opens on its own portal's subdomain (aethex.in shows only the front door). */
+function PortalGuard({ children }: { children: ReactNode }) {
+  const [location] = useLocation();
+  const to = typeof window !== "undefined" ? misplaced(location, window.location.search + window.location.hash) : null;
+  useEffect(() => { if (to) window.location.replace(to); }, [to]);
+  return to ? <PageLoading /> : <>{children}</>;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -585,7 +594,7 @@ function App() {
           <ScrollToTop />
           <PageError>
             <Suspense fallback={<PageLoading />}>
-              <Router />
+              <PortalGuard><Router /></PortalGuard>
             </Suspense>
           </PageError>
           <CadusQuickConsult />

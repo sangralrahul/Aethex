@@ -13,6 +13,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
+import { bulkListAt } from "@/lib/portals";
 import {
   ArrowLeft, BadgeCheck, BadgePercent, Banknote, BellRing, BookOpen, Building2, Check, Heart, Library, MessageSquareText, Minus, Plus, RotateCcw,
   PhoneCall, Search as SearchIcon, Share2, ShieldCheck, ShoppingCart, Truck, Zap,
@@ -246,6 +247,7 @@ export default function BookDetail() {
     if (then) then();
     else toast({ title: "Added to cart", description: `${bookName(book)}${qty > 1 ? ` × ${qty}` : ""}` });
   };
+  const listAt = bulkListAt("/medical-colleges", `/books/${book.slug}`);
   const addToList = () => {
     if (!bulk.put(book.id, null, inList ? inList.qty : LIBRARY_COPIES)) {
       toast({ variant: "destructive", title: "Your college list is full", description: "Send it for a quotation first, or remove something from it." });
@@ -381,8 +383,10 @@ export default function BookDetail() {
           <DeliveryCheck price={price} />
           <p className="ax-pdp-bulk">
             Buying for a library or a batch?{" "}
-            {inList
-              ? <Link href="/medical-colleges#list" className="ax-link"><Library size={14} /> In your college list: open it</Link>
+            {!listAt.here
+              ? <a href={listAt.there} className="ax-link"><Library size={14} /> Build a college list on Aethex for Medical Colleges</a>
+              : inList
+              ? <a href={listAt.list} className="ax-link"><Library size={14} /> In your college list: open it</a>
               : <button type="button" className="ax-link" onClick={addToList}><Library size={14} /> Add to your college list</button>}
           </p>
 

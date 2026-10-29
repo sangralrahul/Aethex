@@ -12,6 +12,7 @@
  */
 import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { Link, useLocation, useSearch } from "wouter";
+import { sitePortal } from "@/lib/portals";
 import {
   Activity, ArrowRight, BookOpen, Brain, ChevronLeft, ChevronRight, FlaskConical, GraduationCap, HeartPulse, Layers, Leaf, Library, MessageSquareText,
   Pill, Search as SearchIcon, SlidersHorizontal, Smile, Stethoscope, Target, X, type LucideProps,
@@ -257,11 +258,19 @@ function Landing({ bs, onAsk }: { bs: BookStore; onAsk: () => void }) {
           <span><b>Can't find your book?</b><small>Tell us the title, author and edition: we'll find it and tell you the price.</small></span>
           <button type="button" className="ax-btn teal" onClick={onAsk}>Ask for a book</button>
         </div>
-        <Link href="/medical-colleges">
-          <span className="ic"><Library size={20} /></span>
-          <span><b>Buying for a library or a batch?</b><small>Send one list with quantities for a quotation.</small></span>
-          <ArrowRight size={18} />
-        </Link>
+        {sitePortal() === "store" ? (
+          <button type="button" className="bulk" onClick={onAsk}>
+            <span className="ic"><Library size={20} /></span>
+            <span><b>Buying for a library or a batch?</b><small>Tell us the titles and quantities: we'll send you a price.</small></span>
+            <ArrowRight size={18} />
+          </button>
+        ) : (
+          <Link href={sitePortal() === "medicalcolleges" ? "/#list" : "/medical-colleges"}>
+            <span className="ic"><Library size={20} /></span>
+            <span><b>Buying for a library or a batch?</b><small>Send one list with quantities for a quotation.</small></span>
+            <ArrowRight size={18} />
+          </Link>
+        )}
       </section>
     </>
   );

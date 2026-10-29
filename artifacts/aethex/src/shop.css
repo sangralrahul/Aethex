@@ -1508,3 +1508,4 @@ img.ax-pimg.crop{padding:0!important;clip-path:var(--ax-clip);transform:translat
   .ax-adm-sec-head{flex-direction:column}
 }
 @media (max-width:640px){ .ax-adm-promo-ed .ax-form,.ax-adm-picks,.ax-adm-refund .ax-form{grid-template-columns:1fr} }
+.ax-bk-help>button.bulk{font:inherit;text-align:left;cursor:pointer;transition:border-color .2s}.ax-bk-help>button.bulk:hover{border-color:var(--ax-teal)}.ax-bk-help>button.bulk>svg:last-child{flex-shrink:0;color:var(--ax-t3)}

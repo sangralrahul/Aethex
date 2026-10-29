@@ -196,6 +196,24 @@ aethex.in is the front door. Each part of Aethex has its own subdomain, all serv
 Sign-in is shared: `login.aethex.in` sends people back to the portal they came from (`back=` parameter).
 After deploying, Cloudflare creates the DNS records and certificates for the new custom domains itself.
 
+### Each portal stands on its own (update 65)
+
+On the aethex.in domain each subdomain shows only its own platform: its own header and footer
+(`src/components/layout/PortalChrome.tsx`, configured per portal in `PORTALS` in `src/lib/portals.ts`), with no
+switcher and no links to the other platforms. `aethex.in` itself shows only the front door with the five dashboards.
+
+- `portalForPath()` maps every path to the portal it belongs to (shared pages such as sign-in, account, contact and
+  the policies stay where they are opened).
+- `misplaced()` sends a page opened on the wrong host to its own portal (`PortalGuard` in `App.tsx`), keeping the
+  query and `#hash`; a portal's home route (`/store`, `/find`, `/hospitals`, `/medical-colleges`) becomes `/`. This
+  runs in the browser because Cloudflare serves most paths from static assets without the Worker.
+- The catalogue (`/products`, `/shop`, `/category`, `/brand`, `/books`), the cart and checkout also open on the
+  hospitals and medical-colleges portals, which build their lists from it and order small lists through the cart.
+- Browser storage is per subdomain, so a bulk list lives on its own portal: `bulkListAt()` decides whether a product
+  page adds to the list here or links to the same page on that portal.
+- `canonicalFor()` (used by `useSeo`) gives each page's canonical address on its own portal.
+- The floating Cadus button is hidden on every aethex.in host.
+
 ## Aethex Doctors
 
 `worker/find.ts` (`/api/find/*`), tables in `migrations/0006_find.sql` (also created on first use). Doctors list

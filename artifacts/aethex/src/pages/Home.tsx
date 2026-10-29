@@ -197,7 +197,7 @@ const BANNERS = [
   { cat: "stethoscopes", brand: "littmann", tone: "navy", kicker: "For doctors and students", title: "Stethoscopes you can rely on", text: "3M Littmann, MDF Instruments, HEINE and Rossmax: for students, residents and consultants.", cta: "Shop stethoscopes" },
   { cat: "diagnostic-instruments", brand: "heine", tone: "teal", kicker: "For clinics", title: "Diagnostic sets for every clinic", text: "Otoscopes, ophthalmoscopes and diagnostic sets from HEINE and MDF Instruments.", cta: "Shop diagnostics" },
   { cat: "bp-monitors", brand: "omron", tone: "slate", kicker: "For clinic and home", title: "BP monitors from trusted brands", text: "OMRON, Dr Trust and Rossmax monitors, delivered across India with cash on delivery.", cta: "Shop BP monitors" },
-  { cat: "icu-equipment", brand: "mindray", tone: "ink", kicker: "For hospitals and colleges", title: "Equip a ward, an ICU or a skills lab", text: "Send one list and get one quotation. Pay by bank transfer or purchase order.", cta: "Request a quotation", href: "/hospitals" },
+  { cat: "orthopaedic-supports", brand: "tynor", tone: "ink", kicker: "For patients and physiotherapists", title: "Supports and braces for every joint", text: "Knee, back, neck and wrist supports from Tynor and Dr Trust, in every size.", cta: "Shop supports" },
 ] as const;
 
 const SERVICES: { icon: Icon; t: string; d: string }[] = [
@@ -211,7 +211,7 @@ const SERVICES: { icon: Icon; t: string; d: string }[] = [
 const SEGMENTS = [
   { aud: "pro", icon: BriefcaseMedical, t: "For doctors and clinics", d: "Stethoscopes, diagnostic sets and BP instruments for daily practice.", href: "/category/stethoscopes" },
   { aud: "home", icon: HeartPulse, t: "Home care and monitoring", d: "Monitors, nebulizers, supports and daily care for your patients at home.", href: "/category/bp-monitors" },
-  { aud: "institution", icon: Building2, t: "Hospitals and medical colleges", d: "Furniture, ICU, emergency, lab equipment, models and skills trainers.", href: "/institutions" },
+  { aud: "institution", icon: Building2, t: "Hospitals and medical colleges", d: "Furniture, ICU, emergency, lab equipment, models and skills trainers.", href: "/category/icu-equipment" },
 ] as const;
 
 const off = (p: ProductSummary) => (p.mrp && p.price && p.mrp > p.price ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0);
@@ -247,7 +247,7 @@ function Banners({ picks, cats }: { picks: Map<string, ProductSummary | undefine
   return (
     <div className="ec-ban" onMouseEnter={() => setHold(true)} onMouseLeave={() => setHold(false)} aria-roledescription="carousel" data-home="banners">
       {BANNERS.map((b, k) => {
-        const href = "href" in b ? b.href : `/category/${b.cat}`;
+        const href = `/category/${b.cat}`;
         const from = cats.find((c) => c.slug === b.cat)?.from;
         return (
           <div key={b.cat} className={`ec-slide ${b.tone}${k === i ? " on" : ""}`} aria-hidden={k !== i}>
@@ -257,7 +257,7 @@ function Banners({ picks, cats }: { picks: Map<string, ProductSummary | undefine
               <p>{b.text}</p>
               <div className="row">
                 <Link href={href} className="ec-btn" tabIndex={k === i ? 0 : -1}>{b.cta} <ArrowRight size={16} /></Link>
-                {from != null && !("href" in b) && <span className="from">From <b>{formatINR(from)}</b></span>}
+                {from != null && <span className="from">From <b>{formatINR(from)}</b></span>}
               </div>
             </div>
             <div className="pic"><ProductImage src={picks.get(b.cat)?.image} width={520} eager={k === 0} /></div>
@@ -312,7 +312,7 @@ export default function Home() {
           <Link href="/shop" className="all"><LayoutGrid size={16} /> All categories</Link>
           {QUICK.slice(0, 9).map((q) => <Link key={q.slug} href={`/category/${q.slug}`}>{q.name}</Link>)}
           <Link href="/books">Medical books</Link>
-          <Link href="/institutions" className="inst">For hospitals</Link>
+          <Link href="/brands" className="inst">All brands</Link>
         </div>
       </nav>
 
@@ -337,12 +337,12 @@ export default function Home() {
               <span>Standard titles for every subject <ArrowRight size={14} /></span>
               <BookOpen className="art" size={64} strokeWidth={1.2} />
             </Link>
-            <a href={cadusUrl("/")} className="ec-promo cadus" data-home="cta-cadus">
-              <small>Free for doctors</small>
-              <b>Cadus clinical assistant</b>
-              <span>Doses, interactions and 320+ tools <ArrowRight size={14} /></span>
-              <span className="art"><CadusMark size={56} variant="mono" color="currentColor" /></span>
-            </a>
+            <Link href="/orders/track" className="ec-promo cadus" data-home="track">
+              <small>Orders</small>
+              <b>Track your order</b>
+              <span>Status and delivery date, any time <ArrowRight size={14} /></span>
+              <Truck className="art" size={56} strokeWidth={1.4} />
+            </Link>
           </div>
         </div>
       </section>
@@ -403,7 +403,7 @@ export default function Home() {
                   </div>
                   <ul>{list.map((c) => <li key={c.slug}><Link href={`/category/${c.slug}`}>{c.name}<small>{c.count}</small></Link></li>)}</ul>
                   <div className="foot">
-                    <Link href={href} className="ec-more">{aud === "institution" ? "Institution store" : "Shop now"} <ArrowRight size={15} /></Link>
+                    <Link href={href} className="ec-more">Shop now <ArrowRight size={15} /></Link>
                     {pic && <span className="pic"><ProductImage src={pic} width={200} /></span>}
                   </div>
                 </div>
@@ -416,28 +416,6 @@ export default function Home() {
       {/* popular, by category (tabs) */}
       <ProductRail />
 
-      {/* institutions band */}
-      <section className="ec-sec" data-rv data-home="more">
-        <div className="ax-wrap">
-          <div className="ec-inst">
-            <div className="txt">
-              <small>Aethex for institutions</small>
-              <h2>Buying for a hospital or a medical college?</h2>
-              <p>Send us your whole list, from beds and monitors to manikins and lab glassware. You get one quotation, and you can pay by bank transfer or purchase order.</p>
-              <div className="row">
-                <Link href="/hospitals" className="ec-btn light">For hospitals <ArrowRight size={16} /></Link>
-                <Link href="/medical-colleges" className="ec-btn ghost">For medical colleges <ArrowRight size={16} /></Link>
-              </div>
-            </div>
-            <ul className="steps">
-              <li><span>1</span><b>Build your list</b><small>Add products, or upload your own list</small></li>
-              <li><span>2</span><b>Get one quotation</b><small>For everything on the list</small></li>
-              <li><span>3</span><b>Confirm and receive</b><small>Delivered across India</small></li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
       {/* brands */}
       <section className="ec-sec" data-rv data-home="brands">
         <div className="ax-wrap">
@@ -448,32 +426,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* more for doctors */}
-      <section className="ec-sec ec-last" data-rv data-home="showcase">
-        <div className="ax-wrap">
-          <Head title="More for doctors" sub="Free tools from Aethex, alongside the store" />
-          <div className="ec-xs">
-            <a href={cadusUrl("/")} className="ec-x dark">
-              <span className="ic"><CadusMark size={22} variant="mono" color="currentColor" /></span>
-              <b>Cadus</b><small>Clinical answers with sources, and 320+ bedside tools.</small>
-              <em>Try free <ArrowRight size={14} /></em>
-            </a>
-            <Link href="/study-hub" className="ec-x"><span className="ic"><GraduationCap size={22} /></span><b>Study Hub</b><small>NEET-PG question banks, mock tests and flashcards.</small><em>Explore <ArrowRight size={14} /></em></Link>
-            <Link href="/tools" className="ec-x"><span className="ic"><Calculator size={22} /></span><b>Clinical tools</b><small>Drug reference, interaction checker and calculators.</small><em>Open <ArrowRight size={14} /></em></Link>
-            <Link href="/case-of-the-day" className="ec-x"><span className="ic"><ClipboardList size={22} /></span><b>Case of the day</b><small>One clinical case, every day.</small><em>Today's case <ArrowRight size={14} /></em></Link>
-          </div>
-          <div className="ec-quotes">
-            {TESTIMONIALS.map((t) => (
-              <figure key={t.name}>
-                <div className="stars" aria-hidden="true">{Array.from({ length: 5 }, (_, k) => <Star key={k} size={14} fill="currentColor" />)}</div>
-                <blockquote>"{t.quote}"</blockquote>
-                <figcaption><span className="av">{t.initials}</span><span><b>{t.name}</b><small>{t.role}</small></span></figcaption>
-              </figure>
-            ))}
-          </div>
-          <p className="ec-dl"><Download size={15} /><span>Cadus is also available for <a href={downloadsUrl()}>Windows and Linux</a>.</span></p>
-        </div>
-      </section>
     </div>
   );
 }
