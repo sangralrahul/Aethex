@@ -1,6 +1,6 @@
 /**
- * aethex.in: the homepage. The whole platform first (update 54: PlatformHero, Pillars), then the
- * storefront (categories, deals, products), with Cadus and the Study Hub alongside, in the site style (light, Inter,
+ * aethex.in: the homepage, Apple-style since update 56: a quiet hero with the live Cadus demo, three
+ * product tiles, the essentials, categories, what doctors say, and links to everything else, in the site style (light, Inter,
  * deep teal). Styles: src/site.css (home section, classes ax-h-*).
  */
 import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
@@ -21,7 +21,8 @@ import { BUSINESS } from "@/config/business";
 import { formatINR } from "@/lib/utils";
 import { cadusUrl, downloadsUrl } from "@/lib/host";
 import { getTodaysCase } from "@/data/clinicalCases";
-import { BrandMarquee, PlatformHero, ProductMarquee, Showcase, useReveal } from "@/components/home/PlatformHero";
+import { LiveDemo, useReveal } from "@/components/home/PlatformHero";
+import { itemHref } from "@/lib/store/bookdata";
 
 type Icon = ComponentType<LucideProps>;
 const still = () => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -178,7 +179,59 @@ function CategoryTiles() {
   );
 }
 
-/* ------------------------------------------------------------------ page */
+/* ------------------------------------------------------------------ page (update 56: Apple-style, lean) */
+
+/** Large, quiet product tiles: the photo on light grey, then name and price. */
+function Essentials() {
+  const { data: store, error, refetch } = useStore();
+  const products = useMemo(() => (store ? mixBrands(store.products.filter((p) => p.featured && !p.priceOnRequest && p.image), rank).slice(0, 8) : []), [store]);
+  return (
+    <section className="ap-sec" data-rv data-home="essentials">
+      <div className="ax-wrap">
+        <div className="ap-head"><h2>The essentials.</h2><Link href="/shop" className="ap-link" data-home="all-products">Shop all {store ? store.products.length : ""} products <ArrowRight size={16} /></Link></div>
+        <div className="ap-grid4">
+          {error && !store ? <StoreDown retry={() => void refetch()} />
+            : !store ? Array.from({ length: 8 }, (_, k) => <div key={k} className="ax-prod sk" />)
+            : products.map((p) => <ProductCard key={p.id} product={p} brandName={store.brandName(p.brand)} />)}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** One row of categories, each a photo on light grey with its name. */
+function Categories() {
+  const { data: store } = useStore();
+  const tiles = useMemo(() => (store ? store.categories.filter((c) => c.audience !== "institution").map((c) => {
+    const best = store.products.filter((p) => p.category === c.slug && p.image).sort((a, b) => rank(b) - rank(a))[0];
+    return { ...c, pic: best?.image };
+  }) : []), [store]);
+  if (!store) return null;
+  return (
+    <section className="ap-sec" data-rv data-home="categories">
+      <div className="ax-wrap">
+        <div className="ap-head"><h2>Shop by category.</h2><Link href="/shop" className="ap-link">All categories <ArrowRight size={16} /></Link></div>
+        <div className="ap-cats">
+          {tiles.map((c) => (
+            <Link key={c.slug} href={`/category/${c.slug}`} className="ap-cat">
+              <span className="pic"><ProductImage src={c.pic} width={300} /></span>
+              <b>{c.name}</b>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const MORE: { href: string; ext?: boolean; icon: Icon; t: string; d: string }[] = [
+  { href: "/hospitals", icon: Hospital, t: "For hospitals", d: "One list, one quotation for every ward" },
+  { href: "/medical-colleges", icon: GraduationCap, t: "For medical colleges", d: "Skills labs, anatomy, labs and books" },
+  { href: "/tools", icon: Calculator, t: "Free clinical tools", d: "Drug reference, interactions, calculators" },
+  { href: "/case-of-the-day", icon: ClipboardList, t: "Case of the day", d: "One clinical case, every day" },
+  { href: "/brands", icon: BadgeCheck, t: "Brands we stock", d: "Verified brands only" },
+  { href: "__downloads", icon: LayoutGrid, t: "Desktop app", d: "Cadus for Windows and Linux" },
+];
 
 export default function Home() {
   useSeo({
@@ -186,180 +239,85 @@ export default function Home() {
     description: "Genuine medical supplies with cash on delivery, the Cadus clinical assistant, and NEET-PG study tools: one platform for India's doctors and medical students.",
     path: "/",
   });
-  const [, navigate] = useLocation();
-  const [q, setQ] = useState("");
-  const todays = useMemo(() => getTodaysCase(), []);
   const { data: store } = useStore();
   useReveal(store);
-  // The brands of the everyday range; the hospital and college makers are on /brands.
-  const homeBrands = useMemo(() => {
-    if (!store) return [];
-    const everyday = new Set(store.categories.filter((c) => c.audience !== "institution").map((c) => c.slug));
-    return store.brands.filter((b) => store.products.some((p) => p.brand === b.slug && everyday.has(p.category)));
-  }, [store]);
+  const shelf = useMemo(() => store?.products.filter((p) => p.featured && p.image && !p.priceOnRequest).slice(0, 3) ?? [], [store]);
 
   return (
-    <div className="ax-home">
-      {/* the whole platform first (update 54), then the store */}
-      <PlatformHero />
-      <Showcase />
-      <ProductMarquee />
-      {/* category bar */}
-      <nav className="ax-h-catbar" aria-label="Shop categories">
+    <div className="ax-home ap-home">
+      {/* hero */}
+      <section className="ap-hero" data-home="platform">
         <div className="ax-wrap">
-          <Link href="/shop" className="all">All products</Link>
-          {QUICK.map((c) => <Link key={c.slug} href={`/category/${c.slug}`}>{c.name}</Link>)}
-        </div>
-      </nav>
-
-      {/* store hero */}
-      <section className="ax-h-hero">
-        <div className="ax-wrap"><div className="ax-sec-head left"><span className="ax-kicker">Medical store</span><h2>Shop genuine medical supplies</h2></div></div>
-        <div className="ax-wrap ax-h-hero-grid">
-          <div className="ax-h-main">
-            <form className="ax-h-search" role="search" onSubmit={(e) => { e.preventDefault(); const t = q.trim(); navigate(t ? `/shop?search=${encodeURIComponent(t)}` : "/shop"); }}>
-              <Search size={19} />
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search BP monitors, stethoscopes, glucometers, supports…" aria-label="Search products" />
-              <button type="submit" className="ax-btn teal">Search</button>
-            </form>
-            <HeroCarousel />
+          <p className="ap-eyebrow">Aethex for doctors and medical students</p>
+          <h1>Everything a doctor needs.<br /><span>In one place.</span></h1>
+          <p className="ap-sub">Clinical answers you can check. Exam preparation for every subject. Genuine medical supplies, delivered across India.</p>
+          <div className="ap-ctas">
+            <a href={cadusUrl("/")} className="ap-btn" data-home="cta-cadus">Try Cadus free</a>
+            <Link href="/shop" className="ap-link lg" data-home="cta-shop">Shop medical supplies <ArrowRight size={18} /></Link>
           </div>
-          <aside className="ax-h-side">
-            <a href={cadusUrl("/")} className="ax-h-promo dark">
-              <span className="tile"><CadusMark size={18} variant="mono" color="currentColor" /></span>
-              <small>Cadus</small>
-              <b>Clinical answers with sources, in seconds</b>
-              <span className="q">"Warfarin with clarithromycin — safe?"</span>
-              <span className="go">Try Cadus <ArrowRight size={15} /></span>
-            </a>
-            <Link href="/case-of-the-day" className="ax-h-promo">
-              <span className="tile light"><ClipboardList size={18} /></span>
-              <small>Case of the day · {todays.specialty}</small>
-              <b>{todays.title}</b>
-              <span className="go">Solve today's case <ArrowRight size={15} /></span>
-            </Link>
-          </aside>
-        </div>
-        <div className="ax-wrap">
-          <ul className="ax-h-serv">
-            <li><BadgeCheck size={22} /><span><b>Genuine products</b><small>From verified brands only</small></span></li>
-            <li><Truck size={22} /><span><b>Delivery across India</b><small>Free from {formatINR(FREE_DELIVERY_FROM)}, tracked to your door</small></span></li>
-            <li><RotateCcw size={22} /><span><b>{BUSINESS.replacementDays}-day replacement</b><small>If it arrives damaged or defective</small></span></li>
-            <li><Banknote size={22} /><span><b>Cash on delivery</b><small>Pay when your order arrives</small></span></li>
-          </ul>
+          <div className="ap-stage"><LiveDemo /></div>
         </div>
       </section>
 
-      {/* categories */}
-      <section className="ax-h-sec" data-rv>
-        <div className="ax-wrap">
-          <div className="ax-h-title"><h2>Shop by category</h2><Link href="/shop" className="ax-link">All categories <ArrowRight size={16} /></Link></div>
-          <CategoryTiles />
-        </div>
-      </section>
-
-      {/* products */}
-      <ProductRail />
-
-      {/* hospitals and medical colleges: bulk buying */}
-      <section className="ax-h-sec" data-rv>
-        <div className="ax-wrap">
-          <div className="ax-h-title"><h2>Buying for a hospital or medical college?</h2></div>
-          <div className="ax-h-inst">
-            <Link href="/hospitals" className="hosp">
-              <span className="ic"><Hospital size={22} /></span>
-              <span className="tx"><small>Aethex for Hospitals</small><b>Supplies for every ward and department</b><em>Beds, ICU monitors and pumps, resuscitation equipment, syringes and IV supplies, and everyday diagnostics.</em></span>
-              <span className="go">Build a list <ArrowRight size={16} /></span>
-            </Link>
-            <Link href="/medical-colleges" className="coll">
-              <span className="ic"><GraduationCap size={22} /></span>
-              <span className="tx"><small>Aethex for Medical Colleges</small><b>Skills labs, anatomy, labs and textbooks</b><em>Manikins and trainers, anatomy models, microscopes, stethoscopes and books: one list, one quotation.</em></span>
-              <span className="go">Build a list <ArrowRight size={16} /></span>
-            </Link>
+      {/* the three products */}
+      <section className="ap-sec ap-tiles-sec" data-rv data-home="showcase">
+        <div className="ax-wrap ap-tiles">
+          <div className="ap-tile dark">
+            <p className="k">Cadus</p>
+            <h3>Clinical answers<br />you can check.</h3>
+            <p className="d">Doses, interactions, differentials and 320+ bedside tools — every answer safety-reviewed, with sources.</p>
+            <div className="lk"><a href={cadusUrl("/")}>Try free <ArrowRight size={15} /></a><a href={downloadsUrl()}>Desktop app <ArrowRight size={15} /></a></div>
+            <div className="vis chat"><span className="q">Warfarin with clarithromycin — safe?</span><span className="a"><small>Bottom line</small>Clarithromycin raises the INR. Prefer another antibiotic, or check the INR in 3 to 5 days.<em><ShieldCheck size={12} /> Safety reviewed</em></span></div>
           </div>
-        </div>
-      </section>
-
-      {/* Cadus + Study banners */}
-      <section className="ax-h-sec" data-rv>
-        <div className="ax-wrap ax-h-duo">
-          <div className="ax-h-ban cadus">
-            <div>
-              <small><Sparkles size={14} /> Cadus</small>
-              <h3>Your clinical assistant, with sources</h3>
-              <p>Differentials, doses, drug interactions, lab reading and SOAP notes. Every answer is checked for dose and red-flag safety.</p>
-              <div className="ctas">
-                <a href={cadusUrl("/")} className="ax-btn teal">Try Cadus free</a>
-                <a href={downloadsUrl()} className="ax-btn ghost-l">Desktop app</a>
-              </div>
+          <div className="ap-tile">
+            <p className="k">Study Hub</p>
+            <h3>Prepare for NEET-PG<br />and beyond.</h3>
+            <p className="d">Question banks, mock tests, flashcards, OSCE stations and tutors for every subject.</p>
+            <div className="lk"><Link href="/study-hub">Explore <ArrowRight size={15} /></Link><Link href="/neet-pg">NEET-PG <ArrowRight size={15} /></Link></div>
+            <div className="vis mcq"><b>Drug of choice for absence seizures?</b><span>Phenytoin</span><span className="ok">Ethosuximide</span><span>Carbamazepine</span></div>
+          </div>
+          <div className="ap-tile wide">
+            <div className="txt">
+              <p className="k">Medical store</p>
+              <h3>Genuine instruments.<br />Delivered across India.</h3>
+              <p className="d">BP monitors, stethoscopes, diagnostics and supports from brands doctors trust. Cash on delivery, free delivery from {formatINR(FREE_DELIVERY_FROM)}.</p>
+              <div className="lk"><Link href="/shop">Shop now <ArrowRight size={15} /></Link><Link href="/brands">Brands <ArrowRight size={15} /></Link></div>
             </div>
-            <div className="card">
-              <span className="lab">Bottom line</span>
-              <p>Clarithromycin raises the INR: prefer another antibiotic, or check the INR in 3 to 5 days.</p>
-              <span className="ok"><ShieldCheck size={12} /> Safety reviewed</span>
-            </div>
-          </div>
-          <div className="ax-h-ban study">
-            <div>
-              <small><BookOpen size={14} /> Study Hub</small>
-              <h3>Prepare for NEET-PG and beyond</h3>
-              <p>Subject notes, previous-year questions, mock tests and flashcards for NEET-PG, NExT, FMGE and USMLE.</p>
-              <div className="ctas">
-                <Link href="/study-hub" className="ax-btn dark">Explore Study Hub</Link>
-                <Link href="/neet-pg" className="ax-btn">NEET-PG</Link>
-              </div>
-            </div>
-            <div className="card mcq">
-              <small>Pharmacology</small>
-              <b>Drug of choice for absence seizures?</b>
-              <span>A. Phenytoin</span><span className="right">B. Ethosuximide</span><span>C. Carbamazepine</span>
-            </div>
+            <div className="shelf">{shelf.map((p) => <Link key={p.id} href={itemHref(p.id, p.slug)} className="it"><ProductImage src={p.image} width={360} /></Link>)}</div>
           </div>
         </div>
       </section>
 
-      {/* tools */}
-      <section className="ax-h-sec" data-rv>
-        <div className="ax-wrap">
-          <div className="ax-h-title"><h2>Free clinical tools</h2><Link href="/tools" className="ax-link">All tools <ArrowRight size={16} /></Link></div>
-          <div className="ax-h-tools">
-            {TOOLS.map(({ href, icon: I, t, d }) => (
-              <Link key={href} href={href}><span className="ic"><I size={20} /></span><span><b>{t}</b><small>{d}</small></span><ArrowRight size={16} className="ar" /></Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* brands */}
-      {(!store || homeBrands.length > 0) && <section className="ax-h-sec" data-rv>
-        <div className="ax-wrap">
-          <div className="ax-h-title"><h2>Shop by brand</h2><Link href="/brands" className="ax-link">All brands <ArrowRight size={16} /></Link></div>
-          <div className="ax-h-brandgrid">
-            {homeBrands.map((b) => (
-              <Link key={b.slug} href={`/brand/${b.slug}`}><b>{b.name}</b><small>{b.count} products</small></Link>
-            ))}
-          </div>
-        </div>
-      </section>}
+      <Essentials />
+      <Categories />
 
       {/* testimonials */}
-      <section className="ax-h-sec ax-h-quotes-sec" data-rv>
+      <section className="ap-sec" data-rv>
         <div className="ax-wrap">
-          <div className="ax-h-title"><h2>What doctors are saying</h2></div>
-          <div className="ax-quotes">
+          <div className="ap-head"><h2>What doctors say.</h2></div>
+          <div className="ap-quotes">
             {TESTIMONIALS.map((t) => (
-              <figure key={t.name} className="ax-quote">
-                <span className="stars">{[0, 1, 2, 3, 4].map((s) => <Star key={s} size={15} fill="currentColor" />)}</span>
+              <figure key={t.name} className="ap-quote">
                 <blockquote>"{t.quote}"</blockquote>
-                <figcaption><span className="av">{t.initials}</span><span><b>{t.name}</b><small>{t.role}</small></span></figcaption>
+                <figcaption><b>{t.name}</b><small>{t.role}</small></figcaption>
               </figure>
             ))}
           </div>
         </div>
       </section>
 
-      {/* brands: a scrolling strip (update 55) */}
-      <BrandMarquee />
+      {/* everything else, as quiet links */}
+      <section className="ap-sec ap-more-sec" data-rv data-home="more">
+        <div className="ax-wrap">
+          <div className="ap-head"><h2>More from Aethex.</h2></div>
+          <div className="ap-more">
+            {MORE.map(({ href, icon: I, t, d }) => {
+              const body = <><span className="ic"><I size={20} /></span><span><b>{t}</b><small>{d}</small></span><ArrowRight size={16} className="ar" /></>;
+              return href === "__downloads" ? <a key={t} href={downloadsUrl()}>{body}</a> : <Link key={t} href={href}>{body}</Link>;
+            })}
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

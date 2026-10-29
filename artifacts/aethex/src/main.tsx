@@ -5,6 +5,7 @@ import "./site.css";
 import "./site-pro.css";
 import "./shop.css";
 import "./buy.css";
+import "./site-apple.css";
 import { installAiBridge } from "@/lib/ai-bridge";
 import { bootAccount } from "@/lib/account";
 

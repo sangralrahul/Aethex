@@ -68,7 +68,7 @@ const DEMOS = [
   { q: "Drug of choice for absence seizures?", a: "Ethosuximide (valproate if there are also generalised tonic-clonic seizures). Avoid carbamazepine.", tag: "NEET-PG" },
 ];
 
-function LiveDemo() {
+export function LiveDemo() {
   const [k, setK] = useState(0);
   const [typed, setTyped] = useState("");
   const [phase, setPhase] = useState<"typing" | "thinking" | "answer">("typing");
