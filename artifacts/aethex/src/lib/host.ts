@@ -114,12 +114,12 @@ export function authUrl(path = "/", query?: Record<string, string>): string {
 
 /**
  * aethex.in is the front door; each part of Aethex has its own subdomain, served by the same app:
- * store.aethex.in, study.aethex.in, find.aethex.in, hospitals.aethex.in, medicalcolleges.aethex.in
+ * store.aethex.in, study.aethex.in, doctors.aethex.in, hospitals.aethex.in, medicalcolleges.aethex.in
  * and cadus.aethex.in. Off the aethex.in domain (tests, previews) each portal is an in-app route.
  */
-export type Portal = "cadus" | "store" | "study" | "find" | "hospitals" | "medicalcolleges";
+export type Portal = "cadus" | "store" | "study" | "doctors" | "hospitals" | "medicalcolleges";
 const PORTAL_ROUTE: Record<Exclude<Portal, "cadus">, string> = {
-  store: "/store", study: "/study-hub", find: "/find", hospitals: "/hospitals", medicalcolleges: "/medical-colleges",
+  store: "/store", study: "/study-hub", doctors: "/find", hospitals: "/hospitals", medicalcolleges: "/medical-colleges",
 };
 
 /** The portal this subdomain is, or null on aethex.in itself (and off the domain). */

@@ -2,11 +2,11 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useParams, useSearch } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, BadgeCheck, Building2, CalendarCheck, CheckCircle2, Clock, Languages, MapPin, ShieldAlert, Video } from "lucide-react";
+import { ArrowLeft, Award, BadgeCheck, Building2, CalendarCheck, CalendarX2, CheckCircle2, Clock, GraduationCap, Languages, MapPin, ShieldAlert, ThumbsUp, Users, Video } from "lucide-react";
 import { useSeo } from "@/hooks/use-seo";
 import { useUserAuth } from "@/hooks/use-user-auth";
 import { formatINR } from "@/lib/utils";
-import { addDays, dateLabel, displayName, findApi, freeSlots, hoursText, signInHere, time12, useDoctor, type Appointment, type FindError } from "@/lib/find";
+import { addDays, clinicKey, dateLabel, displayName, findApi, freeSlots, hoursText, signInHere, time12, useDoctor, type Appointment, type FindError } from "@/lib/find";
 import { Avatar, FindNav, Stars } from "./FindParts";
 
 export default function DoctorPage() {
@@ -16,8 +16,9 @@ export default function DoctorPage() {
   const { data, isLoading, error, refetch } = useDoctor(slug);
   const { user } = useUserAuth();
   const d = data?.doctor;
-  useSeo({ title: d ? `${displayName(d.name)}, ${d.specialty} in ${d.city}: book an appointment | Aethex Find` : "Doctor | Aethex Find", description: d ? `${displayName(d.name)}, ${d.qualifications}. ${d.experience} years experience. ${d.clinic}, ${d.city}. Book online on Aethex Find.` : "Book a doctor on Aethex Find.", path: `/doctor/${slug}` });
+  useSeo({ title: d ? `${displayName(d.name)}, ${d.specialty} in ${d.city}: book an appointment | Aethex Doctors` : "Doctor | Aethex Doctors", description: d ? `${displayName(d.name)}, ${d.qualifications}. ${d.experience} years experience. ${d.clinic}, ${d.city}. Book online on Aethex Doctors.` : "Book a doctor on Aethex Doctors.", path: `/doctor/${slug}` });
 
+  const [tab, setTab] = useState<"info" | "stories" | "consult" | "articles">("info");
   const [mode, setMode] = useState<"clinic" | "video">(new URLSearchParams(search).get("mode") === "video" ? "video" : "clinic");
   const [date, setDate] = useState(""), [time, setTime] = useState("");
   const [form, setForm] = useState({ name: "", phone: "", email: "", age: "", reason: "" });
@@ -27,7 +28,7 @@ export default function DoctorPage() {
   const days = useMemo(() => {
     if (!data?.doctor.hours) return [];
     const taken = new Set(data.taken);
-    return Array.from({ length: 14 }, (_, i) => addDays(data.today, i)).map((day) => ({ day, slots: freeSlots(data.doctor.hours!, day, taken, data.today, data.now) }));
+    return Array.from({ length: 14 }, (_, i) => addDays(data.today, i)).map((day) => ({ day, slots: freeSlots(data.doctor.hours!, day, taken, data.today, data.now, data.doctor.timeOff) }));
   }, [data]);
   useEffect(() => { if (!date && days.length) { const first = days.find((x) => x.slots.length); if (first) setDate(first.day); } }, [days, date]);
   const slots = days.find((x) => x.day === date)?.slots ?? [];
@@ -74,28 +75,69 @@ export default function DoctorPage() {
                   {d.video && <span><Video size={14} /> Video consult</span>}
                 </div>
                 {d.rating && <p className="rt"><Stars value={d.rating.avg} /> <b>{d.rating.avg.toFixed(1)}</b> · {d.rating.count} patient review{d.rating.count === 1 ? "" : "s"}</p>}
+                <div className="fd-pstats">
+                  <span><b>{d.experience}</b><small>Years of experience</small></span>
+                  {data.recommendPct != null && <span><b>{data.recommendPct}%</b><small>Recommend</small></span>}
+                  <span><b>{data.reviews.length}</b><small>Patient stories</small></span>
+                  <span><b>{data.stats.answers}</b><small>Answers</small></span>
+                </div>
               </div>
             </section>
-            {d.about && <section className="fd-box"><h2>About</h2><p className="about">{d.about}</p></section>}
-            <section className="fd-box fd-facts">
-              <h2>Clinic</h2>
-              <p><Building2 size={17} /> <span><b>{d.clinic}</b><br />{d.address}{d.locality ? `, ${d.locality}` : ""}, {d.city} {d.pincode}</span></p>
-              <p><Clock size={17} /> <span>{hoursText(d.hours)}</span></p>
-              <p><MapPin size={17} /> <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${d.clinic}, ${d.address}, ${d.city} ${d.pincode}`)}`} target="_blank" rel="noopener noreferrer">Get directions</a></p>
-              {d.languages.length > 0 && <p><Languages size={17} /> <span>Speaks {d.languages.join(", ")}</span></p>}
-            </section>
-            {d.services.length > 0 && <section className="fd-box"><h2>Services</h2><div className="fd-chips">{d.services.map((s) => <span key={s}>{s}</span>)}</div></section>}
-            <section className="fd-box">
-              <h2>Registration</h2>
-              <p className="mu">{d.regCouncil} · Registration no. {d.regNo}</p>
-              <p className="tiny">You can confirm it on the National Medical Commission's Indian Medical Register.</p>
-            </section>
-            <section className="fd-box" data-find="reviews">
-              <h2>Patient reviews</h2>
-              {data.reviews.length ? data.reviews.map((r, i) => (
-                <div key={i} className="fd-review"><Stars value={r.rating} size={13} /><p>{r.text || "No comment."}</p><small>{r.name} · {new Date(r.at).toLocaleDateString("en-IN", { month: "short", year: "numeric" })} · Verified visit</small></div>
-              )) : <p className="mu">No reviews yet. Only patients whose visit was completed can leave one.</p>}
-            </section>
+            <div className="fd-ptabs" role="tablist">
+              {([["info", "Info"], ["stories", `Patient stories (${data.reviews.length})`], ["consult", `Consult Q&A (${data.stats.answers})`], ["articles", `Articles (${data.articles.length})`]] as const).map(([k, l]) => (
+                <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)} data-tab={k}>{l}</button>
+              ))}
+            </div>
+            {tab === "info" && <>
+              {d.about && <section className="fd-box"><h2>About</h2><p className="about">{d.about}</p></section>}
+              <section className="fd-box fd-facts">
+                <h2>Clinic</h2>
+                <p><Building2 size={17} /> <span><Link href={`/clinic/${clinicKey(d.clinic, d.city)}`}><b>{d.clinic}</b></Link><br />{d.address}{d.locality ? `, ${d.locality}` : ""}, {d.city} {d.pincode}</span></p>
+                <p><Clock size={17} /> <span>{hoursText(d.hours)}</span></p>
+                {d.timeOff.length > 0 && <p><CalendarX2 size={17} /> <span>On leave: {d.timeOff.slice(0, 6).map((x) => dateLabel(x)).join(", ")}</span></p>}
+                <p><MapPin size={17} /> <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${d.clinic}, ${d.address}, ${d.city} ${d.pincode}`)}`} target="_blank" rel="noopener noreferrer">Get directions</a></p>
+                {d.languages.length > 0 && <p><Languages size={17} /> <span>Speaks {d.languages.join(", ")}</span></p>}
+              </section>
+              {d.services.length > 0 && <section className="fd-box"><h2>Services</h2><div className="fd-chips">{d.services.map((s) => <span key={s}>{s}</span>)}</div></section>}
+              {d.education.length > 0 && <section className="fd-box" data-find="education"><h2>Education</h2><ul className="fd-list">{d.education.map((e, i) => <li key={i}><GraduationCap size={16} /> <span><b>{e.degree}</b> · {e.college}{e.year ? `, ${e.year}` : ""}</span></li>)}</ul></section>}
+              {d.awards.length > 0 && <section className="fd-box"><h2>Awards and recognitions</h2><ul className="fd-list">{d.awards.map((x) => <li key={x}><Award size={16} /> <span>{x}</span></li>)}</ul></section>}
+              {d.memberships.length > 0 && <section className="fd-box"><h2>Memberships</h2><ul className="fd-list">{d.memberships.map((x) => <li key={x}><Users size={16} /> <span>{x}</span></li>)}</ul></section>}
+              <section className="fd-box">
+                <h2>Registration</h2>
+                <p className="mu">{d.regCouncil} · Registration no. {d.regNo}</p>
+                <p className="tiny">You can confirm it on the National Medical Commission's Indian Medical Register.</p>
+              </section>
+            </>}
+            {tab === "stories" && (
+              <section className="fd-box" data-find="reviews">
+                <h2>Patient stories</h2>
+                {data.recommendPct != null && <p className="fd-recpct"><ThumbsUp size={18} /> <b>{data.recommendPct}%</b> of patients who reviewed would recommend {displayName(d.name)}</p>}
+                {data.reviews.length ? data.reviews.map((r, i) => (
+                  <div key={i} className="fd-review">
+                    <div className="top"><Stars value={r.rating} size={13} />{r.recommend != null && <span className={`pill ${r.recommend ? "completed" : "cancelled"}`}>{r.recommend ? "Recommends the doctor" : "Doesn't recommend"}</span>}</div>
+                    {r.visited && <small className="mu">Visited for {r.visited}</small>}
+                    <p>{r.text || "No comment."}</p>
+                    {r.wait && <small className="mu"><Clock size={12} /> Waited {r.wait.toLowerCase()}</small>}
+                    {r.reply && <div className="fd-reply"><b>Reply from {displayName(d.name)}</b><p>{r.reply}</p></div>}
+                    <small>{r.name} · {new Date(r.at).toLocaleDateString("en-IN", { month: "short", year: "numeric" })} · Verified visit</small>
+                  </div>
+                )) : <p className="mu">No stories yet. Only patients whose visit was completed can share one.</p>}
+              </section>
+            )}
+            {tab === "consult" && (
+              <section className="fd-box" data-find="consult">
+                <h2>Answers by {displayName(d.name)}</h2>
+                {data.answers.length ? data.answers.map((a) => <Link key={a.questionId} href={`/ask/${a.questionId}`} className="fd-ans-mini"><b>{a.title}</b><p>{a.body.slice(0, 220)}{a.body.length > 220 ? "…" : ""}</p><small>{a.helpful} found it helpful</small></Link>)
+                  : <p className="mu">No answers yet. <Link href="/ask">Ask a doctor</Link></p>}
+              </section>
+            )}
+            {tab === "articles" && (
+              <section className="fd-box" data-find="doc-articles">
+                <h2>Articles by {displayName(d.name)}</h2>
+                {data.articles.length ? data.articles.map((a) => <Link key={a.slug} href={`/articles/${a.slug}`} className="fd-ans-mini"><b>{a.title}</b>{a.summary && <p>{a.summary}</p>}</Link>)
+                  : <p className="mu">No articles yet.</p>}
+              </section>
+            )}
           </div>
 
           <aside className="fd-book" id="book" data-find="book">

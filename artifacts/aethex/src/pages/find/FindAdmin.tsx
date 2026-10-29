@@ -1,4 +1,4 @@
-/** /admin/doctors: check and approve the doctors who listed their practice on Aethex Find. */
+/** /admin/doctors: check and approve the doctors who listed their practice on Aethex Doctors. */
 import { useState } from "react";
 import { Link } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -12,7 +12,7 @@ type Row = OwnDoctor & { email: string };
 const TABS = ["pending", "live", "paused", "rejected"] as const;
 
 export default function FindAdmin() {
-  useSeo({ title: "Approve doctors | Aethex admin", description: "Aethex Find approvals.", path: "/admin/doctors" });
+  useSeo({ title: "Approve doctors | Aethex admin", description: "Aethex Doctors approvals.", path: "/admin/doctors" });
   const qc = useQueryClient();
   const [tab, setTab] = useState<(typeof TABS)[number]>("pending");
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -28,7 +28,7 @@ export default function FindAdmin() {
   return (
     <div className="fd-page" data-find="admin">
       <div className="ax-wrap fd-narrow wide">
-        <header className="fd-pagehead"><h1><ShieldCheck size={26} /> Aethex Find: approve doctors</h1><p>Check each registration number on the NMC's Indian Medical Register before approving. <Link href="/admin">Store admin</Link></p></header>
+        <header className="fd-pagehead"><h1><ShieldCheck size={26} /> Aethex Doctors: approve doctors</h1><p>Check each registration number on the NMC's Indian Medical Register before approving. <Link href="/admin">Store admin</Link></p></header>
         {fe?.status === 401 ? <SignInCard title="Sign in as an admin" text="Only accounts in ADMIN_EMAILS can approve doctors." href={signInHere()} />
           : fe ? <div className="fd-empty"><b>Can't open approvals</b><p>{fe.message}</p></div>
           : <>

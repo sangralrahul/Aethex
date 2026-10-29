@@ -21,14 +21,14 @@ import { cadusUrl, currentPortal, downloadsUrl, loginUrl, mainUrl, portalUrl, ty
 
 /** The portal switcher: [portal, label, path on that portal]. */
 const PORTAL_LINKS: ["hub" | Portal, string, string][] = [
-  ["hub", "Aethex", "/"], ["find", "Find a doctor", "/"], ["store", "Store", "/"], ["cadus", "Cadus", "/"],
+  ["hub", "Aethex", "/"], ["doctors", "Doctors", "/"], ["store", "Store", "/"], ["cadus", "Cadus", "/"],
   ["study", "Study", "/"], ["hospitals", "Hospitals", "/"], ["medicalcolleges", "Medical colleges", "/"],
 ];
 /** Which portal this page belongs to: the subdomain, or (on aethex.in) the page's section. */
 function activePortal(path: string): "hub" | Portal {
   const p = currentPortal();
   if (p) return p;
-  if (/^\/(find|doctors?|appointments|practice|list-your-practice)(\/|$)/.test(path)) return "find";
+  if (/^\/(find|doctors?|appointments|practice|list-your-practice|clinics?|ask|articles|records|prescription)(\/|$)/.test(path)) return "doctors";
   if (/^\/(store|shop|products|category|brand|brands|books|cart|wishlist|compare|orders?)(\/|$)/.test(path)) return "store";
   if (/^\/(study-hub|neet-pg|mock-test|flashcards|case-of-the-day|cme-hub|tools|calculator|drug-reference)(\/|$)/.test(path)) return "study";
   if (/^\/(hospitals|institutions)(\/|$)/.test(path)) return "hospitals";

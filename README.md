@@ -60,9 +60,11 @@ a syllabus tracker and a weak-topic radar — for NEET-PG, INI-CET, FMGE and uni
 
 ## Find a doctor
 
-**Book a checked doctor.** On find.aethex.in patients search by city and specialty, see fees and consulting
-hours, and book a clinic visit or video consult from the doctor's free slots. Doctors list their practice
-free; every registration number is checked before a profile goes live, and only completed visits can be reviewed.
+**Book a checked doctor.** On doctors.aethex.in patients search doctors and clinics by city, specialty, fee,
+availability and experience, read patient stories, and book a clinic visit or video consult. They reschedule,
+receive printable prescriptions, ask a doctor free, read health articles, and keep health records on their device.
+Doctors list their practice free, with a practice dashboard for bookings, prescriptions, leave days, answers and
+articles; every registration number is checked before a profile goes live.
 
 <br />
 
@@ -85,7 +87,7 @@ order tracking and GST invoices for clinics. [Store guide](docs/STORE.md)
 
 ## Available everywhere
 
-Aethex is one account across its portals: [find.aethex.in](https://find.aethex.in), [store.aethex.in](https://store.aethex.in),
+Aethex is one account across its portals: [doctors.aethex.in](https://doctors.aethex.in), [store.aethex.in](https://store.aethex.in),
 [study.aethex.in](https://study.aethex.in), [hospitals.aethex.in](https://hospitals.aethex.in) and
 [medicalcolleges.aethex.in](https://medicalcolleges.aethex.in).
 Use Cadus in the browser at [cadus.aethex.in](https://cadus.aethex.in), install it as an app on

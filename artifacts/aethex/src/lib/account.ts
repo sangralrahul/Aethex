@@ -154,7 +154,7 @@ const nextParam = () => { try { return safePath(new URLSearchParams(window.locat
  */
 export function signedInDestination(path = nextParam()): string | null {
   if (isAuthHost()) return `https://cadus.aethex.in${safePath(path)}`;
-  // "back": a full address on one of the portal subdomains (find.aethex.in, store.aethex.in, ...).
+  // "back": a full address on one of the portal subdomains (doctors.aethex.in, store.aethex.in, ...).
   if (isLoginHost()) { const b = backParam(); if (b) return b; }
   if (isLoginHost()) return `https://aethex.in${safePath(path)}`;
   return null;

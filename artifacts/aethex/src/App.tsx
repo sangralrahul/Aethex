@@ -98,6 +98,15 @@ const ListPractice = lazyPage(() => import("@/pages/find/ListPractice"));
 const Practice = lazyPage(() => import("@/pages/find/Practice"));
 const MyAppointments = lazyPage(() => import("@/pages/find/MyAppointments"));
 const FindAdmin = lazyPage(() => import("@/pages/find/FindAdmin"));
+const ClinicsPage = lazyPage(() => import("@/pages/find/Clinics").then((m) => ({ default: m.ClinicsPage })));
+const ClinicPage = lazyPage(() => import("@/pages/find/Clinics").then((m) => ({ default: m.ClinicPage })));
+const AskPage = lazyPage(() => import("@/pages/find/AskDoctor").then((m) => ({ default: m.AskPage })));
+const QuestionPage = lazyPage(() => import("@/pages/find/AskDoctor").then((m) => ({ default: m.QuestionPage })));
+const ArticlesPage = lazyPage(() => import("@/pages/find/Articles").then((m) => ({ default: m.ArticlesPage })));
+const ArticlePage = lazyPage(() => import("@/pages/find/Articles").then((m) => ({ default: m.ArticlePage })));
+const WriteArticle = lazyPage(() => import("@/pages/find/Articles").then((m) => ({ default: m.WriteArticle })));
+const PrescriptionPage = lazyPage(() => import("@/pages/find/Prescription"));
+const HealthRecords = lazyPage(() => import("@/pages/find/HealthRecords"));
 const Products = lazyPage(() => import("@/pages/Products"));
 const ProductDetail = lazyPage(() => import("@/pages/ProductDetail"));
 const BookDetail = lazyPage(() => import("@/pages/BookDetail"));
@@ -346,7 +355,7 @@ function Router() {
           const portal = currentPortal();
           const page = portal === "store" ? <Home />
             : portal === "study" ? <StudyHub />
-            : portal === "find" ? <FindHome />
+            : portal === "doctors" ? <FindHome />
             : portal === "hospitals" ? <BulkPortal segment="hospital" />
             : portal === "medicalcolleges" ? <BulkPortal segment="college" />
             : <Hub />;
@@ -397,7 +406,7 @@ function Router() {
               <Suspense fallback={<PageLoading />}>
               <Switch>
 
-                {/* Aethex Find (find.aethex.in): doctors, bookings, the practice dashboard (update 58) */}
+                {/* Aethex Doctors (doctors.aethex.in; doctors.aethex.in redirects there): doctors, bookings, the practice dashboard (update 58) */}
                 <Route path="/store" component={Home} />
                 <Route path="/find" component={FindHome} />
                 <Route path="/doctors" component={FindDoctors} />
@@ -406,6 +415,15 @@ function Router() {
                 <Route path="/practice" component={Practice} />
                 <Route path="/appointments" component={MyAppointments} />
                 <Route path="/admin/doctors" component={FindAdmin} />
+                <Route path="/clinics" component={ClinicsPage} />
+                <Route path="/clinic/:key" component={ClinicPage} />
+                <Route path="/ask" component={AskPage} />
+                <Route path="/ask/:id" component={QuestionPage} />
+                <Route path="/articles" component={ArticlesPage} />
+                <Route path="/articles/:slug" component={ArticlePage} />
+                <Route path="/practice/write" component={WriteArticle} />
+                <Route path="/prescription/:id" component={PrescriptionPage} />
+                <Route path="/records" component={HealthRecords} />
 
                 {/* Books Library */}
                 <Route path="/books" component={MedicalBooks} />

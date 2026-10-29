@@ -151,7 +151,7 @@ All values are Cloudflare Worker secrets or variables (`npx wrangler secret put 
 | `ELEVENLABS_API_KEY` | No | Natural voices, transcription and patient audio |
 | `ELEVENLABS_VOICE`, `ELEVENLABS_DAILY_SPEAK`, `ELEVENLABS_DAILY_STT` | No | Default voice and daily allowances |
 | `CADUS_GUEST_DAILY`, `CADUS_GUEST_IP_DAILY` | No | Guest messages a day per browser (default 5) and per network (default 40) |
-| `ADMIN_EMAILS` | Store, Find | Accounts allowed into the store admin and to approve doctors on Aethex Find (aethex.in/admin/doctors) |
+| `ADMIN_EMAILS` | Store, Find | Accounts allowed into the store admin and to approve doctors on Aethex Doctors (aethex.in/admin/doctors) |
 | `STORE_EMAIL`, `STORE_WHATSAPP` | No | Order inbox and WhatsApp ordering |
 | `STORE_BANK_ACCOUNT_NAME`, `STORE_BANK_ACCOUNT_NUMBER`, `STORE_BANK_IFSC`, `STORE_BANK_NAME` | No | Bank-transfer payment |
 | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` | No | Online payments (off until both keys are set) |
@@ -188,7 +188,7 @@ aethex.in is the front door. Each part of Aethex has its own subdomain, all serv
 |---|---|---|
 | `store.aethex.in` | the medical store | `/store` |
 | `study.aethex.in` | the Study Hub | `/study-hub` |
-| `find.aethex.in` | Aethex Find (doctors and bookings) | `/find` |
+| `doctors.aethex.in` | Aethex Doctors (find.aethex.in redirects here) | `/find` |
 | `hospitals.aethex.in` | Aethex for Hospitals | `/hospitals` |
 | `medicalcolleges.aethex.in` | Aethex for Medical Colleges | `/medical-colleges` |
 | `cadus.aethex.in` | Cadus | `/ai-assistant` |
@@ -196,10 +196,24 @@ aethex.in is the front door. Each part of Aethex has its own subdomain, all serv
 Sign-in is shared: `login.aethex.in` sends people back to the portal they came from (`back=` parameter).
 After deploying, Cloudflare creates the DNS records and certificates for the new custom domains itself.
 
-## Aethex Find
+## Aethex Doctors
 
 `worker/find.ts` (`/api/find/*`), tables in `migrations/0006_find.sql` (also created on first use). Doctors list
 their own practice at `/list-your-practice`; the profile is `pending` until an account in `ADMIN_EMAILS` approves it
 at `/admin/doctors` (check the registration number on the NMC register first). Only `live` doctors appear in search.
 Patients book the doctor's free slots (India time, 30 minutes ahead, 30 days out); the doctor confirms, completes or
 cancels from `/practice`. Reviews can only be written for `completed` appointments. Emails go through Brevo.
+
+### Aethex Doctors features (update 64)
+
+- Search filters: city, specialty, availability (today, tomorrow, 7 days), fee, experience, gender, video; sort by
+  relevance, experience, rating or fee. `/clinics` groups live doctors by clinic; `/clinic/:key` lists its doctors.
+- Profiles: education, awards, memberships, leave days (`/me/timeoff`), and tabs for Info, Patient stories
+  (rating, recommend, waiting time, the doctor's reply), Consult Q&A and Articles.
+- Patients reschedule (`/appointments/:id/reschedule`); doctors write prescriptions
+  (`/practice/appointments/:id/prescription`), which complete the visit and open as a printable page `/prescription/:id`.
+- Ask a doctor (`/ask`): public questions without names (phone numbers and emails refused); only approved doctors
+  answer; readers mark answers helpful. Health articles (`/articles`): only approved doctors publish.
+  Admins remove posts with `POST /api/find/admin/remove`.
+- Health records (`/records`) stay in the browser (IndexedDB); nothing is uploaded.
+- Medicines and lab tests are not offered: they need a licensed pharmacy and partner labs.

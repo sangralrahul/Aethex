@@ -90,12 +90,12 @@ const CollegeArt = () => (
     {Array.from({ length: 11 }, (_, i) => { const x = 15 + i * 27, y1 = 75 + Math.sin(i * 0.9) * 42, y2 = 75 - Math.sin(i * 0.9) * 42; return <g key={i} className="rung" style={{ animationDelay: `${i * 0.2}s` }}><line x1={x} y1={y1} x2={x} y2={y2} stroke="rgba(180,83,9,.35)" strokeWidth="2" /><circle cx={x} cy={y1} r="4" fill="#f59e0b" /><circle cx={x} cy={y2} r="4" fill="#b45309" /></g>; })}
   </svg>
 );
-const ART: Record<string, ReactNode> = { find: <FindArt />, store: <StoreArt />, study: <StudyArt />, hospitals: <HospitalArt />, medicalcolleges: <CollegeArt /> };
+const ART: Record<string, ReactNode> = { doctors: <FindArt />, store: <StoreArt />, study: <StudyArt />, hospitals: <HospitalArt />, medicalcolleges: <CollegeArt /> };
 
 
 
 const CARDS: { id: Portal; tone: string; icon: ReactNode; photo: string; title: string; who: string; points: string[]; cta: string }[] = [
-  { id: "find", tone: "blue", icon: <CalendarCheck size={20} />, photo: "stethoscope", title: "Find a doctor", who: "For patients", points: ["Search by city and specialty", "Clinic visit or video consult", "Every registration checked"], cta: "Book now" },
+  { id: "doctors", tone: "blue", icon: <CalendarCheck size={20} />, photo: "stethoscope", title: "Find a doctor", who: "For patients", points: ["Search by city and specialty", "Clinic visit or video consult", "Every registration checked"], cta: "Book now" },
   { id: "store", tone: "teal", icon: <ShoppingBag size={20} />, photo: "bp-monitor", title: "Medical store", who: "For everyone", points: ["Genuine, verified brands", "Cash on delivery across India", `Free delivery from ${formatINR(FREE_DELIVERY_FROM)}`], cta: "Shop now" },
   { id: "study", tone: "violet", icon: <GraduationCap size={20} />, photo: "test-books", title: "Study", who: "For students", points: ["NEET-PG preparation", "Mock tests and flashcards", "Every subject, every exam"], cta: "Start studying" },
   { id: "hospitals", tone: "cyan", icon: <Hospital size={20} />, photo: "ecg", title: "Hospitals", who: "For institutions", points: ["ICU, emergency and furniture", "One list, one quotation", "Bank transfer or purchase order"], cta: "Get a quotation" },

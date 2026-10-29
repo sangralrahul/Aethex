@@ -70,6 +70,11 @@ export default {
       return env.ASSETS.fetch(new Request(new URL("/", url), request));
     }
 
+    // Aethex Find moved to doctors.aethex.in (update 64): find.aethex.in sends every old address to the same page there.
+    if (url.hostname === "find.aethex.in" || url.hostname === "www.find.aethex.in") {
+      return new Response(null, { status: 301, headers: { location: `https://doctors.aethex.in${url.pathname}${url.search}`, "cache-control": "public, max-age=86400" } });
+    }
+
     // The download page lives at downloads.aethex.in. (/downloads/latest.json stays here for the desktop app.)
     if ((url.pathname === "/downloads" || url.pathname === "/downloads/") && /^(?:www\.|cadus\.)?aethex\.in$/.test(url.hostname)) {
       return new Response(null, { status: 301, headers: { location: "https://downloads.aethex.in/", "cache-control": "public, max-age=3600" } });
@@ -112,7 +117,7 @@ export default {
       }
     }
 
-    // Aethex Find: doctors listing their practice, search and bookings (worker/find.ts).
+    // Aethex Doctors: doctors listing their practice, search and bookings (worker/find.ts).
     if (url.pathname.startsWith("/api/find/")) {
       const origin = request.headers.get("origin");
       if (origin && !ALLOWED_ORIGIN.test(origin)) return json({ error: "Origin not allowed" }, 403);

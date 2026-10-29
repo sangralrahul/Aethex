@@ -12,6 +12,7 @@ function nextSlot(d: Doctor): string | null {
   const ist = new Date(Date.now() + 330 * 60000), today = ist.toISOString().slice(0, 10), now = ist.getUTCHours() * 60 + ist.getUTCMinutes();
   for (let i = 0; i < 8; i++) {
     const date = addDays(today, i);
+    if (d.timeOff.includes(date)) continue;
     const t = daySlots(d.hours, date).find((s) => i > 0 || Number(s.slice(0, 2)) * 60 + Number(s.slice(3)) > now + 30);
     if (t) return `${i === 0 ? "Today" : i === 1 ? "Tomorrow" : dateLabel(date)}, ${time12(t)}`;
   }
@@ -23,11 +24,12 @@ export default function FindDoctors() {
   const [, go] = useLocation();
   const sp = useMemo(() => new URLSearchParams(search), [search]);
   const city = sp.get("city") || "", specialty = sp.get("specialty") || "", q = sp.get("q") || "", video = sp.get("video") === "1";
+  const gender = sp.get("gender") || "", maxFee = sp.get("maxFee") || "", minExp = sp.get("minExp") || "", avail = sp.get("avail") || "", sort = sp.get("sort") || "";
   const [qIn, setQIn] = useState(q), [cityIn, setCityIn] = useState(city);
   useEffect(() => { setQIn(q); setCityIn(city); }, [q, city]);
-  const { data, isLoading, error, refetch } = useDoctors({ city, specialty, q, video });
+  const { data, isLoading, error, refetch } = useDoctors({ city, specialty, q, video, gender, maxFee, minExp, avail, sort });
   const title = `${specialty || (q ? `"${q}"` : "Doctors")}${city ? ` in ${city}` : ""}`;
-  useSeo({ title: `${title}: book an appointment | Aethex Find`, description: `Find ${specialty || "doctors"}${city ? ` in ${city}` : ""} on Aethex Find, see fees and timings, and book online.`, path: "/doctors" });
+  useSeo({ title: `${title}: book an appointment | Aethex Doctors`, description: `Find ${specialty || "doctors"}${city ? ` in ${city}` : ""} on Aethex Doctors, see fees and timings, and book online.`, path: "/doctors" });
 
   const set = (k: string, v: string) => {
     const p = new URLSearchParams(search);
@@ -72,20 +74,35 @@ export default function FindDoctors() {
               {city && !(data?.cities ?? []).some((c) => c.city.toLowerCase() === city.toLowerCase()) && <option value={city}>{city}</option>}
             </select>
           </label>
+          <label>Availability
+            <select value={avail} onChange={(e) => set("avail", e.target.value)}><option value="">Any day</option><option value="today">Available today</option><option value="tomorrow">Available tomorrow</option><option value="week">In the next 7 days</option></select>
+          </label>
+          <label>Consultation fee
+            <select value={maxFee} onChange={(e) => set("maxFee", e.target.value)}><option value="">Any fee</option><option value="0">Free</option><option value="300">Up to ₹300</option><option value="500">Up to ₹500</option><option value="1000">Up to ₹1,000</option></select>
+          </label>
+          <label>Experience
+            <select value={minExp} onChange={(e) => set("minExp", e.target.value)}><option value="">Any</option><option value="5">5+ years</option><option value="10">10+ years</option><option value="20">20+ years</option></select>
+          </label>
+          <label>Gender
+            <select value={gender} onChange={(e) => set("gender", e.target.value)}><option value="">Any</option><option value="female">Female doctor</option><option value="male">Male doctor</option></select>
+          </label>
           <label className="chk"><input type="checkbox" checked={video} onChange={(e) => set("video", e.target.checked ? "1" : "")} /> <Video size={15} /> Video consult available</label>
-          {(city || specialty || q || video) && <button type="button" className="fd-link" onClick={() => go("/doctors")}>Clear all</button>}
+          {(city || specialty || q || video || gender || maxFee || minExp || avail) && <button type="button" className="fd-link" onClick={() => go("/doctors")}>Clear all</button>}
         </aside>
         <section className="fd-list" aria-live="polite">
           <div className="fd-list-head">
             <h1>{title}</h1>
-            {!isLoading && !error && <p>{doctors.length ? `${doctors.length} doctor${doctors.length === 1 ? "" : "s"} available for booking` : ""}</p>}
+            <div className="fd-sortrow">
+              {!isLoading && !error && <p>{doctors.length ? `${data?.total ?? doctors.length} doctor${(data?.total ?? doctors.length) === 1 ? "" : "s"} available for booking` : ""}</p>}
+              <label>Sort by <select value={sort} onChange={(e) => set("sort", e.target.value)} data-find="sort"><option value="">Relevance</option><option value="experience">Experience</option><option value="rating">Patient rating</option><option value="fee-low">Fee: low to high</option><option value="fee-high">Fee: high to low</option></select></label>
+            </div>
           </div>
           {isLoading ? Array.from({ length: 3 }, (_, i) => <div key={i} className="fd-card sk" />)
             : error ? <div className="fd-empty"><b>Couldn't load doctors</b><p>{(error as Error).message}</p><button type="button" className="fd-btn" onClick={() => void refetch()}>Try again</button></div>
             : !doctors.length ? (
               <div className="fd-empty" data-find="empty">
                 <b>No doctors listed {specialty ? `as ${specialty}` : ""}{city ? ` in ${city}` : ""} yet</b>
-                <p>Aethex Find is new, and only doctors whose registration we've checked are listed. Try another city or specialty, or tell a doctor you know they can list their practice free.</p>
+                <p>Aethex Doctors is new, and only doctors whose registration we've checked are listed. Try another city or specialty, or tell a doctor you know they can list their practice free.</p>
                 <div className="row"><Link href="/doctors" className="fd-btn ghost">See all doctors</Link><Link href="/list-your-practice" className="fd-btn"><UserPlus size={16} /> I'm a doctor: list my practice</Link></div>
               </div>
             ) : doctors.map((d) => <DoctorCard key={d.slug} d={d} next={nextSlot(d)} />)}

@@ -1,5 +1,5 @@
 /**
- * Aethex Find: the client side of worker/find.ts. Doctors list their own practice (checked by an admin
+ * Aethex Doctors: the client side of worker/find.ts. Doctors list their own practice (checked by an admin
  * before it shows), patients search by city and specialty and book a time. No sample doctors: the
  * directory shows only real, approved listings.
  */
@@ -12,12 +12,25 @@ export interface Doctor {
   experience: number; clinic: string; address: string; locality: string | null; city: string; pincode: string; fee: number;
   video: boolean; videoFee: number | null; languages: string[]; about: string | null; services: string[]; hours: Hours | null;
   rating: { avg: number; count: number } | null;
+  education: { degree: string; college: string; year: string }[]; awards: string[]; memberships: string[]; timeOff: string[];
 }
+export interface Review { id?: string; rating: number; text: string | null; name: string; at: number; recommend: boolean | null; wait: string | null; visited?: string | null; reply: string | null }
+export interface RxItem { name: string; dose: string; frequency: string; duration: string; notes: string }
+export interface Prescription {
+  id: string; date: string; time: string; mode: string; diagnosis: string | null; advice: string | null; tests: string | null; followUp: string | null; items: RxItem[]; createdAt: number;
+  patient: { name: string; age: number | null };
+  doctor: { name: string; qualifications: string; specialty: string; regNo: string; regCouncil: string; clinic: string; address: string; city: string; pincode: string };
+}
+export interface Question { id: string; specialty: string; title: string; body: string; age: number | null; gender: string | null; status: "open" | "answered"; at: number; answers?: number }
+export interface Answer { id: string; body: string; helpful: number; at: number; doctor: { slug: string; name: string; specialty: string; qualifications: string; experience: number; city: string } }
+export interface ArticleSummary { slug: string; title: string; summary: string | null; specialty: string; at: number; minutes: number; doctor: { name: string; slug: string; specialty: string } }
+export interface Article extends ArticleSummary { body: string; updated: number; doctor: { name: string; slug: string; specialty: string; qualifications: string; experience: number } }
+export interface Clinic { key: string; name: string; address: string; locality: string | null; city: string; pincode: string; specialties: string[]; doctors: number; minFee: number; video: boolean }
 export interface OwnDoctor extends Doctor { id: string; status: "pending" | "live" | "paused" | "rejected"; adminNote: string | null; createdAt: number; updatedAt: number }
 export interface Appointment {
   id: string; date: string; time: string; mode: "clinic" | "video"; reason: string | null; status: "booked" | "confirmed" | "cancelled" | "completed" | "no-show";
   link: string | null; note: string | null; patient: { name: string; phone: string; email: string | null; age: number | null }; createdAt: number;
-  doctor?: { slug: string; name: string; specialty: string; clinic: string; address: string; city: string }; reviewed?: boolean;
+  doctor?: { slug: string; name: string; specialty: string; clinic: string; address: string; city: string }; reviewed?: boolean; prescription?: string | null;
 }
 
 /** The specialties a doctor can list under (the same list as worker/find.ts). */
@@ -59,22 +72,32 @@ export async function findApi<T>(path: string, body?: unknown): Promise<T> {
   return data as T;
 }
 
-export const useDoctors = (params: { q?: string; city?: string; specialty?: string; video?: boolean }) => {
+export type DoctorFilters = { q?: string; city?: string; specialty?: string; video?: boolean; gender?: string; maxFee?: string; minExp?: string; avail?: string; sort?: string; clinic?: string };
+export const useDoctors = (params: DoctorFilters) => {
   const qs = new URLSearchParams();
-  if (params.q) qs.set("q", params.q);
-  if (params.city) qs.set("city", params.city);
-  if (params.specialty) qs.set("specialty", params.specialty);
-  if (params.video) qs.set("video", "1");
-  return useQuery({ queryKey: ["find", "doctors", qs.toString()], queryFn: () => findApi<{ doctors: Doctor[]; cities: { city: string; count: number }[] }>(`/doctors?${qs}`), staleTime: 60_000, retry: 1 });
+  for (const [k, v] of Object.entries(params)) if (v) qs.set(k, v === true ? "1" : String(v));
+  return useQuery({ queryKey: ["find", "doctors", qs.toString()], queryFn: () => findApi<{ doctors: Doctor[]; total: number; cities: { city: string; count: number }[] }>(`/doctors?${qs}`), staleTime: 60_000, retry: 1 });
 };
+export const useClinics = (city: string, q: string) => useQuery({ queryKey: ["find", "clinics", city, q], queryFn: () => findApi<{ clinics: Clinic[] }>(`/clinics?${new URLSearchParams({ city, q })}`), staleTime: 60_000, retry: 1 });
+export const useClinic = (key: string) => useQuery({ queryKey: ["find", "clinic", key], queryFn: () => findApi<{ clinic: Omit<Clinic, "specialties" | "doctors" | "minFee" | "video">; doctors: Doctor[] }>(`/clinics/${key}`), retry: (n, e) => (e as FindError).status !== 404 && n < 1 });
+export const useQuestions = (params: { specialty?: string; q?: string; mine?: boolean; open?: boolean }) => {
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) if (v) qs.set(k, v === true ? "1" : String(v));
+  return useQuery({ queryKey: ["find", "questions", qs.toString()], queryFn: () => findApi<{ questions: Question[] }>(`/questions?${qs}`), staleTime: 30_000, retry: (n, e) => (e as FindError).status !== 401 && n < 1 });
+};
+export const useQuestion = (id: string) => useQuery({ queryKey: ["find", "question", id], queryFn: () => findApi<{ question: Question; answers: Answer[] }>(`/questions/${id}`), retry: (n, e) => (e as FindError).status !== 404 && n < 1 });
+export const useArticles = (specialty: string, q: string) => useQuery({ queryKey: ["find", "articles", specialty, q], queryFn: () => findApi<{ articles: ArticleSummary[] }>(`/articles?${new URLSearchParams({ specialty, q })}`), staleTime: 60_000, retry: 1 });
+export const useArticle = (slug: string, enabled = true) => useQuery({ enabled, queryKey: ["find", "article", slug], queryFn: () => findApi<{ article: Article }>(`/articles/${slug}`), retry: (n, e) => (e as FindError).status !== 404 && n < 1 });
+export const usePrescription = (id: string) => useQuery({ queryKey: ["find", "rx", id], queryFn: () => findApi<{ prescription: Prescription }>(`/prescriptions/${id}`), retry: false });
 export const useDoctor = (slug: string) => useQuery({
   queryKey: ["find", "doctor", slug],
-  queryFn: () => findApi<{ doctor: Doctor; preview: boolean; taken: string[]; today: string; now: number; aheadDays: number; reviews: { rating: number; text: string | null; name: string; at: number }[] }>(`/doctors/${slug}`),
+  queryFn: () => findApi<{ doctor: Doctor; preview: boolean; taken: string[]; today: string; now: number; aheadDays: number; reviews: Review[]; recommendPct: number | null;
+    answers: { questionId: string; title: string; body: string; helpful: number; at: number }[]; articles: { slug: string; title: string; summary: string | null; at: number }[]; stats: { answers: number; visits: number } }>(`/doctors/${slug}`),
   retry: (n, e) => (e as FindError).status !== 404 && n < 1,
 });
 export const useMyProfile = () => useQuery({ queryKey: ["find", "me"], queryFn: () => findApi<{ doctor: OwnDoctor | null; email: string; name: string }>("/me"), retry: false });
 export const useMyAppointments = () => useQuery({ queryKey: ["find", "mine"], queryFn: () => findApi<{ appointments: Appointment[] }>("/appointments"), retry: false });
-export const usePractice = () => useQuery({ queryKey: ["find", "practice"], queryFn: () => findApi<{ doctor: OwnDoctor; rating: { avg: number; count: number } | null; today: string; appointments: Appointment[] }>("/practice/appointments"), retry: false });
+export const usePractice = () => useQuery({ queryKey: ["find", "practice"], queryFn: () => findApi<{ doctor: OwnDoctor; rating: { avg: number; count: number } | null; today: string; appointments: Appointment[]; reviews: Review[]; openQuestions: { id: string; title: string; at: number }[]; articles: { slug: string; title: string; at: number }[]; patients: number }>("/practice/appointments"), retry: false });
 
 /* ------------------------------------------------------------------ slots */
 
@@ -89,7 +112,8 @@ export function daySlots(h: Hours, date: string): string[] {
   return out;
 }
 /** Free times on a date: in the hours, not taken, and at least 30 minutes from now (India time). */
-export function freeSlots(h: Hours, date: string, taken: Set<string>, today: string, nowMin: number): string[] {
+export function freeSlots(h: Hours, date: string, taken: Set<string>, today: string, nowMin: number, off: string[] = []): string[] {
+  if (off.includes(date)) return [];
   return daySlots(h, date).filter((t) => !taken.has(`${date} ${t}`) && (date > today || mins(t) > nowMin + 30));
 }
 export const time12 = (t: string) => { const h = Number(t.slice(0, 2)); return `${((h + 11) % 12) + 1}:${t.slice(3)} ${h < 12 ? "AM" : "PM"}`; };
@@ -108,3 +132,13 @@ export function signInHere(): string {
   const here = window.location.pathname + window.location.search;
   return isAethexDomain() ? loginUrl("/", { back: window.location.href }) : loginUrl("/", { next: here });
 }
+
+export const WAITS = ["Under 15 minutes", "15 to 30 minutes", "30 minutes to 1 hour", "More than 1 hour"];
+export const ago = (at: number) => {
+  const d = Math.floor((Date.now() - at) / 86400000);
+  return d < 1 ? "Today" : d === 1 ? "Yesterday" : d < 30 ? `${d} days ago` : new Date(at).toLocaleDateString("en-IN", { month: "short", year: "numeric" });
+};
+/** The home of Aethex Doctors: "/" on doctors.aethex.in, "/find" elsewhere. */
+export const findHome = () => (typeof window !== "undefined" && /^(?:www\.)?doctors\.aethex\.in$/.test(window.location.hostname) ? "/" : "/find");
+/** The clinic page key: the same as the Worker's slug of "<clinic>-<city>". */
+export const clinicKey = (clinic: string, city: string) => `${clinic}-${city}`.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);

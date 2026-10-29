@@ -1,35 +1,61 @@
 /** /appointments: the patient's bookings, with cancel and (after a completed visit) a review. */
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { Building2, CalendarCheck, MapPin, Star, Video, X } from "lucide-react";
+import { Building2, CalendarCheck, CalendarClock, FileText, MapPin, Star, ThumbsDown, ThumbsUp, Video, X } from "lucide-react";
 import { useSeo } from "@/hooks/use-seo";
-import { dateLabel, displayName, findApi, signInHere, time12, useMyAppointments, type Appointment, type FindError } from "@/lib/find";
+import { WAITS, addDays, dateLabel, displayName, findApi, freeSlots, signInHere, time12, useDoctor, useMyAppointments, type Appointment, type FindError } from "@/lib/find";
 import { FindNav, SignInCard } from "./FindParts";
 
 const LABEL: Record<Appointment["status"], string> = { booked: "Waiting for the doctor to confirm", confirmed: "Confirmed", completed: "Completed", "no-show": "Missed", cancelled: "Cancelled" };
 
 function Review({ a, onDone }: { a: Appointment; onDone: () => void }) {
+  const [rec, setRec] = useState<boolean | null>(null), [wait, setWait] = useState("");
   const [open, setOpen] = useState(false), [rating, setRating] = useState(0), [text, setText] = useState(""), [err, setErr] = useState(""), [busy, setBusy] = useState(false);
   if (!open) return <button type="button" className="fd-btn sm ghost" onClick={() => setOpen(true)}><Star size={14} /> Review this visit</button>;
   return (
     <div className="fd-rev-form" data-find="review">
       <div className="fd-rate" role="radiogroup" aria-label="Rating">{[1, 2, 3, 4, 5].map((n) => <button key={n} type="button" role="radio" aria-checked={rating === n} className={n <= rating ? "on" : ""} onClick={() => setRating(n)} aria-label={`${n} star${n > 1 ? "s" : ""}`}><Star size={22} fill={n <= rating ? "currentColor" : "none"} /></button>)}</div>
-      <textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} placeholder="How was your visit? (optional)" />
+      <div className="fd-yn"><span>Would you recommend the doctor?</span><button type="button" className={rec === true ? "on" : ""} onClick={() => setRec(true)}><ThumbsUp size={14} /> Yes</button><button type="button" className={rec === false ? "on" : ""} onClick={() => setRec(false)}><ThumbsDown size={14} /> No</button></div>
+      <select value={wait} onChange={(e) => setWait(e.target.value)} aria-label="Waiting time"><option value="">How long did you wait?</option>{WAITS.map((w) => <option key={w}>{w}</option>)}</select>
+      <textarea rows={3} value={text} onChange={(e) => setText(e.target.value)} placeholder="Share your experience: how the doctor listened, explained and treated you. (optional)" />
       {err && <p className="fd-err">{err}</p>}
       <button type="button" className="fd-btn sm" disabled={busy || !rating} onClick={async () => {
         setBusy(true); setErr("");
-        try { await findApi("/reviews", { appointmentId: a.id, rating, text }); onDone(); } catch (x) { setErr((x as FindError).message); } finally { setBusy(false); }
-      }}>Post review</button>
+        try { await findApi("/reviews", { appointmentId: a.id, rating, text, recommend: rec, wait }); onDone(); } catch (x) { setErr((x as FindError).message); } finally { setBusy(false); }
+      }}>Post story</button>
+    </div>
+  );
+}
+
+/** Move an upcoming booking to another free time of the same doctor. */
+function Reschedule({ a, onDone }: { a: Appointment; onDone: () => void }) {
+  const { data } = useDoctor(a.doctor?.slug ?? "");
+  const [date, setDate] = useState(""), [time, setTime] = useState(""), [err, setErr] = useState(""), [busy, setBusy] = useState(false);
+  const days = useMemo(() => {
+    if (!data?.doctor.hours) return [];
+    const taken = new Set(data.taken);
+    return Array.from({ length: 14 }, (_, i) => addDays(data.today, i)).map((day) => ({ day, slots: freeSlots(data.doctor.hours!, day, taken, data.today, data.now, data.doctor.timeOff) })).filter((x) => x.slots.length);
+  }, [data]);
+  const slots = days.find((x) => x.day === date)?.slots ?? [];
+  return (
+    <div className="fd-resched" data-find="reschedule">
+      <div className="fd-days">{days.map(({ day, slots: s2 }) => <button key={day} type="button" className={day === date ? "on" : ""} onClick={() => { setDate(day); setTime(""); }}><b>{dateLabel(day, { weekday: "short" })}</b><span>{dateLabel(day, { day: "numeric", month: "short" })}</span><small>{s2.length} slots</small></button>)}</div>
+      {date && <div className="fd-slots"><div className="grid">{slots.map((t) => <button key={t} type="button" className={t === time ? "on" : ""} onClick={() => setTime(t)}>{time12(t)}</button>)}</div></div>}
+      {err && <p className="fd-err">{err}</p>}
+      <button type="button" className="fd-btn sm" disabled={!time || busy} onClick={async () => {
+        setBusy(true); setErr("");
+        try { await findApi(`/appointments/${a.id}/reschedule`, { date, time }); onDone(); } catch (x) { setErr((x as FindError).message); } finally { setBusy(false); }
+      }}>Move to {date && time ? `${dateLabel(date)}, ${time12(time)}` : "the new time"}</button>
     </div>
   );
 }
 
 export default function MyAppointments() {
-  useSeo({ title: "My appointments | Aethex Find", description: "Your Aethex Find appointments.", path: "/appointments" });
+  useSeo({ title: "My appointments | Aethex Doctors", description: "Your Aethex Doctors appointments.", path: "/appointments" });
   const qc = useQueryClient();
   const { data, isLoading, error } = useMyAppointments();
-  const [err, setErr] = useState("");
+  const [err, setErr] = useState(""), [moving, setMoving] = useState("");
   const refresh = () => void qc.invalidateQueries({ queryKey: ["find"] });
   const cancel = async (a: Appointment) => {
     if (!window.confirm(`Cancel your appointment with ${a.doctor ? displayName(a.doctor.name) : "the doctor"}?`)) return;
@@ -53,7 +79,10 @@ export default function MyAppointments() {
         {a.note && a.status === "cancelled" && <span className="mu">{a.note}</span>}
       </div>
       <div className="do">
+        {a.prescription && <Link href={`/prescription/${a.prescription}`} className="fd-btn sm"><FileText size={14} /> Prescription</Link>}
+        {["booked", "confirmed"].includes(a.status) && a.date >= today && <button type="button" className="fd-btn sm ghost" onClick={() => setMoving(moving === a.id ? "" : a.id)}><CalendarClock size={14} /> Reschedule</button>}
         {["booked", "confirmed"].includes(a.status) && a.date >= today && <button type="button" className="fd-btn sm danger" onClick={() => void cancel(a)}><X size={14} /> Cancel</button>}
+        {moving === a.id && <Reschedule a={a} onDone={() => { setMoving(""); refresh(); }} />}
         {a.status === "completed" && !a.reviewed && <Review a={a} onDone={refresh} />}
         {a.status === "completed" && a.reviewed && <span className="mu">Thanks for your review</span>}
       </div>
@@ -67,7 +96,7 @@ export default function MyAppointments() {
       <div className="ax-wrap fd-narrow">
         <header className="fd-pagehead"><h1><CalendarCheck size={26} /> My appointments</h1></header>
         {isLoading ? <div className="fd-card sk" style={{ height: 200 }} />
-          : fe?.status === 401 ? <SignInCard title="Sign in to see your appointments" text="Your bookings with doctors on Aethex Find appear here." href={signInHere()} />
+          : fe?.status === 401 ? <SignInCard title="Sign in to see your appointments" text="Your bookings with doctors on Aethex Doctors appear here." href={signInHere()} />
           : fe ? <div className="fd-empty"><b>Couldn't load your appointments</b><p>{fe.message}</p></div>
           : !all.length ? <div className="fd-empty"><b>No appointments yet</b><p>Find a doctor and book a time that suits you.</p><Link href="/doctors" className="fd-btn">Find a doctor</Link></div>
           : <>

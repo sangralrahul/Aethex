@@ -1,4 +1,4 @@
-/* aethex.in update 58: the hub (hb-*), Aethex Find (fd-*) and the portal switcher. Practo-style: white, navy and sky blue. */
+/* aethex.in update 58: the hub (hb-*), Aethex Doctors (fd-*) and the portal switcher. Practo-style: white, navy and sky blue. */
 
 :root{--hb-navy:#28328c;--hb-navy2:#1e2670;--hb-sky:#14bef0;--hb-sky2:#0ea5d6;--hb-ink:#2d2d32;--hb-t2:#5c5c66;--hb-t3:#787887;--hb-line:#e3e5ec;--hb-band:#f4f5fa;--hb-ok:#0f8a5f;--hb-okbg:#e6f6ef}
 
@@ -113,7 +113,7 @@
 .hb-quotes figcaption b{display:block;font-size:15px}
 .hb-quotes figcaption small{display:block;font-size:13px;color:var(--hb-t3)}
 
-/* ------------------------------------------------------------------ Aethex Find */
+/* ------------------------------------------------------------------ Aethex Doctors */
 .fd-page{min-height:70vh;background:var(--hb-band);color:var(--hb-ink);padding-bottom:64px}
 .fd-page h1,.fd-page h2,.fd-page h3{color:var(--hb-ink);letter-spacing:-.015em}
 .fd-subnav{background:#fff;border-bottom:1px solid var(--hb-line)}
@@ -141,13 +141,13 @@
 .fd-quick button:hover{background:rgba(255,255,255,.16)}
 
 .fd-services{margin-top:-28px}
-.fd-svc-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.fd-svc-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
 .fd-svc{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:22px;border-radius:14px;border:1px solid var(--hb-line);background:#fff;color:var(--hb-ink);text-align:left;text-decoration:none;font:inherit;cursor:pointer;box-shadow:0 14px 34px -26px rgba(30,38,112,.5);transition:transform .15s,border-color .15s}
 .fd-svc:hover{transform:translateY(-2px);border-color:#bfe7f7}
 .fd-svc .ic{display:grid;place-items:center;width:52px;height:52px;margin-bottom:10px;border-radius:12px}
 .fd-svc b{font-size:17px;font-weight:700}
 .fd-svc small{font-size:14px;color:var(--hb-t3)}
-.fd-svc.blue .ic{background:#e4f6fd;color:#0a8fbd}.fd-svc.teal .ic{background:#e2f4f0;color:#0f766e}.fd-svc.violet .ic{background:#efeafd;color:#6941c6}.fd-svc.navy .ic{background:#e8eaf8;color:var(--hb-navy)}
+.fd-svc.blue .ic{background:#e4f6fd;color:#0a8fbd}.fd-svc.amber .ic{background:#fdf1e2;color:#b45309}.fd-svc.rose .ic{background:#fdecef;color:#be123c}.fd-svc.teal .ic{background:#e2f4f0;color:#0f766e}.fd-svc.violet .ic{background:#efeafd;color:#6941c6}.fd-svc.navy .ic{background:#e8eaf8;color:var(--hb-navy)}
 
 .fd-sec{padding:52px 0 0}
 .fd-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:20px}
@@ -536,3 +536,186 @@
 @media (prefers-reduced-motion:reduce){.hb-net{display:none}.hb-card .art *,.hb-card .ic:after{animation:none!important}.hb-card .art.flip i{opacity:1}.hb-card .art.flip i:not(:first-child){display:none}}
 .hb-card.violet .ph>img{margin-left:38%}
 .hb-card .art.flip i{left:6%;right:auto;width:44%;top:14%;z-index:2}
+
+/* ------------------------------------------------------------------ Aethex Doctors, update 64 (Practo-style features) */
+.fd-subnav .ax-wrap{gap:2px}
+.fd-subnav a{padding:0 10px;font-size:14px}
+.fd-hero.sm{padding:40px 0 44px}
+.fd-hero.sm h1{margin-top:0}
+.fd-hero.sm .fd-btn{margin-top:18px}
+.fd-kick{display:block;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--hb-sky2)}
+.fd-sortrow{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:4px 0 16px}
+.fd-sortrow p{margin:0!important}
+.fd-sortrow label{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--hb-t2)}
+.fd-sortrow select,.fd-askbar select{height:38px;padding:0 10px;border-radius:8px;border:1px solid var(--hb-line);background:#fff;font:inherit;font-size:14px}
+
+/* clinics */
+.fd-clinics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.fd-clinic{display:flex;gap:14px;padding:18px;border-radius:12px;background:#fff;border:1px solid var(--hb-line);color:var(--hb-ink);text-decoration:none;transition:border-color .15s,box-shadow .15s}
+.fd-clinic:hover{border-color:#bfe7f7;box-shadow:0 14px 30px -22px rgba(20,190,240,.6)}
+.fd-clinic .ic,.fd-clinic-head .ic{display:grid;place-items:center;flex-shrink:0;width:52px;height:52px;border-radius:12px;background:#e8eaf8;color:var(--hb-navy)}
+.fd-clinic>div{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fd-clinic b{font-size:17px}
+.fd-clinic span{display:inline-flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:13.5px;color:var(--hb-t2)}
+.fd-clinic .sp{color:var(--hb-t3)}
+.fd-clinic .meta{color:var(--hb-ok);font-weight:600}
+.fd-clinic-head{display:flex;gap:18px;align-items:flex-start}
+.fd-clinic-head .ic{width:64px;height:64px}
+.fd-clinic-head h1{margin:0;font-size:clamp(22px,2.2vw,30px)}
+.fd-clinic-head p{margin:6px 0 8px;color:var(--hb-t2)}
+
+/* profile tabs and extras */
+.fd-pstats{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.fd-pstats span{display:flex;flex-direction:column;padding:8px 14px;border-radius:10px;background:var(--hb-band)}
+.fd-pstats b{font-size:18px;color:var(--hb-navy)}
+.fd-pstats small{font-size:12px;color:var(--hb-t3)}
+.fd-ptabs{display:flex;gap:4px;margin:0 0 14px;padding:4px;border-radius:12px;background:#fff;border:1px solid var(--hb-line);overflow-x:auto}
+.fd-ptabs button{flex:1;white-space:nowrap;height:40px;padding:0 14px;border-radius:9px;border:0;background:transparent;font:inherit;font-size:14px;font-weight:650;color:var(--hb-t2);cursor:pointer}
+.fd-ptabs button.on{background:var(--hb-navy);color:#fff}
+.fd-list{display:flex;flex-direction:column;gap:10px;margin:0;padding:0;list-style:none}
+.fd-list li{display:flex;gap:10px;font-size:15px;color:var(--hb-t2)}
+.fd-list svg{flex-shrink:0;margin-top:2px;color:var(--hb-sky2)}
+.fd-list b{color:var(--hb-ink)}
+.fd-recpct{display:flex;align-items:center;gap:8px;margin:0 0 14px;padding:12px 14px;border-radius:10px;background:var(--hb-okbg);color:var(--hb-ok);font-size:14.5px}
+.fd-recpct b{font-size:18px}
+.fd-review .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.fd-review small.mu{display:flex;align-items:center;gap:4px;margin-top:4px}
+.fd-reply{margin:8px 0;padding:10px 12px;border-left:3px solid var(--hb-sky);border-radius:0 8px 8px 0;background:#f0fbff;font-size:14px}
+.fd-reply p{margin:4px 0 0}
+.fd-ans-mini{display:block;padding:12px 0;border-top:1px solid var(--hb-line);color:var(--hb-ink);text-decoration:none}
+.fd-ans-mini:first-of-type{border-top:0;padding-top:0}
+.fd-ans-mini:hover b{color:var(--hb-sky2)}
+.fd-ans-mini p{margin:4px 0;font-size:14px;color:var(--hb-t2);line-height:1.5}
+.fd-ans-mini small{font-size:12.5px;color:var(--hb-t3)}
+
+/* ask a doctor */
+.fd-askbar{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:16px 0}
+.fd-askbar .fd-tabs{margin:0}
+.fd-askbar .fd-h2{margin:0;margin-right:auto}
+.fd-mini{display:flex;align-items:center;gap:8px;flex:1 1 240px;height:38px;padding:0 12px;border-radius:8px;border:1px solid var(--hb-line);background:#fff;color:var(--hb-t3)}
+.fd-mini input{flex:1;min-width:0;border:0;outline:0;background:transparent;font:inherit;font-size:14px}
+.fd-askform{margin-top:20px}
+.fd-askform h2{margin-top:0}
+.fd-askform .fd-pform fieldset,.fd-askform .fd-pform{border:0;padding:0}
+.fd-qlist{display:flex;flex-direction:column;gap:10px}
+.fd-q{display:flex;flex-direction:column;gap:6px;padding:18px;border-radius:12px;background:#fff;border:1px solid var(--hb-line);color:var(--hb-ink);text-decoration:none}
+.fd-q:hover{border-color:#bfe7f7}
+.fd-q b{font-size:17px}
+.fd-q p{margin:0;font-size:14px;line-height:1.5;color:var(--hb-t2)}
+.fd-q small{font-size:12.5px;color:var(--hb-t3)}
+.fd-qtitle{margin:6px 0 10px;font-size:clamp(22px,2.2vw,28px)!important}
+.fd-answer .who{display:flex;gap:12px;align-items:center;color:var(--hb-ink);text-decoration:none}
+.fd-answer .who span{display:flex;flex-direction:column}
+.fd-answer .who small{font-size:13px;color:var(--hb-t3)}
+.fd-answer .who small.ok,.fd-article .who small.ok{display:inline-flex;align-items:center;gap:4px;color:var(--hb-ok)}
+.fd-answer .about{margin:12px 0}
+.fd-answer .foot{display:flex;align-items:center;justify-content:space-between}
+.fd-answer .foot small{color:var(--hb-t3)}
+
+/* articles */
+.fd-arts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.fd-art{display:flex;flex-direction:column;gap:8px;padding:20px;border-radius:12px;background:#fff;border:1px solid var(--hb-line);color:var(--hb-ink);text-decoration:none}
+.fd-art:hover{border-color:#bfe7f7;box-shadow:0 14px 30px -22px rgba(20,190,240,.6)}
+.fd-art b{font-size:18px;line-height:1.3}
+.fd-art p{margin:0;font-size:14px;line-height:1.5;color:var(--hb-t2)}
+.fd-art .by{display:flex;align-items:center;gap:6px;margin-top:auto;padding-top:8px;font-size:12.5px;color:var(--hb-t3)}
+.fd-article h1{margin:8px 0 10px;font-size:clamp(26px,3vw,38px);line-height:1.15}
+.fd-article .lead{margin:0 0 16px;font-size:18px;line-height:1.55;color:var(--hb-t2)}
+.fd-article .who{display:flex;gap:12px;align-items:center;padding:14px 0;border-top:1px solid var(--hb-line);border-bottom:1px solid var(--hb-line);color:var(--hb-ink);text-decoration:none}
+.fd-article .who span{display:flex;flex-direction:column}
+.fd-article .who small{font-size:13px;color:var(--hb-t3)}
+.fd-prose{margin:18px 0;font-size:16.5px;line-height:1.75;color:#33333a}
+.fd-prose h2{margin:26px 0 8px;font-size:22px}
+.fd-prose p{margin:0 0 14px;white-space:pre-line}
+.fd-prose ul{margin:0 0 14px;padding-left:22px}
+.fd-prose li{margin:4px 0}
+
+/* prescription */
+.fd-rx-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.fd-rx-bar .fd-back{margin:0}
+.fd-rx{padding:32px;border-radius:12px;background:#fff;border:1px solid var(--hb-line);color:#111}
+.fd-rx header{display:flex;justify-content:space-between;gap:20px;padding-bottom:16px;border-bottom:3px solid var(--hb-navy)}
+.fd-rx header div{display:flex;flex-direction:column;gap:2px;font-size:13.5px;color:#444}
+.fd-rx header b{font-size:20px;color:var(--hb-navy)}
+.fd-rx header .r{text-align:right}
+.fd-rx .pt{display:flex;flex-wrap:wrap;gap:12px 32px;padding:14px 0;border-bottom:1px solid #e5e5e5}
+.fd-rx .pt span{display:flex;flex-direction:column}
+.fd-rx .pt small{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:#777}
+.fd-rx section{padding:14px 0;border-bottom:1px solid #f0f0f0}
+.fd-rx h3{margin:0 0 6px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--hb-navy)}
+.fd-rx h3.rx{font-size:26px;letter-spacing:0;text-transform:none}
+.fd-rx p{margin:0;white-space:pre-line;font-size:15px}
+.fd-rx table{width:100%;border-collapse:collapse;font-size:14px}
+.fd-rx th{padding:6px 8px;border-bottom:1px solid #ddd;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#666}
+.fd-rx td{padding:8px;border-bottom:1px solid #f0f0f0;vertical-align:top}
+.fd-rx footer{display:flex;justify-content:space-between;align-items:flex-end;padding-top:40px;font-size:12px;color:#777}
+.fd-rx .sig{padding-top:6px;border-top:1px solid #999;min-width:180px;text-align:center;color:#111;font-size:13px}
+@media print{
+  .ax-head,.ax-ann,.ax-foot,.ax-close,.fd-subnav,.no-print{display:none!important}
+  .fd-page{background:#fff;padding:0}
+  .fd-rx{border:0;padding:0}
+}
+
+/* practice: prescriptions, leave, stories */
+.fd-rxedit{grid-column:1/-1;display:flex;flex-direction:column;gap:10px;margin-top:12px;padding:16px;border-radius:10px;background:var(--hb-band)}
+.fd-rxedit label{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:var(--hb-t2)}
+.fd-rxedit input,.fd-rxedit textarea{min-height:38px;padding:8px 10px;border-radius:8px;border:1px solid #d5d8e3;background:#fff;font:inherit;font-size:14px;font-weight:400;width:100%;box-sizing:border-box}
+.fd-rxedit .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fd-rxrows{display:flex;flex-direction:column;gap:6px}
+.fd-rxrows .hd,.fd-rxrows .row{display:grid;grid-template-columns:2fr 1fr 1.3fr .8fr 1.3fr 36px;gap:6px;align-items:center}
+.fd-rxrows .hd span{font-size:12px;font-weight:700;color:var(--hb-t3)}
+.fd-rxrows .row input{min-width:0}
+.fd-rxedit .row-end{display:flex;justify-content:flex-end}
+.fd-dash-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:18px 0}
+.fd-dash-grid .fd-box{margin:0}
+.fd-dash-grid h2,.fd-box>h2{display:flex;align-items:center;gap:8px}
+.fd-mini-list{display:flex;flex-direction:column;gap:8px;margin:0 0 10px;padding:0;list-style:none}
+.fd-mini-list li{display:flex;justify-content:space-between;gap:10px;font-size:14px}
+.fd-mini-list a{color:var(--hb-ink);text-decoration:none;font-weight:550}
+.fd-mini-list a:hover{color:var(--hb-sky2)}
+.fd-mini-list small{flex-shrink:0;color:var(--hb-t3)}
+.fd-chips button{margin-left:4px;border:0;background:none;color:var(--hb-t3);cursor:pointer;font-size:15px}
+.fd-chips .none{background:none;padding-left:0;color:var(--hb-t3)}
+.fd-replyform{display:flex;gap:8px;margin-top:10px}
+.fd-replyform input{flex:1;min-width:0;height:34px;padding:0 10px;border-radius:7px;border:1px solid #d5d8e3;font:inherit;font-size:14px}
+.fd-stats{grid-template-columns:repeat(5,minmax(0,1fr))}
+
+/* patient: review, reschedule */
+.fd-yn{display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:13.5px;color:var(--hb-t2)}
+.fd-yn button{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--hb-line);background:#fff;font:inherit;font-size:13px;cursor:pointer}
+.fd-yn button.on{border-color:var(--hb-sky);background:#f0fbff;color:#0a7fa8;font-weight:650}
+.fd-rev-form select{height:36px;padding:0 10px;border-radius:8px;border:1px solid #d5d8e3;font:inherit;font-size:14px}
+.fd-resched{flex-basis:100%;display:flex;flex-direction:column;gap:10px;margin-top:8px;padding:12px;border-radius:10px;background:var(--hb-band);max-width:100%}
+.fd-myappt .do{flex-wrap:wrap}
+
+/* listing form: education */
+.fd-edu{display:grid;grid-template-columns:1.2fr 1.6fr 90px 36px;gap:8px;margin-bottom:8px}
+.fd-edu input{min-height:40px;padding:8px 10px;border-radius:8px;border:1px solid #d5d8e3;font:inherit;font-size:14.5px;min-width:0}
+
+/* health records */
+.fd-recform{margin-top:6px}
+.fd-recs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.fd-rec{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;background:#fff;border:1px solid var(--hb-line);color:var(--hb-ink);text-decoration:none}
+.fd-rec>svg{flex-shrink:0;color:var(--hb-sky2)}
+.fd-rec>span:not(.acts){display:flex;flex-direction:column;gap:2px;min-width:0}
+.fd-rec small{font-size:12.5px;color:var(--hb-t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fd-rec .acts{display:flex;gap:6px;margin-left:auto;flex-shrink:0}
+.fd-pagehead p svg{vertical-align:-2px}
+
+@media (max-width:1180px){.fd-arts{grid-template-columns:1fr 1fr}.fd-dash-grid{grid-template-columns:1fr 1fr}.fd-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:760px){
+  .fd-clinics,.fd-recs,.fd-arts,.fd-dash-grid{grid-template-columns:1fr}
+  .fd-svc-grid{grid-template-columns:1fr 1fr}
+  .fd-rxrows .hd{display:none}
+  .fd-rxrows .row{grid-template-columns:1fr 1fr;padding:8px;border-radius:8px;background:#fff}
+  .fd-rxrows .row input:first-child{grid-column:1/-1}
+  .fd-rxedit .two,.fd-edu{grid-template-columns:1fr 1fr}
+  .fd-rx{padding:18px}
+  .fd-rx header{flex-direction:column}
+  .fd-rx header .r{text-align:left}
+  .fd-rx table{font-size:12.5px}
+  .fd-stats{grid-template-columns:1fr 1fr}
+}
+.fd-rx .tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.fd-rx{min-width:0;overflow-wrap:anywhere}
+@media print{.fd-rx .tw{overflow:visible}}

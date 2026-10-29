@@ -1,5 +1,5 @@
 /**
- * find.aethex.in (and /find): find a doctor by city and specialty and book a time. Doctors list their own
+ * doctors.aethex.in (and /find): find a doctor by city and specialty and book a time. Doctors list their own
  * practice for free; listings show after an admin checks the registration number.
  */
 import { useState, type FormEvent } from "react";
@@ -7,15 +7,16 @@ import { Link, useLocation } from "wouter";
 import {
   ArrowRight, Baby, BadgeCheck, Bone, Brain, CalendarCheck, ClipboardCheck, Ear, Eye, HeartPulse, LayoutDashboard, MapPin,
   Search, ShieldCheck, Smile, Sparkles, Stethoscope, Thermometer, UserPlus, Video, Droplet, Soup, Flower2,
+  Building2, FileText, FolderHeart, MessageCircleQuestionMark, Newspaper,
 } from "lucide-react";
 import { useSeo } from "@/hooks/use-seo";
-import { CITIES, CONCERNS, SPECIALTIES, useDoctors } from "@/lib/find";
+import { CITIES, CONCERNS, SPECIALTIES, findHome, useDoctors } from "@/lib/find";
 import { FindNav } from "./FindParts";
 
 const CONCERN_ICON = [Thermometer, Baby, Flower2, Sparkles, Smile, Bone, Ear, Eye, HeartPulse, Brain, Droplet, Soup];
 
 export default function FindHome() {
-  useSeo({ title: "Aethex Find: find a doctor and book an appointment", description: "Find doctors near you by city and specialty, see fees and timings, and book online. Doctors list their practice free.", path: "/find" });
+  useSeo({ title: "Aethex Doctors: find a doctor, book an appointment, ask a doctor", description: "Find doctors and clinics by city and specialty, see fees, timings and patient stories, book a clinic visit or video consult, ask a doctor free and read health articles.", path: findHome() });
   const [, go] = useLocation();
   const [city, setCity] = useState("");
   const [q, setQ] = useState("");
@@ -62,8 +63,10 @@ export default function FindHome() {
         <div className="ax-wrap fd-svc-grid">
           <button type="button" className="fd-svc blue" onClick={() => search()}><span className="ic"><CalendarCheck size={26} /></span><b>Book a clinic visit</b><small>Choose a doctor and a time that suits you</small></button>
           <button type="button" className="fd-svc teal" onClick={() => search(undefined, { video: "1" })}><span className="ic"><Video size={26} /></span><b>Video consultation</b><small>Doctors who also see patients online</small></button>
-          <Link href="/appointments" className="fd-svc violet"><span className="ic"><ClipboardCheck size={26} /></span><b>My appointments</b><small>See, cancel or review your visits</small></Link>
-          <Link href="/list-your-practice" className="fd-svc navy"><span className="ic"><UserPlus size={26} /></span><b>Are you a doctor?</b><small>List your practice free and get bookings</small></Link>
+          <Link href="/ask" className="fd-svc violet" data-find="svc-ask"><span className="ic"><MessageCircleQuestionMark size={26} /></span><b>Ask a doctor, free</b><small>Get answers from checked doctors</small></Link>
+          <Link href="/clinics" className="fd-svc navy"><span className="ic"><Building2 size={26} /></span><b>Clinics near you</b><small>Every doctor at each clinic</small></Link>
+          <Link href="/articles" className="fd-svc amber"><span className="ic"><Newspaper size={26} /></span><b>Health articles</b><small>Written by doctors</small></Link>
+          <Link href="/records" className="fd-svc rose"><span className="ic"><FolderHeart size={26} /></span><b>Health records</b><small>Reports and prescriptions, on your device</small></Link>
         </div>
       </section>
 
@@ -111,7 +114,7 @@ export default function FindHome() {
           <div className="fd-docband">
             <div>
               <small>For doctors</small>
-              <h2>List your practice on Aethex Find. Free.</h2>
+              <h2>List your practice on Aethex Doctors. Free.</h2>
               <p>Add your clinic, fees and consulting hours. Patients book your free slots, and you confirm them from your practice dashboard. Your profile goes live once we've checked your registration number.</p>
               <div className="row">
                 <Link href="/list-your-practice" className="fd-btn white lg"><UserPlus size={17} /> List your practice</Link>
@@ -122,6 +125,8 @@ export default function FindHome() {
               <li><CalendarCheck size={18} /> Online bookings for your free slots</li>
               <li><Video size={18} /> Video consultations, with your own meeting link</li>
               <li><ClipboardCheck size={18} /> Confirm, complete and track every visit</li>
+              <li><FileText size={18} /> Digital prescriptions your patients can print</li>
+              <li><Newspaper size={18} /> Answer questions and publish articles</li>
               <li><BadgeCheck size={18} /> A checked profile patients can trust</li>
             </ul>
           </div>

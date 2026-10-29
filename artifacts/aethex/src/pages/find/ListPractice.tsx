@@ -1,8 +1,8 @@
-/** /list-your-practice: a doctor creates or edits their Aethex Find profile. It goes live after an admin check. */
+/** /list-your-practice: a doctor creates or edits their Aethex Doctors profile. It goes live after an admin check. */
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { BadgeCheck, CheckCircle2, Clock, Plus, ShieldCheck, Trash2, UserPlus } from "lucide-react";
+import { BadgeCheck, CheckCircle2, Clock, GraduationCap, Plus, ShieldCheck, Trash2, UserPlus } from "lucide-react";
 import { useSeo } from "@/hooks/use-seo";
 import { DAY_NAMES, SPECIALTIES, findApi, signInHere, useMyProfile, type FindError, type Hours, type OwnDoctor } from "@/lib/find";
 import { FindNav, SignInCard } from "./FindParts";
@@ -13,16 +13,19 @@ type Form = {
   name: string; gender: string; specialty: string; qualifications: string; regNo: string; regCouncil: string; experience: string;
   clinic: string; address: string; locality: string; city: string; pincode: string; fee: string; video: boolean; videoFee: string;
   languages: string; about: string; services: string; hours: Hours;
+  education: { degree: string; college: string; year: string }[]; awards: string; memberships: string;
 };
 const EMPTY: Form = {
   name: "", gender: "", specialty: "", qualifications: "", regNo: "", regCouncil: "", experience: "", clinic: "", address: "", locality: "", city: "", pincode: "",
   fee: "", video: false, videoFee: "", languages: "English, Hindi", about: "", services: "",
   hours: { days: [1, 2, 3, 4, 5, 6], sessions: [{ start: "10:00", end: "13:00" }, { start: "17:00", end: "20:00" }], slot: 15 },
+  education: [{ degree: "MBBS", college: "", year: "" }], awards: "", memberships: "",
 };
 const fromDoctor = (d: OwnDoctor): Form => ({
   name: d.name, gender: d.gender ?? "", specialty: d.specialty, qualifications: d.qualifications, regNo: d.regNo, regCouncil: d.regCouncil, experience: String(d.experience),
   clinic: d.clinic, address: d.address, locality: d.locality ?? "", city: d.city, pincode: d.pincode, fee: String(d.fee), video: d.video, videoFee: d.videoFee != null ? String(d.videoFee) : "",
   languages: d.languages.join(", "), about: d.about ?? "", services: d.services.join(", "), hours: d.hours ?? EMPTY.hours,
+  education: d.education?.length ? d.education : EMPTY.education, awards: (d.awards ?? []).join("\n"), memberships: (d.memberships ?? []).join("\n"),
 });
 export const STATUS_TEXT: Record<OwnDoctor["status"], [string, string]> = {
   pending: ["Waiting for our check", "We're checking your registration number. Your profile goes live once it's approved; we'll email you."],
@@ -32,7 +35,7 @@ export const STATUS_TEXT: Record<OwnDoctor["status"], [string, string]> = {
 };
 
 export default function ListPractice() {
-  useSeo({ title: "List your practice free | Aethex Find", description: "Doctors: list your clinic, fees and consulting hours on Aethex Find and get online bookings. Free.", path: "/list-your-practice" });
+  useSeo({ title: "List your practice free | Aethex Doctors", description: "Doctors: list your clinic, fees and consulting hours on Aethex Doctors and get online bookings. Free.", path: "/list-your-practice" });
   const qc = useQueryClient();
   const { data, isLoading, error } = useMyProfile();
   const [f, setF] = useState<Form>(EMPTY);
@@ -60,7 +63,7 @@ export default function ListPractice() {
       <FindNav />
       <div className="ax-wrap fd-narrow">
         <header className="fd-pagehead">
-          <h1><UserPlus size={26} /> {doc ? "Your Aethex Find profile" : "List your practice. Free."}</h1>
+          <h1><UserPlus size={26} /> {doc ? "Your Aethex Doctors profile" : "List your practice. Free."}</h1>
           <p>Add your clinic, fees and consulting hours. Patients book your free slots and you confirm them from your practice dashboard.</p>
         </header>
         {isLoading ? <div className="fd-card sk" style={{ height: 300 }} />
@@ -91,6 +94,21 @@ export default function ListPractice() {
                 <div className="two">
                   <label>Languages<input value={f.languages} onChange={(e) => set("languages", e.target.value)} placeholder="English, Hindi" /></label>
                   <label>Services (comma-separated, optional)<input value={f.services} onChange={(e) => set("services", e.target.value)} placeholder="Diabetes care, ECG, Vaccination" /></label>
+                </div>
+              </fieldset>
+              <fieldset data-find="education"><legend><GraduationCap size={16} /> Education and recognitions</legend>
+                {f.education.map((e, i) => (
+                  <div key={i} className="fd-edu">
+                    <input aria-label="Degree" value={e.degree} onChange={(ev) => set("education", f.education.map((x, j) => (j === i ? { ...x, degree: ev.target.value } : x)))} placeholder="Degree, e.g. MD (Medicine)" />
+                    <input aria-label="College" value={e.college} onChange={(ev) => set("education", f.education.map((x, j) => (j === i ? { ...x, college: ev.target.value } : x)))} placeholder="College" />
+                    <input aria-label="Year" inputMode="numeric" maxLength={4} value={e.year} onChange={(ev) => set("education", f.education.map((x, j) => (j === i ? { ...x, year: ev.target.value.replace(/\D/g, "") } : x)))} placeholder="Year" />
+                    <button type="button" className="fd-icon" onClick={() => set("education", f.education.length > 1 ? f.education.filter((_, j) => j !== i) : [{ degree: "", college: "", year: "" }])} aria-label="Remove"><Trash2 size={14} /></button>
+                  </div>
+                ))}
+                {f.education.length < 6 && <button type="button" className="fd-link" onClick={() => set("education", [...f.education, { degree: "", college: "", year: "" }])}><Plus size={14} /> Add a degree</button>}
+                <div className="two" style={{ marginTop: 12 }}>
+                  <label>Awards (one per line, optional)<textarea rows={3} value={f.awards} onChange={(e) => set("awards", e.target.value)} /></label>
+                  <label>Memberships (one per line, optional)<textarea rows={3} value={f.memberships} onChange={(e) => set("memberships", e.target.value)} placeholder="Indian Medical Association" /></label>
                 </div>
               </fieldset>
               <fieldset><legend><ShieldCheck size={16} /> Medical registration</legend>

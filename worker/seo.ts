@@ -65,11 +65,11 @@ export async function cadusHome(res: Response): Promise<Response> {
 
 /* ------------------------------------------------------------------ the portal subdomains (update 58) */
 
-export type Portal = "store" | "study" | "find" | "hospitals" | "medicalcolleges";
+export type Portal = "store" | "study" | "doctors" | "hospitals" | "medicalcolleges";
 const PORTALS: Record<Portal, { title: string; desc: string; h1: string }> = {
   store: { title: "Aethex Store: genuine medical equipment and supplies in India", desc: "Stethoscopes, diagnostic sets, BP monitors, hospital and lab equipment and medical books from verified brands, with cash on delivery across India.", h1: "Aethex Store" },
   study: { title: "Aethex Study: NEET-PG preparation, mock tests and the medical knowledge hub", desc: "NEET-PG question banks, timed mock tests, flashcards, case of the day and a knowledge hub for every subject.", h1: "Aethex Study" },
-  find: { title: "Aethex Find: find a doctor and book an appointment", desc: "Find doctors near you by city and specialty, see their fees and timings, and book an appointment online. Doctors can list their practice free.", h1: "Aethex Find" },
+  doctors: { title: "Aethex Doctors: find a doctor, book an appointment, ask a doctor", desc: "Find doctors and clinics near you by city and specialty, see fees, timings and patient reviews, book a clinic visit or video consult, ask a doctor and read health articles. Doctors list their practice free.", h1: "Aethex Doctors" },
   hospitals: { title: "Aethex for Hospitals: one quotation for every ward", desc: "Hospital furniture, ICU, emergency and diagnostic equipment: send one list and get one quotation. Pay by bank transfer or purchase order.", h1: "Aethex for Hospitals" },
   medicalcolleges: { title: "Aethex for Medical Colleges: skills labs, anatomy and lab equipment", desc: "Skills trainers, manikins, anatomy models, lab equipment and books for medical colleges: one list, one quotation.", h1: "Aethex for Medical Colleges" },
 };
