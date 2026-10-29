@@ -1,13 +1,15 @@
 /**
- * aethex.in: the homepage, Apple-style since update 56: a quiet hero with the live Cadus demo, three
- * product tiles, the essentials, categories, what doctors say, and links to everything else, in the site style (light, Inter,
- * deep teal). Styles: src/site.css (home section, classes ax-h-*).
+ * aethex.in: the homepage, a professional medical store since update 57: a category bar, departments,
+ * banners and promos; the service promises; categories; top deals; shop for your practice; popular products;
+ * the institutions band; brands; and Cadus and the free tools. Styles: src/site-ec.css (classes ec-*).
  */
-import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import {
   ArrowRight, BadgeCheck, Banknote, BookOpen, Brain, Calculator, ChevronLeft, ChevronRight, ClipboardList,
   FlaskConical, GraduationCap, Hospital, Layers, LayoutGrid, Pill, RotateCcw, Search, ShieldCheck, Sparkles, Star, Timer, Truck,
+  Accessibility, Activity, BedDouble, BedSingle, Bone, BriefcaseMedical, Building2, CreditCard, Download, Droplet, Gauge, HeartPulse,
+  MonitorCheck, PersonStanding, Scale, ScanEye, Siren, Stethoscope, Syringe, Thermometer, Wind, Zap,
   type LucideProps,
 } from "lucide-react";
 import CadusMark from "@/components/cadus/CadusMark";
@@ -15,14 +17,15 @@ import { ProductCard } from "@/components/ProductCard";
 import { ProductImage } from "@/components/store/ProductImage";
 import { useSeo } from "@/hooks/use-seo";
 import { useStore } from "@/lib/store/api";
-import type { ProductSummary } from "@/lib/store/types";
+import type { Category, ProductSummary } from "@/lib/store/types";
+
+type HomeCat = Category & { pic?: string; from?: number };
 import { FREE_DELIVERY_FROM, mixBrands } from "@/lib/store/rules";
 import { BUSINESS } from "@/config/business";
 import { formatINR } from "@/lib/utils";
 import { cadusUrl, downloadsUrl } from "@/lib/host";
 import { getTodaysCase } from "@/data/clinicalCases";
-import { LiveDemo, useReveal } from "@/components/home/PlatformHero";
-import { itemHref } from "@/lib/store/bookdata";
+import { useReveal } from "@/components/home/PlatformHero";
 
 type Icon = ComponentType<LucideProps>;
 const still = () => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -179,143 +182,297 @@ function CategoryTiles() {
   );
 }
 
-/* ------------------------------------------------------------------ page (update 56: Apple-style, lean) */
+/* ------------------------------------------------------------------ page (update 57: a professional medical store) */
 
-/** Large, quiet product tiles: the photo on light grey, then name and price. */
-function Essentials() {
-  const { data: store, error, refetch } = useStore();
-  const products = useMemo(() => (store ? mixBrands(store.products.filter((p) => p.featured && !p.priceOnRequest && p.image), rank).slice(0, 8) : []), [store]);
-  return (
-    <section className="ap-sec" data-rv data-home="essentials">
-      <div className="ax-wrap">
-        <div className="ap-head"><h2>The essentials.</h2><Link href="/shop" className="ap-link" data-home="all-products">Shop all {store ? store.products.length : ""} products <ArrowRight size={16} /></Link></div>
-        <div className="ap-grid4">
-          {error && !store ? <StoreDown retry={() => void refetch()} />
-            : !store ? Array.from({ length: 8 }, (_, k) => <div key={k} className="ax-prod sk" />)
-            : products.map((p) => <ProductCard key={p.id} product={p} brandName={store.brandName(p.brand)} />)}
-        </div>
-      </div>
-    </section>
-  );
-}
+const CAT_ICON: Record<string, Icon> = {
+  "bp-monitors": HeartPulse, sphygmomanometers: Gauge, stethoscopes: Stethoscope, "diagnostic-instruments": ScanEye,
+  "pulse-oximeters": Activity, thermometers: Thermometer, nebulizers: Wind, "diabetes-care": Droplet, "weighing-scales": Scale,
+  "orthopaedic-supports": Bone, "pain-relief": Zap, "pillows-cushions": BedSingle, "rehab-mobility": Accessibility,
+  "hospital-furniture": BedDouble, "icu-equipment": MonitorCheck, "emergency-care": Siren, "syringes-needles": Syringe,
+  "anatomy-models": PersonStanding, "skills-simulators": GraduationCap, "lab-equipment": FlaskConical,
+};
 
-/** One row of categories, each a photo on light grey with its name. */
-function Categories() {
-  const { data: store } = useStore();
-  const tiles = useMemo(() => (store ? store.categories.filter((c) => c.audience !== "institution").map((c) => {
-    const best = store.products.filter((p) => p.category === c.slug && p.image).sort((a, b) => rank(b) - rank(a))[0];
-    return { ...c, pic: best?.image };
-  }) : []), [store]);
-  if (!store) return null;
-  return (
-    <section className="ap-sec" data-rv data-home="categories">
-      <div className="ax-wrap">
-        <div className="ap-head"><h2>Shop by category.</h2><Link href="/shop" className="ap-link">All categories <ArrowRight size={16} /></Link></div>
-        <div className="ap-cats">
-          {tiles.map((c) => (
-            <Link key={c.slug} href={`/category/${c.slug}`} className="ap-cat">
-              <span className="pic"><ProductImage src={c.pic} width={300} /></span>
-              <b>{c.name}</b>
-            </Link>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
+/** The banners: each one a real category, its photo the most popular product of the brand named first. */
+const BANNERS = [
+  { cat: "stethoscopes", brand: "littmann", tone: "navy", kicker: "For doctors and students", title: "Stethoscopes you can rely on", text: "3M Littmann, MDF Instruments, HEINE and Rossmax: for students, residents and consultants.", cta: "Shop stethoscopes" },
+  { cat: "diagnostic-instruments", brand: "heine", tone: "teal", kicker: "For clinics", title: "Diagnostic sets for every clinic", text: "Otoscopes, ophthalmoscopes and diagnostic sets from HEINE and MDF Instruments.", cta: "Shop diagnostics" },
+  { cat: "bp-monitors", brand: "omron", tone: "slate", kicker: "For clinic and home", title: "BP monitors from trusted brands", text: "OMRON, Dr Trust and Rossmax monitors, delivered across India with cash on delivery.", cta: "Shop BP monitors" },
+  { cat: "icu-equipment", brand: "mindray", tone: "ink", kicker: "For hospitals and colleges", title: "Equip a ward, an ICU or a skills lab", text: "Send one list and get one quotation. Pay by bank transfer or purchase order.", cta: "Request a quotation", href: "/hospitals" },
+] as const;
 
-const MORE: { href: string; ext?: boolean; icon: Icon; t: string; d: string }[] = [
-  { href: "/hospitals", icon: Hospital, t: "For hospitals", d: "One list, one quotation for every ward" },
-  { href: "/medical-colleges", icon: GraduationCap, t: "For medical colleges", d: "Skills labs, anatomy, labs and books" },
-  { href: "/tools", icon: Calculator, t: "Free clinical tools", d: "Drug reference, interactions, calculators" },
-  { href: "/case-of-the-day", icon: ClipboardList, t: "Case of the day", d: "One clinical case, every day" },
-  { href: "/brands", icon: BadgeCheck, t: "Brands we stock", d: "Verified brands only" },
-  { href: "__downloads", icon: LayoutGrid, t: "Desktop app", d: "Cadus for Windows and Linux" },
+const SERVICES: { icon: Icon; t: string; d: string }[] = [
+  { icon: ShieldCheck, t: "Genuine brands", d: "Sourced from verified brands" },
+  { icon: Banknote, t: "Cash on delivery", d: "Pay when your order arrives" },
+  { icon: Truck, t: "Free delivery", d: `On orders from ${formatINR(FREE_DELIVERY_FROM)}` },
+  { icon: RotateCcw, t: `${BUSINESS.replacementDays}-day replacement`, d: "For damaged or wrong items" },
+  { icon: CreditCard, t: "Secure payments", d: "UPI, cards and COD" },
 ];
+
+const SEGMENTS = [
+  { aud: "pro", icon: BriefcaseMedical, t: "For doctors and clinics", d: "Stethoscopes, diagnostic sets and BP instruments for daily practice.", href: "/category/stethoscopes" },
+  { aud: "home", icon: HeartPulse, t: "Home care and monitoring", d: "Monitors, nebulizers, supports and daily care for your patients at home.", href: "/category/bp-monitors" },
+  { aud: "institution", icon: Building2, t: "Hospitals and medical colleges", d: "Furniture, ICU, emergency, lab equipment, models and skills trainers.", href: "/institutions" },
+] as const;
+
+const off = (p: ProductSummary) => (p.mrp && p.price && p.mrp > p.price ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0);
+
+function useHomeData() {
+  const { data: store, error, refetch } = useStore();
+  return useMemo(() => {
+    if (!store) return { store, error, refetch, cats: [] as HomeCat[], deals: [] as ProductSummary[], picks: new Map<string, ProductSummary | undefined>() };
+    const best = (cat: string, brand?: string) => {
+      const pool = store.products.filter((p) => p.category === cat && p.image);
+      const sorted = [...pool].sort((a, b) => rank(b) - rank(a));
+      return sorted.find((p) => p.brand === brand) ?? sorted[0];
+    };
+    const cats: HomeCat[] = store.categories.map((c) => {
+      const prices = store.products.filter((p) => p.category === c.slug && p.price != null && !p.priceOnRequest).map((p) => p.price as number);
+      return { ...c, pic: best(c.slug)?.image, from: prices.length ? Math.min(...prices) : undefined };
+    });
+    const deals = mixBrands(store.products.filter((p) => p.inStock && p.image && off(p) >= 10).sort((a, b) => off(b) - off(a)), (p) => Number(off(p) >= 20)).slice(0, 12);
+    const picks = new Map(BANNERS.map((b) => [b.cat, best(b.cat, b.brand)]));
+    return { store, error, refetch, cats, deals, picks };
+  }, [store, error, refetch]);
+}
+
+function Banners({ picks, cats }: { picks: Map<string, ProductSummary | undefined>; cats: { slug: string; from?: number }[] }) {
+  const [i, setI] = useState(0);
+  const [hold, setHold] = useState(false);
+  useEffect(() => {
+    if (still() || hold) return;
+    const t = window.setInterval(() => setI((x) => (x + 1) % BANNERS.length), 6500);
+    return () => window.clearInterval(t);
+  }, [hold]);
+  const go = (d: number) => setI((x) => (x + d + BANNERS.length) % BANNERS.length);
+  return (
+    <div className="ec-ban" onMouseEnter={() => setHold(true)} onMouseLeave={() => setHold(false)} aria-roledescription="carousel" data-home="banners">
+      {BANNERS.map((b, k) => {
+        const href = "href" in b ? b.href : `/category/${b.cat}`;
+        const from = cats.find((c) => c.slug === b.cat)?.from;
+        return (
+          <div key={b.cat} className={`ec-slide ${b.tone}${k === i ? " on" : ""}`} aria-hidden={k !== i}>
+            <div className="txt">
+              <small>{b.kicker}</small>
+              <h2>{b.title}</h2>
+              <p>{b.text}</p>
+              <div className="row">
+                <Link href={href} className="ec-btn" tabIndex={k === i ? 0 : -1}>{b.cta} <ArrowRight size={16} /></Link>
+                {from != null && !("href" in b) && <span className="from">From <b>{formatINR(from)}</b></span>}
+              </div>
+            </div>
+            <div className="pic"><ProductImage src={picks.get(b.cat)?.image} width={520} eager={k === 0} /></div>
+          </div>
+        );
+      })}
+      <button type="button" className="ec-ban-arrow l" onClick={() => go(-1)} aria-label="Previous"><ChevronLeft size={20} /></button>
+      <button type="button" className="ec-ban-arrow r" onClick={() => go(1)} aria-label="Next"><ChevronRight size={20} /></button>
+      <div className="ec-ban-dots">{BANNERS.map((b, k) => <button key={b.cat} type="button" className={k === i ? "on" : ""} onClick={() => setI(k)} aria-label={`Banner ${k + 1}`} />)}</div>
+    </div>
+  );
+}
+
+/** A horizontal row of product cards with arrows. */
+function Rail({ children, label }: { children: ReactNode; label: string }) {
+  const track = useRef<HTMLDivElement>(null);
+  const scroll = (d: number) => track.current?.scrollBy({ left: d * track.current.clientWidth * 0.85, behavior: "smooth" });
+  return (
+    <div className="ec-rail-wrap">
+      <button type="button" className="ec-rail-arrow l" onClick={() => scroll(-1)} aria-label={`Scroll ${label} left`}><ChevronLeft size={20} /></button>
+      <div className="ec-rail" ref={track}>{children}</div>
+      <button type="button" className="ec-rail-arrow r" onClick={() => scroll(1)} aria-label={`Scroll ${label} right`}><ChevronRight size={20} /></button>
+    </div>
+  );
+}
+
+function Head({ title, sub, href, link }: { title: string; sub?: string; href?: string; link?: string }) {
+  return (
+    <div className="ec-head">
+      <div><h2>{title}</h2>{sub && <p>{sub}</p>}</div>
+      {href && <Link href={href} className="ec-more">{link ?? "View all"} <ArrowRight size={15} /></Link>}
+    </div>
+  );
+}
 
 export default function Home() {
   useSeo({
-    title: "Aethex: medical supplies, Cadus AI and NEET-PG prep for India",
-    description: "Genuine medical supplies with cash on delivery, the Cadus clinical assistant, and NEET-PG study tools: one platform for India's doctors and medical students.",
+    title: "Aethex: medical equipment and supplies for doctors, clinics and hospitals in India",
+    description: "Genuine stethoscopes, diagnostic sets, BP monitors, hospital and lab equipment and medical books from verified brands, with cash on delivery across India.",
     path: "/",
   });
-  const { data: store } = useStore();
+  const { store, error, refetch, cats, deals, picks } = useHomeData();
   useReveal(store);
-  const shelf = useMemo(() => store?.products.filter((p) => p.featured && p.image && !p.priceOnRequest).slice(0, 3) ?? [], [store]);
+  const mainCats = cats.filter((c) => c.audience !== "institution");
+  const brands = store ? [...store.brands].sort((a, b) => b.count - a.count).slice(0, 12) : [];
+  const down = error && !store;
 
   return (
-    <div className="ax-home ap-home">
-      {/* hero */}
-      <section className="ap-hero" data-home="platform">
+    <div className="ax-home ec-home">
+      {/* category bar */}
+      <nav className="ec-catbar" aria-label="Shop by category">
         <div className="ax-wrap">
-          <p className="ap-eyebrow">Aethex for doctors and medical students</p>
-          <h1>Everything a doctor needs.<br /><span>In one place.</span></h1>
-          <p className="ap-sub">Clinical answers you can check. Exam preparation for every subject. Genuine medical supplies, delivered across India.</p>
-          <div className="ap-ctas">
-            <a href={cadusUrl("/")} className="ap-btn" data-home="cta-cadus">Try Cadus free</a>
-            <Link href="/shop" className="ap-link lg" data-home="cta-shop">Shop medical supplies <ArrowRight size={18} /></Link>
+          <Link href="/shop" className="all"><LayoutGrid size={16} /> All categories</Link>
+          {QUICK.slice(0, 9).map((q) => <Link key={q.slug} href={`/category/${q.slug}`}>{q.name}</Link>)}
+          <Link href="/books">Medical books</Link>
+          <Link href="/institutions" className="inst">For hospitals</Link>
+        </div>
+      </nav>
+
+      {/* hero: departments, banners, promos */}
+      <section className="ec-hero" data-home="platform">
+        <h1 className="sr-only">Medical equipment and supplies for doctors, clinics, hospitals and medical colleges in India</h1>
+        <div className="ax-wrap ec-hero-grid">
+          <aside className="ec-depts" aria-label="Departments">
+            <b>Departments</b>
+            {(mainCats.length ? mainCats : QUICK.map((q) => ({ slug: q.slug, name: q.name }))).slice(0, 10).map((c) => {
+              const I = CAT_ICON[c.slug] ?? LayoutGrid;
+              return <Link key={c.slug} href={`/category/${c.slug}`}><I size={17} /> <span>{c.name}</span><ChevronRight size={14} className="ch" /></Link>;
+            })}
+            <Link href="/books"><BookOpen size={17} /> <span>Medical books</span><ChevronRight size={14} className="ch" /></Link>
+            <Link href="/shop" className="all">All categories <ArrowRight size={14} /></Link>
+          </aside>
+          <Banners picks={picks} cats={cats} />
+          <div className="ec-promos">
+            <Link href="/books" className="ec-promo books">
+              <small>Medical books</small>
+              <b>Textbooks for MBBS and PG</b>
+              <span>Standard titles for every subject <ArrowRight size={14} /></span>
+              <BookOpen className="art" size={64} strokeWidth={1.2} />
+            </Link>
+            <a href={cadusUrl("/")} className="ec-promo cadus" data-home="cta-cadus">
+              <small>Free for doctors</small>
+              <b>Cadus clinical assistant</b>
+              <span>Doses, interactions and 320+ tools <ArrowRight size={14} /></span>
+              <span className="art"><CadusMark size={56} variant="mono" color="currentColor" /></span>
+            </a>
           </div>
-          <div className="ap-stage"><LiveDemo /></div>
         </div>
       </section>
 
-      {/* the three products */}
-      <section className="ap-sec ap-tiles-sec" data-rv data-home="showcase">
-        <div className="ax-wrap ap-tiles">
-          <div className="ap-tile dark">
-            <p className="k">Cadus</p>
-            <h3>Clinical answers<br />you can check.</h3>
-            <p className="d">Doses, interactions, differentials and 320+ bedside tools — every answer safety-reviewed, with sources.</p>
-            <div className="lk"><a href={cadusUrl("/")}>Try free <ArrowRight size={15} /></a><a href={downloadsUrl()}>Desktop app <ArrowRight size={15} /></a></div>
-            <div className="vis chat"><span className="q">Warfarin with clarithromycin — safe?</span><span className="a"><small>Bottom line</small>Clarithromycin raises the INR. Prefer another antibiotic, or check the INR in 3 to 5 days.<em><ShieldCheck size={12} /> Safety reviewed</em></span></div>
-          </div>
-          <div className="ap-tile">
-            <p className="k">Study Hub</p>
-            <h3>Prepare for NEET-PG<br />and beyond.</h3>
-            <p className="d">Question banks, mock tests, flashcards, OSCE stations and tutors for every subject.</p>
-            <div className="lk"><Link href="/study-hub">Explore <ArrowRight size={15} /></Link><Link href="/neet-pg">NEET-PG <ArrowRight size={15} /></Link></div>
-            <div className="vis mcq"><b>Drug of choice for absence seizures?</b><span>Phenytoin</span><span className="ok">Ethosuximide</span><span>Carbamazepine</span></div>
-          </div>
-          <div className="ap-tile wide">
-            <div className="txt">
-              <p className="k">Medical store</p>
-              <h3>Genuine instruments.<br />Delivered across India.</h3>
-              <p className="d">BP monitors, stethoscopes, diagnostics and supports from brands doctors trust. Cash on delivery, free delivery from {formatINR(FREE_DELIVERY_FROM)}.</p>
-              <div className="lk"><Link href="/shop">Shop now <ArrowRight size={15} /></Link><Link href="/brands">Brands <ArrowRight size={15} /></Link></div>
+      {/* service promises */}
+      <section className="ec-services" aria-label="Our promises">
+        <div className="ax-wrap"><ul>
+          {SERVICES.map(({ icon: I, t, d }) => <li key={t}><span className="ic"><I size={22} /></span><span><b>{t}</b><small>{d}</small></span></li>)}
+        </ul></div>
+      </section>
+
+      {/* categories */}
+      <section className="ec-sec" data-rv data-home="categories">
+        <div className="ax-wrap">
+          <Head title="Shop by category" sub="Instruments, monitors and daily care from verified brands" href="/shop" link="All categories" />
+          {down ? <StoreDown retry={() => void refetch()} /> : (
+            <div className="ec-cats">
+              {!store ? Array.from({ length: 12 }, (_, k) => <span key={k} className="ec-cat sk" />) : mainCats.slice(0, 12).map((c) => (
+                <Link key={c.slug} href={`/category/${c.slug}`} className="ec-cat">
+                  <span className="pic"><ProductImage src={c.pic} width={300} /></span>
+                  <b>{c.name}</b>
+                  <small>{c.count} products</small>
+                </Link>
+              ))}
             </div>
-            <div className="shelf">{shelf.map((p) => <Link key={p.id} href={itemHref(p.id, p.slug)} className="it"><ProductImage src={p.image} width={360} /></Link>)}</div>
+          )}
+        </div>
+      </section>
+
+      {/* deals */}
+      <section className="ec-sec" data-rv data-home="essentials">
+        <div className="ax-wrap">
+          <div className="ec-deals">
+            <Head title="Top deals" sub="The biggest savings on MRP, on products in stock" href="/shop" link={`Shop all ${store ? store.products.length : ""} products`} />
+            {down ? <StoreDown retry={() => void refetch()} /> : (
+              <Rail label="deals">
+                {!store ? Array.from({ length: 6 }, (_, k) => <div key={k} className="ax-prod sk" />)
+                  : deals.map((p) => <ProductCard key={p.id} product={p} brandName={store.brandName(p.brand)} />)}
+              </Rail>
+            )}
           </div>
         </div>
       </section>
 
-      <Essentials />
-      <Categories />
-
-      {/* testimonials */}
-      <section className="ap-sec" data-rv>
+      {/* by practice */}
+      <section className="ec-sec" data-rv data-home="segments">
         <div className="ax-wrap">
-          <div className="ap-head"><h2>What doctors say.</h2></div>
-          <div className="ap-quotes">
+          <Head title="Shop for your practice" sub="Everything for the clinic, the patient at home and the institution" />
+          <div className="ec-segs">
+            {SEGMENTS.map(({ aud, icon: I, t, d, href }) => {
+              const list = cats.filter((c) => c.audience === aud);
+              const pic = list.find((c) => c.pic)?.pic;
+              return (
+                <div key={aud} className={`ec-seg ${aud}`}>
+                  <div className="top">
+                    <span className="ic"><I size={22} /></span>
+                    <div><h3>{t}</h3><p>{d}</p></div>
+                  </div>
+                  <ul>{list.map((c) => <li key={c.slug}><Link href={`/category/${c.slug}`}>{c.name}<small>{c.count}</small></Link></li>)}</ul>
+                  <div className="foot">
+                    <Link href={href} className="ec-more">{aud === "institution" ? "Institution store" : "Shop now"} <ArrowRight size={15} /></Link>
+                    {pic && <span className="pic"><ProductImage src={pic} width={200} /></span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* popular, by category (tabs) */}
+      <ProductRail />
+
+      {/* institutions band */}
+      <section className="ec-sec" data-rv data-home="more">
+        <div className="ax-wrap">
+          <div className="ec-inst">
+            <div className="txt">
+              <small>Aethex for institutions</small>
+              <h2>Buying for a hospital or a medical college?</h2>
+              <p>Send us your whole list, from beds and monitors to manikins and lab glassware. You get one quotation, and you can pay by bank transfer or purchase order.</p>
+              <div className="row">
+                <Link href="/hospitals" className="ec-btn light">For hospitals <ArrowRight size={16} /></Link>
+                <Link href="/medical-colleges" className="ec-btn ghost">For medical colleges <ArrowRight size={16} /></Link>
+              </div>
+            </div>
+            <ul className="steps">
+              <li><span>1</span><b>Build your list</b><small>Add products, or upload your own list</small></li>
+              <li><span>2</span><b>Get one quotation</b><small>For everything on the list</small></li>
+              <li><span>3</span><b>Confirm and receive</b><small>Delivered across India</small></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* brands */}
+      <section className="ec-sec" data-rv data-home="brands">
+        <div className="ax-wrap">
+          <Head title="Shop by brand" sub="Only brands we have verified" href="/brands" link="All brands" />
+          <div className="ec-brands">
+            {brands.map((b) => <Link key={b.slug} href={`/brand/${b.slug}`}><b>{b.name}</b><small>{b.count} products</small></Link>)}
+          </div>
+        </div>
+      </section>
+
+      {/* more for doctors */}
+      <section className="ec-sec ec-last" data-rv data-home="showcase">
+        <div className="ax-wrap">
+          <Head title="More for doctors" sub="Free tools from Aethex, alongside the store" />
+          <div className="ec-xs">
+            <a href={cadusUrl("/")} className="ec-x dark">
+              <span className="ic"><CadusMark size={22} variant="mono" color="currentColor" /></span>
+              <b>Cadus</b><small>Clinical answers with sources, and 320+ bedside tools.</small>
+              <em>Try free <ArrowRight size={14} /></em>
+            </a>
+            <Link href="/study-hub" className="ec-x"><span className="ic"><GraduationCap size={22} /></span><b>Study Hub</b><small>NEET-PG question banks, mock tests and flashcards.</small><em>Explore <ArrowRight size={14} /></em></Link>
+            <Link href="/tools" className="ec-x"><span className="ic"><Calculator size={22} /></span><b>Clinical tools</b><small>Drug reference, interaction checker and calculators.</small><em>Open <ArrowRight size={14} /></em></Link>
+            <Link href="/case-of-the-day" className="ec-x"><span className="ic"><ClipboardList size={22} /></span><b>Case of the day</b><small>One clinical case, every day.</small><em>Today's case <ArrowRight size={14} /></em></Link>
+          </div>
+          <div className="ec-quotes">
             {TESTIMONIALS.map((t) => (
-              <figure key={t.name} className="ap-quote">
+              <figure key={t.name}>
+                <div className="stars" aria-hidden="true">{Array.from({ length: 5 }, (_, k) => <Star key={k} size={14} fill="currentColor" />)}</div>
                 <blockquote>"{t.quote}"</blockquote>
-                <figcaption><b>{t.name}</b><small>{t.role}</small></figcaption>
+                <figcaption><span className="av">{t.initials}</span><span><b>{t.name}</b><small>{t.role}</small></span></figcaption>
               </figure>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* everything else, as quiet links */}
-      <section className="ap-sec ap-more-sec" data-rv data-home="more">
-        <div className="ax-wrap">
-          <div className="ap-head"><h2>More from Aethex.</h2></div>
-          <div className="ap-more">
-            {MORE.map(({ href, icon: I, t, d }) => {
-              const body = <><span className="ic"><I size={20} /></span><span><b>{t}</b><small>{d}</small></span><ArrowRight size={16} className="ar" /></>;
-              return href === "__downloads" ? <a key={t} href={downloadsUrl()}>{body}</a> : <Link key={t} href={href}>{body}</Link>;
-            })}
-          </div>
+          <p className="ec-dl"><Download size={15} /><span>Cadus is also available for <a href={downloadsUrl()}>Windows and Linux</a>.</span></p>
         </div>
       </section>
     </div>
