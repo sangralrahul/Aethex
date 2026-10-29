@@ -439,7 +439,7 @@
 @media (max-width:640px){.hb-search .q,.fd-search .q{flex:none}.hb-search label,.fd-search label{height:50px}.fd-pform .fd-sess input{width:auto;flex:1}}
 
 /* ------------------------------------------------------------------ the five dashboards (update 59) */
-.hb-mosaic{background:#0b1220}
+.hb-mosaic{background:#0b1220;padding-bottom:0}
 .hb-tiles{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-template-rows:minmax(300px,calc((100vh - 150px)/2)) minmax(300px,calc((100vh - 150px)/2));gap:6px;padding:6px}
 .hb-tile{position:relative;display:flex;align-items:flex-end;grid-column:span 2;min-height:300px;border-radius:18px;overflow:hidden;color:#fff;text-decoration:none;isolation:isolate;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);transition:transform .5s cubic-bezier(.2,.8,.2,1),box-shadow .5s}
 .hb-tile:nth-child(4),.hb-tile:nth-child(5){grid-column:span 3}
@@ -449,6 +449,7 @@
 .hb-tile .veil{position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(0,0,0,0) 20%,rgba(0,0,0,.55) 75%,rgba(0,0,0,.72) 100%);transition:opacity .4s}
 .hb-tile:hover .veil{opacity:.85}
 .hb-tile .txt{position:relative;z-index:2;display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:28px 30px;max-width:520px}
+.hb-tile .ic{position:relative;z-index:3}
 .hb-tile .ic{display:grid;place-items:center;width:52px;height:52px;margin-bottom:8px;border-radius:14px;background:rgba(255,255,255,.14);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.22)}
 .hb-tile .k{font-size:12.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.75)}
 .hb-tile b{font-size:clamp(26px,2.4vw,40px);line-height:1.05;font-weight:800;letter-spacing:-.025em;text-shadow:0 2px 18px rgba(0,0,0,.35)}
@@ -466,21 +467,21 @@
 @keyframes hbPulse{0%,100%{transform:translate(var(--x,0),var(--y,0)) scale(1)}50%{transform:translate(var(--x,0),var(--y,0)) scale(1)}}
 .hb-tile.store{background:radial-gradient(80% 70% at 15% 15%,#0ea5a0 0,transparent 55%),linear-gradient(135deg,#065f5b,#0b3b3a)}
 .hb-tile.study{background:radial-gradient(80% 70% at 85% 20%,#7c3aed 0,transparent 55%),linear-gradient(135deg,#3b1d8f,#1e1b4b)}
-.hb-tile.study .cards{position:absolute;left:30px;top:24px;width:min(300px,48%)}
+.hb-tile.study .cards{position:absolute;right:30px;top:24px;width:min(300px,46%)}
 .hb-tile.study .mcq{position:absolute;inset:0 auto auto 0;width:100%;padding:14px 16px;border-radius:14px;background:rgba(255,255,255,.96);color:#1e1b4b;opacity:0;transform:translateY(16px) scale(.96);animation:hbCard 6.6s ease-in-out infinite}
 .hb-tile.study .mcq small{display:block;font-size:11px;font-weight:700;letter-spacing:.06em;color:#7c3aed}
 .hb-tile.study .mcq b{display:block;margin:4px 0 8px;font-size:14.5px;line-height:1.35;font-weight:650;letter-spacing:0;text-shadow:none}
 .hb-tile.study .mcq span{display:block;height:9px;margin-top:5px;border-radius:4px;background:#ece9fb}
 .hb-tile.study .mcq span.ok{background:#c4b5fd;width:70%}
 @keyframes hbCard{0%{opacity:0;transform:translateY(16px) scale(.96)}5%,31%{opacity:1;transform:none}36%,100%{opacity:0;transform:translateY(-14px) scale(.98)}}
-.hb-tile.study .pring{position:absolute;right:8%;top:8%;width:96px;height:96px;transform:rotate(-90deg)}
+.hb-tile.study .pring{position:absolute;left:30px;top:24px;width:96px;height:96px;transform:rotate(-90deg)}
 .hb-tile.study .prog{stroke-dashoffset:314;animation:hbProg 4s ease-in-out infinite alternate}
 @keyframes hbProg{to{stroke-dashoffset:60}}
 .hb-tile.hospitals{background:radial-gradient(70% 70% at 90% 90%,#0e7490 0,transparent 55%),linear-gradient(135deg,#0f2a44,#0b1a2e)}
 .hb-tile.hospitals .ecg{position:absolute;left:0;right:0;top:38%;width:100%;height:120px;opacity:.9}
 .hb-tile.hospitals .trace{stroke-dasharray:1600;stroke-dashoffset:1600;animation:hbTrace 4s linear infinite;filter:drop-shadow(0 0 6px rgba(94,234,212,.8))}
 @keyframes hbTrace{0%{stroke-dashoffset:1600}70%{stroke-dashoffset:0}100%{stroke-dashoffset:0}}
-.hb-tile.hospitals .vitals{position:absolute;left:30px;top:24px;display:flex;gap:10px}
+.hb-tile.hospitals .vitals{position:absolute;right:30px;top:24px;display:flex;gap:10px}
 .hb-tile.hospitals .vitals span{display:flex;flex-direction:column;padding:8px 12px;border-radius:10px;background:rgba(0,0,0,.35);border:1px solid rgba(94,234,212,.3);font-family:ui-monospace,Menlo,monospace}
 .hb-tile.hospitals .vitals small{font-size:10px;letter-spacing:.08em;color:#5eead4}
 .hb-tile.hospitals .vitals b{font-size:18px;letter-spacing:0;text-shadow:none;animation:hbBlink 1.2s steps(1) infinite}
