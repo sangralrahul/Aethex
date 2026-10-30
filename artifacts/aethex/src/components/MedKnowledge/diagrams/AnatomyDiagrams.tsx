@@ -431,7 +431,7 @@ export function BrachialPlexusDiagram() {
 
 export function ActionPotentialDiagram() {
   return (
-    <svg viewBox="0 0 600 360" className="w-full" style={{ background: "#1C2128", borderRadius: 12 }}>
+    <svg viewBox="0 0 600 360" className="w-full" style={{ background: "#FFFFFF", border: "1px solid #E6E9EF", borderRadius: 12 }}>
       <title>Nerve Action Potential — Phases</title>
       {/* Grid */}
       {[0,1,2,3,4,5].map(i => <line key={`h${i}`} x1="60" y1={60+i*50} x2="560" y2={60+i*50} stroke="#E5E1D8" strokeWidth="1" />)}
@@ -477,7 +477,7 @@ export function ActionPotentialDiagram() {
 
 export function CardiacCycleDiagram() {
   return (
-    <svg viewBox="0 0 650 380" className="w-full" style={{ background: "#1C2128", borderRadius: 12 }}>
+    <svg viewBox="0 0 650 380" className="w-full" style={{ background: "#FFFFFF", border: "1px solid #E6E9EF", borderRadius: 12 }}>
       <title>Cardiac Cycle — Pressure Volume Relationships</title>
       <line x1="80" y1="40" x2="80" y2="340" stroke="#6B7280" strokeWidth="2" />
       <line x1="80" y1="340" x2="600" y2="340" stroke="#6B7280" strokeWidth="2" />

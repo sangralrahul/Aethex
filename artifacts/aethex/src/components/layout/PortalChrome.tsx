@@ -12,6 +12,7 @@ import { useWishlist } from "@/hooks/use-wishlist";
 import { loginUrl } from "@/lib/host";
 import { BUSINESS } from "@/config/business";
 import { PORTALS, type NavLink } from "@/lib/portals";
+import { useReveal } from "@/lib/reveal";
 import type { Portal } from "@/lib/host";
 
 type Site = Exclude<Portal, "cadus">;
@@ -48,6 +49,7 @@ export function PortalHeader({ portal }: { portal: Site }) {
   const { user, isLoggedIn, logout } = useUserAuth();
   const [scrolled, setScrolled] = useState(false), [acct, setAcct] = useState(false), [mobile, setMobile] = useState(false), [searching, setSearching] = useState(false), [q, setQ] = useState("");
   const acctRef = useRef<HTMLDivElement>(null);
+  useReveal();
   useEffect(() => { const f = () => setScrolled(window.scrollY > 8); f(); window.addEventListener("scroll", f, { passive: true }); return () => window.removeEventListener("scroll", f); }, []);
   useEffect(() => { setAcct(false); setMobile(false); setSearching(false); }, [location]);
   useEffect(() => {

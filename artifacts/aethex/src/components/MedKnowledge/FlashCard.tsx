@@ -65,7 +65,7 @@ export function FlashCard({ cards }: FlashCardProps) {
 
   if (!cards || cards.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 rounded-2xl border" style={{ background: "#FFFFFF", borderColor: "#E5E1D8" }}>
+      <div className="flex flex-col items-center justify-center py-12 rounded-2xl border" style={{ background: "#FFFFFF", borderColor: "#E6E9EF" }}>
         <BookOpen className="w-10 h-10 mb-3" style={{ color: "#6B7280" }} />
         <p className="text-sm font-medium" style={{ color: "#6B7280" }}>No flashcards available</p>
       </div>
@@ -96,7 +96,7 @@ export function FlashCard({ cards }: FlashCardProps) {
         </div>
       </div>
 
-      <div className="w-full rounded-full h-2 overflow-hidden" style={{ background: "#E5E1D8" }} role="progressbar" aria-valuenow={current + 1} aria-valuemin={1} aria-valuemax={cards.length} aria-label={`Card ${current + 1} of ${cards.length}`}>
+      <div className="w-full rounded-full h-2 overflow-hidden" style={{ background: "#E6E9EF" }} role="progressbar" aria-valuenow={current + 1} aria-valuemin={1} aria-valuemax={cards.length} aria-label={`Card ${current + 1} of ${cards.length}`}>
         <div
           className="h-full rounded-full transition-all duration-500 ease-out"
           style={{ width: `${progress}%`, background: colorScheme.bg }}
@@ -153,7 +153,7 @@ export function FlashCard({ cards }: FlashCardProps) {
           <div
             className="absolute inset-0 rounded-2xl p-6 flex flex-col"
             style={{
-              background: "#F5F3EE",
+              background: "#F7F8FA",
               backfaceVisibility: "hidden",
               transform: "rotateY(180deg)",
               border: `2px solid`,
@@ -201,7 +201,7 @@ export function FlashCard({ cards }: FlashCardProps) {
               style={{
                 width: i === current ? 24 : 8,
                 height: 8,
-                background: i === current ? CARD_COLORS[i % CARD_COLORS.length].bg : "#E5E1D8",
+                background: i === current ? CARD_COLORS[i % CARD_COLORS.length].bg : "#E6E9EF",
               }} />
           ))}
         </div>

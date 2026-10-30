@@ -1,6 +1,6 @@
 export function MIBiomarkersDiagram() {
   return (
-    <svg viewBox="0 0 620 380" className="w-full" style={{ background: "#1C2128", borderRadius: 12 }}>
+    <svg viewBox="0 0 620 380" className="w-full" style={{ background: "#FFFFFF", border: "1px solid #E6E9EF", borderRadius: 12 }}>
       <title>Cardiac Biomarkers After MI — Rise & Fall Timeline</title>
       {/* Axes */}
       <line x1="80" y1="40" x2="80" y2="320" stroke="#6B7280" strokeWidth="2" />
@@ -52,7 +52,7 @@ export function MIBiomarkersDiagram() {
 
 export function MIECGChangesDiagram() {
   return (
-    <svg viewBox="0 0 680 320" className="w-full" style={{ background: "#1C2128", borderRadius: 12 }}>
+    <svg viewBox="0 0 680 320" className="w-full" style={{ background: "#FFFFFF", border: "1px solid #E6E9EF", borderRadius: 12 }}>
       <title>ECG Changes After STEMI — Evolution Timeline</title>
       {/* Timeline arrow */}
       <line x1="40" y1="40" x2="640" y2="40" stroke="#6B7280" strokeWidth="2" markerEnd="url(#arr)" />
@@ -104,7 +104,7 @@ export function MIECGChangesDiagram() {
 
 export function HeartFailureFrankStarlingDiagram() {
   return (
-    <svg viewBox="0 0 560 380" className="w-full" style={{ background: "#1C2128", borderRadius: 12 }}>
+    <svg viewBox="0 0 560 380" className="w-full" style={{ background: "#FFFFFF", border: "1px solid #E6E9EF", borderRadius: 12 }}>
       <title>Frank-Starling Curve — Normal vs Heart Failure</title>
       {/* Axes */}
       <line x1="80" y1="50" x2="80" y2="320" stroke="#6B7280" strokeWidth="2" />
@@ -151,7 +151,7 @@ export function HeartFailureFrankStarlingDiagram() {
 
 export function HypertensionRAASDiagram() {
   return (
-    <svg viewBox="0 0 640 500" className="w-full" style={{ background: "#1C2128", borderRadius: 12 }}>
+    <svg viewBox="0 0 640 500" className="w-full" style={{ background: "#FFFFFF", border: "1px solid #E6E9EF", borderRadius: 12 }}>
       <title>Renin-Angiotensin-Aldosterone System (RAAS)</title>
 
       {[
@@ -206,7 +206,7 @@ export function HypertensionRAASDiagram() {
 
 export function CoagulationCascadeDiagram() {
   return (
-    <svg viewBox="0 0 700 520" className="w-full" style={{ background: "#1C2128", borderRadius: 12 }}>
+    <svg viewBox="0 0 700 520" className="w-full" style={{ background: "#FFFFFF", border: "1px solid #E6E9EF", borderRadius: 12 }}>
       <title>Coagulation Cascade — Intrinsic, Extrinsic & Common Pathways</title>
       {/* Title */}
       <text x="350" y="28" textAnchor="middle" fontSize="14" fontWeight="bold" fill="#0F1729">Coagulation Cascade</text>
@@ -260,7 +260,7 @@ export function CoagulationCascadeDiagram() {
 
 export function DoseResponseCurveDiagram() {
   return (
-    <svg viewBox="0 0 580 380" className="w-full" style={{ background: "#1C2128", borderRadius: 12 }}>
+    <svg viewBox="0 0 580 380" className="w-full" style={{ background: "#FFFFFF", border: "1px solid #E6E9EF", borderRadius: 12 }}>
       <title>Dose-Response Curves — Pharmacodynamics</title>
       {/* Axes */}
       <line x1="80" y1="50" x2="80" y2="310" stroke="#6B7280" strokeWidth="2" />
@@ -316,7 +316,7 @@ export function DoseResponseCurveDiagram() {
 
 export function GramStainTree() {
   return (
-    <svg viewBox="0 0 700 500" className="w-full" style={{ background: "#1C2128", borderRadius: 12 }}>
+    <svg viewBox="0 0 700 500" className="w-full" style={{ background: "#FFFFFF", border: "1px solid #E6E9EF", borderRadius: 12 }}>
       <title>Gram Stain Classification Tree</title>
       <text x="350" y="28" textAnchor="middle" fontSize="14" fontWeight="bold" fill="#0F1729">Bacterial Classification (Gram Stain)</text>
 

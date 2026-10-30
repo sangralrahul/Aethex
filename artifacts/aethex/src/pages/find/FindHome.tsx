@@ -12,6 +12,7 @@ import {
 import { useSeo } from "@/hooks/use-seo";
 import { CITIES, CONCERNS, SPECIALTIES, findHome, useDoctors } from "@/lib/find";
 import { FindNav } from "./FindParts";
+import { HeroScene } from "@/components/visual/HeroScene";
 
 const CONCERN_ICON = [Thermometer, Baby, Flower2, Sparkles, Smile, Bone, Ear, Eye, HeartPulse, Brain, Droplet, Soup];
 
@@ -37,7 +38,7 @@ export default function FindHome() {
       <FindNav />
       {/* update 67: the same hero as the other platforms, in the Doctors blue */}
       <section className="ax-ihero fd-hero2">
-        <div className="ax-ihero-bg" aria-hidden="true"><i /><i /><i /></div>
+        <div className="ax-ihero-bg" aria-hidden="true"><i /><i /><i /><HeroScene kind="pulse" rgb="56,189,248" ghosts={["stethoscope", "otoscope"]} /></div>
         <div className="ax-wrap ax-ihero-in">
           <div className="txt">
             <span className="eyebrow"><Stethoscope size={15} /> Aethex Doctors<em>Clinic visits and video consults</em></span>

@@ -281,9 +281,9 @@ export function DiagramCarousel({ topicSlug = "", subjectSlug = "", conditionSlu
             <button key={i} onClick={() => setActive(i)}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
               style={{
-                background: active === i ? "#00C2A8" : "#E5E1D8",
-                color: active === i ? "#F5F3EE" : "#6B7280",
-                border: `1px solid ${active === i ? "#00C2A8" : "#E5E1D8"}`,
+                background: active === i ? "#6D28D9" : "#E6E9EF",
+                color: active === i ? "#F7F8FA" : "#6B7280",
+                border: `1px solid ${active === i ? "#6D28D9" : "#E6E9EF"}`,
               }}>
               {d.title}
             </button>
@@ -291,8 +291,8 @@ export function DiagramCarousel({ topicSlug = "", subjectSlug = "", conditionSlu
         </div>
       )}
 
-      <div className="rounded-xl overflow-hidden border" style={{ borderColor: "#E5E1D8" }}>
-        <div className="px-4 py-2 border-b flex items-center justify-between" style={{ background: "#FFFFFF", borderColor: "#E5E1D8" }}>
+      <div className="rounded-xl overflow-hidden border" style={{ borderColor: "#E6E9EF" }}>
+        <div className="px-4 py-2 border-b flex items-center justify-between" style={{ background: "#FFFFFF", borderColor: "#E6E9EF" }}>
           <span className="text-sm font-semibold" style={{ color: "#0F1729" }}>{diagrams[active].title}</span>
           {diagrams.length > 1 && (
             <div className="flex items-center gap-2">
@@ -310,7 +310,7 @@ export function DiagramCarousel({ topicSlug = "", subjectSlug = "", conditionSlu
             </div>
           )}
         </div>
-        <div className="p-4" style={{ background: "#F5F3EE" }}>
+        <div className="p-4" style={{ background: "#F7F8FA" }}>
           {diagrams[active].component}
         </div>
       </div>

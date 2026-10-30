@@ -3,6 +3,7 @@
  * banners and promos; the service promises; categories; top deals; shop for your practice; popular products;
  * the institutions band; brands; and Cadus and the free tools. Styles: src/site-ec.css (classes ec-*).
  */
+import { HeroScene } from "@/components/visual/HeroScene";
 import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import {
@@ -246,6 +247,8 @@ function Banners({ picks, cats }: { picks: Map<string, ProductSummary | undefine
   const go = (d: number) => setI((x) => (x + d + BANNERS.length) % BANNERS.length);
   return (
     <div className="ec-ban" onMouseEnter={() => setHold(true)} onMouseLeave={() => setHold(false)} aria-roledescription="carousel" data-home="banners">
+      {/* update 68: a living network and heartbeat over the dark half of the banner */}
+      <div className="ec-ban-scene" aria-hidden="true"><HeroScene kind="pulse" rgb="94,234,212" /></div>
       {BANNERS.map((b, k) => {
         const href = `/category/${b.cat}`;
         const from = cats.find((c) => c.slug === b.cat)?.from;

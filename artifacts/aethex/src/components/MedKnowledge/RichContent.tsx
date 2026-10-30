@@ -52,7 +52,7 @@ function renderLine(line: string, i: number) {
   if (/^#{1,3}\s/.test(trimmed)) {
     const text = trimmed.replace(/^#{1,3}\s/, "");
     return (
-      <div key={i} className="mt-4 mb-1 text-sm font-bold uppercase tracking-wider" style={{ color: "#00C2A8" }}>
+      <div key={i} className="mt-4 mb-1 text-sm font-bold uppercase tracking-wider" style={{ color: "#6D28D9" }}>
         {parseInlineMarkers(text)}
       </div>
     );
@@ -60,7 +60,7 @@ function renderLine(line: string, i: number) {
 
   if (/^\*\*[^*]+\*\*[:：]?\s*$/.test(trimmed)) {
     return (
-      <div key={i} className="mt-3 mb-0.5 text-sm font-bold" style={{ color: "#00C2A8" }}>
+      <div key={i} className="mt-3 mb-0.5 text-sm font-bold" style={{ color: "#6D28D9" }}>
         {parseInlineMarkers(trimmed.replace(/\*\*/g, ""))}
       </div>
     );
@@ -69,7 +69,7 @@ function renderLine(line: string, i: number) {
   if (/^\d+\.\s+\*\*/.test(trimmed) || /^\d+\.\s/.test(trimmed)) {
     return (
       <div key={i} className="flex gap-2 py-0.5">
-        <span className="shrink-0 text-xs font-bold mt-0.5" style={{ color: "#00C2A8" }}>
+        <span className="shrink-0 text-xs font-bold mt-0.5" style={{ color: "#6D28D9" }}>
           {trimmed.match(/^(\d+)\./)?.[1]}.
         </span>
         <span className="text-sm leading-relaxed" style={{ color: "#0F1729" }}>
@@ -82,7 +82,7 @@ function renderLine(line: string, i: number) {
   if (/^[-•–]\s/.test(trimmed)) {
     return (
       <div key={i} className="flex gap-2 py-0.5 pl-1">
-        <span className="shrink-0 text-xs mt-1" style={{ color: "#00C2A8" }}>▸</span>
+        <span className="shrink-0 text-xs mt-1" style={{ color: "#6D28D9" }}>▸</span>
         <span className="text-sm leading-relaxed" style={{ color: "#0F1729" }}>
           {parseInlineMarkers(trimmed.replace(/^[-•–]\s+/, ""))}
         </span>
@@ -122,7 +122,7 @@ export function RichContent({ content, lineByLine = true }: RichContentProps) {
           ))}
         </div>
       )}
-      <div className="flex flex-wrap gap-3 mt-3 pt-3" style={{ borderTop: "1px solid #E5E1D8" }}>
+      <div className="flex flex-wrap gap-3 mt-3 pt-3" style={{ borderTop: "1px solid #E6E9EF" }}>
         <span className="flex items-center gap-1.5 text-xs" style={{ color: "#6B7280" }}>
           <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: "#F85149" }} />
           Critical / Must-know

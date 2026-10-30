@@ -226,6 +226,14 @@ Update 67: the Doctors home (`src/pages/find/FindHome.tsx`, `.fd-hero2`) and the
 `.ax-sth-hero2`) use the same hero (`.ax-ihero` in `src/shop.css`) in their own colours; the Study pages' accents are
 violet (`.ax-sth` redefines the `--ax-teal*` tokens).
 
+Update 68: `src/components/visual/HeroScene.tsx` is the living background behind every platform hero and the store's
+banner: a network canvas (paused off screen and with reduced motion), a themed animation (heartbeat, molecules, DNA,
+crosses) and "X-ray" ghosts of our own product photos. `src/lib/reveal.ts` (started by the portal header) makes cards
+and headings rise into view on scroll; it marks elements with `data-axrv` and the classes `ax-rv`/`ax-rv-in`, because
+`data-rv` and `.rv` already belong to the older homepage and downloads animations. The Knowledge Hub
+(`src/pages/StudyHub/MedicalKnowledgeHub/`) uses the same hero (`KhHero` in `src/components/MedKnowledge/KhParts.tsx`),
+line icons instead of emoji, Study's violet, figures counted from the data, and light backgrounds for its diagrams.
+
 ## Aethex Doctors
 
 `worker/find.ts` (`/api/find/*`), tables in `migrations/0006_find.sql` (also created on first use). Doctors list

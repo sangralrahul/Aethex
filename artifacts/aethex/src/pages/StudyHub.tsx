@@ -12,6 +12,7 @@ import {
   GraduationCap,
 } from "lucide-react";
 import { cadusUrl } from "@/lib/host";
+import { HeroScene } from "@/components/visual/HeroScene";
 import { TopLayer } from "@/components/shop/TopLayer";
 import { useSeo } from "@/hooks/use-seo";
 import { medicalSubjects } from "@/data/medicalSubjects";
@@ -447,7 +448,7 @@ export default function StudyHub() {
     <div className={`ax-sth${compareIds.length ? " has-bar" : ""}`}>
       {/* hero (update 67: the same hero as the other platforms, in Study's violet) */}
       <section className="ax-ihero ax-sth-hero2">
-        <div className="ax-ihero-bg" aria-hidden="true"><i /><i /><i /></div>
+        <div className="ax-ihero-bg" aria-hidden="true"><i /><i /><i /><HeroScene kind="molecules" rgb="167,139,250" ghosts={["neuro-kit", "ecg"]} /></div>
         <div className="ax-wrap ax-ihero-in">
           <div className="txt">
             <span className="eyebrow"><GraduationCap size={15} /> Aethex Study<em>NEET-PG · NExT · FMGE · USMLE</em></span>

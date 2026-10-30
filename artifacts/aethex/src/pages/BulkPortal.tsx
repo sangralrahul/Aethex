@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useMemo, useState, type ComponentType } from "react";
 import { Link, useLocation } from "wouter";
 import { sitePortal } from "@/lib/portals";
+import { HeroScene } from "@/components/visual/HeroScene";
 import {
   Accessibility, Droplet, HeartHandshake, Mail, Scale, Wind,
   Activity, ArrowRight, Banknote, BedDouble, BookOpen, Bone, Building2, CalendarClock, Check, ChevronDown, ClipboardCheck, ClipboardList, GraduationCap,
@@ -100,7 +101,7 @@ export default function BulkPortal({ segment }: { segment: Segment }) {
   return (
     <div className={`ax-bulk seg-${segment}`}>
       <section className="ax-ihero">
-        <div className="ax-ihero-bg" aria-hidden="true"><i /><i /><i /></div>
+        <div className="ax-ihero-bg" aria-hidden="true"><i /><i /><i />{segment === "hospital" ? <HeroScene kind={["cross", "pulse"]} rgb="34,211,238" ghosts={["ecg", "xray-viewer"]} /> : <HeroScene kind={["dna", "molecules"]} rgb="251,191,36" ghosts={["neuro-kit", "stethoscope"]} />}</div>
         <div className="ax-wrap ax-ihero-in">
           <div className="txt">
             <span className="eyebrow"><Icon segment={segment} /> {cfg.tag}<em>Institutional supply</em></span>

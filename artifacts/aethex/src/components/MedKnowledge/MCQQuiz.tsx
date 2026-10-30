@@ -73,8 +73,8 @@ export function MCQQuiz({ questions, topic, subject }: MCQQuizProps) {
   if (finished) {
     const pct = Math.round((score / questions.length) * 100);
     return (
-      <div className="rounded-2xl border p-8 text-center" style={{ background: "#FFFFFF", borderColor: "#E5E1D8" }}>
-        <Trophy className="w-16 h-16 mx-auto mb-4" style={{ color: "#00C2A8" }} />
+      <div className="rounded-2xl border p-8 text-center" style={{ background: "#FFFFFF", borderColor: "#E6E9EF" }}>
+        <Trophy className="w-16 h-16 mx-auto mb-4" style={{ color: "#6D28D9" }} />
         <h3 className="text-2xl font-bold mb-2" style={{ color: "#0F1729" }}>Quiz Complete!</h3>
         <p className="text-lg mb-1" style={{ color: "#6B7280" }}>Your Score</p>
         <div className="text-5xl font-bold mb-2" style={{ color: pct >= 70 ? "#238636" : pct >= 50 ? "#E3B341" : "#F85149" }}>
@@ -85,11 +85,11 @@ export function MCQQuiz({ questions, topic, subject }: MCQQuizProps) {
           {pct >= 70 ? "Excellent! You have a strong grasp of this topic." : pct >= 50 ? "Good effort! Review the missed questions." : "Keep studying! Revise the topic and try again."}
         </p>
         {subject && (
-          <p className="text-xs mb-4" style={{ color: "rgba(0,194,168,0.8)" }}>
+          <p className="text-xs mb-4" style={{ color: "rgba(109,40,217,0.8)" }}>
             ✓ Progress saved to your {subject} tracker
           </p>
         )}
-        <button onClick={handleReset} className="flex items-center gap-2 mx-auto px-6 py-3 rounded-xl font-semibold transition-all hover:opacity-90" style={{ background: "#00C2A8", color: "#F5F3EE" }}>
+        <button onClick={handleReset} className="flex items-center gap-2 mx-auto px-6 py-3 rounded-xl font-semibold transition-all hover:opacity-90" style={{ background: "#6D28D9", color: "#F7F8FA" }}>
           <RotateCcw className="w-4 h-4" /> Retry Quiz
         </button>
       </div>
@@ -98,14 +98,14 @@ export function MCQQuiz({ questions, topic, subject }: MCQQuizProps) {
 
   return (
     <>
-      <div className="rounded-2xl border" style={{ background: "#FFFFFF", borderColor: "#E5E1D8" }}>
-        <div className="px-6 pt-6 pb-4 border-b" style={{ borderColor: "#E5E1D8" }}>
+      <div className="rounded-2xl border" style={{ background: "#FFFFFF", borderColor: "#E6E9EF" }}>
+        <div className="px-6 pt-6 pb-4 border-b" style={{ borderColor: "#E6E9EF" }}>
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-semibold" style={{ color: "#6B7280" }}>Question {current + 1} of {questions.length}</span>
-            <span className="text-sm font-semibold" style={{ color: "#00C2A8" }}>Score: {score}/{current}</span>
+            <span className="text-sm font-semibold" style={{ color: "#6D28D9" }}>Score: {score}/{current}</span>
           </div>
-          <div className="h-1.5 rounded-full" style={{ background: "#E5E1D8" }}>
-            <div className="h-full rounded-full transition-all" style={{ background: "#00C2A8", width: `${((current) / questions.length) * 100}%` }} />
+          <div className="h-1.5 rounded-full" style={{ background: "#E6E9EF" }}>
+            <div className="h-full rounded-full transition-all" style={{ background: "#6D28D9", width: `${((current) / questions.length) * 100}%` }} />
           </div>
         </div>
 
@@ -115,15 +115,15 @@ export function MCQQuiz({ questions, topic, subject }: MCQQuizProps) {
             {q.options.map((opt) => {
               const isCorrect = opt.startsWith(q.correct);
               const isSelected = selected === opt;
-              let borderColor = "#E5E1D8";
-              let bg = "#F5F3EE";
+              let borderColor = "#E6E9EF";
+              let bg = "#F7F8FA";
               let textColor = "#0F1729";
 
               if (answered) {
                 if (isCorrect) { borderColor = "#238636"; bg = "rgba(35,134,54,0.1)"; textColor = "#7EE787"; }
                 else if (isSelected && !isCorrect) { borderColor = "#F85149"; bg = "rgba(248,81,73,0.1)"; textColor = "#F85149"; }
               } else if (isSelected) {
-                borderColor = "#00C2A8"; bg = "rgba(0,194,168,0.1)";
+                borderColor = "#16A34A"; bg = "rgba(22,163,74,0.1)";
               }
 
               return (
@@ -141,19 +141,19 @@ export function MCQQuiz({ questions, topic, subject }: MCQQuizProps) {
           </div>
 
           {answered && (
-            <div className="rounded-xl mb-4 overflow-hidden" style={{ border: "1px solid rgba(0,194,168,0.2)" }}>
+            <div className="rounded-xl mb-4 overflow-hidden" style={{ border: "1px solid rgba(109,40,217,0.2)" }}>
               {canSeeExplanation ? (
-                <div className="p-4 text-sm leading-relaxed" style={{ background: "rgba(0,194,168,0.08)", color: "#0F1729" }}>
-                  <span className="font-bold" style={{ color: "#00C2A8" }}>Explanation: </span>{q.explanation}
+                <div className="p-4 text-sm leading-relaxed" style={{ background: "rgba(109,40,217,0.08)", color: "#0F1729" }}>
+                  <span className="font-bold" style={{ color: "#6D28D9" }}>Explanation: </span>{q.explanation}
                 </div>
               ) : (
                 <div
                   className="relative p-4 cursor-pointer"
-                  style={{ background: "rgba(0,194,168,0.06)" }}
+                  style={{ background: "rgba(109,40,217,0.06)" }}
                   onClick={() => setShowUpgrade(true)}
                 >
                   <div className="blur-sm select-none text-sm leading-relaxed" style={{ color: "#0F1729" }}>
-                    <span className="font-bold" style={{ color: "#00C2A8" }}>Explanation: </span>{q.explanation}
+                    <span className="font-bold" style={{ color: "#6D28D9" }}>Explanation: </span>{q.explanation}
                   </div>
                   <div className="absolute inset-0 flex items-center justify-center rounded-xl" style={{ background: "rgba(10,16,32,0.6)" }}>
                     <div className="flex items-center gap-2 px-4 py-2 rounded-full"
@@ -170,7 +170,7 @@ export function MCQQuiz({ questions, topic, subject }: MCQQuizProps) {
           )}
 
           {answered && (
-            <button onClick={handleNext} className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm transition-all hover:opacity-90" style={{ background: "#00C2A8", color: "#F5F3EE" }}>
+            <button onClick={handleNext} className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm transition-all hover:opacity-90" style={{ background: "#6D28D9", color: "#F7F8FA" }}>
               {current < questions.length - 1 ? "Next Question" : "See Results"} <ChevronRight className="w-4 h-4" />
             </button>
           )}
