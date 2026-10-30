@@ -1854,3 +1854,32 @@ img.ax-pimg.crop{padding:0!important;clip-path:var(--ax-clip);transform:translat
 .cme-cert p{margin:12px 0 0;max-width:68ch;font-size:15px;line-height:1.65;color:var(--ax-t2)}
 .cme-cert .acts{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
 @media (max-width:640px){.cme-facts{grid-template-columns:1fr 1fr;row-gap:16px}.cme-facts div:nth-child(3){border-left:0}.cme-grid{grid-template-columns:1fr}.cme-cert{padding:24px}}
+
+/* ---------------------------------------------------------------- update 70: category artwork behind every card */
+.has-art{position:relative;overflow:hidden;isolation:isolate}
+.cart{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden;border-radius:inherit}
+.cart .glow{position:absolute;right:-60px;bottom:-70px;width:220px;height:220px;border-radius:50%;background:radial-gradient(closest-side,var(--c),transparent);opacity:.10;transition:opacity .35s,transform .6s;animation:cart-breathe 7s ease-in-out var(--d) infinite}
+.cart .big{position:absolute;right:-22px;bottom:-26px;width:150px;height:150px;color:var(--c);opacity:.09;transform:rotate(-12deg);transition:opacity .35s,transform .6s;animation:cart-float 9s ease-in-out var(--d) infinite}
+.cart .orbit{position:absolute;right:-46px;bottom:-50px;width:200px;height:200px;opacity:.16;animation:cart-spin 28s linear var(--d) infinite;transition:opacity .35s}
+.cart .orbit circle{fill:none;stroke:var(--c);stroke-width:1;stroke-dasharray:3 7}
+.cart .orbit circle+circle{stroke-dasharray:1 9;opacity:.7}
+.cart .orbit .dot{fill:var(--c);stroke:none;opacity:.9}
+.has-art:hover .cart .big{opacity:.17;transform:rotate(-4deg) scale(1.06)}
+.has-art:hover .cart .glow{opacity:.2;transform:scale(1.15)}
+.has-art:hover .cart .orbit{opacity:.32}
+@keyframes cart-float{0%,100%{translate:0 0}50%{translate:-6px -8px}}
+@keyframes cart-breathe{0%,100%{scale:1}50%{scale:1.12}}
+@keyframes cart-spin{to{rotate:360deg}}
+@media (prefers-reduced-motion:reduce){.cart *{animation:none!important}}
+/* small cards: a smaller picture */
+.kh-dept .cart .big,.fd-concerns>a .cart .big{width:96px;height:96px;right:-14px;bottom:-18px}
+.kh-dept .cart .orbit,.fd-concerns>a .cart .orbit{width:130px;height:130px;right:-34px;bottom:-40px}
+.ec-promo.has-art>.art{display:none}
+li.has-art .cart .big{width:76px;height:76px;right:-12px;bottom:-22px}
+li.has-art .cart .orbit{width:110px;height:110px;right:-34px;bottom:-44px}
+li.has-art .cart .glow{width:140px;height:140px;right:-40px;bottom:-60px}
+.ax-sth-tools a.has-art .cart .big{width:120px;height:120px}
+/* update 70: the shaded bands between sections carry a faint drifting dot pattern */
+.ax-sth-band,.kh-band,.ax-bulk .ax-bulk-how,.cme-more{background-image:radial-gradient(rgba(15,23,42,.07) 1px,transparent 1.6px);background-size:22px 22px;animation:band-drift 60s linear infinite}
+@keyframes band-drift{to{background-position:220px 110px}}
+@media (prefers-reduced-motion:reduce){.ax-sth-band,.kh-band,.ax-bulk .ax-bulk-how,.cme-more{animation:none}}

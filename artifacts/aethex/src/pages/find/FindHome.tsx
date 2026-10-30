@@ -13,6 +13,7 @@ import { useSeo } from "@/hooks/use-seo";
 import { CITIES, CONCERNS, SPECIALTIES, findHome, useDoctors } from "@/lib/find";
 import { FindNav } from "./FindParts";
 import { HeroScene } from "@/components/visual/HeroScene";
+import { CardArt } from "@/components/visual/CardArt";
 
 const CONCERN_ICON = [Thermometer, Baby, Flower2, Sparkles, Smile, Bone, Ear, Eye, HeartPulse, Brain, Droplet, Soup];
 
@@ -77,12 +78,12 @@ export default function FindHome() {
 
       <section className="fd-services">
         <div className="ax-wrap fd-svc-grid">
-          <button type="button" className="fd-svc blue" onClick={() => search()}><span className="ic"><CalendarCheck size={26} /></span><b>Book a clinic visit</b><small>Choose a doctor and a time that suits you</small></button>
-          <button type="button" className="fd-svc teal" onClick={() => search(undefined, { video: "1" })}><span className="ic"><Video size={26} /></span><b>Video consultation</b><small>Doctors who also see patients online</small></button>
-          <Link href="/ask" className="fd-svc violet" data-find="svc-ask"><span className="ic"><MessageCircleQuestionMark size={26} /></span><b>Ask a doctor, free</b><small>Get answers from checked doctors</small></Link>
-          <Link href="/clinics" className="fd-svc navy"><span className="ic"><Building2 size={26} /></span><b>Clinics near you</b><small>Every doctor at each clinic</small></Link>
-          <Link href="/articles" className="fd-svc amber"><span className="ic"><Newspaper size={26} /></span><b>Health articles</b><small>Written by doctors</small></Link>
-          <Link href="/records" className="fd-svc rose"><span className="ic"><FolderHeart size={26} /></span><b>Health records</b><small>Reports and prescriptions, on your device</small></Link>
+          <button type="button" className="fd-svc blue has-art" onClick={() => search()}><CardArt icon={CalendarCheck} color="#1d4ed8" /><span className="ic"><CalendarCheck size={26} /></span><b>Book a clinic visit</b><small>Choose a doctor and a time that suits you</small></button>
+          <button type="button" className="fd-svc teal has-art" onClick={() => search(undefined, { video: "1" })}><CardArt icon={Video} color="#0f766e" /><span className="ic"><Video size={26} /></span><b>Video consultation</b><small>Doctors who also see patients online</small></button>
+          <Link href="/ask" className="fd-svc violet has-art" data-find="svc-ask"><CardArt icon={MessageCircleQuestionMark} color="#6d28d9" /><span className="ic"><MessageCircleQuestionMark size={26} /></span><b>Ask a doctor, free</b><small>Get answers from checked doctors</small></Link>
+          <Link href="/clinics" className="fd-svc navy has-art"><CardArt icon={Building2} color="#1e3a8a" /><span className="ic"><Building2 size={26} /></span><b>Clinics near you</b><small>Every doctor at each clinic</small></Link>
+          <Link href="/articles" className="fd-svc amber has-art"><CardArt icon={Newspaper} color="#b45309" /><span className="ic"><Newspaper size={26} /></span><b>Health articles</b><small>Written by doctors</small></Link>
+          <Link href="/records" className="fd-svc rose has-art"><CardArt icon={FolderHeart} color="#be123c" /><span className="ic"><FolderHeart size={26} /></span><b>Health records</b><small>Reports and prescriptions, on your device</small></Link>
         </div>
       </section>
 
@@ -92,7 +93,7 @@ export default function FindHome() {
           <div className="fd-concerns">
             {CONCERNS.map((c, i) => {
               const I = CONCERN_ICON[i] ?? Stethoscope;
-              return <Link key={c.label} href={`/doctors?specialty=${encodeURIComponent(c.specialty)}`}><span className="ic"><I size={28} /></span><b>{c.label}</b><small>{c.specialty}</small></Link>;
+              return <Link key={c.label} href={`/doctors?specialty=${encodeURIComponent(c.specialty)}`} className="has-art"><CardArt icon={I} color="#1d4ed8" seed={i} /><span className="ic"><I size={28} /></span><b>{c.label}</b><small>{c.specialty}</small></Link>;
             })}
           </div>
         </div>

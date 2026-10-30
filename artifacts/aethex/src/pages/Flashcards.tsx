@@ -4,6 +4,7 @@ import { Link, useRoute } from "wouter";
 import { Brain, RotateCcw, ChevronLeft, Check, X } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
 import { KhIcon, khIcon } from "@/components/MedKnowledge/KhParts";
+import { CardArt } from "@/components/visual/CardArt";
 import { Button } from "@/components/ui/button";
 import { useFlashcards } from "@/hooks/use-flashcards";
 
@@ -32,7 +33,8 @@ function DeckList() {
             const pct = s.total ? Math.round((s.learned / s.total) * 100) : 0;
             return (
               <Link key={d.id} href={`/flashcards/${d.id}`}>
-                <a className="block bg-white rounded-2xl p-5 border border-slate-200 hover:shadow-lg transition-shadow cursor-pointer">
+                <a className="has-art block bg-white rounded-2xl p-5 border border-slate-200 hover:shadow-lg transition-shadow cursor-pointer">
+                  <CardArt icon={khIcon(d.subject.toLowerCase())} color="#6d28d9" seed={d.name.length} />
                   <div className="flex items-start justify-between mb-3">
                     <KhIcon slug={d.subject.toLowerCase()} color="#6d28d9" />
                     {s.due > 0 && (

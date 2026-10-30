@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Link, useParams } from "wouter";
 import { Search, ChevronRight } from "lucide-react";
 import { getDepartmentBySlug } from "@/data/medicalDepartments";
-import { KhHero, KhIcon, KH_HUB } from "@/components/MedKnowledge/KhParts";
+import { CardArt } from "@/components/visual/CardArt";
+import { KhHero, KhIcon, KH_HUB, khIcon } from "@/components/MedKnowledge/KhParts";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -91,7 +92,7 @@ export default function DepartmentPage() {
             const sev = severityConfig[condition.severity];
             return (
               <Link key={condition.slug} href={`${BASE}/study-hub/medical-knowledge-hub/departments/${dept.slug}/${condition.slug}`}
-                className="kh-topic group rounded-xl border p-4 transition-all duration-200 cursor-pointer"
+                className="kh-topic has-art group rounded-xl border p-4 transition-all duration-200 cursor-pointer"
                 style={{ background: "#FFFFFF", borderColor: "#E6E9EF" }}
                 onMouseEnter={e => {
                   (e.currentTarget as HTMLElement).style.borderColor = "#6D28D9";
@@ -103,6 +104,7 @@ export default function DepartmentPage() {
                   (e.currentTarget as HTMLElement).style.boxShadow = "none";
                   (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
                 }}>
+                <CardArt icon={khIcon(dept.slug)} color={dept.color} seed={condition.name.length} />
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">

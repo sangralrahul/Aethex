@@ -8,9 +8,10 @@ import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { ArrowRight, BookOpen, ChevronRight, ClipboardCheck, Layers, Network, Search, X } from "lucide-react";
 import { useSeo } from "@/hooks/use-seo";
+import { CardArt } from "@/components/visual/CardArt";
 import { medicalSubjects } from "@/data/medicalSubjects";
 import { medicalDepartments } from "@/data/medicalDepartments";
-import { KhHero, KhIcon, KH_HUB } from "@/components/MedKnowledge/KhParts";
+import { KhHero, KhIcon, KH_HUB, khIcon } from "@/components/MedKnowledge/KhParts";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const STAGES = ["All", "Pre-Clinical", "Para-Clinical", "Clinical"] as const;
@@ -76,7 +77,8 @@ export default function MedicalKnowledgeHub() {
         </div>
         <div className="kh-grid">
           {subjects.map((s) => (
-            <Link key={s.id} href={`${BASE}${KH_HUB}/subjects/${s.slug}`} className="kh-card">
+            <Link key={s.id} href={`${BASE}${KH_HUB}/subjects/${s.slug}`} className="kh-card has-art">
+              <CardArt icon={khIcon(s.slug)} color={s.color} seed={s.topics.length} />
               <KhIcon slug={s.slug} color={s.color} />
               <b>{s.name}</b>
               <small>{s.topics.length} topics</small>
@@ -92,7 +94,8 @@ export default function MedicalKnowledgeHub() {
           <div className="ax-ihead"><span>Clinical departments</span><h2>Conditions, by specialty</h2><p>Each department lists its conditions with ICD-10 codes and how serious they are; open one for the full reference.</p></div>
           <div className="kh-depts">
             {medicalDepartments.map((d) => (
-              <Link key={d.id} href={`${BASE}${KH_HUB}/departments/${d.slug}`} className="kh-dept">
+              <Link key={d.id} href={`${BASE}${KH_HUB}/departments/${d.slug}`} className="kh-dept has-art">
+                <CardArt icon={khIcon(d.slug)} color={d.color} seed={d.conditions.length} />
                 <KhIcon slug={d.slug} color={d.color} size={20} />
                 <span><b>{d.name}</b><small>{d.conditions.length} conditions</small></span>
                 <ChevronRight size={16} className="go" />

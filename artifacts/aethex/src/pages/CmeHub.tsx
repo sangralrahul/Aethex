@@ -8,6 +8,7 @@ import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { Activity, ArrowRight, Baby, BookOpen, Brain, Clock, FlaskConical, GraduationCap, HeartPulse, Info, Layers, Scissors, Siren, Stethoscope } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
+import { CardArt } from "@/components/visual/CardArt";
 import { useSeo } from "@/hooks/use-seo";
 
 type Level = "Foundation" | "Intermediate" | "Advanced";
@@ -85,7 +86,8 @@ export default function CmeHub() {
             const I = ICON[m.specialty];
             const c = COLOR[m.specialty];
             return (
-              <article key={m.title} className="cme-card" data-reveal>
+              <article key={m.title} className="cme-card has-art" data-reveal>
+                <CardArt icon={I} color={c} seed={m.title.length} />
                 <div className="top">
                   <span className="ic" style={{ color: c, background: `${c}12`, borderColor: `${c}30` }}><I size={20} /></span>
                   <span className="sp" style={{ color: c }}>{m.specialty}</span>

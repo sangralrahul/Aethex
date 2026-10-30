@@ -12,6 +12,7 @@ import {
   GraduationCap,
 } from "lucide-react";
 import { cadusUrl } from "@/lib/host";
+import { CardArt } from "@/components/visual/CardArt";
 import { HeroScene } from "@/components/visual/HeroScene";
 import { TopLayer } from "@/components/shop/TopLayer";
 import { useSeo } from "@/hooks/use-seo";
@@ -479,8 +480,9 @@ export default function StudyHub() {
       <section className="ax-wrap ax-sth-sec">
         <div className="ax-sth-head"><div><p className="ax-eyebrow">On Aethex</p><h2>Your study tools</h2></div></div>
         <div className="ax-sth-tools">
-          {TOOLS.map(({ href, icon: I, t, d, tag }) => (
-            <Link key={href} href={href}>
+          {TOOLS.map(({ href, icon: I, t, d, tag }, k) => (
+            <Link key={href} href={href} className="has-art">
+              <CardArt icon={I} color="#6d28d9" seed={k} />
               <span className="ic"><I size={20} /></span>
               <span className="tx"><b>{t}{tag && <em>{tag}</em>}</b><small>{d}</small></span>
               <ArrowRight size={16} className="ar" />

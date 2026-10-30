@@ -4,6 +4,7 @@
  * the institutions band; brands; and Cadus and the free tools. Styles: src/site-ec.css (classes ec-*).
  */
 import { HeroScene } from "@/components/visual/HeroScene";
+import { CardArt } from "@/components/visual/CardArt";
 import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import {
@@ -334,13 +335,15 @@ export default function Home() {
           </aside>
           <Banners picks={picks} cats={cats} />
           <div className="ec-promos">
-            <Link href="/books" className="ec-promo books">
+            <Link href="/books" className="ec-promo books has-art">
+              <CardArt icon={BookOpen} color="#b45309" seed={2} />
               <small>Medical books</small>
               <b>Textbooks for MBBS and PG</b>
               <span>Standard titles for every subject <ArrowRight size={14} /></span>
               <BookOpen className="art" size={64} strokeWidth={1.2} />
             </Link>
-            <Link href="/orders/track" className="ec-promo cadus" data-home="track">
+            <Link href="/orders/track" className="ec-promo cadus has-art" data-home="track">
+              <CardArt icon={Truck} color="#5eead4" seed={5} />
               <small>Orders</small>
               <b>Track your order</b>
               <span>Status and delivery date, any time <ArrowRight size={14} /></span>
@@ -353,7 +356,7 @@ export default function Home() {
       {/* service promises */}
       <section className="ec-services" aria-label="Our promises">
         <div className="ax-wrap"><ul>
-          {SERVICES.map(({ icon: I, t, d }) => <li key={t}><span className="ic"><I size={22} /></span><span><b>{t}</b><small>{d}</small></span></li>)}
+          {SERVICES.map(({ icon: I, t, d }, k) => <li key={t} className="has-art"><CardArt icon={I} color="#0f766e" seed={k} /><span className="ic"><I size={22} /></span><span><b>{t}</b><small>{d}</small></span></li>)}
         </ul></div>
       </section>
 
@@ -399,7 +402,8 @@ export default function Home() {
               const list = cats.filter((c) => c.audience === aud);
               const pic = list.find((c) => c.pic)?.pic;
               return (
-                <div key={aud} className={`ec-seg ${aud}`}>
+                <div key={aud} className={`ec-seg ${aud} has-art`}>
+                  <CardArt icon={I} color={aud === "home" ? "#be123c" : aud === "institution" ? "#4b5bc4" : "#0f766e"} seed={aud.length} />
                   <div className="top">
                     <span className="ic"><I size={22} /></span>
                     <div><h3>{t}</h3><p>{d}</p></div>

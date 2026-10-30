@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Link, useParams } from "wouter";
 import { Search, Clock, BarChart2, ChevronRight } from "lucide-react";
 import { getSubjectBySlug } from "@/data/medicalSubjects";
-import { KhHero, KhIcon, KH_HUB } from "@/components/MedKnowledge/KhParts";
+import { CardArt } from "@/components/visual/CardArt";
+import { KhHero, KhIcon, KH_HUB, khIcon } from "@/components/MedKnowledge/KhParts";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -72,7 +73,7 @@ export default function SubjectPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map(topic => (
             <Link key={topic.slug} href={`${BASE}/study-hub/medical-knowledge-hub/subjects/${subject.slug}/${topic.slug}`}
-              className="kh-topic group rounded-xl border p-5 transition-all duration-200 cursor-pointer"
+              className="kh-topic has-art group rounded-xl border p-5 transition-all duration-200 cursor-pointer"
               style={{ background: "#FFFFFF", borderColor: "#E6E9EF" }}
               onMouseEnter={e => {
                 (e.currentTarget as HTMLElement).style.borderColor = "#6D28D9";
@@ -84,6 +85,7 @@ export default function SubjectPage() {
                 (e.currentTarget as HTMLElement).style.boxShadow = "none";
                 (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
               }}>
+              <CardArt icon={khIcon(subject.slug)} color={subject.color} seed={topic.name.length} />
               <div className="flex items-start justify-between gap-2 mb-3">
                 <h3 className="font-semibold text-sm leading-tight" style={{ color: "#0F1729" }}>{topic.name}</h3>
                 <ChevronRight className="w-4 h-4 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "#6D28D9" }} />

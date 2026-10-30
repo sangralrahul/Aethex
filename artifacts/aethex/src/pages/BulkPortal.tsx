@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useState, type ComponentType } from "r
 import { Link, useLocation } from "wouter";
 import { sitePortal } from "@/lib/portals";
 import { HeroScene } from "@/components/visual/HeroScene";
+import { CardArt } from "@/components/visual/CardArt";
 import {
   Accessibility, Droplet, HeartHandshake, Mail, Scale, Wind,
   Activity, ArrowRight, Banknote, BedDouble, BookOpen, Bone, Building2, CalendarClock, Check, ChevronDown, ClipboardCheck, ClipboardList, GraduationCap,
@@ -143,7 +144,8 @@ export default function BulkPortal({ segment }: { segment: Segment }) {
             const I = DEPT_ICONS[sec.id] ?? Package;
             const bs = store ? [...new Set(list.map((p) => store.brandName(p.brand)))].slice(0, 3) : [];
             return (
-              <button key={sec.id} type="button" className="ax-dept" onClick={() => pick(sec.id)} data-dept-card={sec.id}>
+              <button key={sec.id} type="button" className="ax-dept has-art" onClick={() => pick(sec.id)} data-dept-card={sec.id}>
+                <CardArt icon={I} color={segment === "hospital" ? "#0e7490" : "#b45309"} seed={list.length} />
                 <span className="ic"><I size={22} /></span>
                 <b>{sec.short}</b>
                 <small>{store ? `${list.length} product${list.length === 1 ? "" : "s"}` : " "}{bs.length ? ` · ${bs.join(", ")}` : ""}</small>
@@ -152,7 +154,8 @@ export default function BulkPortal({ segment }: { segment: Segment }) {
             );
           })}
           {segment === "college" && (
-            <Link href="/books" className="ax-dept">
+            <Link href="/books" className="ax-dept has-art">
+              <CardArt icon={BookOpen} color="#b45309" seed={3} />
               <span className="ic"><BookOpen size={22} /></span><b>Textbooks</b><small>Every course, with the publishers' prices</small><ArrowRight size={16} className="go" />
             </Link>
           )}
@@ -329,7 +332,8 @@ function KitCard({ kit, store, count, setCount, onOpen }: { kit: Kit; store: Sto
   const units = lines.reduce((s, l) => s + l.qty, 0);
   if (!lines.length) return null;
   return (
-    <article className="ax-kit">
+    <article className="ax-kit has-art">
+      <CardArt icon={Icon} color={kit.segment === "hospital" ? "#0e7490" : "#b45309"} seed={kit.title.length} />
       <div className="top">
         <span className="ic"><Icon size={22} /></span>
         <div><b>{kit.title}</b><small>{kit.text}</small></div>

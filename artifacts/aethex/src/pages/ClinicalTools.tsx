@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useSeo } from "@/hooks/use-seo";
 import { PageHero } from "@/components/PageHero";
+import { CardArt } from "@/components/visual/CardArt";
 import { Link } from "wouter";
 import {
   Pill, Calculator, Weight, BookOpen, Brain, Stethoscope,
@@ -208,7 +209,7 @@ const categoryLabel: Record<Tool["category"], string> = {
 function ToolCard({ tool }: { tool: Tool }) {
   const content = (
     <div
-      className="group relative rounded-2xl p-5 flex flex-col gap-3 cursor-pointer transition-all duration-300
+      className="has-art group relative rounded-2xl p-5 flex flex-col gap-3 cursor-pointer transition-all duration-300
         hover:-translate-y-1"
       style={{
         background: "#FFFFFF",
@@ -224,6 +225,7 @@ function ToolCard({ tool }: { tool: Tool }) {
         (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(60,60,67,0.1)";
       }}
     >
+      <CardArt node={tool.icon as React.ReactElement} color={iconColor[tool.category]} seed={tool.title.length} />
       {/* Top row */}
       <div className="flex items-start justify-between gap-2">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"

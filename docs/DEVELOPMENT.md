@@ -240,6 +240,13 @@ people, ratings or accreditations. The CME Hub (`src/pages/CmeHub.tsx`) lists re
 Knowledge Hub and says plainly that they carry no CME credit; `/cme-certificate` issues no certificates; Mentorship
 lists no mentors until real doctors agree to mentor.
 
+Update 70: `src/components/visual/CardArt.tsx` draws a card's background picture for its category (the category's
+illustration large and faded, a glow and a turning orbit in its colour, brighter on hover). A card that uses it has the
+class `has-art` and `<CardArt>` as its first child. It is on subject, department, topic and condition cards, the
+Study tools, flashcard decks, clinical tools, CME modules, the Doctors services and health concerns, the hospital and
+college departments and ready-made lists, and the Store's practice, promo and promise cards. Shaded section bands carry a
+drifting dot pattern. Do not name a class `ring`: Tailwind's `.ring` draws an outline.
+
 ## Aethex Doctors
 
 `worker/find.ts` (`/api/find/*`), tables in `migrations/0006_find.sql` (also created on first use). Doctors list
