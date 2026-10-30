@@ -29,7 +29,7 @@ import { handleVoice, voiceEnabled, type VoiceEnv } from "./voice";
 import { guestGate, requireAccount } from "./guest";
 import { cadusHome, hostRobots, hostSitemap, portalHome, portalOf } from "./seo";
 import { handleStudy } from "./study";
-import { handleFind, type FindEnv, runFindReminders } from "./find";
+import { handleFind, type FindEnv, runFindReminders, runFollowUps } from "./find";
 import "./names/cadus";
 import "../supabase/functions/cadus/index.ts";
 import "./names/analyze-drug-interactions";
@@ -212,6 +212,7 @@ export default {
   // back, unpaid online orders (cancelled after a day), and back-in-stock and price-drop alerts.
   async scheduled(_event: unknown, env: Env, ctx: { waitUntil: (p: Promise<unknown>) => void }) {
     ctx.waitUntil(runScheduled(env).then((r) => console.log("scheduled", r), (e) => console.error("scheduled failed", e)));
+    ctx.waitUntil(runFollowUps(env).then((r) => console.log("find follow-ups", r), (e) => console.error("find follow-ups failed", e)));
     ctx.waitUntil(runFindReminders(env).then((r) => console.log("find reminders", r), (e) => console.error("find reminders failed", e)));
     ctx.waitUntil(runStoreScheduled(env).then((r) => console.log("store scheduled", r), (e) => console.error("store scheduled failed", e)));
   },

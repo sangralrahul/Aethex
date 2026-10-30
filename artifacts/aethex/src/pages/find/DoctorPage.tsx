@@ -1,4 +1,5 @@
 /** /doctor/:slug: the doctor's profile and the booking panel (clinic visit or video consult). */
+import { WaitlistPanel } from "./DoctorTools2";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useParams, useSearch } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
@@ -6,7 +7,7 @@ import { ArrowLeft, Award, BadgeCheck, Building2, CalendarCheck, CalendarX2, Che
 import { useSeo } from "@/hooks/use-seo";
 import { useUserAuth } from "@/hooks/use-user-auth";
 import { formatINR } from "@/lib/utils";
-import { addDays, clinicKey, dateLabel, displayName, findApi, freeSlots, hoursText, signInHere, time12, useDoctor, useFamily, type Appointment, type FindError } from "@/lib/find";
+import { daySlots, addDays, clinicKey, dateLabel, displayName, findApi, freeSlots, hoursText, signInHere, time12, useDoctor, useFamily, type Appointment, type FindError } from "@/lib/find";
 import { CalendarButtons, CompareBar, MemberForm, SaveCompare } from "./DoctorTools";
 import { Avatar, FindNav, Stars } from "./FindParts";
 
@@ -37,9 +38,15 @@ export default function DoctorPage() {
   const days = useMemo(() => {
     if (!data?.doctor.hours) return [];
     const taken = new Set(data.taken);
-    return Array.from({ length: 14 }, (_, i) => addDays(data.today, i)).map((day) => ({ day, slots: freeSlots(data.doctor.hours!, day, taken, data.today, data.now, data.doctor.timeOff) }));
+    return Array.from({ length: 14 }, (_, i) => addDays(data.today, i)).map((day) => ({ day, slots: freeSlots(data.doctor.hours!, day, taken, data.today, data.now, data.doctor.timeOff), works: daySlots(data.doctor.hours!, day).length > 0 && !data.doctor.timeOff.includes(day) && day > data.today }));
   }, [data]);
-  useEffect(() => { if (!date && days.length) { const first = days.find((x) => x.slots.length); if (first) setDate(first.day); } }, [days, date]);
+  // update 79: ?date= (from a waitlist or follow-up email) opens on that day
+  useEffect(() => {
+    if (date || !days.length) return;
+    const want = new URLSearchParams(search).get("date");
+    if (want && days.some((x) => x.day === want && x.works)) { setDate(want); return; }
+    const first = days.find((x) => x.slots.length); if (first) setDate(first.day);
+  }, [days, date]); // eslint-disable-line react-hooks/exhaustive-deps
   const slots = days.find((x) => x.day === date)?.slots ?? [];
   const groups = [["Morning", (t: string) => t < "12:00"], ["Afternoon", (t: string) => t >= "12:00" && t < "17:00"], ["Evening", (t: string) => t >= "17:00"]] as const;
 
@@ -168,17 +175,17 @@ export default function DoctorPage() {
                 </div>
                 <h3><CalendarCheck size={17} /> Choose a date</h3>
                 <div className="fd-days">
-                  {days.map(({ day, slots: s }) => (
-                    <button key={day} type="button" disabled={!s.length} className={day === date ? "on" : ""} onClick={() => { setDate(day); setTime(""); }}>
+                  {days.map(({ day, slots: s, works }) => (
+                    <button key={day} type="button" disabled={!s.length && !works} className={`${day === date ? "on" : ""}${!s.length && works ? " full" : ""}`} onClick={() => { setDate(day); setTime(""); }} data-day={day}>
                       <b>{day === data.today ? "Today" : day === addDays(data.today, 1) ? "Tomorrow" : dateLabel(day, { weekday: "short" })}</b>
                       <span>{dateLabel(day, { day: "numeric", month: "short" })}</span>
-                      <small>{s.length ? `${s.length} slots` : "No slots"}</small>
+                      <small>{s.length ? `${s.length} slots` : works ? "Full · waitlist" : "No slots"}</small>
                     </button>
                   ))}
                 </div>
                 {date && (
                   <div className="fd-slots">
-                    {!slots.length ? <p className="mu">No free slots this day.</p> : groups.map(([label, test]) => {
+                    {!slots.length ? (days.find((x) => x.day === date)?.works ? <WaitlistPanel slug={slug} date={date} mode={mode} signedIn={!!user} signInHref={signInHere()} /> : <p className="mu">No free slots this day.</p>) : groups.map(([label, test]) => {
                       const list = slots.filter(test);
                       return list.length ? <div key={label}><h4>{label} <small>{list.length} slots</small></h4><div className="grid">{list.map((t) => <button key={t} type="button" className={t === time ? "on" : ""} onClick={() => setTime(t)}>{time12(t)}</button>)}</div></div> : null;
                     })}

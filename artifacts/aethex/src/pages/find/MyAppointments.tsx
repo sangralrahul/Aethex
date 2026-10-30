@@ -1,4 +1,5 @@
 /** /appointments: the patient's bookings, with cancel and (after a completed visit) a review. */
+import { MyWaitlists } from "./DoctorTools2";
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
@@ -94,6 +95,9 @@ export default function MyAppointments() {
         {moving === a.id && <Reschedule a={a} onDone={() => { setMoving(""); refresh(); }} />}
         {a.status === "completed" && !a.reviewed && <Review a={a} onDone={refresh} />}
         {a.status === "completed" && a.reviewed && <span className="mu">Thanks for your review</span>}
+        {a.status === "completed" && a.followUp && a.followUp >= today && a.doctor && !all.some((x) => x.doctor?.slug === a.doctor!.slug && ["booked", "confirmed"].includes(x.status) && x.date >= today) && (
+          <Link href={`/doctor/${a.doctor.slug}?date=${a.followUp}#book`} className="fd-btn sm" data-find="book-followup"><CalendarClock size={14} /> Book follow-up · {dateLabel(a.followUp)}</Link>
+        )}
       </div>
     </article>
   );
@@ -115,6 +119,7 @@ export default function MyAppointments() {
           : !all.length ? <div className="fd-empty"><b>{forWho ? "No appointments for this person" : "No appointments yet"}</b><p>Find a doctor and book a time that suits you.</p><Link href="/doctors" className="fd-btn">Find a doctor</Link></div>
           : <>
             {err && <p className="fd-err">{err}</p>}
+            <MyWaitlists />
             <h2 className="fd-h2">Upcoming</h2>
             {upcoming.length ? upcoming.map(row) : <p className="fd-none">No upcoming appointments. <Link href="/doctors">Book one</Link></p>}
             {past.length > 0 && <><h2 className="fd-h2">Past and cancelled</h2>{past.map(row)}</>}

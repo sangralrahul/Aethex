@@ -45,6 +45,12 @@ export const FIND_TABLES = [
     id TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT NOT NULL, relation TEXT NOT NULL, age INTEGER, gender TEXT, phone TEXT,
     created_at INTEGER NOT NULL)`,
   "CREATE INDEX IF NOT EXISTS find_family_user ON find_family(user_id, created_at)",
+  // update 79: waitlists for full days
+  `CREATE TABLE IF NOT EXISTS find_waitlist (
+    id TEXT PRIMARY KEY, doctor_id TEXT NOT NULL, user_id TEXT NOT NULL, email TEXT NOT NULL, date TEXT NOT NULL, mode TEXT NOT NULL DEFAULT 'clinic',
+    created_at INTEGER NOT NULL, notified_at INTEGER)`,
+  "CREATE UNIQUE INDEX IF NOT EXISTS find_waitlist_one ON find_waitlist(doctor_id, user_id, date)",
+  "CREATE INDEX IF NOT EXISTS find_waitlist_day ON find_waitlist(doctor_id, date)",
   "CREATE INDEX IF NOT EXISTS find_doctors_search ON find_doctors(status, city, specialty)",
   "CREATE INDEX IF NOT EXISTS find_questions_list ON find_questions(specialty, created_at)",
   "CREATE INDEX IF NOT EXISTS find_answers_q ON find_answers(question_id, created_at)",
@@ -61,6 +67,8 @@ export const FIND_COLUMNS: [string, string, string][] = [
   ["find_doctors", "contact_email", "TEXT"], ["find_doctors", "contact_phone", "TEXT"],
   // update 75: who the appointment is for, and the day-before reminder
   ["find_appointments", "family_id", "TEXT"], ["find_appointments", "reminded", "INTEGER"],
+  // update 79: the follow-up reminder
+  ["find_prescriptions", "followup_reminded", "INTEGER"],
   ["find_reviews", "recommend", "INTEGER"], ["find_reviews", "wait", "TEXT"], ["find_reviews", "visited", "TEXT"], ["find_reviews", "reply", "TEXT"],
 ];
 let ready: Promise<void> | null = null;
@@ -548,6 +556,46 @@ export async function handleFind(request: Request, env: FindEnv): Promise<Respon
     return json({ ok: true });
   }
 
+  /* update 79: waitlists for full days */
+  if (path === "/waitlist" && method === "GET") {
+    if (!user) return signIn();
+    const { results } = await db.DB.prepare("SELECT w.*, d.slug, d.name, d.specialty FROM find_waitlist w JOIN find_doctors d ON d.id = w.doctor_id WHERE w.user_id = ? AND w.date >= ? ORDER BY w.date ASC").bind(user.id, istNow().date).all<Record<string, string | number | null>>();
+    return json({ waitlist: results.map((w) => ({ id: w.id, date: w.date, mode: w.mode, notified: !!w.notified_at, doctor: { slug: w.slug, name: w.name, specialty: w.specialty } })) });
+  }
+  if (path === "/waitlist" && method === "POST") {
+    if (!user) return signIn();
+    const b = await body(request);
+    const d = await db.DB.prepare("SELECT * FROM find_doctors WHERE slug = ? AND status = 'live'").bind(str(b.slug, 80)).first<DoctorRow>();
+    if (!d) return json({ error: "This doctor isn't taking bookings right now." }, 404);
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(b.date)) ? String(b.date) : "", now = istNow();
+    if (!date || date < now.date || date > addDays(now.date, BOOK_AHEAD_DAYS)) return json({ error: "Choose a day within the next 30 days." }, 400);
+    if (!worksOn(d, date)) return json({ error: "The doctor doesn't see patients that day." }, 400);
+    const n = await db.DB.prepare("SELECT COUNT(*) AS n FROM find_waitlist WHERE user_id = ? AND date >= ?").bind(user.id, now.date).first<{ n: number }>();
+    if (Number(n?.n) >= 10) return json({ error: "You're on 10 waitlists already. Leave one first." }, 400);
+    const email = normEmail(user.email);
+    if (!email) return json({ error: "Your account needs an email address for waitlist alerts." }, 400);
+    try {
+      await db.DB.prepare("INSERT INTO find_waitlist (id, doctor_id, user_id, email, date, mode, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(id("w"), d.id, user.id, email, date, b.mode === "video" && d.video ? "video" : "clinic", Date.now()).run();
+    } catch { return json({ ok: true, already: true }); }
+    return json({ ok: true });
+  }
+  const wDel = /^\/waitlist\/([a-z0-9]{6,40})\/delete$/.exec(path);
+  if (wDel && method === "POST") {
+    if (!user) return signIn();
+    const w = await db.DB.prepare("SELECT id FROM find_waitlist WHERE id = ? AND user_id = ?").bind(wDel[1], user.id).first<{ id: string }>();
+    if (!w) return json({ error: "Not found." }, 404);
+    await db.DB.prepare("DELETE FROM find_waitlist WHERE id = ?").bind(w.id).run();
+    return json({ ok: true });
+  }
+
+  /* update 79: practice analytics, from the doctor's own bookings and reviews */
+  if (path === "/practice/analytics" && method === "GET") {
+    if (!user) return signIn();
+    const mine = await db.DB.prepare("SELECT * FROM find_doctors WHERE user_id = ?").bind(user.id).first<DoctorRow>();
+    if (!mine) return json({ error: "List your practice first.", noProfile: true }, 404);
+    return json(await practiceAnalytics(db, mine.id));
+  }
+
   /* booking */
   if (path === "/appointments" && method === "POST") {
     if (!user) return signIn();
@@ -595,8 +643,8 @@ export async function handleFind(request: Request, env: FindEnv): Promise<Respon
   }
   if (path === "/appointments" && method === "GET") {
     if (!user) return signIn();
-    const { results } = await db.DB.prepare("SELECT a.*, d.slug AS d_slug, d.name AS d_name, d.specialty AS d_specialty, d.clinic AS d_clinic, d.address AS d_address, d.city AS d_city, (SELECT COUNT(*) FROM find_reviews r WHERE r.appointment_id = a.id) AS reviewed, (SELECT p.id FROM find_prescriptions p WHERE p.appointment_id = a.id) AS rx FROM find_appointments a JOIN find_doctors d ON d.id = a.doctor_id WHERE a.user_id = ? ORDER BY a.date DESC, a.time DESC LIMIT 200").bind(user.id).all<ApptRow & Record<string, string | number>>();
-    return json({ appointments: results.map((a) => ({ ...apptOut(a, { slug: String(a.d_slug), name: String(a.d_name), specialty: String(a.d_specialty), clinic: String(a.d_clinic), address: String(a.d_address), city: String(a.d_city) }), reviewed: Number(a.reviewed) > 0, prescription: a.rx ? String(a.rx) : null })) });
+    const { results } = await db.DB.prepare("SELECT a.*, d.slug AS d_slug, d.name AS d_name, d.specialty AS d_specialty, d.clinic AS d_clinic, d.address AS d_address, d.city AS d_city, (SELECT COUNT(*) FROM find_reviews r WHERE r.appointment_id = a.id) AS reviewed, (SELECT p.id FROM find_prescriptions p WHERE p.appointment_id = a.id) AS rx, (SELECT p.follow_up FROM find_prescriptions p WHERE p.appointment_id = a.id) AS fu FROM find_appointments a JOIN find_doctors d ON d.id = a.doctor_id WHERE a.user_id = ? ORDER BY a.date DESC, a.time DESC LIMIT 200").bind(user.id).all<ApptRow & Record<string, string | number>>();
+    return json({ appointments: results.map((a) => ({ ...apptOut(a, { slug: String(a.d_slug), name: String(a.d_name), specialty: String(a.d_specialty), clinic: String(a.d_clinic), address: String(a.d_address), city: String(a.d_city) }), reviewed: Number(a.reviewed) > 0, prescription: a.rx ? String(a.rx) : null, followUp: a.fu ? String(a.fu) : null })) });
   }
   const cancel = /^\/appointments\/([a-z0-9]{6,40})\/cancel$/.exec(path);
   if (cancel && method === "POST") {
@@ -605,6 +653,7 @@ export async function handleFind(request: Request, env: FindEnv): Promise<Respon
     if (!a || (a.user_id !== user.id && a.doctor_user !== user.id)) return json({ error: "Appointment not found." }, 404);
     if (!["booked", "confirmed"].includes(a.status)) return json({ error: "This appointment can't be cancelled now." }, 400);
     await db.DB.prepare("UPDATE find_appointments SET status = 'cancelled', note = COALESCE(note, ?), updated_at = ? WHERE id = ?").bind(a.user_id === user.id ? "Cancelled by the patient" : "Cancelled by the doctor", Date.now(), a.id).run();
+    await notifyWaitlist(db, a.doctor_id, a.date).catch(() => 0);
     return json({ ok: true });
   }
   if (path === "/reviews" && method === "POST") {
@@ -641,6 +690,7 @@ export async function handleFind(request: Request, env: FindEnv): Promise<Respon
       if (/unique|constraint/i.test(String((e as Error)?.message ?? e))) return json({ error: "Someone just booked that time. Please choose another.", taken: true }, 409);
       throw e;
     }
+    if (a.date !== date) await notifyWaitlist(db, d.id, a.date).catch(() => 0);
     const owner = await doctorEmail(db, d);
     if (owner?.email) await sendEmail(env, owner.email, `Moved: ${a.patient_name}, now ${nice(date, time)}`, apptEmail("A patient moved their appointment", [["Patient", a.patient_name], ["Was", nice(a.date, a.time)], ["Now", nice(date, time)]], "Confirm it again in your practice dashboard at doctors.aethex.in/practice.")).catch(() => false);
     return json({ ok: true });
@@ -681,7 +731,15 @@ export async function handleFind(request: Request, env: FindEnv): Promise<Respon
     else await db.DB.prepare("INSERT INTO find_prescriptions (id, appointment_id, doctor_id, user_id, diagnosis, items, advice, tests, follow_up, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(id("p"), a.id, a.doctor_id, a.user_id, diagnosis || null, JSON.stringify(items), advice || null, tests || null, follow, now, now).run();
     if (a.status !== "completed") await db.DB.prepare("UPDATE find_appointments SET status = 'completed', updated_at = ? WHERE id = ?").bind(now, a.id).run();
     const saved = await db.DB.prepare("SELECT id FROM find_prescriptions WHERE appointment_id = ?").bind(a.id).first<{ id: string }>();
-    if (!existing && a.patient_email) await sendEmail(env, a.patient_email, "Your prescription is ready", apptEmail("Your prescription is ready", [["Visit", nice(a.date, a.time)]], "Open it in My appointments on doctors.aethex.in to view or print it.")).catch(() => false);
+    if (!existing && a.patient_email) await sendEmail(env, a.patient_email, "Your prescription is ready", apptEmail("Your prescription is ready", [["Visit", nice(a.date, a.time)]], "Open it in My appointments on doctors.aethex.in to view or print it. It also sets up reminders for your medicines.")).catch(() => false);
+    // update 79: a new or changed follow-up date: the patient gets a one-click link to book it
+    if (follow && follow !== (existing?.follow_up ?? null) && a.patient_email) {
+      const doc = await db.DB.prepare("SELECT slug, name FROM find_doctors WHERE id = ?").bind(a.doctor_id).first<{ slug: string; name: string }>();
+      if (doc) {
+        await db.DB.prepare("UPDATE find_prescriptions SET followup_reminded = NULL WHERE appointment_id = ?").bind(a.id).run();
+        await sendEmail(env, a.patient_email, `Follow-up with ${doc.name} on ${nice(follow, "10:00").split(",").slice(0, 2).join(",")}`, followEmail(doc, follow, a.patient_name)).catch(() => false);
+      }
+    }
     return json({ ok: true, id: saved?.id });
   }
 
@@ -734,6 +792,7 @@ export async function handleFind(request: Request, env: FindEnv): Promise<Respon
     if (link === undefined) return json({ error: "The video link must start with https://" }, 400);
     const note = typeof b.note === "string" ? longStr(b.note, 400) || null : a.note;
     await db.DB.prepare("UPDATE find_appointments SET status = ?, link = ?, note = ?, updated_at = ? WHERE id = ?").bind(status, link, note, Date.now(), a.id).run();
+    if (status === "cancelled" && a.status !== "cancelled") await notifyWaitlist(db, a.doctor_id, a.date).catch(() => 0);
     if (status === "confirmed" && a.status !== "confirmed" && a.patient_email) {
       await sendEmail(env, a.patient_email, `Confirmed: ${a.d_name}, ${nice(a.date, a.time)}`, apptEmail("Your appointment is confirmed", [["Doctor", a.d_name], ["When", nice(a.date, a.time)], ...(link ? [["Video link", link] as [string, string]] : [])], "See it in My appointments on doctors.aethex.in.")).catch(() => false);
     }
@@ -790,4 +849,95 @@ export async function runFindReminders(env: FindEnv): Promise<{ sent: number }> 
     if (ok) sent++;
   }
   return { sent };
+}
+
+/* ------------------------------------------------------------------ update 79: waitlist, follow-ups, analytics */
+
+const SITE = "https://doctors.aethex.in";
+/** A slot opened on this day: everyone waiting for it hears, once. Returns how many were emailed. */
+async function notifyWaitlist(db: DBEnv, doctorId: string, date: string): Promise<number> {
+  if (date < istNow().date) return 0;
+  const d = await db.DB.prepare("SELECT * FROM find_doctors WHERE id = ? AND status = 'live'").bind(doctorId).first<DoctorRow>();
+  if (!d) return 0;
+  const { results } = await db.DB.prepare("SELECT * FROM find_waitlist WHERE doctor_id = ? AND date = ? AND notified_at IS NULL LIMIT 50").bind(doctorId, date).all<{ id: string; email: string; mode: string }>();
+  let n = 0;
+  for (const w of results) {
+    await db.DB.prepare("UPDATE find_waitlist SET notified_at = ? WHERE id = ?").bind(Date.now(), w.id).run();
+    const link = `${SITE}/doctor/${d.slug}?date=${date}${w.mode === "video" ? "&mode=video" : ""}#book`;
+    const day = nice(date, "10:00").split(",").slice(0, 2).join(",");
+    const ok = await sendEmail(db, w.email, `A slot opened: ${d.name}, ${day}`, shell(`<h2 style="margin:0 0 10px;font-size:20px;">A time just opened up</h2>
+<p style="margin:0 0 14px;font-size:14px;line-height:1.6;color:#344054;">You asked to hear if <b>${escapeHtml(d.name)}</b> (${escapeHtml(d.specialty)}) had a free time on <b>${escapeHtml(day)}</b>. Someone cancelled, so there is one now. Others on the waitlist were told too: the first to book gets it.</p>
+<p style="margin:0;"><a href="${link}" style="display:inline-block;padding:11px 18px;border-radius:8px;background:#1d4ed8;color:#fff;font-weight:600;text-decoration:none;">Book it now</a></p>`)).catch(() => false);
+    if (ok) n++;
+  }
+  return n;
+}
+
+function followEmail(doc: { slug: string; name: string }, date: string, patient: string) {
+  const link = `${SITE}/doctor/${doc.slug}?date=${date}#book`;
+  const day = nice(date, "10:00").split(",").slice(0, 2).join(",");
+  return shell(`<h2 style="margin:0 0 10px;font-size:20px;">Your follow-up visit</h2>
+<p style="margin:0 0 14px;font-size:14px;line-height:1.6;color:#344054;"><b>${escapeHtml(doc.name)}</b> would like to see ${escapeHtml(patient)} again on or around <b>${escapeHtml(day)}</b>. Book a time in one click:</p>
+<p style="margin:0;"><a href="${link}" style="display:inline-block;padding:11px 18px;border-radius:8px;background:#1d4ed8;color:#fff;font-weight:600;text-decoration:none;">Book the follow-up</a></p>`);
+}
+
+/** Three days before a follow-up date, a reminder to anyone who hasn't booked it yet (run hourly, once each). */
+export async function runFollowUps(env: FindEnv): Promise<{ sent: number }> {
+  if (!env.DB) return { sent: 0 };
+  const db = env as DBEnv;
+  await ensure(db.DB);
+  const now = istNow();
+  if (now.min < 9 * 60) return { sent: 0 };
+  const { results } = await db.DB.prepare(`SELECT p.id, p.follow_up, p.doctor_id, p.user_id, a.patient_name, a.patient_email, d.slug, d.name FROM find_prescriptions p
+    JOIN find_appointments a ON a.id = p.appointment_id JOIN find_doctors d ON d.id = p.doctor_id
+    WHERE p.follow_up IS NOT NULL AND p.follow_up >= ? AND p.follow_up <= ? AND p.followup_reminded IS NULL AND a.patient_email IS NOT NULL AND d.status = 'live' LIMIT 100`)
+    .bind(now.date, addDays(now.date, 3)).all<Record<string, string>>();
+  let sent = 0;
+  for (const r of results) {
+    await db.DB.prepare("UPDATE find_prescriptions SET followup_reminded = ? WHERE id = ?").bind(Date.now(), r.id).run();
+    const booked = await db.DB.prepare("SELECT COUNT(*) AS n FROM find_appointments WHERE doctor_id = ? AND user_id = ? AND status IN ('booked', 'confirmed') AND date >= ?").bind(r.doctor_id, r.user_id, now.date).first<{ n: number }>();
+    if (Number(booked?.n)) continue;
+    if (await sendEmail(env, r.patient_email!, `Reminder: follow-up with ${r.name}`, followEmail({ slug: r.slug!, name: r.name! }, r.follow_up!, r.patient_name!)).catch(() => false)) sent++;
+  }
+  return { sent };
+}
+
+async function practiceAnalytics(db: DBEnv, doctorId: string) {
+  const today = istNow().date;
+  const { results: appts } = await db.DB.prepare("SELECT user_id, date, time, mode, status, created_at FROM find_appointments WHERE doctor_id = ? ORDER BY date ASC, time ASC LIMIT 5000").bind(doctorId).all<{ user_id: string; date: string; time: string; mode: string; status: string; created_at: number }>();
+  // weeks, Monday first
+  const monday = (d: string) => { const w = new Date(`${d}T00:00:00Z`).getUTCDay(); return addDays(d, -((w + 6) % 7)); };
+  const firstWeek = addDays(monday(today), -77), since = firstWeek;
+  const weekEnd = addDays(monday(today), 6);
+  const weeks = Array.from({ length: 12 }, (_, i) => ({ week: addDays(firstWeek, i * 7), booked: 0, completed: 0, noShow: 0, cancelled: 0 }));
+  const firstSeen = new Map<string, string>();
+  const status: Record<string, number> = {};
+  const hours = new Array(24).fill(0), days = new Array(7).fill(0);
+  let video = 0, clinic = 0, newP = 0, returning = 0, lead = 0, leadN = 0;
+  for (const a of appts) {
+    if (!firstSeen.has(a.user_id)) firstSeen.set(a.user_id, a.date);
+    if (a.date < since || a.date > weekEnd) continue;
+    status[a.status] = (status[a.status] ?? 0) + 1;
+    const w = weeks.find((x) => a.date >= x.week && a.date < addDays(x.week, 7));
+    if (w) { w.booked++; if (a.status === "completed") w.completed++; if (a.status === "no-show") w.noShow++; if (a.status === "cancelled") w.cancelled++; }
+    if (a.status === "cancelled") continue;
+    hours[Number(a.time.slice(0, 2))]++;
+    days[new Date(`${a.date}T00:00:00Z`).getUTCDay()]++;
+    if (a.mode === "video") video++; else clinic++;
+    if (firstSeen.get(a.user_id) === a.date) newP++; else returning++;
+    const booked = istNow(a.created_at).date;
+    const gap = Math.round((Date.parse(`${a.date}T00:00:00Z`) - Date.parse(`${booked}T00:00:00Z`)) / 86400000);
+    if (gap >= 0) { lead += gap; leadN++; }
+  }
+  const { results: revs } = await db.DB.prepare("SELECT rating, created_at FROM find_reviews WHERE doctor_id = ? ORDER BY created_at ASC").bind(doctorId).all<{ rating: number; created_at: number }>();
+  const months = new Map<string, { n: number; sum: number }>();
+  for (const r of revs) { const m = new Date(r.created_at + 330 * 60000).toISOString().slice(0, 7); const x = months.get(m) ?? { n: 0, sum: 0 }; x.n++; x.sum += r.rating; months.set(m, x); }
+  const seen = (status.completed ?? 0) + (status["no-show"] ?? 0);
+  return {
+    since, weeks, status, hours, weekdays: days, video, clinic, newPatients: newP, returning,
+    noShowRate: seen ? Math.round(((status["no-show"] ?? 0) / seen) * 100) : null,
+    cancelRate: appts.length ? Math.round(((status.cancelled ?? 0) / Math.max(1, Object.values(status).reduce((a, b) => a + b, 0))) * 100) : null,
+    leadDays: leadN ? Math.round((lead / leadN) * 10) / 10 : null,
+    ratings: [...months.entries()].slice(-12).map(([month, x]) => ({ month, avg: Math.round((x.sum / x.n) * 10) / 10, count: x.n })),
+  };
 }

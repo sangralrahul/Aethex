@@ -1,4 +1,5 @@
 /** /prescription/:id: a prescription written by the doctor after a visit, printable on an A4 page. */
+import { MedicineReminders } from "./DoctorTools2";
 import { Link, useParams } from "wouter";
 import { ArrowLeft, Printer } from "lucide-react";
 import { useSeo } from "@/hooks/use-seo";
@@ -42,6 +43,7 @@ export default function PrescriptionPage() {
             {p.followUp && <section><h3>Follow-up</h3><p>{dateLabel(p.followUp, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p></section>}
             <footer><span>Issued through Aethex Doctors (doctors.aethex.in)</span><span className="sig">{displayName(p.doctor.name)}</span></footer>
           </article>}
+        {p && p.items.length > 0 && <MedicineReminders rx={p} />}
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 /** /practice: the doctor's dashboard: today's and upcoming appointments, confirm, complete, video links. */
+import { PracticeAnalytics } from "./DoctorTools2";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
@@ -188,6 +189,7 @@ export default function Practice() {
           </section>
         </div>
 
+        <PracticeAnalytics />
         <section className="fd-box" data-find="practice-reviews">
           <h2><Star size={18} /> Patient stories</h2>
           {!data.reviews.length ? <p className="mu">Patients can share a story after you mark their visit completed.</p> : data.reviews.map((r) => (

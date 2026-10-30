@@ -33,6 +33,8 @@ export interface Appointment {
   doctor?: { slug: string; name: string; specialty: string; clinic: string; address: string; city: string }; reviewed?: boolean; prescription?: string | null;
   /** update 75: the family member it was booked for (null: the account holder) */
   familyId?: string | null;
+  /** update 79: the follow-up date the doctor set on the prescription */
+  followUp?: string | null;
 }
 
 /** The specialties a doctor can list under (the same list as worker/find.ts). */
