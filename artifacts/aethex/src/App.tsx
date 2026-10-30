@@ -129,6 +129,9 @@ const Invoice = lazyPage(() => import("@/pages/Invoice"));
 const CustomTest = lazyPage(() => import("@/pages/study/CustomTest"));
 const MyLibrary = lazyPage(() => import("@/pages/study/MyLibrary"));
 const BulkEstimate = lazyPage(() => import("@/pages/BulkEstimate"));
+const ApprovePage = lazyPage(() => import("@/components/store/BulkExtras2").then((m) => ({ default: m.ApprovePage })));
+const ApprovalsList = lazyPage(() => import("@/components/store/BulkExtras2").then((m) => ({ default: m.ApprovalsList })));
+const EquipmentPage = lazyPage(() => import("@/components/store/BulkExtras2").then((m) => ({ default: m.EquipmentPage })));
 const OffersPage = lazyPage(() => import("@/pages/Offers"));
 const ReorderPage = lazyPage(() => import("@/pages/Reorder"));
 const OrderTracking = lazyPage(() => import("@/pages/OrderTracking"));
@@ -462,6 +465,9 @@ function Router() {
                 {/* Orders */}
                 <Route path="/orders" component={Orders} />
                 <Route path="/bulk-estimate" component={BulkEstimate} />
+                <Route path="/approve/:token" component={ApprovePage} />
+                <Route path="/approvals" component={ApprovalsList} />
+                <Route path="/equipment" component={EquipmentPage} />
                 <Route path="/offers" component={OffersPage} />
                 <Route path="/reorder" component={ReorderPage} />
                 <Route path="/orders/:id/invoice" component={Invoice} />

@@ -158,6 +158,16 @@ export const STORE_TABLES = [
     id TEXT PRIMARY KEY, order_id TEXT NOT NULL, product_id INTEGER NOT NULL, variant_id TEXT NOT NULL DEFAULT '', qty INTEGER NOT NULL, reason TEXT NOT NULL,
     details TEXT, status TEXT NOT NULL DEFAULT 'requested', note TEXT, email TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
   "CREATE UNIQUE INDEX IF NOT EXISTS store_replacements_one ON store_replacements(order_id, product_id, variant_id)",
+  // update 82: a bulk list shared for approval, and an institution's equipment register
+  `CREATE TABLE IF NOT EXISTS store_approvals (
+    id TEXT PRIMARY KEY, token TEXT NOT NULL UNIQUE, user_id TEXT NOT NULL, owner_email TEXT NOT NULL, owner_name TEXT, segment TEXT NOT NULL, name TEXT NOT NULL,
+    lines TEXT NOT NULL, message TEXT, approver_email TEXT NOT NULL, approver_name TEXT, status TEXT NOT NULL DEFAULT 'pending', comments TEXT NOT NULL DEFAULT '[]',
+    created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, decided_at INTEGER)`,
+  "CREATE INDEX IF NOT EXISTS store_approvals_user ON store_approvals(user_id, updated_at)",
+  `CREATE TABLE IF NOT EXISTS store_equipment (
+    id TEXT PRIMARY KEY, user_id TEXT NOT NULL, data TEXT NOT NULL, next_service TEXT, next_calibration TEXT, warranty_until TEXT,
+    reminded TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
+  "CREATE INDEX IF NOT EXISTS store_equipment_user ON store_equipment(user_id, updated_at)",
 ];
 /** Columns added after a table was first made: added where missing (an existing column is left alone). */
 export const STORE_COLUMNS: [table: string, column: string, type: string][] = [
@@ -2041,6 +2051,8 @@ export async function handleStore(request: Request, env: StoreEnv, ctx?: Ctx): P
   const db = env as DBEnv;
   await ensureTables(db.DB);
   if (path === "questions" && method === "POST") return createQuestion(request, db);
+  if (path === "approvals" || /^approvals\/[A-Za-z0-9_-]{20,64}(\/(decision|comment))?$/.test(path)) return handleApprovals(request, db, path, method);
+  if (path === "equipment" || /^equipment\/e[a-z0-9]{6,30}\/(delete|done)$/.test(path)) return handleEquipment(request, db, path, method);
   if (path === "reminders" || /^reminders\/r[a-z0-9]{6,30}\/delete$/.test(path)) return handleReminders(request, db, path, method);
   if (path === "lists" || /^lists\/[a-z0-9]{6,30}\/(delete|sent)$/.test(path)) return handleLists(request, db, path, method);
 
@@ -2388,6 +2400,189 @@ export async function runReorderReminders(env: StoreEnv): Promise<{ sent: number
 <p style="margin:0 0 12px;font-size:14px;line-height:1.6;">You asked us to remind you every ${r.every_days} days about <b>${escapeHtml(name)}</b>${v ? ` (${escapeHtml(v.label)})` : ""}${price ? `, now ${money(price)}` : ""}${p.inStock ? "" : ". It's out of stock right now; we'll still keep your reminder"}.</p>
 <p style="margin:0 0 12px;"><a href="${link}" style="display:inline-block;padding:11px 18px;border-radius:8px;background:#0f766e;color:#fff;font-weight:600;text-decoration:none;">Reorder ${r.qty > 1 ? `${r.qty} ` : ""}in one click</a></p>
 <p style="margin:0;font-size:12.5px;color:#667085;">Change or stop reminders in My orders on aethex.in.</p>`)).catch(() => false);
+    if (ok) sent++;
+  }
+  return { sent };
+}
+
+/* ------------------------------------------------------------------ update 82: bulk lists shared for approval */
+
+type ApprovalRow = { id: string; token: string; user_id: string; owner_email: string; owner_name: string | null; segment: string; name: string; lines: string; message: string | null; approver_email: string; approver_name: string | null; status: string; comments: string; created_at: number; updated_at: number; decided_at: number | null };
+type AComment = { who: string; role: "owner" | "approver"; text: string; at: number };
+const APPROVAL_LABEL: Record<string, string> = { pending: "Waiting for approval", approved: "Approved", changes: "Changes asked for", declined: "Not approved" };
+const portalOrigin = (segment: string) => `https://${segment === "college" ? "medicalcolleges" : "hospitals"}.aethex.in`;
+function approvalOut(r: ApprovalRow, find: (id: number) => Product | null, withEmails = false) {
+  const priced = priceBulk(parse<unknown>(r.lines, []), find);
+  return {
+    id: r.id, token: withEmails ? r.token : undefined, name: r.name, segment: r.segment as Segment, status: r.status, statusText: APPROVAL_LABEL[r.status] ?? r.status,
+    message: r.message, ownerName: r.owner_name, approverName: r.approver_name, ...(withEmails ? { approverEmail: r.approver_email } : {}),
+    items: priced.items, issues: priced.issues, units: priced.units, estTotal: priced.estTotal, unpriced: priced.unpriced,
+    comments: parse<AComment[]>(r.comments, []), createdAt: r.created_at, updatedAt: r.updated_at, decidedAt: r.decided_at,
+  };
+}
+async function handleApprovals(request: Request, db: DBEnv, path: string, method: string): Promise<Response> {
+  const find = await finder(db).catch(() => (id: number) => byId.get(id) ?? null);
+  const tm = /^approvals\/([A-Za-z0-9_-]{20,64})(?:\/(decision|comment))?$/.exec(path);
+  if (tm) {
+    // The approver opens the link: the token is the key, no account needed.
+    const r = await db.DB.prepare("SELECT * FROM store_approvals WHERE token = ?").bind(tm[1]).first<ApprovalRow>();
+    if (!r) return json({ error: "This approval link isn't valid. Ask for the list to be sent again." }, 404);
+    if (method === "GET" && !tm[2]) return json({ approval: approvalOut(r, find) });
+    if (method !== "POST") return json({ error: "Method not allowed" }, 405);
+    if (!(await allow(db, `store:approval:${r.id}`, 60, 3600_000))) return json({ error: "Too many changes. Please wait a while." }, 429);
+    const b = await readJson(request, 65_536);
+    const who = str(b?.name, 60) || r.approver_name || "Approver";
+    const text = longStr(b?.comment, 1000);
+    const comments = parse<AComment[]>(r.comments, []);
+    const now = Date.now();
+    if (tm[2] === "comment") {
+      if (text.length < 2) return json({ error: "Write a comment." }, 400);
+      comments.push({ who, role: "approver", text, at: now });
+      await db.DB.prepare("UPDATE store_approvals SET comments = ?, approver_name = COALESCE(approver_name, ?), updated_at = ? WHERE id = ?").bind(JSON.stringify(comments.slice(-100)), who, now, r.id).run();
+    } else {
+      const decision = String(b?.decision);
+      if (!["approved", "changes", "declined"].includes(decision)) return json({ error: "Choose approve, ask for changes, or decline." }, 400);
+      if (decision !== "approved" && text.length < 2) return json({ error: "Say what should change, or why.", field: "comment" }, 400);
+      let lines = r.lines;
+      if (Array.isArray(b?.lines)) { const cl = cleanBulkLines(b.lines); if (!cl.length) return json({ error: "The list can't be empty." }, 400); lines = JSON.stringify(cl); }
+      if (text) comments.push({ who, role: "approver", text, at: now });
+      await db.DB.prepare("UPDATE store_approvals SET status = ?, lines = ?, comments = ?, approver_name = ?, decided_at = ?, updated_at = ? WHERE id = ?").bind(decision, lines, JSON.stringify(comments.slice(-100)), who, now, now, r.id).run();
+    }
+    const fresh = (await db.DB.prepare("SELECT * FROM store_approvals WHERE id = ?").bind(r.id).first<ApprovalRow>())!;
+    const st = APPROVAL_LABEL[fresh.status] ?? fresh.status;
+    await sendEmail(db, r.owner_email, tm[2] === "comment" ? `${who} commented on "${r.name}"` : `"${r.name}": ${st}`, shell(`<h2 style="margin:0 0 10px;font-size:19px;">${escapeHtml(tm[2] === "comment" ? "A new comment on your list" : st)}</h2>
+<p style="margin:0 0 8px;font-size:14px;line-height:1.6;"><b>${escapeHtml(who)}</b> ${tm[2] === "comment" ? "commented on" : fresh.status === "approved" ? "approved" : fresh.status === "changes" ? "asked for changes to" : "did not approve"} <b>${escapeHtml(r.name)}</b>${text ? `:<br>&ldquo;${escapeHtml(text)}&rdquo;` : "."}</p>
+<p style="margin:0;font-size:14px;"><a href="${portalOrigin(r.segment)}/approvals">See it and send it for a quotation</a></p>`)).catch(() => false);
+    return json({ approval: approvalOut(fresh, find) });
+  }
+  const user = await currentUser(request, db).catch(() => null);
+  if (!user) return json({ error: "Sign in to send a list for approval.", signIn: true }, 401);
+  if (method === "GET") {
+    const { results } = await db.DB.prepare("SELECT * FROM store_approvals WHERE user_id = ? ORDER BY updated_at DESC LIMIT 50").bind(user.id).all<ApprovalRow>();
+    return json({ approvals: results.map((r) => approvalOut(r, find, true)) });
+  }
+  if (method !== "POST") return json({ error: "Method not allowed" }, 405);
+  if (!(await allow(db, `store:approval-new:${user.id}`, 20, 86400_000))) return json({ error: "That's a lot for one day. Please try again tomorrow." }, 429);
+  const b = await readJson(request, 65_536);
+  const name = str(b?.name, 80);
+  if (name.length < 2) return json({ error: "Give the list a name.", field: "name" }, 400);
+  const approverEmail = normEmail(b?.approverEmail);
+  if (!validEmail(approverEmail)) return json({ error: "Enter the approver's email.", field: "approverEmail" }, 400);
+  if (approverEmail === normEmail(user.email)) return json({ error: "Send it to someone else to approve.", field: "approverEmail" }, 400);
+  const lines = cleanBulkLines(b?.lines);
+  if (!lines.length) return json({ error: "Your list is empty." }, 400);
+  const segment = b?.segment === "college" ? "college" : "hospital";
+  const now = Date.now();
+  const id = `a${now.toString(36)}${Array.from(crypto.getRandomValues(new Uint8Array(4)), (x) => x.toString(36)).join("").slice(0, 6)}`;
+  const token = Array.from(crypto.getRandomValues(new Uint8Array(24)), (x) => x.toString(16).padStart(2, "0")).join("");
+  const message = longStr(b?.message, 1000) || null, approverName = str(b?.approverName, 60) || null;
+  await db.DB.prepare("INSERT INTO store_approvals (id, token, user_id, owner_email, owner_name, segment, name, lines, message, approver_email, approver_name, status, comments, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', '[]', ?, ?)")
+    .bind(id, token, user.id, normEmail(user.email), str(user.name, 60) || null, segment, name, JSON.stringify(lines), message, approverEmail, approverName, now, now).run();
+  const priced = priceBulk(lines, find);
+  const link = `${portalOrigin(segment)}/approve/${token}`;
+  const sent = await sendEmail(db, approverEmail, `Please approve: ${name}`, shell(`<h2 style="margin:0 0 10px;font-size:19px;">A purchase list for your approval</h2>
+<p style="margin:0 0 8px;font-size:14px;line-height:1.6;">${escapeHtml(user.name || user.email)} sent you <b>${escapeHtml(name)}</b>: ${priced.items.length} item${priced.items.length === 1 ? "" : "s"}, ${priced.units.toLocaleString("en-IN")} units${priced.estTotal ? `, about ${money(priced.estTotal)} at listed prices` : ""}.</p>
+${message ? `<p style="margin:0 0 12px;font-size:14px;line-height:1.6;">&ldquo;${escapeHtml(message)}&rdquo;</p>` : ""}
+<p style="margin:0 0 10px;"><a href="${link}" style="display:inline-block;padding:11px 18px;border-radius:8px;background:#0e7490;color:#fff;font-weight:600;text-decoration:none;">Review the list</a></p>
+<p style="margin:0;font-size:12.5px;color:#667085;">You can change quantities, comment, approve or decline. No Aethex account needed.</p>`)).catch(() => false);
+  const r = (await db.DB.prepare("SELECT * FROM store_approvals WHERE id = ?").bind(id).first<ApprovalRow>())!;
+  return json({ approval: approvalOut(r, find, true), emailed: sent });
+}
+
+/* ------------------------------------------------------------------ update 82: equipment register */
+
+export interface Equipment { id: string; name: string; brand?: string; model?: string; serial?: string; location?: string; purchased?: string; orderRef?: string; productId?: number; warrantyUntil?: string; serviceMonths?: number; lastService?: string; calibrationMonths?: number; lastCalibration?: string; notes?: string; nextService?: string | null; nextCalibration?: string | null; createdAt: number; updatedAt: number }
+type EqRow = { id: string; user_id: string; data: string; next_service: string | null; next_calibration: string | null; warranty_until: string | null; reminded: string | null; created_at: number; updated_at: number };
+const ymd = (v: unknown) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
+const addMonths = (d: string, m: number) => { const x = new Date(`${d}T00:00:00Z`); x.setUTCMonth(x.getUTCMonth() + m); return x.toISOString().slice(0, 10); };
+function nextDue(last: string | undefined, start: string | undefined, months: number | undefined): string | null {
+  if (!months) return null;
+  const from = last ?? start;
+  return from ? addMonths(from, months) : null;
+}
+const eqOut = (r: EqRow): Equipment => ({ ...parse<Omit<Equipment, "id" | "createdAt" | "updatedAt">>(r.data, { name: "" }), id: r.id, nextService: r.next_service, nextCalibration: r.next_calibration, createdAt: r.created_at, updatedAt: r.updated_at });
+function cleanEquipment(b: Record<string, any>): Omit<Equipment, "id" | "createdAt" | "updatedAt" | "nextService" | "nextCalibration"> | { error: string } {
+  const name = str(b.name, 100);
+  if (name.length < 2) return { error: "Name the equipment, like \"ICU monitor, bed 4\"." };
+  const months = (v: unknown) => { if (v === "" || v === null || v === undefined) return undefined; const n = Math.round(Number(v)); return [1, 2, 3, 4, 6, 12, 24].includes(n) ? n : NaN; };
+  const sm = months(b.serviceMonths), cm = months(b.calibrationMonths);
+  if (Number.isNaN(sm) || Number.isNaN(cm)) return { error: "Choose how often: every 1, 2, 3, 4, 6, 12 or 24 months." };
+  const out = {
+    name, brand: str(b.brand, 60) || undefined, model: str(b.model, 60) || undefined, serial: str(b.serial, 60) || undefined, location: str(b.location, 80) || undefined,
+    purchased: ymd(b.purchased), orderRef: str(b.orderRef, 40) || undefined, productId: Number.isInteger(Number(b.productId)) && byId.has(Number(b.productId)) ? Number(b.productId) : undefined,
+    warrantyUntil: ymd(b.warrantyUntil), serviceMonths: sm, lastService: ymd(b.lastService), calibrationMonths: cm, lastCalibration: ymd(b.lastCalibration), notes: longStr(b.notes, 500) || undefined,
+  };
+  return Object.fromEntries(Object.entries(out).filter(([, v]) => v !== undefined)) as typeof out;
+}
+async function handleEquipment(request: Request, db: DBEnv, path: string, method: string): Promise<Response> {
+  const user = await currentUser(request, db).catch(() => null);
+  if (!user) return json({ error: "Sign in to keep an equipment register.", signIn: true }, 401);
+  const list = async () => (await db.DB.prepare("SELECT * FROM store_equipment WHERE user_id = ? ORDER BY updated_at DESC LIMIT 500").bind(user.id).all<EqRow>()).results.map(eqOut);
+  const save = async (id: string, e: ReturnType<typeof cleanEquipment> & object, created: number) => {
+    const ns = nextDue(e.lastService, e.purchased, e.serviceMonths), nc = nextDue(e.lastCalibration, e.purchased, e.calibrationMonths);
+    await db.DB.prepare("INSERT INTO store_equipment (id, user_id, data, next_service, next_calibration, warranty_until, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data, next_service = excluded.next_service, next_calibration = excluded.next_calibration, warranty_until = excluded.warranty_until, updated_at = excluded.updated_at")
+      .bind(id, user.id, JSON.stringify(e), ns, nc, e.warrantyUntil ?? null, created, Date.now()).run();
+  };
+  if (path === "equipment" && method === "GET") return json({ equipment: await list() });
+  if (path === "equipment" && method === "POST") {
+    const b = await readJson(request);
+    const e = cleanEquipment(b ?? {});
+    if ("error" in e) return json(e, 400);
+    if (b?.id) {
+      const cur = await db.DB.prepare("SELECT * FROM store_equipment WHERE id = ? AND user_id = ?").bind(str(b.id, 40), user.id).first<EqRow>();
+      if (!cur) return json({ error: "Not found." }, 404);
+      await save(cur.id, e, cur.created_at);
+    } else {
+      const n = await db.DB.prepare("SELECT COUNT(*) AS c FROM store_equipment WHERE user_id = ?").bind(user.id).first<{ c: number }>();
+      if (Number(n?.c) >= 500) return json({ error: "The register holds up to 500 items." }, 400);
+      await save(`e${Date.now().toString(36)}${Array.from(crypto.getRandomValues(new Uint8Array(4)), (x) => x.toString(36)).join("").slice(0, 6)}`, e, Date.now());
+    }
+    return json({ equipment: await list() });
+  }
+  const m = /^equipment\/(e[a-z0-9]{6,30})\/(delete|done)$/.exec(path);
+  if (m && method === "POST") {
+    const cur = await db.DB.prepare("SELECT * FROM store_equipment WHERE id = ? AND user_id = ?").bind(m[1], user.id).first<EqRow>();
+    if (!cur) return json({ error: "Not found." }, 404);
+    if (m[2] === "delete") { await db.DB.prepare("DELETE FROM store_equipment WHERE id = ?").bind(cur.id).run(); return json({ equipment: await list() }); }
+    const b = await readJson(request);
+    const kind = b?.kind === "calibration" ? "calibration" : "service";
+    const date = ymd(b?.date) ?? new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10);
+    const e = { ...parse<Record<string, any>>(cur.data, {}), [kind === "service" ? "lastService" : "lastCalibration"]: date };
+    const c = cleanEquipment(e);
+    if ("error" in c) return json(c, 400);
+    await save(cur.id, c, cur.created_at);
+    return json({ equipment: await list() });
+  }
+  return json({ error: "Not found" }, 404);
+}
+/** Daily-ish (hourly job): 7 days before a service, calibration or warranty end, one email to the owner. */
+export async function runEquipmentReminders(env: StoreEnv): Promise<{ sent: number }> {
+  if (!env.DB) return { sent: 0 };
+  const db = env as DBEnv;
+  await ensureTables(db.DB);
+  const today = new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10);
+  const soon = new Date(Date.parse(`${today}T00:00:00Z`) + 7 * 86400000).toISOString().slice(0, 10);
+  const { results } = await db.DB.prepare("SELECT e.*, u.email AS email FROM store_equipment e JOIN users u ON u.id = e.user_id WHERE (next_service <= ? OR next_calibration <= ? OR warranty_until <= ?) LIMIT 300").bind(soon, soon, soon).all<EqRow & { email: string }>();
+  const byUser = new Map<string, { email: string; lines: string[]; marks: { id: string; mark: string }[] }>();
+  for (const r of results) {
+    const e = eqOut(r);
+    const done = new Set((r.reminded ?? "").split(",").filter(Boolean));
+    const due: string[] = [];
+    if (e.nextService && e.nextService <= soon && !done.has(`s:${e.nextService}`)) { due.push(`service ${e.nextService < today ? "overdue since" : "due"} ${e.nextService}`); done.add(`s:${e.nextService}`); }
+    if (e.nextCalibration && e.nextCalibration <= soon && !done.has(`c:${e.nextCalibration}`)) { due.push(`calibration ${e.nextCalibration < today ? "overdue since" : "due"} ${e.nextCalibration}`); done.add(`c:${e.nextCalibration}`); }
+    if (e.warrantyUntil && e.warrantyUntil >= today && e.warrantyUntil <= soon && !done.has(`w:${e.warrantyUntil}`)) { due.push(`warranty ends ${e.warrantyUntil}`); done.add(`w:${e.warrantyUntil}`); }
+    if (!due.length || !r.email) continue;
+    const u = byUser.get(r.user_id) ?? { email: r.email, lines: [], marks: [] };
+    u.lines.push(`<li><b>${escapeHtml(e.name)}</b>${e.location ? ` (${escapeHtml(e.location)})` : ""}: ${escapeHtml(due.join("; "))}</li>`);
+    u.marks.push({ id: r.id, mark: [...done].slice(-20).join(",") });
+    byUser.set(r.user_id, u);
+  }
+  let sent = 0;
+  for (const u of byUser.values()) {
+    for (const m of u.marks) await db.DB.prepare("UPDATE store_equipment SET reminded = ? WHERE id = ?").bind(m.mark, m.id).run();
+    const ok = await sendEmail(db, u.email, `Equipment due: ${u.lines.length} item${u.lines.length === 1 ? "" : "s"}`, shell(`<h2 style="margin:0 0 10px;font-size:19px;">Equipment service and calibration</h2>
+<ul style="margin:0 0 12px;padding-left:18px;font-size:14px;line-height:1.7;">${u.lines.join("")}</ul>
+<p style="margin:0;font-size:14px;"><a href="https://hospitals.aethex.in/equipment">Open your equipment register</a> to mark them done.</p>`)).catch(() => false);
     if (ok) sent++;
   }
   return { sent };

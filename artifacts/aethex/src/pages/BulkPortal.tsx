@@ -36,6 +36,7 @@ import { KITS, type Kit, type KitIcon } from "@/config/kits";
 import { kitLines } from "@/lib/store/kits";
 import { formatINR } from "@/lib/utils";
 import { BudgetBox, EstimateLink, SavedLists } from "@/components/store/BulkExtras";
+import { SendForApproval } from "@/components/store/BulkExtras2";
 import { markSent } from "@/lib/store/bulkExtras";
 import { useUserAuth } from "@/hooks/use-user-auth";
 
@@ -526,6 +527,7 @@ function ListPanel({ onQuote, segment }: { onQuote: () => void; segment: Segment
       <BudgetBox segment={segment} />
       <button type="button" className="ax-btn teal lg" onClick={onQuote}><ClipboardList size={17} /> Request a quote</button>
       <EstimateLink segment={segment} className="ax-btn lg" />
+      <SendForApproval segment={segment} />
       {direct.ok ? (
         <button type="button" className="ax-btn lg" onClick={orderNow}><ShoppingCart size={17} /> Order now · cash on delivery</button>
       ) : (

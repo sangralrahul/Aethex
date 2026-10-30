@@ -33,6 +33,7 @@ import { recent } from "@/lib/store/recent";
 import { useToast } from "@/hooks/use-toast";
 import { useWishlist } from "@/hooks/use-wishlist";
 import { useSeo } from "@/hooks/use-seo";
+import { useRememberVisit } from "@/lib/lastSeen";
 import { useProduct, useStore, useStoreConfig, useTogether } from "@/lib/store/api";
 import { cart } from "@/lib/store/cart";
 import { isBookId } from "@/lib/store/bookdata";
@@ -129,6 +130,7 @@ export default function ProductDetail() {
   const categoryName = category?.name ?? "";
 
   const shareImage = product?.images.find((u) => !cropOf(u));
+  useRememberVisit("product", product?.name, `/products/${key}`, brandName || undefined);
   useSeo({
     title: product ? `${brandName} ${product.name}${product.priceOnRequest ? "" : product.price ? ` at ${formatINR(product.price)}` : ""} | Aethex Store` : "Product | Aethex Store",
     description: product ? `${brandName} ${product.name}. ${product.summary}`.slice(0, 160) : "Genuine medical devices from verified brands on Aethex.",

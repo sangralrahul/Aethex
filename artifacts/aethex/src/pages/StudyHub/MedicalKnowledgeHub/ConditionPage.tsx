@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useRememberVisit } from "@/lib/lastSeen";
 import { study, type Bookmark as StudyBookmark } from "@/lib/study/progress";
 import { NoteButton } from "@/components/study/StudyBits";
 import { Link, useParams, useSearch } from "wouter";
@@ -152,6 +153,7 @@ export default function ConditionPage() {
     return study.isBookmarked(`condition:${params.deptSlug}/${params.conditionSlug}`) || list.includes(`${params.deptSlug}/${params.conditionSlug}`);
   });
   const [mcqCount, setMcqCount] = useState(8);
+  useRememberVisit("topic", result ? result.condition.name : null, `/study-hub/medical-knowledge-hub/departments/${params.deptSlug}/${params.conditionSlug}`, result ? result.dept.name : undefined);
 
   const apiParams = result ? { conditionName: result.condition.name, department: result.dept.name } : {};
   const mcqApiParams = result ? { ...apiParams, mcqCount: String(mcqCount) } : {};

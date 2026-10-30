@@ -2482,3 +2482,49 @@ button.ec-promo{width:100%}
 .st-mock-an a{color:#6d28d9;font-weight:600}
 @media (max-width:900px){.st-mock-intro,.st-lb-page{grid-template-columns:minmax(0,1fr)}.st-weeks li{grid-template-columns:64px minmax(0,1fr)}.st-weeks .f{grid-column:1/-1}.st-mock-score{grid-template-columns:minmax(0,1fr)}.st-mock-score .pc{text-align:left}.st-fc-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .st-plan .st-card h2,.st-mock-an h2,.st-lb-page .st-card h2{justify-content:flex-start;align-items:center;gap:8px}
+
+/* Update 82: approvals and the equipment register (components/store/BulkExtras2.tsx) */
+.ax-appr,.ax-eq{padding-top:18px;padding-bottom:48px}
+.ax-appr-done{display:grid;justify-items:center;gap:10px;text-align:center;padding:10px 4px;color:#0f766e}
+.ax-appr-done p{color:#334155;margin:0;line-height:1.55}
+.ax-appr-status{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:13px;font-weight:600;background:#f1f5f9;color:#334155;white-space:nowrap}
+.ax-appr-status.s-pending{background:#fffbeb;color:#92400e}
+.ax-appr-status.s-approved{background:#ecfdf5;color:#047857}
+.ax-appr-status.s-changes{background:#eff6ff;color:#1d4ed8}
+.ax-appr-status.s-declined{background:#fef2f2;color:#b91c1c}
+.ax-appr-msg{margin:14px 0;padding:12px 14px;border-left:3px solid #0d9488;background:#f8fafc;border-radius:0 10px 10px 0;color:#334155;white-space:pre-wrap}
+.ax-appr-items{width:100%;overflow-x:auto;margin:14px 0;border:1px solid #e5e7eb;border-radius:12px;background:#fff}
+.ax-appr-items table{width:100%;border-collapse:collapse;font-size:14px;min-width:480px}
+.ax-appr-items th,.ax-appr-items td{padding:10px 12px;border-bottom:1px solid #f1f5f9;text-align:left;vertical-align:middle}
+.ax-appr-items th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#64748b;background:#f8fafc}
+.ax-appr-items td.n,.ax-appr-items th.n{text-align:right;white-space:nowrap}
+.ax-appr-items input{width:84px;height:34px;padding:0 8px;border:1px solid #cbd5e1;border-radius:8px;text-align:right}
+.ax-appr-items small{display:block;color:#64748b}
+.ax-appr-comments{list-style:none;margin:14px 0;padding:0;display:grid;gap:8px}
+.ax-appr-comments li{padding:10px 12px;border:1px solid #e5e7eb;border-radius:10px;background:#fff}
+.ax-appr-comments li small{display:block;color:#64748b;font-size:12px;margin-bottom:3px}
+.ax-appr-comments li p{margin:0;white-space:pre-wrap;color:#0f172a}
+.ax-appr-act{margin-top:18px;padding:16px;border:1px solid #e5e7eb;border-radius:14px;background:#fff}
+.ax-appr-act .row,.ax-appr .row2{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.ax-appr-list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.ax-appr-list>li{border:1px solid #e5e7eb;border-radius:14px;background:#fff;overflow:hidden}
+.ax-appr-list .row{display:flex;width:100%;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;background:none;border:0;cursor:pointer;text-align:left;font:inherit}
+.ax-appr-list .row b{display:block;color:#0f172a}
+.ax-appr-list .row small{display:block;color:#64748b;font-size:13px;margin-top:2px}
+.ax-appr-list .body{padding:0 16px 16px}
+.ax-eq-bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:14px}
+.ax-eq-bar input{flex:1 1 220px;min-width:0;height:40px;padding:0 12px;border:1px solid #cbd5e1;border-radius:10px}
+.ax-eq-table{width:100%;overflow-x:auto;border:1px solid #e5e7eb;border-radius:14px;background:#fff}
+.ax-eq-table table{width:100%;border-collapse:collapse;font-size:14px;min-width:720px}
+.ax-eq-table th,.ax-eq-table td{padding:11px 12px;border-bottom:1px solid #f1f5f9;text-align:left;vertical-align:top}
+.ax-eq-table th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#64748b;background:#f8fafc}
+.ax-eq-table td small{display:block;color:#64748b;font-size:12.5px;margin-top:2px}
+.ax-eq-table td .ax-link{display:block;font-size:12.5px;margin-top:4px}
+.ax-eq-table td.acts{white-space:nowrap;text-align:right}
+.ax-eq-table td.acts .ax-icon-btn{display:inline-grid;margin-left:6px;vertical-align:middle}
+.ax-icon-btn.edit{color:#334155}
+.ax-eq-table .due{display:inline-block;padding:2px 8px;border-radius:6px;white-space:nowrap}
+.ax-eq-table .due.ok{background:#ecfdf5;color:#047857}
+.ax-eq-table .due.soon{background:#fffbeb;color:#92400e;font-weight:600}
+.ax-eq-table .due.over{background:#fef2f2;color:#b91c1c;font-weight:600}
+@media (max-width:560px){.ax-appr-list .row{flex-direction:column;align-items:flex-start}.ax-appr-act .row .ax-btn,.ax-appr .row2 .ax-btn{width:100%;justify-content:center}}

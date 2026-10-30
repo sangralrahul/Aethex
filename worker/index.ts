@@ -23,12 +23,13 @@
 import { functionHandler, functionNames, useEnv } from "./deno-shim";
 import { handleAuth, handleCart, handleProfile, runScheduled, type AuthEnv } from "./auth";
 import { serveDownload, type R2Bucket } from "./downloads";
-import { handleStore, runReorderReminders, runStoreScheduled, type StoreEnv } from "./store";
+import { handleStore, runEquipmentReminders, runReorderReminders, runStoreScheduled, type StoreEnv } from "./store";
 import { handleTranscribe, type AiBinding } from "./transcribe";
 import { handleVoice, voiceEnabled, type VoiceEnv } from "./voice";
 import { guestGate, requireAccount } from "./guest";
 import { cadusHome, hostRobots, hostSitemap, portalHome, portalOf } from "./seo";
 import { handleStudy } from "./study";
+import { handleNotifications } from "./notify";
 import { handleFind, type FindEnv, runFindReminders, runFollowUps } from "./find";
 import "./names/cadus";
 import "../supabase/functions/cadus/index.ts";
@@ -119,6 +120,12 @@ export default {
     }
 
     // Aethex Doctors: doctors listing their practice, search and bookings (worker/find.ts).
+    // aethex.in's notifications (worker/notify.ts, update 82)
+    if (url.pathname === "/api/notifications" || url.pathname === "/api/notifications/seen") {
+      const origin = request.headers.get("origin");
+      if (request.method !== "GET" && (!origin || !ALLOWED_ORIGIN.test(origin))) return json({ error: "Origin not allowed" }, 403);
+      try { return await handleNotifications(request, env); } catch (e) { console.error(`${url.pathname} failed`, e); return json({ items: [], unread: 0 }); }
+    }
     // Aethex Study: the student's study record (worker/study.ts, update 77).
     if (url.pathname.startsWith("/api/study/")) {
       const origin = request.headers.get("origin");
@@ -215,6 +222,7 @@ export default {
     ctx.waitUntil(runFollowUps(env).then((r) => console.log("find follow-ups", r), (e) => console.error("find follow-ups failed", e)));
     ctx.waitUntil(runFindReminders(env).then((r) => console.log("find reminders", r), (e) => console.error("find reminders failed", e)));
     ctx.waitUntil(runReorderReminders(env).then((r) => console.log("reorder reminders", r), (e) => console.error("reorder reminders failed", e)));
+    ctx.waitUntil(runEquipmentReminders(env).then((r) => console.log("equipment reminders", r), (e) => console.error("equipment reminders failed", e)));
     ctx.waitUntil(runStoreScheduled(env).then((r) => console.log("store scheduled", r), (e) => console.error("store scheduled failed", e)));
   },
 };

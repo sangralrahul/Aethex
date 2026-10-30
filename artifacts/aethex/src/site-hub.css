@@ -984,3 +984,35 @@
 .fd-an-split i{display:block;height:100%;background:#4f46e5}
 .fd-an-split.v{background:#99f6e4}.fd-an-split.v i{background:#0f766e}
 @media (max-width:760px){.fd-an-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.fd-an-two{grid-template-columns:minmax(0,1fr)}.fd-an-weeks small{display:none}.fd-med-plan{display:block;overflow-x:auto}}
+
+/* Update 82: the hub's notification bell and "Continue where you left off" (components/home/HubBits.tsx) */
+.hb-top nav{align-items:center}
+.hb-bell{position:relative}
+.hb-bell>button{position:relative;display:grid;place-items:center;width:40px;height:40px;border-radius:9px;border:0;background:transparent;color:#0f172a;cursor:pointer}
+.hb-bell>button:hover{background:#f1f5f9}
+.hb-bell>button em{position:absolute;top:3px;right:2px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#dc2626;color:#fff;font-size:11px;font-style:normal;font-weight:700;line-height:18px;text-align:center}
+.hb-bell .pop{position:absolute;right:0;top:46px;z-index:50;width:min(360px,calc(100vw - 32px));max-height:min(70vh,520px);overflow:auto;background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 20px 50px -20px rgba(15,23,42,.35)}
+.hb-bell .hd{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #f1f5f9;position:sticky;top:0;background:#fff}
+.hb-bell .hd button{border:0;background:none;color:#64748b;cursor:pointer;display:grid;place-items:center;width:28px;height:28px;border-radius:7px}
+.hb-bell ul{list-style:none;margin:0;padding:4px 0}
+.hb-bell li a{display:block;height:auto;padding:10px 14px;border-radius:0;text-decoration:none;color:#0f172a;font-weight:400}
+.hb-bell li a:hover{background:#f8fafc}
+.hb-bell li.new a{background:#f0fdfa}
+.hb-bell li small{display:block;font-size:11.5px;color:#64748b}
+.hb-bell li b{display:block;font-size:14px;margin:1px 0}
+.hb-bell li span{display:block;font-size:13px;color:#475569;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hb-bell .none{margin:0;padding:18px 14px;color:#64748b;font-size:14px}
+.hb-cont{position:relative;z-index:2;width:min(1100px,calc(100% - 40px));margin:0 auto 22px}
+.hb-cont .hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.hb-cont h2{margin:0;font-size:15px;font-weight:700;color:#0f172a}
+.hb-cont .hd button{border:0;background:none;color:#64748b;font-size:13px;cursor:pointer;text-decoration:underline}
+.hb-cont .row{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr));gap:10px}
+.hb-cont .row a{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.92);border:1px solid #e5e7eb;color:#0f172a;text-decoration:none;min-width:0;transition:border-color .15s,transform .15s}
+.hb-cont .row a:hover{border-color:#99f6e4;transform:translateY(-1px)}
+.hb-cont .ic{display:grid;place-items:center;flex:none;width:38px;height:38px;border-radius:10px;background:#f0fdfa;color:#0f766e}
+.hb-cont .t{flex:1;min-width:0}
+.hb-cont .t small{display:block;font-size:11.5px;color:#64748b}
+.hb-cont .t b{display:block;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hb-cont .t i{display:block;font-style:normal;font-size:12.5px;color:#475569;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:480px){.hb-bell .pop{position:fixed;left:16px;right:16px;top:64px;width:auto}}
+.hb-top nav .hb-bell li a{display:block;height:auto;padding:10px 14px;font-size:inherit}

@@ -11,6 +11,7 @@ import { hideBroken, ph, type PhotoKey } from "@/config/photos";
 import { ArrowRight, Building2, CalendarCheck, ChevronRight, GraduationCap, Hospital, Search, ShieldCheck, ShoppingBag, Sparkles } from "lucide-react";
 import { Logo } from "@/components/layout/Navbar";
 import { MyAethex } from "@/components/home/MyAethex";
+import { ContinueStrip, NotificationBell } from "@/components/home/HubBits";
 import { useSeo } from "@/hooks/use-seo";
 import { cadusUrl, loginUrl, mainUrl, portalUrl, type Portal } from "@/lib/host";
 import { FREE_DELIVERY_FROM } from "@/lib/store/rules";
@@ -153,6 +154,7 @@ export default function Hub() {
       <header className="hb-top">
         <Logo />
         <nav aria-label="Account">
+          <NotificationBell />
           <a href={loginUrl("/")}>Sign in</a>
           <a href={cadusUrl("/")} className="p" data-home="cta-cadus"><Sparkles size={15} /> Try Cadus free</a>
         </nav>
@@ -167,6 +169,8 @@ export default function Hub() {
       <HubSearch />
 
       <MyAethex />
+
+      <ContinueStrip />
 
       <section className="hb-cards" aria-label="Aethex platforms">
         {CARDS.map((c, i) => (

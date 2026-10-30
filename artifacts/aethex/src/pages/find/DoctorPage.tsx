@@ -5,6 +5,7 @@ import { Link, useParams, useSearch } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Award, BadgeCheck, Building2, CalendarCheck, CalendarX2, CheckCircle2, Clock, GraduationCap, Languages, MapPin, ShieldAlert, ThumbsUp, Users, Video } from "lucide-react";
 import { useSeo } from "@/hooks/use-seo";
+import { useRememberVisit } from "@/lib/lastSeen";
 import { useUserAuth } from "@/hooks/use-user-auth";
 import { formatINR } from "@/lib/utils";
 import { daySlots, addDays, clinicKey, dateLabel, displayName, findApi, freeSlots, hoursText, signInHere, time12, useDoctor, useFamily, type Appointment, type FindError } from "@/lib/find";
@@ -18,6 +19,7 @@ export default function DoctorPage() {
   const { data, isLoading, error, refetch } = useDoctor(slug);
   const { user } = useUserAuth();
   const d = data?.doctor;
+  useRememberVisit("doctor", d ? displayName(d.name) : null, `/doctor/${slug}`, d ? `${d.specialty}, ${d.city}` : undefined);
   useSeo({ title: d ? `${displayName(d.name)}, ${d.specialty} in ${d.city}: book an appointment | Aethex Doctors` : "Doctor | Aethex Doctors", description: d ? `${displayName(d.name)}, ${d.qualifications}. ${d.experience} years experience. ${d.clinic}, ${d.city}. Book online on Aethex Doctors.` : "Book a doctor on Aethex Doctors.", path: `/doctor/${slug}` });
 
   const [tab, setTab] = useState<"info" | "stories" | "consult" | "articles">("info");

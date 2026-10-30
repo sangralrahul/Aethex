@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useRememberVisit } from "@/lib/lastSeen";
 import { study, type Bookmark as StudyBookmark } from "@/lib/study/progress";
 import { NoteButton } from "@/components/study/StudyBits";
 import { Link, useParams, useSearch } from "wouter";
@@ -133,6 +134,7 @@ export default function TopicPage() {
   const urlTab = new URLSearchParams(search).get("tab") as "overview" | "exam" | "flashcards" | null;
   const [activeTab, setActiveTab] = useState<"overview" | "exam" | "flashcards">(urlTab || "overview");
   const [mcqCount, setMcqCount] = useState(8);
+  useRememberVisit("topic", result ? result.topic.name : null, `/study-hub/medical-knowledge-hub/subjects/${params.subjectSlug}/${params.topicSlug}`, result ? result.subject.name : undefined);
 
   const apiParams = result ? { topic: result.topic.name, subject: result.subject.name } : {};
   const mcqApiParams = result ? { ...apiParams, mcqCount: String(mcqCount) } : {};
