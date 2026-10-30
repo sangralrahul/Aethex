@@ -9,6 +9,7 @@ import { Link, useLocation } from "wouter";
 import {
   ArrowRight, ArrowUpRight, BookOpen, Brain, CalendarDays, Check, CheckCircle2, ClipboardList, ExternalLink, Layers,
   ListChecks, Search, Sparkles, Stethoscope, Timer, Trophy, Users, X, type LucideProps,
+  GraduationCap,
 } from "lucide-react";
 import { cadusUrl } from "@/lib/host";
 import { TopLayer } from "@/components/shop/TopLayer";
@@ -444,19 +445,24 @@ export default function StudyHub() {
 
   return (
     <div className={`ax-sth${compareIds.length ? " has-bar" : ""}`}>
-      {/* hero */}
-      <section className="ax-sth-hero">
-        <div className="ax-wrap ax-sth-hero-in">
-          <div className="ax-sth-hero-main">
-            <nav className="ax-crumbs" aria-label="Breadcrumb"><Link href="/">Home</Link><span aria-hidden="true">›</span><span aria-current="page">Study Hub</span></nav>
-            <p className="ax-eyebrow">Study Hub</p>
-            <h1>Prepare for NEET-PG and beyond</h1>
-            <p className="lead">Question banks, mock tests, flashcards and a reference for every subject and condition — for NEET-PG, NExT, FMGE and USMLE.</p>
-            <HubSearch big placeholder="Search any topic or condition" />
+      {/* hero (update 67: the same hero as the other platforms, in Study's violet) */}
+      <section className="ax-ihero ax-sth-hero2">
+        <div className="ax-ihero-bg" aria-hidden="true"><i /><i /><i /></div>
+        <div className="ax-wrap ax-ihero-in">
+          <div className="txt">
+            <span className="eyebrow"><GraduationCap size={15} /> Aethex Study<em>NEET-PG · NExT · FMGE · USMLE</em></span>
+            <h1>Prepare for NEET&#8209;PG and beyond</h1>
+            <p>Question banks, mock tests, flashcards and a reference for every subject and condition, for NEET-PG, NExT, FMGE and USMLE.</p>
+            <div className="srch"><HubSearch big placeholder="Search any topic or condition" /></div>
             <div className="ax-sth-exams">
               <span>Preparing for</span>
               <Link href="/neet-pg">NEET-PG</Link><Link href="/neet-pg">NExT</Link><Link href="/mock-test">FMGE</Link><Link href={HUB}>USMLE</Link>
             </div>
+            <dl className="facts">
+              <div><dt>{stats.subjects}</dt><dd>subjects</dd></div>
+              <div><dt>{stats.topics.toLocaleString("en-IN")}</dt><dd>topics</dd></div>
+              <div><dt>{stats.conditions.toLocaleString("en-IN")}</dt><dd>conditions</dd></div>
+            </dl>
           </div>
           <Link href="/case-of-the-day" className="ax-sth-case">
             <span className="top"><span><ClipboardList size={15} /> Case of the day</span><em>{todays.specialty}</em></span>

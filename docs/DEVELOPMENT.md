@@ -222,6 +222,10 @@ department at a time in tabs (`short` names in `src/config/institutions.ts`; `#i
 How it works, the brands in the catalogue (counted from the store data), questions and a closing call to action follow.
 The figures in the hero (products, brands, departments) are counted from the catalogue, never typed in.
 
+Update 67: the Doctors home (`src/pages/find/FindHome.tsx`, `.fd-hero2`) and the Study home (`src/pages/StudyHub.tsx`,
+`.ax-sth-hero2`) use the same hero (`.ax-ihero` in `src/shop.css`) in their own colours; the Study pages' accents are
+violet (`.ax-sth` redefines the `--ax-teal*` tokens).
+
 ## Aethex Doctors
 
 `worker/find.ts` (`/api/find/*`), tables in `migrations/0006_find.sql` (also created on first use). Doctors list

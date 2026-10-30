@@ -35,11 +35,14 @@ export default function FindHome() {
   return (
     <div className="fd-page" data-find="home">
       <FindNav />
-      <section className="fd-hero">
-        <div className="ax-wrap">
-          <p className="kick"><BadgeCheck size={15} /> Every doctor's registration is checked before they're listed</p>
-          <h1>Find a doctor. Book a visit.</h1>
-          <p className="sub">Search by city and specialty, see fees and consulting hours, and book a clinic visit or a video consult in a minute.</p>
+      {/* update 67: the same hero as the other platforms, in the Doctors blue */}
+      <section className="ax-ihero fd-hero2">
+        <div className="ax-ihero-bg" aria-hidden="true"><i /><i /><i /></div>
+        <div className="ax-wrap ax-ihero-in">
+          <div className="txt">
+            <span className="eyebrow"><Stethoscope size={15} /> Aethex Doctors<em>Clinic visits and video consults</em></span>
+            <h1>Find a doctor. Book a visit.</h1>
+            <p>Search by city and specialty, see fees and consulting hours, and book a clinic visit or a video consult in a minute.</p>
           <form className="fd-search" onSubmit={search} role="search">
             <label className="city"><MapPin size={18} />
               <input list="fd-cities" value={city} onChange={(e) => setCity(e.target.value)} placeholder="City" aria-label="City" />
@@ -55,6 +58,18 @@ export default function FindHome() {
             {["General Physician", "Paediatrician", "Gynaecologist / Obstetrician", "Dermatologist", "Dentist", "Orthopaedic Surgeon"].map((s) => (
               <button key={s} type="button" onClick={() => go(`/doctors?specialty=${encodeURIComponent(s)}${city ? `&city=${encodeURIComponent(city)}` : ""}`)}>{s}</button>
             ))}
+          </div>
+            <ul className="fd-assure">
+              <li><BadgeCheck size={16} /> Every doctor's registration is checked before they're listed</li>
+              <li><Sparkles size={16} /> Reviews only from completed visits</li>
+            </ul>
+          </div>
+          <div className="art" aria-hidden="true">
+            {["stethoscope", "bp-monitor", "otoscope", "thermometer"].map((n, i) => <span key={n} className={`ph p${i}`}><img src={`${import.meta.env.BASE_URL}product-images/${n}.jpg`} alt="" loading="eager" decoding="async" /></span>)}
+            <div className="ticket">
+              <b><ShieldCheck size={16} /> Checked doctors only</b>
+              <small>Each doctor's medical registration number is checked before the profile goes live.</small>
+            </div>
           </div>
         </div>
       </section>
