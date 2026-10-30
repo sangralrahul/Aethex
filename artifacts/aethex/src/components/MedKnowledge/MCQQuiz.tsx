@@ -2,6 +2,9 @@ import { useState } from "react";
 import { CheckCircle2, XCircle, ChevronRight, RotateCcw, Trophy, Lock, Crown } from "lucide-react";
 import { useUserAuth } from "@/hooks/use-user-auth";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { study } from "@/lib/study/progress";
+import { fromGenerated } from "@/lib/study/questions";
+import { BookmarkButton } from "@/components/study/StudyBits";
 
 interface MCQ {
   question: string;
@@ -38,6 +41,9 @@ export function MCQQuiz({ questions, topic, subject }: MCQQuizProps) {
     setAnswered(true);
     const isCorrect = opt.startsWith(q.correct);
     if (isCorrect) setScore(s => s + 1);
+    // update 77: counts towards the daily goal; a wrong answer goes to the revision deck
+    const snap = fromGenerated(q, subject ?? topic, topic);
+    if (snap) study.record(snap, isCorrect);
     setAnswers(prev => [...prev, { selected: opt, correct: isCorrect }]);
   };
 
@@ -110,6 +116,7 @@ export function MCQQuiz({ questions, topic, subject }: MCQQuizProps) {
         </div>
 
         <div className="p-6">
+          {(() => { const snap = fromGenerated(q, subject ?? topic, topic); return snap ? <div className="flex justify-end mb-2"><BookmarkButton item={{ key: snap.key, kind: "question", title: snap.question.slice(0, 140), subject: snap.subject, q: snap }} /></div> : null; })()}
           <p className="text-base font-medium mb-5 leading-relaxed" style={{ color: "#0F1729" }}>{q.question}</p>
           <div className="space-y-3 mb-6">
             {q.options.map((opt) => {

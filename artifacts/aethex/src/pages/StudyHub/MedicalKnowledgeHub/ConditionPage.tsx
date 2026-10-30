@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { study, type Bookmark as StudyBookmark } from "@/lib/study/progress";
+import { NoteButton } from "@/components/study/StudyBits";
 import { Link, useParams, useSearch } from "wouter";
 import { ArrowLeft, Bookmark, BookmarkCheck, AlertCircle, RefreshCw, Stethoscope, FlaskConical, Pill, Shield, Users, BookOpen, FileText, Brain, Zap, ClipboardCheck, Layers, Network } from "lucide-react";
 import { getConditionBySlug } from "@/data/medicalDepartments";
@@ -144,9 +146,10 @@ export default function ConditionPage() {
   const result = getConditionBySlug(params.deptSlug || "", params.conditionSlug || "");
   const urlTab = new URLSearchParams(search).get("tab") as "overview" | "management" | "exam" | "flashcards" | null;
   const [activeTab, setActiveTab] = useState<"overview" | "management" | "exam" | "flashcards">(urlTab || "overview");
+  const bmItem = useRef<Omit<StudyBookmark, "at" | "updatedAt"> | null>(null);
   const [saved, setSaved] = useState(() => {
     const list = JSON.parse(localStorage.getItem("aethex_study_list") || "[]");
-    return list.includes(`${params.deptSlug}/${params.conditionSlug}`);
+    return study.isBookmarked(`condition:${params.deptSlug}/${params.conditionSlug}`) || list.includes(`${params.deptSlug}/${params.conditionSlug}`);
   });
   const [mcqCount, setMcqCount] = useState(8);
 
@@ -170,6 +173,8 @@ export default function ConditionPage() {
     const key = `${params.deptSlug}/${params.conditionSlug}`;
     const updated = saved ? list.filter((x: string) => x !== key) : [...list, key];
     localStorage.setItem("aethex_study_list", JSON.stringify(updated));
+    // update 77: the same save is a bookmark in My library
+    if (bmItem.current && study.isBookmarked(bmItem.current.key) === saved) study.toggleBookmark(bmItem.current);
     setSaved(!saved);
   };
 
@@ -185,6 +190,7 @@ export default function ConditionPage() {
   }
 
   const { dept, condition } = result;
+  bmItem.current = { key: `condition:${params.deptSlug}/${params.conditionSlug}`, kind: "condition", title: condition.name, subject: dept.name, href: `${KH_HUB}/departments/${dept.slug}/${condition.slug}` };
   const sev = severityConfig[condition.severity] ?? severityConfig.Moderate;
 
 
@@ -198,7 +204,7 @@ export default function ConditionPage() {
         title={condition.name}
       >
         <p>{condition.description}</p>
-        <div className="kh-hero-acts"><button type="button" onClick={handleSave} className={`kh-save${saved ? " on" : ""}`}>{saved ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}{saved ? "Saved" : "Save"}</button></div>
+        <div className="kh-hero-acts"><button type="button" onClick={handleSave} className={`kh-save${saved ? " on" : ""}`}>{saved ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}{saved ? "Saved" : "Save"}</button>{bmItem.current && <NoteButton item={bmItem.current} />}<Link href="/my-library?tab=bookmarks" className="kh-save">My library</Link></div>
       </KhHero>
       <div className="kh-tabbar w5"><div className="ax-wrap" role="tablist">
         {TABS.map(([t, label, I]) => (
@@ -305,7 +311,7 @@ export default function ConditionPage() {
             )}
             {mcqData.content && (() => {
               const questions = robustParseJSON(mcqData.content);
-              if (questions) return <MCQQuiz questions={questions} topic={condition.name} />;
+              if (questions) return <MCQQuiz questions={questions} topic={condition.name} subject={dept.name} />;
               return (
                 <div className="p-5 rounded-xl border" style={{ borderColor: "#E6E9EF", background: "#FFFFFF" }}>
                   <p className="text-sm mb-3 font-semibold" style={{ color: "#F85149" }}>⚠ Could not parse questions.</p>

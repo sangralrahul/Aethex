@@ -13,7 +13,7 @@ const MAP: [RegExp, Site][] = [
   [/^\/(find|doctors?|clinics?|ask|articles|appointments|practice|list-your-practice|records|prescription|telemedicine-directory|which-doctor|saved-doctors|family)(\/|$)/, "doctors"],
   [/^\/(store|shop|products|category|brand|brands|books|cart|wishlist|compare|checkout|orders?|alerts|shipping-policy|returns-policy|cancellation-policy|grievance|my-reviews|seller)(\/|$)/, "store"],
   [/^\/(admin)(\/(store|reviews|sellers))?$/, "store"],
-  [/^\/(study-hub|neet-pg|mock-test|flashcards|case-of-the-day|cme-hub|cme-certificate|tools|calculator|drug-reference|drug-interaction-checker|drug-alerts|study-planner|live-classes|learning-path|quiz-builder|progress-tracker|leaderboard|webinars|video-cases|cases|diagnosis|answer-eval|mentorship|news|patient-education|ai-scribe|my-consults|community)(\/|$)/, "study"],
+  [/^\/(study-hub|neet-pg|mock-test|flashcards|case-of-the-day|cme-hub|cme-certificate|tools|calculator|drug-reference|drug-interaction-checker|drug-alerts|study-planner|live-classes|learning-path|quiz-builder|progress-tracker|leaderboard|webinars|video-cases|cases|diagnosis|answer-eval|mentorship|news|patient-education|ai-scribe|my-consults|community|custom-test|my-library)(\/|$)/, "study"],
   [/^\/(hospitals|institutions|hospital-directory|institution-analytics|enterprise)(\/|$)/, "hospitals"],
   [/^\/(medical-colleges|colleges)(\/|$)/, "medicalcolleges"],
 ];
@@ -116,15 +116,15 @@ export const PORTALS: Record<Site, PortalConfig> = {
     tagline: "NEET-PG preparation, mock tests, flashcards, clinical cases and tools for every subject.",
     links: [
       { href: "/study-hub", label: "Study Hub" }, { href: "/neet-pg", label: "NEET-PG" }, { href: "/study-hub/medical-knowledge-hub", label: "Knowledge Hub" },
-      { href: "/mock-test", label: "Mock tests" }, { href: "/flashcards", label: "Flashcards" }, { href: "/case-of-the-day", label: "Case of the day" }, { href: "/tools", label: "Clinical tools" },
+      { href: "/mock-test", label: "Mock tests" }, { href: "/custom-test", label: "Custom test" }, { href: "/my-library", label: "My library" }, { href: "/flashcards", label: "Flashcards" }, { href: "/case-of-the-day", label: "Case of the day" }, { href: "/tools", label: "Clinical tools" },
     ],
     search: { placeholder: "Search topics, conditions and subjects", to: (q) => `/study-hub/medical-knowledge-hub?q=${encodeURIComponent(q)}`, suggestions: ["Brachial plexus", "Heart failure", "Diabetes mellitus", "Antibiotics", "Stroke", "Anaemia"] },
     shop: false,
     cta: { href: "/mock-test", label: "Take a mock test" },
     help: { href: "/cme-hub", label: "CME Hub" },
-    account: [{ href: "/account", label: "My account" }, { href: "/progress-tracker", label: "My progress" }, { href: "/cme-hub", label: "CME Hub" }, { href: "/study-planner", label: "Study planner" }],
+    account: [{ href: "/account", label: "My account" }, { href: "/my-library", label: "My library" }, { href: "/my-library?tab=revision", label: "Revision deck" }, { href: "/progress-tracker", label: "My progress" }, { href: "/cme-hub", label: "CME Hub" }, { href: "/study-planner", label: "Study planner" }],
     footer: [
-      { title: "Prepare", links: [{ href: "/study-hub", label: "Study Hub" }, { href: "/neet-pg", label: "NEET-PG" }, { href: "/mock-test", label: "Mock tests" }, { href: "/flashcards", label: "Flashcards" }, { href: "/study-planner", label: "Study planner" }, { href: "/cme-hub", label: "CME Hub" }] },
+      { title: "Prepare", links: [{ href: "/study-hub", label: "Study Hub" }, { href: "/neet-pg", label: "NEET-PG" }, { href: "/mock-test", label: "Mock tests" }, { href: "/custom-test", label: "Custom test" }, { href: "/my-library", label: "My library" }, { href: "/flashcards", label: "Flashcards" }, { href: "/study-planner", label: "Study planner" }, { href: "/cme-hub", label: "CME Hub" }] },
       { title: "Learn", links: [{ href: "/study-hub/medical-knowledge-hub", label: "Medical Knowledge Hub" }, { href: "/case-of-the-day", label: "Case of the day" }, { href: "/cases", label: "Clinical cases" }, { href: "/drug-reference", label: "Drug reference" }, { href: "/drug-interaction-checker", label: "Drug interactions" }, { href: "/calculator", label: "Medical calculators" }] },
       { title: "Help", links: HELP },
     ],

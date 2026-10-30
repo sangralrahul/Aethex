@@ -126,6 +126,8 @@ const Downloads = lazyPage(() => import("@/pages/Downloads"));
 const legal = (kind: "terms" | "privacy" | "disclaimer" | "about") => () => <CadusLegal kind={kind} />;
 const LegalTerms = legal("terms"), LegalPrivacy = legal("privacy"), LegalDisclaimer = legal("disclaimer"), LegalAbout = legal("about");
 const Invoice = lazyPage(() => import("@/pages/Invoice"));
+const CustomTest = lazyPage(() => import("@/pages/study/CustomTest"));
+const MyLibrary = lazyPage(() => import("@/pages/study/MyLibrary"));
 const OrderTracking = lazyPage(() => import("@/pages/OrderTracking"));
 const Orders = lazyPage(() => import("@/pages/Orders"));
 const MyReviews = lazyPage(() => import("@/pages/MyReviews"));
@@ -490,6 +492,8 @@ function Router() {
                 <Route path="/cme-hub" component={CmeHub} />
                 <Route path="/case-of-the-day" component={CaseOfTheDay} />
                 <Route path="/drug-interaction-checker" component={DrugInteractionCheckerPage} />
+                <Route path="/custom-test" component={CustomTest} />
+                <Route path="/my-library" component={MyLibrary} />
                 <Route path="/neet-pg" component={NeetPg} />
 
                 {/* Medical Knowledge Hub */}

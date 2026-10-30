@@ -14,6 +14,7 @@ import {
 import { cadusUrl } from "@/lib/host";
 import { CardArt } from "@/components/visual/CardArt";
 import { MarketTop, PhotoTiles } from "@/components/layout/MarketTop";
+import { TodayCard } from "@/components/study/StudyBits";
 import { khIcon } from "@/components/MedKnowledge/KhParts";
 import { TopLayer } from "@/components/shop/TopLayer";
 import { useSeo } from "@/hooks/use-seo";
@@ -478,6 +479,8 @@ export default function StudyHub() {
       />
 
       {/* tools */}
+      <div className="ax-wrap st-home-today"><TodayCard /></div>
+
       <PhotoTiles kicker="Courses" title="Learn the way toppers prepare" text="Practise, revise and read: every course is free to start."
         more={{ label: "Medical Knowledge Hub", href: HUB }}
         tiles={[

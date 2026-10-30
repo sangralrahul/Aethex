@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { study, type Bookmark as StudyBookmark } from "@/lib/study/progress";
+import { NoteButton } from "@/components/study/StudyBits";
 import { Link, useParams, useSearch } from "wouter";
 import {
   ArrowLeft, Clock, BarChart2, Bookmark, BookmarkCheck,
@@ -123,9 +125,10 @@ export default function TopicPage() {
   const params = useParams<{ subjectSlug: string; topicSlug: string }>();
   const search = useSearch();
   const result = getTopicBySlug(params.subjectSlug || "", params.topicSlug || "");
+  const bmItem = useRef<Omit<StudyBookmark, "at" | "updatedAt"> | null>(null);
   const [saved, setSaved] = useState(() => {
     const list = JSON.parse(localStorage.getItem("aethex_study_list") || "[]");
-    return list.includes(`${params.subjectSlug}/${params.topicSlug}`);
+    return study.isBookmarked(`topic:${params.subjectSlug}/${params.topicSlug}`) || list.includes(`${params.subjectSlug}/${params.topicSlug}`);
   });
   const urlTab = new URLSearchParams(search).get("tab") as "overview" | "exam" | "flashcards" | null;
   const [activeTab, setActiveTab] = useState<"overview" | "exam" | "flashcards">(urlTab || "overview");
@@ -144,6 +147,8 @@ export default function TopicPage() {
     const key = `${params.subjectSlug}/${params.topicSlug}`;
     const updated = saved ? list.filter((x: string) => x !== key) : [...list, key];
     localStorage.setItem("aethex_study_list", JSON.stringify(updated));
+    // update 77: the same save is a bookmark in My library
+    if (bmItem.current && study.isBookmarked(bmItem.current.key) === saved) study.toggleBookmark(bmItem.current);
     setSaved(!saved);
   };
 
@@ -159,6 +164,7 @@ export default function TopicPage() {
   }
 
   const { subject, topic } = result;
+  bmItem.current = { key: `topic:${params.subjectSlug}/${params.topicSlug}`, kind: "topic", title: topic.name, subject: subject.name, href: `${KH_HUB}/subjects/${subject.slug}/${topic.slug}` };
 
   return (
     <div className="min-h-screen" style={{ background: "#F7F8FA" }}>
@@ -169,7 +175,7 @@ export default function TopicPage() {
         eyebrow={<>{subject.name}<em>{topic.difficulty} · {topic.readTime} min read</em></>}
         title={topic.name}
       >
-        <div className="kh-hero-acts"><button type="button" onClick={handleSave} className={`kh-save${saved ? " on" : ""}`}>{saved ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}{saved ? "Saved" : "Save"}</button></div>
+        <div className="kh-hero-acts"><button type="button" onClick={handleSave} className={`kh-save${saved ? " on" : ""}`}>{saved ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}{saved ? "Saved" : "Save"}</button>{bmItem.current && <NoteButton item={bmItem.current} />}<Link href="/my-library?tab=bookmarks" className="kh-save">My library</Link></div>
       </KhHero>
       <div className="kh-tabbar w5"><div className="ax-wrap" role="tablist">
         {TABS.map(([t, label, I]) => (
@@ -327,7 +333,7 @@ export default function TopicPage() {
             )}
             {mcqData.content && (() => {
               const questions = robustParseJSON(mcqData.content);
-              if (questions) return <MCQQuiz questions={questions} topic={topic.name} />;
+              if (questions) return <MCQQuiz questions={questions} topic={topic.name} subject={subject.name} />;
               return (
                 <div className="p-5 rounded-xl border" style={{ borderColor: "#E6E9EF", background: "#FFFFFF" }}>
                   <p className="text-sm mb-3 font-semibold" style={{ color: "#F85149" }}>⚠ Could not parse questions. Raw response:</p>

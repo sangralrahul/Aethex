@@ -28,6 +28,7 @@ import { handleTranscribe, type AiBinding } from "./transcribe";
 import { handleVoice, voiceEnabled, type VoiceEnv } from "./voice";
 import { guestGate, requireAccount } from "./guest";
 import { cadusHome, hostRobots, hostSitemap, portalHome, portalOf } from "./seo";
+import { handleStudy } from "./study";
 import { handleFind, type FindEnv, runFindReminders } from "./find";
 import "./names/cadus";
 import "../supabase/functions/cadus/index.ts";
@@ -118,6 +119,13 @@ export default {
     }
 
     // Aethex Doctors: doctors listing their practice, search and bookings (worker/find.ts).
+    // Aethex Study: the student's study record (worker/study.ts, update 77).
+    if (url.pathname.startsWith("/api/study/")) {
+      const origin = request.headers.get("origin");
+      if (origin && !ALLOWED_ORIGIN.test(origin)) return json({ error: "Origin not allowed" }, 403);
+      if (request.method !== "GET" && request.method !== "HEAD" && !origin) return json({ error: "Origin required" }, 403);
+      try { return await handleStudy(request, env); } catch (e) { console.error(`${url.pathname} failed`, e); return json({ error: "Your study record couldn't be saved. Please try again." }, 500); }
+    }
     if (url.pathname.startsWith("/api/find/")) {
       const origin = request.headers.get("origin");
       if (origin && !ALLOWED_ORIGIN.test(origin)) return json({ error: "Origin not allowed" }, 403);
