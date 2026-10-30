@@ -2356,3 +2356,51 @@ button.ec-promo{width:100%}
 .ax-est-inst input{height:38px;width:min(320px,50vw);padding:0 10px;border-radius:8px;border:1px solid #cbd5e1;font:inherit}
 .ax-blist .ax-btn.lg+.ax-btn.lg{margin-top:8px}
 @media (max-width:700px){.ax-inv-bar{flex-wrap:wrap}.ax-est-inst{order:3;flex:1 1 100%}.ax-est-inst input{flex:1;width:auto;min-width:0}.ax-inv{max-width:calc(100vw - 32px)}}
+
+/* ---------------------------------------------------------------- update 80: reminders, replacements, offers, WhatsApp */
+.ax-remind{margin-top:10px}
+.ax-remind-link{display:inline-flex;align-items:center;gap:6px;padding:0;border:0;background:none;color:#0f766e;font:inherit;font-size:14px;font-weight:650;cursor:pointer;text-decoration:none;margin-top:10px}
+.ax-remind .box{padding:12px;border-radius:12px;background:#f0fdfa;border:1px solid #99f6e4;display:flex;flex-direction:column;gap:8px}
+.ax-remind .row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.ax-remind select{height:36px;border-radius:8px;border:1px solid #cbd5e1;padding:0 8px;font:inherit;background:#fff}
+.ax-remind small{color:#64748b}
+.ax-remind .ax-link,.ax-rep .ax-link{background:none;border:0;cursor:pointer;font:inherit}
+.ax-reminders{margin:0 0 18px;padding:16px;border-radius:14px;background:#fff;border:1px solid #e5e7eb}
+.ax-reminders h2{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:16px;color:#0f172a}
+.ax-reminders ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.ax-reminders li{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px;border-radius:10px;background:#f8fafc}
+.ax-reminders li>span{flex:1;min-width:180px;display:flex;flex-direction:column}
+.ax-reminders li small{color:#64748b;font-size:12.5px}
+.ax-reminders select{height:34px;border-radius:8px;border:1px solid #cbd5e1;padding:0 6px;font:inherit;background:#fff}
+.ax-reminders .ax-btn{height:34px}
+.ax-ov-items .ax-link{display:inline-flex;align-items:center;gap:4px;margin-top:4px;font-size:13px;background:none;border:0;cursor:pointer;color:#b45309;padding:0}
+.ax-rep{display:flex;flex-direction:column;gap:8px;margin-top:8px;padding:12px;border-radius:12px;background:#fffbeb;border:1px solid #fde68a}
+.ax-rep .reasons{display:flex;flex-wrap:wrap;gap:6px}
+.ax-rep .reasons button{padding:7px 11px;border-radius:999px;border:1px solid #e5e7eb;background:#fff;font:inherit;font-size:13px;cursor:pointer}
+.ax-rep .reasons button.on{background:#0f766e;border-color:#0f766e;color:#fff}
+.ax-rep textarea,.ax-rep select{width:100%;border-radius:8px;border:1px solid #cbd5e1;font:inherit;padding:8px}
+.ax-rep .row{display:flex;gap:8px}
+.ax-rep .fine{margin:0;font-size:12px;color:#78350f}
+.ax-rep-status{display:inline-flex;align-items:center;gap:5px;margin-top:4px;padding:3px 9px;border-radius:999px;background:#fef3c7;color:#92400e;font-size:12.5px;font-weight:600}
+.ax-rep-status.s-replaced,.ax-rep-status.s-refunded{background:#dcfce7;color:#166534}
+.ax-rep-status.s-rejected{background:#fee2e2;color:#991b1b}
+.ax-wa{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.ax-wa .ax-btn{color:#166534;border-color:#bbf7d0;background:#f0fdf4}
+.ax-offers section{margin:20px 0 26px}
+.ax-offers h2{display:flex;align-items:center;gap:8px;margin:0 0 12px;font-size:19px;color:#0f172a}
+.ax-offers .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:14px}
+.ax-coupon{display:flex;justify-content:space-between;gap:12px;padding:18px;border-radius:16px;background:linear-gradient(120deg,#f0fdfa,#ecfeff);border:1.5px dashed #5eead4}
+.ax-coupon .l{display:flex;flex-direction:column;gap:3px;min-width:0}
+.ax-coupon small{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#0f766e}
+.ax-coupon b{font-size:24px;color:#0b1220}
+.ax-coupon p,.ax-sale p{margin:0;font-size:13.5px;color:#475569}
+.ax-coupon .on a,.ax-sale .on a{color:#0f766e;font-weight:600}
+.ax-coupon .end,.ax-sale .end{display:flex;align-items:center;gap:5px;color:#b45309;font-weight:600}
+.ax-coupon .code{align-self:center;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 14px;border-radius:12px;border:1px solid #99f6e4;background:#fff;font:inherit;font-size:12.5px;color:#0f766e;cursor:pointer;white-space:nowrap}
+.ax-coupon .code span{font-family:ui-monospace,monospace;font-size:16px;font-weight:800;color:#0b1220;letter-spacing:.06em}
+.ax-sale{display:flex;flex-direction:column;gap:4px;padding:18px;border-radius:16px;background:#fff;border:1px solid #e5e7eb}
+.ax-sale b{font-size:24px;color:#be123c}
+.ax-sale>span{font-weight:650;color:#0f172a}
+.ax-sale small{color:#64748b;margin-top:4px}
+.ax-offers .fine{margin:10px 0 0;color:#64748b;font-size:13px}
+.ax-coupon{min-width:0}@media (max-width:420px){.ax-coupon{flex-direction:column}.ax-coupon .code{align-self:stretch}}

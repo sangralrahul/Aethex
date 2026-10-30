@@ -17,7 +17,7 @@ import {
 import { Stars } from "@/components/store/Reviews";
 import { couponText, offerLive } from "@/lib/store/promo";
 import { useSeo } from "@/hooks/use-seo";
-import { storeFetch, StoreError, useBooks, useStore, type ProductQuestion, type TaxTable } from "@/lib/store/api";
+import { storeFetch, StoreError, useBooks, useStore, type ProductQuestion, type Replacement, type TaxTable } from "@/lib/store/api";
 import { BUSINESS } from "@/config/business";
 import { bookSummary, isBookId, itemHref } from "@/lib/store/bookdata";
 import type { BulkRequest, BulkStatus, Coupon, Offer, Order, OrderStatus, Override, ProductSummary, Review, ReviewStatus } from "@/lib/store/types";
@@ -31,11 +31,11 @@ type AdminOrder = Order & { adminNote: string; updatedAt: number; userId: string
 type AdminBulk = BulkRequest & { adminNote: string; updatedAt: number };
 type Enquiry = { id: string; created_at: number; kind: string; item: string | null; name: string; phone: string; email: string | null; city: string | null; qty: number; message: string | null; status: string; note: string | null; product: { id: number; slug: string; name: string; brand: string } | null };
 type Summary = {
-  orders: Record<string, { count: number; total: number }>; last24h: { count: number; total: number }; openEnquiries: number; openBulk: number; pendingReviews?: number; pendingQuestions?: number; bankWaiting?: number; callbacks?: number;
+  orders: Record<string, { count: number; total: number }>; last24h: { count: number; total: number }; openEnquiries: number; openBulk: number; pendingReviews?: number; pendingQuestions?: number; openReplacements?: number; bankWaiting?: number; callbacks?: number;
   catalog: { products: number; priceOnRequest: number; noOrigin: number; hidden: number; outOfStock: number };
   setup: { email: boolean; storeEmail: string; admins: number; gaps: string[]; onlinePayments?: boolean; razorpayMode?: string; webhook?: boolean; webhookUrl?: string; bankTransfer?: boolean; whatsapp?: boolean };
 };
-type Tab = "overview" | "orders" | "requests" | "bulk" | "products" | "promos" | "reviews" | "questions" | "tax";
+type Tab = "overview" | "orders" | "requests" | "bulk" | "products" | "promos" | "reviews" | "questions" | "tax" | "replacements";
 
 const admin = <T,>(path: string, init?: { method?: string; json?: unknown }) => storeFetch<T>(`/admin/${path}`, init);
 
@@ -76,7 +76,7 @@ export default function StoreAdmin() {
         <div className="ax-wrap">
           <b><Store size={18} /> Store admin</b>
           <nav role="tablist">
-            {([["overview", "Overview", ClipboardList], ["orders", "Orders", Package], ["requests", "Requests", Inbox], ["bulk", "Bulk", Building2], ["products", "Products", Store], ["promos", "Offers", BadgePercent], ["reviews", "Reviews", Star], ["questions", "Questions", MessageCircleQuestion], ["tax", "Tax", Percent]] as const).map(([k, label, I]) => (
+            {([["overview", "Overview", ClipboardList], ["orders", "Orders", Package], ["requests", "Requests", Inbox], ["bulk", "Bulk", Building2], ["products", "Products", Store], ["promos", "Offers", BadgePercent], ["reviews", "Reviews", Star], ["questions", "Questions", MessageCircleQuestion], ["replacements", "Replacements", RotateCcw], ["tax", "Tax", Percent]] as const).map(([k, label, I]) => (
               <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}><I size={15} /> {label}</button>
             ))}
           </nav>
@@ -93,6 +93,7 @@ export default function StoreAdmin() {
         {tab === "reviews" && <Reviews />}
         {tab === "questions" && <Questions />}
         {tab === "tax" && <TaxRates />}
+        {tab === "replacements" && <Replacements />}
       </div>
     </div>
   );
@@ -137,6 +138,7 @@ function Overview({ go }: { go: (t: Tab) => void }) {
         <button type="button" onClick={() => go("bulk")}><small>Bulk requests</small><b>{s.openBulk ?? 0}</b><span>to quote</span></button>
         <button type="button" onClick={() => go("reviews")}><small>Reviews</small><b>{s.pendingReviews ?? 0}</b><span>to check</span></button>
         <button type="button" onClick={() => go("questions")}><small>Questions</small><b>{s.pendingQuestions ?? 0}</b><span>to answer</span></button>
+        <button type="button" onClick={() => go("replacements")}><small>Replacements</small><b>{s.openReplacements ?? 0}</b><span>open</span></button>
         <div><small>Last 24 hours</small><b>{s.last24h.count}</b><span>{formatINR(s.last24h.total)}</span></div>
         <div><small>Delivered</small><b>{o("delivered")}</b><span>{formatINR(s.orders.delivered?.total ?? 0)}</span></div>
       </div>
@@ -797,7 +799,7 @@ function CouponEditor({ coupon, scopes, onDone, onCancel }: { coupon: AdminCoupo
   const [f, setF] = useState({
     code: coupon?.code ?? "", kind: coupon?.kind ?? "percent", value: coupon ? String(coupon.value) : "10", maxDiscount: num(coupon?.maxDiscount), minOrder: num(coupon?.minOrder ?? 0),
     startsAt: dayIn(coupon?.startsAt), endsAt: dayIn(coupon?.endsAt, true), limit: num(coupon?.limit), perPhone: num(coupon?.perPhone), label: coupon?.label ?? "",
-    categories: coupon?.categories ?? [], brands: coupon?.brands ?? [], active: coupon?.active ?? true,
+    categories: coupon?.categories ?? [], brands: coupon?.brands ?? [], active: coupon?.active ?? true, public: coupon?.public ?? false,
   });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
@@ -810,7 +812,7 @@ function CouponEditor({ coupon, scopes, onDone, onCancel }: { coupon: AdminCoupo
       await admin(`coupons/${code}`, { method: "PUT", json: {
         kind: f.kind, value: Number(f.value), minOrder: f.minOrder ? Number(f.minOrder) : 0, maxDiscount: f.kind === "percent" && f.maxDiscount ? Number(f.maxDiscount) : undefined,
         startsAt: f.startsAt || undefined, endsAt: f.endsAt || undefined, limit: f.limit ? Number(f.limit) : undefined, perPhone: f.perPhone ? Number(f.perPhone) : undefined,
-        label: f.label.trim() || undefined, categories: scoped ? f.categories : [], brands: scoped ? f.brands : [], active: f.active,
+        label: f.label.trim() || undefined, categories: scoped ? f.categories : [], brands: scoped ? f.brands : [], active: f.active, public: f.public,
       } });
       onDone();
     } catch (e) { setMsg((e as Error).message); } finally { setBusy(false); }
@@ -832,6 +834,7 @@ function CouponEditor({ coupon, scopes, onDone, onCancel }: { coupon: AdminCoupo
         <label className="f"><span>Until the end of <em>(optional)</em></span><input type="date" value={f.endsAt} onChange={(e) => setF({ ...f, endsAt: e.target.value })} /></label>
         <label className="f"><span>Name shoppers see <em>(optional)</em></span><input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} maxLength={60} placeholder="Welcome offer" /></label>
         <label className="ax-switch f"><input type="checkbox" checked={f.active} onChange={(e) => setF({ ...f, active: e.target.checked })} /><span className="track"><i /></span><span>On</span></label>
+        <label className="ax-switch f"><input type="checkbox" checked={f.public} onChange={(e) => setF({ ...f, public: e.target.checked })} data-admin="coupon-public" /><span className="track"><i /></span><span>Show on the offers page</span></label>
         <label className="ax-switch f"><input type="checkbox" checked={scoped} onChange={(e) => setScoped(e.target.checked)} /><span className="track"><i /></span><span>Only some categories or brands</span></label>
       </div>
       {scoped && (
@@ -996,5 +999,50 @@ function TaxRates() {
       </table>
       <div className="acts"><button type="button" className="ax-btn teal" disabled={busy} onClick={save}>{busy ? <Loader2 size={16} className="spin" /> : <Check size={15} />} Save rates</button>{msg && <span className="ax-adm-msg">{msg}</span>}</div>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ update 80: replacement requests */
+
+type AdminRep = Replacement & { email: string | null; customer: { name: string; phone: string; city: string } | null; product: { name: string; href: string } | null };
+const REP_STATUSES: [string, string][] = [["requested", "New"], ["approved", "Approved"], ["picked-up", "Picked up"], ["replaced", "Replaced"], ["refunded", "Refunded"], ["rejected", "Not accepted"]];
+function Replacements() {
+  const [status, setStatus] = useState<string>("requested");
+  const [list, setList] = useState<AdminRep[] | null>(null);
+  const [err, setErr] = useState("");
+  const load = useCallback(() => { setErr(""); admin<{ replacements: AdminRep[] }>(`replacements${status ? `?status=${status}` : ""}`).then((r) => setList(r.replacements)).catch((e) => setErr(e.message)); }, [status]);
+  useEffect(() => { setList(null); load(); }, [load]);
+  return (
+    <div data-admin="replacements">
+      <div className="ax-adm-bar">
+        <div className="seg">{[...REP_STATUSES, ["", "All"]].map(([k, l]) => <button key={k} type="button" className={status === k ? "on" : ""} onClick={() => setStatus(k!)}>{l}</button>)}</div>
+        <button type="button" className="ax-btn" onClick={load}><RefreshCw size={15} /></button>
+      </div>
+      <p className="fine">Customers report a damaged, defective, wrong or missing item from a delivered order. Each status change emails them, with your note. Refund online payments from the order itself.</p>
+      {err && <p className="ax-form-err">{err}</p>}
+      {!list ? <p className="ax-adm-loading"><Loader2 size={18} className="spin" /> Loading…</p> : list.length === 0 ? <p className="ax-adm-empty">Nothing here.</p> : (
+        <ul className="ax-adm-req">{list.map((r) => <RepEditor key={r.id} r={r} onSaved={(n) => setList((l) => (l ?? []).map((x) => (x.id === n.id ? { ...x, ...n } : x)))} />)}</ul>
+      )}
+    </div>
+  );
+}
+function RepEditor({ r, onSaved }: { r: AdminRep; onSaved: (r: AdminRep) => void }) {
+  const [st, setSt] = useState(r.status), [note, setNote] = useState(r.note ?? ""), [busy, setBusy] = useState(false), [msg, setMsg] = useState("");
+  const save = async () => {
+    setBusy(true); setMsg("");
+    try { const x = await admin<{ replacement: Replacement }>(`replacements/${r.id}`, { method: "PATCH", json: { status: st, note } }); onSaved({ ...r, ...x.replacement }); setMsg("Saved. The customer has been emailed."); } catch (e) { setMsg((e as Error).message); } finally { setBusy(false); }
+  };
+  return (
+    <li data-rep={r.id}>
+      <div className="h"><span className="kind k-price">{r.reasonText}</span>{r.product ? <Link href={r.product.href}><b>{r.product.name}</b></Link> : <b>Item {r.productId}</b>}<span className="muted">× {r.qty} · order {r.orderId} · {when(r.at)}</span></div>
+      <p className="msg">{r.details}</p>
+      {r.customer && <p className="muted">{r.customer.name} · {r.customer.phone} · {r.customer.city}{r.email ? ` · ${r.email}` : ""}</p>}
+      <div className="ax-form">
+        <label className="f"><span>Status</span><select value={st} onChange={(e) => setSt(e.target.value)}>{REP_STATUSES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+        <label className="f wide"><span>Note to the customer <em>(optional)</em></span><input value={note} onChange={(e) => setNote(e.target.value)} maxLength={600} placeholder="For example: the courier will pick it up on Monday." /></label>
+      </div>
+      <div className="acts"><button type="button" className="ax-btn teal" disabled={busy} onClick={() => void save()}>{busy ? <Loader2 size={15} className="spin" /> : <Check size={15} />} Save</button></div>
+      {msg && <p className="ax-adm-msg">{msg}</p>}
+    </li>
   );
 }

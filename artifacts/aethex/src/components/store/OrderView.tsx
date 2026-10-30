@@ -9,6 +9,7 @@
  * line fills up step by step when the order opens.
  * Styles: src/buy.css (.ax-ov).
  */
+import { ReportProblem, WhatsAppOrder } from "@/components/store/StoreExtras2";
 import { useState } from "react";
 import { Link } from "wouter";
 import {
@@ -183,6 +184,7 @@ export function OrderView({ order, token, phone, onChange, compact = false }: {
                   <Link href={itemHref(l.productId, l.slug)} className="img"><ProductImage src={l.image} width={120} book={isBookId(l.productId)} /></Link>
                   <span>
                     <Link href={itemHref(l.productId, l.slug)}>{l.name}</Link><em>{l.variantLabel ? `${l.variantLabel} · ` : ""}Qty {l.qty} × {formatINR(l.price)}</em>
+                    {order.status === "delivered" && <ReportProblem order={order} line={l} access={access} onDone={(reps) => onChange?.({ ...order, replacements: reps })} />}
                     {order.status === "delivered" && (
                       <span className="rv">
                         {rv && <><Stars value={rv.rating} size={13} /> <small>{rv.status === "approved" ? "Your review is live" : rv.status === "pending" ? "Review sent: we're checking it" : "Your review wasn't published"}</small></>}
@@ -235,6 +237,7 @@ export function OrderView({ order, token, phone, onChange, compact = false }: {
       {!due && order.lines.length > 0 && (
         <div className="ax-ov-again"><BuyAgainButton lines={order.lines} label={cancelled ? "Order these again" : "Buy it all again"} />{!compact && order.status !== "pending" && <Link href={`/orders/${order.id}/invoice`} className="ax-btn" data-store="invoice-link"><FileText size={16} /> {order.business ? "Invoice (PDF)" : "Receipt (PDF)"}</Link>}</div>
       )}
+      {!compact && !due && <WhatsAppOrder order={order} />}
       {!compact && <p className="ax-ov-help">Questions about this order? Write to <a href={`mailto:${BUSINESS.email}?subject=${encodeURIComponent(`Order ${order.id}`)}`}>{BUSINESS.email}</a>{BUSINESS.phone ? <> or call {BUSINESS.phone}</> : null} with your order number.</p>}
 
       <ReviewDialog

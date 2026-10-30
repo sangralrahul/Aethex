@@ -11,7 +11,7 @@ type Site = Exclude<Portal, "cadus">;
 const MAP: [RegExp, Site][] = [
   [/^\/admin\/doctors(\/|$)/, "doctors"],
   [/^\/(find|doctors?|clinics?|ask|articles|appointments|practice|list-your-practice|records|prescription|telemedicine-directory|which-doctor|saved-doctors|family)(\/|$)/, "doctors"],
-  [/^\/(store|shop|products|category|brand|brands|books|cart|wishlist|compare|checkout|orders?|alerts|shipping-policy|returns-policy|cancellation-policy|grievance|my-reviews|seller)(\/|$)/, "store"],
+  [/^\/(store|shop|products|category|brand|brands|books|cart|wishlist|compare|checkout|orders?|alerts|shipping-policy|returns-policy|cancellation-policy|grievance|my-reviews|seller|offers|reorder)(\/|$)/, "store"],
   [/^\/(admin)(\/(store|reviews|sellers))?$/, "store"],
   [/^\/(study-hub|neet-pg|mock-test|flashcards|case-of-the-day|cme-hub|cme-certificate|tools|calculator|drug-reference|drug-interaction-checker|drug-alerts|study-planner|live-classes|learning-path|quiz-builder|progress-tracker|leaderboard|webinars|video-cases|cases|diagnosis|answer-eval|mentorship|news|patient-education|ai-scribe|my-consults|community|custom-test|my-library)(\/|$)/, "study"],
   [/^\/(hospitals|institutions|hospital-directory|institution-analytics|enterprise)(\/|$)/, "hospitals"],
@@ -84,7 +84,7 @@ export const PORTALS: Record<Site, PortalConfig> = {
     tagline: "Genuine medical equipment and supplies from verified brands, delivered across India with cash on delivery.",
     links: [
       { href: "/shop", label: "All products" }, { href: "/category/stethoscopes", label: "Stethoscopes" }, { href: "/category/bp-monitors", label: "BP monitors" },
-      { href: "/category/diagnostic-instruments", label: "Diagnostics" }, { href: "/category/orthopaedic-supports", label: "Supports" }, { href: "/books", label: "Books" }, { href: "/brands", label: "Brands" },
+      { href: "/category/diagnostic-instruments", label: "Diagnostics" }, { href: "/category/orthopaedic-supports", label: "Supports" }, { href: "/books", label: "Books" }, { href: "/brands", label: "Brands" }, { href: "/offers", label: "Offers" },
     ],
     search: { placeholder: "Search products, brands and books", to: (q) => `/shop?search=${encodeURIComponent(q)}`, suggestions: ["BP monitor", "Littmann stethoscope", "Pulse oximeter", "Glucometer", "Knee support", "Nebulizer", "Otoscope"] },
     shop: true,
@@ -93,7 +93,7 @@ export const PORTALS: Record<Site, PortalConfig> = {
     account: [{ href: "/account", label: "My account" }, { href: "/orders", label: "My orders" }, { href: "/orders/track", label: "Track an order" }, { href: "/wishlist", label: "Wishlist" }, { href: "/my-reviews", label: "My reviews" }],
     footer: [
       { title: "Shop", links: [{ href: "/shop", label: "All products" }, { href: "/category/bp-monitors", label: "BP monitors" }, { href: "/category/stethoscopes", label: "Stethoscopes" }, { href: "/category/diagnostic-instruments", label: "Diagnostic instruments" }, { href: "/category/diabetes-care", label: "Diabetes care" }, { href: "/books", label: "Medical books" }, { href: "/brands", label: "All brands" }] },
-      { title: "Orders", links: [{ href: "/orders/track", label: "Track an order" }, { href: "/orders", label: "My orders" }, { href: "/cart", label: "Cart" }, { href: "/wishlist", label: "Wishlist" }, { href: "/compare", label: "Compare" }] },
+      { title: "Orders", links: [{ href: "/orders/track", label: "Track an order" }, { href: "/orders", label: "My orders" }, { href: "/offers", label: "Offers and coupons" }, { href: "/cart", label: "Cart" }, { href: "/wishlist", label: "Wishlist" }, { href: "/compare", label: "Compare" }] },
       { title: "Help", links: [{ href: "/shipping-policy", label: "Shipping & delivery" }, { href: "/returns-policy", label: "Returns & replacement" }, { href: "/grievance", label: "Grievances" }, ...HELP] },
     ],
   },

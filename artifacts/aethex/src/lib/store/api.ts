@@ -190,7 +190,9 @@ export type RazorpayCheckout = { key: string; orderId: string; amount: number; c
 export type RazorpayPaid = { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string };
 /** The buyer's reviews of the items of a delivered order, by product number. */
 export type ReviewMarks = Record<number, { status: ReviewStatus; rating: number; title?: string; body: string; name: string; city?: string }>;
-export type CustomerOrder = Order & { canCancel: boolean; reviews?: ReviewMarks; bank?: BankDetails };
+export type CustomerOrder = Order & { canCancel: boolean; reviews?: ReviewMarks; bank?: BankDetails; replacements?: Replacement[] };
+/** update 80: a replacement request on a delivered item */
+export interface Replacement { id: string; orderId: string; productId: number; variantId: string | null; qty: number; reason: string; reasonText: string; details: string | null; status: string; statusText: string; note: string | null; at: number; updatedAt: number }
 
 type Access = { token?: string; phone?: string };
 const tokenHeader = (token?: string): Record<string, string> => (token ? { "x-order-token": token } : {});
@@ -315,3 +317,20 @@ export type TaxTable = { rates: Record<string, { hsn: string; rate: number }>; s
 export function useTax(enabled = true) {
   return useQuery({ queryKey: ["store", "tax"], enabled, staleTime: 5 * 60_000, retry: 0, queryFn: () => storeFetch<TaxTable>("/tax").catch(() => ({ rates: {}, sellerGstin: "" }) as TaxTable) });
 }
+
+/* ------------------------------------------------------------------ update 80: offers page, reorder reminders, replacements */
+
+export interface LiveOffer { id: string; title: string; percent: number; endsAt: number | null; categories: { slug: string; name: string }[]; brands: { slug: string; name: string }[] }
+export interface OffersPage { offers: LiveOffer[]; coupons: (Omit<import("./types").PublicCoupon, "categories" | "brands"> & { label?: string; categories: { slug: string; name: string }[]; brands: { slug: string; name: string }[] })[] }
+export function useOffersPage() {
+  return useQuery({ queryKey: ["store", "offers-page"], staleTime: 60_000, retry: 0, queryFn: () => storeFetch<OffersPage>("/offers").catch(() => ({ offers: [], coupons: [] }) as OffersPage) });
+}
+export interface ReorderReminder { id: string; productId: number; variantId: string | null; qty: number; everyDays: number; nextAt: number; lastSent: number | null }
+export const REORDER_EVERY = [7, 15, 30, 45, 60, 90, 180];
+export function useReminders(enabled: boolean) {
+  return useQuery({ queryKey: ["store", "reminders"], enabled, staleTime: 30_000, retry: 0, queryFn: () => storeFetch<{ reminders: ReorderReminder[] }>("/reminders").then((r) => r.reminders) });
+}
+export const setReminder = (body: { productId: number; variantId?: string | null; everyDays: number; qty?: number }) => storeFetch<{ reminders: ReorderReminder[] }>("/reminders", { json: body });
+export const deleteReminder = (id: string) => storeFetch<{ reminders: ReorderReminder[] }>(`/reminders/${id}/delete`, { json: {} });
+export const askReplacement = (orderId: string, body: { productId: number; variantId: string | null; qty: number; reason: string; details: string }, access: { token?: string; phone?: string }) =>
+  storeFetch<{ ok: true; replacements: Replacement[] }>(`/orders/${encodeURIComponent(orderId)}/replacement`, { json: { ...body, ...(access.phone ? { phone: access.phone } : {}) }, headers: access.token ? { "x-order-token": access.token } : {} });

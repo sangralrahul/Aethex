@@ -10,6 +10,7 @@
  * bought with it (from real orders).
  * Styles: src/shop.css (.ax-pdp).
  */
+import { ReorderRemind } from "@/components/store/StoreExtras2";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { bulkListAt } from "@/lib/portals";
@@ -369,6 +370,7 @@ export default function ProductDetail() {
             </div>
           )}
           {!inst && <DeliveryCheck price={priceShown ?? (typeof lowest === "number" ? lowest : null)} />}
+          {!inst && !product.priceOnRequest && <ReorderRemind productId={product.id} variantId={variant?.id ?? (variants.length === 1 ? variants[0]!.id : null)} name={`${brandName} ${product.name}`} />}
           {inst ? (
             <p className="ax-pdp-bulk">
               Ordering for a hospital or college?{" "}

@@ -30,7 +30,7 @@ import {
   ORDER_STATUSES, priceBulk, quoteLines, round2, cleanBulkLines,
   STATUS_LABEL, scheduleText, summarize, validEmail, validGstin, validPincode,
 } from "../artifacts/aethex/src/lib/store/rules";
-import { applyCoupon, applyOffers, cleanCouponCode, couponLive, liveOfferKey, publicCoupon } from "../artifacts/aethex/src/lib/store/promo";
+import { applyCoupon, applyOffers, cleanCouponCode, couponLive, liveOfferKey, offerLive, publicCoupon } from "../artifacts/aethex/src/lib/store/promo";
 import {
   captureOrFetch, createRzpOrder, fetchRzpOrderPayments, fetchRzpPayment, fetchRzpRefunds, paise, paymentSignatureOk, razorpayReady, RazorpayError, refundRzpPayment, webhookSignatureOk,
   type RazorpayEnv, type RzpRefund,
@@ -148,6 +148,16 @@ export const STORE_TABLES = [
     id TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT NOT NULL, segment TEXT NOT NULL, lines TEXT NOT NULL,
     created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, sent_at INTEGER)`,
   "CREATE INDEX IF NOT EXISTS store_bulk_lists_user ON store_bulk_lists(user_id, updated_at)",
+  // update 80: reorder reminders, and replacement requests
+  `CREATE TABLE IF NOT EXISTS store_reorder (
+    id TEXT PRIMARY KEY, user_id TEXT NOT NULL, email TEXT NOT NULL, product_id INTEGER NOT NULL, variant_id TEXT NOT NULL DEFAULT '', qty INTEGER NOT NULL DEFAULT 1,
+    every_days INTEGER NOT NULL, next_at INTEGER NOT NULL, last_sent INTEGER, created_at INTEGER NOT NULL)`,
+  "CREATE UNIQUE INDEX IF NOT EXISTS store_reorder_one ON store_reorder(user_id, product_id, variant_id)",
+  "CREATE INDEX IF NOT EXISTS store_reorder_due ON store_reorder(next_at)",
+  `CREATE TABLE IF NOT EXISTS store_replacements (
+    id TEXT PRIMARY KEY, order_id TEXT NOT NULL, product_id INTEGER NOT NULL, variant_id TEXT NOT NULL DEFAULT '', qty INTEGER NOT NULL, reason TEXT NOT NULL,
+    details TEXT, status TEXT NOT NULL DEFAULT 'requested', note TEXT, email TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
+  "CREATE UNIQUE INDEX IF NOT EXISTS store_replacements_one ON store_replacements(order_id, product_id, variant_id)",
 ];
 /** Columns added after a table was first made: added where missing (an existing column is left alone). */
 export const STORE_COLUMNS: [table: string, column: string, type: string][] = [
@@ -563,6 +573,7 @@ async function handleAdmin(request: Request, env: DBEnv, path: string, ctx?: Ctx
       openBulk: openBulk?.n || 0,
       pendingReviews: newReviews?.n || 0,
       pendingQuestions: (await env.DB.prepare("SELECT COUNT(*) AS n FROM store_questions WHERE status = 'pending'").first<{ n: number }>())?.n || 0,
+      openReplacements: (await env.DB.prepare("SELECT COUNT(*) AS n FROM store_replacements WHERE status IN ('requested', 'approved', 'picked-up')").first<{ n: number }>())?.n || 0,
       bankWaiting: bankWaiting?.n || 0,
       callbacks: callbacks?.n || 0,
       catalog: { products: catalog.products.length, priceOnRequest, noOrigin, hidden, outOfStock },
@@ -811,6 +822,32 @@ async function handleAdmin(request: Request, env: DBEnv, path: string, ctx?: Ctx
     await env.DB.prepare("DELETE FROM store_offers WHERE id = ?").bind(fm[1]).run();
     forgetOffers();
     return json({ ok: true });
+  }
+
+  /* update 80: replacement requests */
+  if (path === "replacements" && method === "GET") {
+    const status = str(url.searchParams.get("status"), 20);
+    const ok = REP_STATUSES.includes(status as RepStatus);
+    const { results } = await env.DB.prepare(`SELECT x.*, o.address AS address FROM store_replacements x JOIN store_orders o ON o.id = x.order_id${ok ? " WHERE x.status = ?" : ""} ORDER BY x.updated_at DESC LIMIT 200`).bind(...(ok ? [status] : [])).all<RepRow & { address: string }>();
+    return json({ replacements: results.map((r) => { const a = parse<Address | null>(r.address, null); const p = byId.get(Number(r.product_id)); return { ...repOut(r), email: r.email, customer: a ? { name: a.name, phone: a.phone, city: a.city } : null, product: p ? { name: isBookId(p.id) ? p.name : `${brandName(p.brand)} ${p.name}`, href: itemHref(p.id, p.slug) } : null }; }) });
+  }
+  const rpm = /^replacements\/(x[a-z0-9]{6,30})$/.exec(path);
+  if (rpm && method === "PATCH") {
+    const b = await readJson(request);
+    const r = await env.DB.prepare("SELECT * FROM store_replacements WHERE id = ?").bind(rpm[1]).first<RepRow>();
+    if (!r) return json({ error: "No such request." }, 404);
+    const status = b?.status === undefined ? r.status : str(b.status, 20);
+    if (!REP_STATUSES.includes(status as RepStatus)) return json({ error: `Status must be one of: ${REP_STATUSES.join(", ")}.` }, 400);
+    const note = typeof b?.note === "string" ? longStr(b.note, 600) || null : r.note;
+    await env.DB.prepare("UPDATE store_replacements SET status = ?, note = ?, updated_at = ? WHERE id = ?").bind(status, note, Date.now(), r.id).run();
+    if (status !== r.status && r.email) {
+      const p = byId.get(Number(r.product_id));
+      await sendEmail(env, r.email, `Order ${r.order_id}: ${REP_LABEL[status as RepStatus]}`, shell(`<h2 style="margin:0 0 10px;font-size:19px;">${escapeHtml(REP_LABEL[status as RepStatus])}</h2>
+<p style="margin:0 0 8px;font-size:14px;line-height:1.6;">Your request about <b>${escapeHtml(p ? p.name : "an item")}</b> in order <b>${escapeHtml(r.order_id)}</b>.</p>
+${note ? `<p style="margin:0 0 8px;font-size:14px;line-height:1.6;">${escapeHtml(note)}</p>` : ""}
+<p style="margin:0;font-size:14px;">See it on your order at <a href="${SITE_URL}/orders">aethex.in/orders</a>.</p>`)).catch(() => false);
+    }
+    return json({ replacement: repOut({ ...r, status, note }) });
   }
 
   /* update 76: product questions */
@@ -1243,6 +1280,7 @@ function cleanCoupon(raw: Record<string, any>, codeIn: unknown): Coupon | { erro
   if (brands.length) c.brands = brands;
   const label = str(raw.label, 60);
   if (label) c.label = label;
+  if (raw.public === true) c.public = true; // update 80: listed on the offers page
   return c;
 }
 
@@ -1979,6 +2017,20 @@ export async function handleStore(request: Request, env: StoreEnv, ctx?: Ctx): P
     const { results } = await env.DB.prepare("SELECT * FROM store_questions WHERE product_id = ? AND status = 'answered' ORDER BY answered_at DESC LIMIT 100").bind(Number(qq[1])).all<QuestionRow>();
     return json({ questions: results.map(toQuestion) }, 200, { "cache-control": "no-store" });
   }
+  // update 80: the offers page: sales running now, and the coupon codes the store chose to show
+  if (path === "offers" && method === "GET") {
+    if (!env.DB) return json({ offers: [], coupons: [] });
+    await ensureTables(env.DB);
+    const now = Date.now();
+    const { offers: list } = await offers(env);
+    const { results } = await env.DB.prepare("SELECT data FROM store_coupons").all<{ data: string }>();
+    const coupons = results.map((r) => parse<Coupon | null>(r.data, null)).filter((c): c is Coupon => !!c && !!c.public && couponLive(c, now)).map((c) => ({ ...publicCoupon(c), ...(c.label ? { label: c.label } : {}) }));
+    const names = (cats: string[] = [], brs: string[] = []) => ({ categories: cats.map((x) => ({ slug: x, name: catalog.categories.find((c) => c.slug === x)?.name ?? x })), brands: brs.map((x) => ({ slug: x, name: brandName(x) })) });
+    return json({
+      offers: list.filter((o) => offerLive(o, now)).map((o) => ({ id: o.id, title: o.title, percent: o.percent, endsAt: o.endsAt ?? null, ...names(o.categories, o.brands) })),
+      coupons: coupons.map((c) => ({ ...c, ...names(c.categories, c.brands) })),
+    }, 200, { "cache-control": "public, max-age=60" });
+  }
   if (path === "tax" && method === "GET") {
     if (!env.DB) return json({ rates: {}, sellerGstin: sellerGstin(env) });
     await ensureTables(env.DB);
@@ -1989,6 +2041,7 @@ export async function handleStore(request: Request, env: StoreEnv, ctx?: Ctx): P
   const db = env as DBEnv;
   await ensureTables(db.DB);
   if (path === "questions" && method === "POST") return createQuestion(request, db);
+  if (path === "reminders" || /^reminders\/r[a-z0-9]{6,30}\/delete$/.test(path)) return handleReminders(request, db, path, method);
   if (path === "lists" || /^lists\/[a-z0-9]{6,30}\/(delete|sent)$/.test(path)) return handleLists(request, db, path, method);
 
   if (path === "razorpay/webhook" && method === "POST") return razorpayWebhook(request, db);
@@ -2024,7 +2077,8 @@ export async function handleStore(request: Request, env: StoreEnv, ctx?: Ctx): P
     if (path === "orders") {
       const { results } = await db.DB.prepare("SELECT * FROM store_orders WHERE user_id = ? OR email = ? ORDER BY created_at DESC LIMIT 100").bind(user.id, email).all<OrderRow>();
       const reviews = await reviewsFor(db, results.filter((r) => r.status === "delivered").map((r) => r.id));
-      return json({ orders: results.map((r) => withBank(db, { ...customerView(r, true), ...(reviews.has(r.id) ? { reviews: reviews.get(r.id) } : {}) })) });
+      const reps = await replacementsFor(db, results.filter((r) => r.status === "delivered").map((r) => r.id));
+      return json({ orders: results.map((r) => withBank(db, { ...customerView(r, true), ...(reviews.has(r.id) ? { reviews: reviews.get(r.id) } : {}), ...(reps.has(r.id) ? { replacements: reps.get(r.id) } : {}) })) });
     }
     const { results } = await db.DB.prepare("SELECT * FROM store_orders WHERE (user_id = ? OR email = ?) AND status = 'delivered' ORDER BY created_at DESC LIMIT 60").bind(user.id, email).all<OrderRow>();
     const ids = results.map((r) => r.id);
@@ -2051,6 +2105,15 @@ export async function handleStore(request: Request, env: StoreEnv, ctx?: Ctx): P
     return json({ items });
   }
 
+  // update 80: a replacement request for an item of a delivered order (the order's own access rules)
+  const rp = /^orders\/([A-Za-z0-9-]{6,20})\/replacement$/.exec(path);
+  if (rp && method === "POST") {
+    const b = await readJson(request);
+    const access = await orderFor(request, db, rp[1], b?.phone);
+    if (access instanceof Response) return access;
+    return createReplacement(db, access.r, b ?? {});
+  }
+
   // orders/:id (GET: the browser that placed it sends its token in x-order-token, or its account is signed in),
   // POST orders/:id/lookup {phone}, /cancel {phone?, reason?, ifUnpaid?}, /pay {razorpay_*}, /payment (pay again), /cod (cash on delivery instead).
   const om = /^orders\/([A-Za-z0-9-]{6,20})(?:\/(cancel|lookup|pay|payment|cod))?$/.exec(path);
@@ -2063,7 +2126,8 @@ export async function handleStore(request: Request, env: StoreEnv, ctx?: Ctx): P
     const act = om[2];
     const view = async (row: OrderRow) => {
       const reviews = row.status === "delivered" ? (await reviewsFor(db, [row.id])).get(row.id) : undefined;
-      return withBank(db, { ...customerView(row, full), ...(reviews ? { reviews } : {}) });
+      const reps = row.status === "delivered" ? (await replacementsFor(db, [row.id])).get(row.id) : undefined;
+      return withBank(db, { ...customerView(row, full), ...(reviews ? { reviews } : {}), ...(reps ? { replacements: reps } : {}) });
     };
     const settle = async () => { try { r = await settleFromRazorpay(db, r); } catch (e) { console.error("store: checking a payment", r.id, e); } };
 
@@ -2218,4 +2282,113 @@ async function handleLists(request: Request, db: DBEnv, path: string, method: st
     return json({ lists: await all() });
   }
   return json({ error: "Not found" }, 404);
+}
+
+/* ------------------------------------------------------------------ update 80: replacement requests */
+
+export const REP_STATUSES = ["requested", "approved", "picked-up", "replaced", "refunded", "rejected"] as const;
+type RepStatus = (typeof REP_STATUSES)[number];
+const REP_LABEL: Record<RepStatus, string> = { requested: "We've received your request", approved: "Your replacement is approved", "picked-up": "We've picked up the item", replaced: "Your replacement has been sent", refunded: "Your refund has been made", rejected: "We couldn't accept your request" };
+const REASONS: Record<string, string> = { damaged: "Arrived damaged", defective: "Doesn't work (defective)", wrong: "Wrong item sent", missing: "Item or part missing" };
+type RepRow = { id: string; order_id: string; product_id: number; variant_id: string; qty: number; reason: string; details: string | null; status: string; note: string | null; email: string | null; created_at: number; updated_at: number };
+const repOut = (r: RepRow) => ({ id: r.id, orderId: r.order_id, productId: Number(r.product_id), variantId: r.variant_id || null, qty: r.qty, reason: r.reason, reasonText: REASONS[r.reason] ?? r.reason, details: r.details, status: r.status, statusText: REP_LABEL[r.status as RepStatus] ?? r.status, note: r.note, at: r.created_at, updatedAt: r.updated_at });
+async function replacementsFor(db: DBEnv, ids: string[]) {
+  const m = new Map<string, ReturnType<typeof repOut>[]>();
+  if (!ids.length) return m;
+  const { results } = await db.DB.prepare(`SELECT * FROM store_replacements WHERE order_id IN (${ids.map(() => "?").join(",")}) ORDER BY created_at ASC`).bind(...ids).all<RepRow>();
+  for (const r of results) { const l = m.get(r.order_id) ?? []; l.push(repOut(r)); m.set(r.order_id, l); }
+  return m;
+}
+async function createReplacement(db: DBEnv, r: OrderRow, b: Record<string, any>): Promise<Response> {
+  const o = toOrder(r);
+  if (o.status !== "delivered") return json({ error: "You can report a problem once the order is delivered." }, 400);
+  const deliveredAt = [...o.history].reverse().find((h) => h.status === "delivered")?.at ?? r.updated_at;
+  if (Date.now() - deliveredAt > (BUSINESS.replacementDays + 1) * 86400_000) return json({ error: `Problems can be reported within ${BUSINESS.replacementDays} days of delivery. Please write to ${BUSINESS.email}.` }, 400);
+  const pid = Number(b.productId), vid = typeof b.variantId === "string" ? b.variantId.slice(0, 80) : "";
+  const line = o.lines.find((l) => l.productId === pid && (l.variantId ?? "") === vid);
+  if (!line) return json({ error: "That item isn't in this order." }, 400);
+  const reason = String(b.reason);
+  if (!REASONS[reason]) return json({ error: "Choose what's wrong.", field: "reason" }, 400);
+  const qty = Math.round(Number(b.qty));
+  if (!Number.isFinite(qty) || qty < 1 || qty > line.qty) return json({ error: `Choose how many, 1 to ${line.qty}.`, field: "qty" }, 400);
+  const details = longStr(b.details, 800);
+  if (details.length < 10) return json({ error: "Tell us a little about the problem.", field: "details" }, 400);
+  const now = Date.now(), id = `x${now.toString(36)}${Array.from(crypto.getRandomValues(new Uint8Array(4)), (x) => x.toString(36)).join("").slice(0, 6)}`;
+  try {
+    await db.DB.prepare("INSERT INTO store_replacements (id, order_id, product_id, variant_id, qty, reason, details, status, email, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'requested', ?, ?, ?)")
+      .bind(id, o.id, pid, vid, qty, reason, details, o.address.email || null, now, now).run();
+  } catch { return json({ error: "You've already reported a problem with this item. We'll be in touch." }, 409); }
+  await Promise.allSettled([
+    sendEmail(db, storeInbox(db), `Replacement request: ${o.id}, ${line.name}`, shell(`<h2 style="margin:0 0 8px;font-size:19px;">A customer reported a problem</h2>
+<p style="margin:0;font-size:14px;line-height:1.6;">Order <b>${escapeHtml(o.id)}</b> · ${escapeHtml(line.name)} × ${qty}<br><b>${escapeHtml(REASONS[reason]!)}</b>: ${escapeHtml(details)}<br>${escapeHtml(o.address.name)}, ${escapeHtml(o.address.phone)}, ${escapeHtml(o.address.city)}<br>Handle it in the store admin, under Replacements.</p>`)),
+    o.address.email ? sendEmail(db, o.address.email, `Order ${o.id}: we've received your request`, shell(`<h2 style="margin:0 0 8px;font-size:19px;">We've received your request</h2>
+<p style="margin:0;font-size:14px;line-height:1.6;">About <b>${escapeHtml(line.name)}</b> (${escapeHtml(REASONS[reason]!)}). We'll reply within one business day, and may ask for a photo. You can follow it on your order at <a href="${SITE_URL}/orders">aethex.in/orders</a>.</p>`)) : Promise.resolve(false),
+  ]);
+  const reps = (await replacementsFor(db, [o.id])).get(o.id) ?? [];
+  return json({ ok: true, replacements: reps });
+}
+
+/* ------------------------------------------------------------------ update 80: reorder reminders */
+
+type ReorderRow = { id: string; user_id: string; email: string; product_id: number; variant_id: string; qty: number; every_days: number; next_at: number; last_sent: number | null; created_at: number };
+const reorderOut = (r: ReorderRow) => ({ id: r.id, productId: Number(r.product_id), variantId: r.variant_id || null, qty: r.qty, everyDays: r.every_days, nextAt: r.next_at, lastSent: r.last_sent });
+export const REORDER_EVERY = [7, 15, 30, 45, 60, 90, 180];
+async function handleReminders(request: Request, db: DBEnv, path: string, method: string): Promise<Response> {
+  const user = await currentUser(request, db).catch(() => null);
+  if (!user) return json({ error: "Sign in to set reorder reminders.", signIn: true }, 401);
+  const all = async () => (await db.DB.prepare("SELECT * FROM store_reorder WHERE user_id = ? ORDER BY next_at ASC").bind(user.id).all<ReorderRow>()).results.map(reorderOut);
+  if (method === "GET" && path === "reminders") return json({ reminders: await all() });
+  const del = /^reminders\/(r[a-z0-9]{6,30})\/delete$/.exec(path);
+  if (del && method === "POST") {
+    await db.DB.prepare("DELETE FROM store_reorder WHERE id = ? AND user_id = ?").bind(del[1], user.id).run();
+    return json({ reminders: await all() });
+  }
+  if (path === "reminders" && method === "POST") {
+    const b = await readJson(request);
+    const p = byId.get(Number(b?.productId));
+    if (!p || p.priceOnRequest) return json({ error: "Reminders are for products you can order online." }, 400);
+    const vid = typeof b?.variantId === "string" ? b.variantId.slice(0, 80) : "";
+    if (vid && !(p.variants ?? []).some((v) => v.id === vid)) return json({ error: "Choose a size or option." }, 400);
+    const every = Number(b?.everyDays);
+    if (!REORDER_EVERY.includes(every)) return json({ error: `Choose how often: ${REORDER_EVERY.join(", ")} days.`, field: "everyDays" }, 400);
+    const qty = Math.max(1, Math.min(20, Math.round(Number(b?.qty) || 1)));
+    const n = await db.DB.prepare("SELECT COUNT(*) AS n FROM store_reorder WHERE user_id = ?").bind(user.id).first<{ n: number }>();
+    const email = normEmail(user.email);
+    if (!email) return json({ error: "Your account needs an email address for reminders." }, 400);
+    const now = Date.now(), next = now + every * 86400_000;
+    const cur = await db.DB.prepare("SELECT id FROM store_reorder WHERE user_id = ? AND product_id = ? AND variant_id = ?").bind(user.id, p.id, vid).first<{ id: string }>();
+    if (cur) await db.DB.prepare("UPDATE store_reorder SET every_days = ?, qty = ?, next_at = ? WHERE id = ?").bind(every, qty, next, cur.id).run();
+    else {
+      if (Number(n?.n) >= 30) return json({ error: "You can keep up to 30 reminders." }, 400);
+      const id = `r${now.toString(36)}${Array.from(crypto.getRandomValues(new Uint8Array(4)), (x) => x.toString(36)).join("").slice(0, 6)}`;
+      await db.DB.prepare("INSERT INTO store_reorder (id, user_id, email, product_id, variant_id, qty, every_days, next_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(id, user.id, email, p.id, vid, qty, every, next, now).run();
+    }
+    return json({ reminders: await all() });
+  }
+  return json({ error: "Not found" }, 404);
+}
+/** Hourly: reminders that are due get one email each, and move on by their interval. */
+export async function runReorderReminders(env: StoreEnv): Promise<{ sent: number }> {
+  if (!env.DB) return { sent: 0 };
+  const db = env as DBEnv;
+  await ensureTables(db.DB);
+  const now = Date.now();
+  const { results } = await db.DB.prepare("SELECT * FROM store_reorder WHERE next_at <= ? ORDER BY next_at LIMIT 40").bind(now).all<ReorderRow>();
+  let sent = 0;
+  const find = await finder(db).catch(() => (id: number) => byId.get(id) ?? null);
+  for (const r of results) {
+    await db.DB.prepare("UPDATE store_reorder SET next_at = ?, last_sent = ? WHERE id = ?").bind(now + r.every_days * 86400_000, now, r.id).run();
+    const p = find(Number(r.product_id));
+    if (!p || p.priceOnRequest) continue;
+    const name = isBookId(p.id) ? p.name : `${brandName(p.brand)} ${p.name}`;
+    const v = r.variant_id ? (p.variants ?? []).find((x) => x.id === r.variant_id) : undefined;
+    const price = v?.price ?? p.price;
+    const link = `${SITE_URL}/reorder?p=${p.id}${r.variant_id ? `&v=${encodeURIComponent(r.variant_id)}` : ""}&q=${r.qty}`;
+    const ok = await sendEmail(db, r.email, `Time to reorder: ${name}`, shell(`<h2 style="margin:0 0 10px;font-size:19px;">Running low?</h2>
+<p style="margin:0 0 12px;font-size:14px;line-height:1.6;">You asked us to remind you every ${r.every_days} days about <b>${escapeHtml(name)}</b>${v ? ` (${escapeHtml(v.label)})` : ""}${price ? `, now ${money(price)}` : ""}${p.inStock ? "" : ". It's out of stock right now; we'll still keep your reminder"}.</p>
+<p style="margin:0 0 12px;"><a href="${link}" style="display:inline-block;padding:11px 18px;border-radius:8px;background:#0f766e;color:#fff;font-weight:600;text-decoration:none;">Reorder ${r.qty > 1 ? `${r.qty} ` : ""}in one click</a></p>
+<p style="margin:0;font-size:12.5px;color:#667085;">Change or stop reminders in My orders on aethex.in.</p>`)).catch(() => false);
+    if (ok) sent++;
+  }
+  return { sent };
 }

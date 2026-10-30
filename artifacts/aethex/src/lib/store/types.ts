@@ -383,6 +383,8 @@ export interface Coupon {
   /** For shoppers, e.g. "Diwali offer". */
   label?: string;
   active: boolean;
+  /** update 80: listed on the offers page (otherwise only people given the code know it) */
+  public?: boolean;
 }
 /** What the cart is told about a code. */
 export type PublicCoupon = Pick<Coupon, "code" | "kind" | "value" | "minOrder" | "maxDiscount" | "endsAt" | "categories" | "brands" | "label">;
