@@ -7,6 +7,8 @@
  * and a pay-for-me link opened here (components/shop/MoreWays).
  * Styles: src/buy.css (.ax-cart).
  */
+import { BuyAgainRail } from "@/components/shop/BuyAgain";
+import { RecentlyViewed } from "@/components/store/StoreExtras";
 import { Link, useLocation } from "wouter";
 import { AlertTriangle, ArrowLeft, ArrowRight, Banknote, Heart, Lock, Minus, Plus, ShoppingBag, Trash2, Truck } from "lucide-react";
 import { ShopHead } from "@/components/shop/ShopHead";
@@ -85,6 +87,8 @@ export default function Cart() {
               {wishlist.ids.length > 0 && <Link href="/wishlist" className="ax-btn"><Heart size={16} /> Your wishlist ({wishlist.ids.length})</Link>}
             </div>
           </div>
+          <BuyAgainRail />
+          <RecentlyViewed />
         </div>
       ) : (
         <div className="ax-wrap ax-cart">

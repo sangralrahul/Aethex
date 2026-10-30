@@ -8,6 +8,8 @@ import { Link } from "wouter";
 import { ChevronDown, Loader2, Package, PackageSearch } from "lucide-react";
 import { ShopHead } from "@/components/shop/ShopHead";
 import { OrderView, when } from "@/components/store/OrderView";
+import { BuyAgainRail } from "@/components/shop/BuyAgain";
+import { RecentlyViewed } from "@/components/store/StoreExtras";
 import { ProductImage } from "@/components/store/ProductImage";
 import { useSeo } from "@/hooks/use-seo";
 import { useUserAuth } from "@/hooks/use-user-auth";
@@ -83,6 +85,8 @@ export default function Orders() {
             ))}
           </ul>
         )}
+        <BuyAgainRail />
+        <RecentlyViewed />
       </div>
     </div>
   );

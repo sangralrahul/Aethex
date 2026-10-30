@@ -224,8 +224,8 @@ export default function Checkout() {
     const giftBody = isGift ? { ...(gift.message.trim() ? { message: gift.message.trim() } : {}), ...(gift.from.trim() ? { from: gift.from.trim() } : {}) } : undefined;
     const gstin = biz.gstin.replace(/\s+/g, "").toUpperCase();
     if (isBiz && biz.name.trim().length < 2) { setErr("Add the clinic or business name, or untick buying for a business."); setPlacing(false); return; }
-    if (isBiz && config?.gstInvoice && gstin && !validGstin(gstin)) { setErr("Check the GSTIN: it's 15 letters and digits, like 27ABCDE1234F1Z5."); setPlacing(false); return; }
-    const bizBody = isBiz ? { name: biz.name.trim(), ...(config?.gstInvoice && gstin ? { gstin } : {}) } : undefined;
+    if (isBiz && gstin && !validGstin(gstin)) { setErr("Check the GSTIN: it's 15 letters and digits, like 27ABCDE1234F1Z5."); setPlacing(false); return; }
+    const bizBody = isBiz ? { name: biz.name.trim(), ...(gstin ? { gstin } : {}) } : undefined;
     // What makes this order: an unpaid order or an unanswered try for anything else was a different order.
     const sig = JSON.stringify([linesKey, address, notes, code, t.total, giftBody ?? null, bizBody ?? null]);
     try {
@@ -515,12 +515,12 @@ export default function Checkout() {
                     <label className={`ax-extra${isBiz ? " on" : ""}`}>
                       <input type="checkbox" checked={isBiz} onChange={(e) => setIsBiz(e.target.checked)} />
                       <span className="ic"><Briefcase size={18} /></span>
-                      <span className="tx"><b>Buying for a clinic or business</b><small>{config?.gstInvoice ? "Its name, and its GSTIN on the GST invoice" : "Its name on the order and invoice"}</small></span>
+                      <span className="tx"><b>Buying for a clinic or business</b><small>{config?.gstInvoice ? "Its name, and its GSTIN on the GST invoice" : "Its name and GSTIN on the order and its receipt"}</small></span>
                     </label>
                     {isBiz && (
                       <div className="ax-extra-body ax-form">
                         <label className="f"><span>Clinic or business name</span><input value={biz.name} onChange={(e) => setBiz((b) => ({ ...b, name: e.target.value }))} maxLength={120} autoComplete="organization" placeholder="Iyer Family Clinic" /></label>
-                        {config?.gstInvoice && <label className="f"><span>GSTIN <em>(optional)</em></span><input value={biz.gstin} onChange={(e) => setBiz((b) => ({ ...b, gstin: e.target.value.toUpperCase() }))} maxLength={15} placeholder="27ABCDE1234F1Z5" /></label>}
+                        {<label className="f"><span>GSTIN <em>(optional)</em></span><input value={biz.gstin} onChange={(e) => setBiz((b) => ({ ...b, gstin: e.target.value.toUpperCase() }))} maxLength={15} placeholder="27ABCDE1234F1Z5" /></label>}
                         <p className="hint">Buying a lot? <Link href="/hospitals">Ask for a bulk quotation</Link>.</p>
                       </div>
                     )}

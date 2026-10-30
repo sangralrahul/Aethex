@@ -12,12 +12,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   AlertTriangle, BadgePercent, Building2, Check, ClipboardList, Copy, CreditCard, Download, ExternalLink, Inbox, Loader2, LogIn, Mail, Package, RefreshCw, RotateCcw, Search,
-  Gift, PhoneCall, ShieldCheck, Star, Store, Truck,
+  Gift, MessageCircleQuestion, Percent, PhoneCall, ShieldCheck, Star, Store, Truck,
 } from "lucide-react";
 import { Stars } from "@/components/store/Reviews";
 import { couponText, offerLive } from "@/lib/store/promo";
 import { useSeo } from "@/hooks/use-seo";
-import { storeFetch, StoreError, useBooks, useStore } from "@/lib/store/api";
+import { storeFetch, StoreError, useBooks, useStore, type ProductQuestion, type TaxTable } from "@/lib/store/api";
+import { BUSINESS } from "@/config/business";
 import { bookSummary, isBookId, itemHref } from "@/lib/store/bookdata";
 import type { BulkRequest, BulkStatus, Coupon, Offer, Order, OrderStatus, Override, ProductSummary, Review, ReviewStatus } from "@/lib/store/types";
 import { BULK_STATUS_LABEL, BULK_STATUSES, everyText, formatDay, ORDER_STATUSES, scheduleText, STATUS_LABEL } from "@/lib/store/rules";
@@ -30,11 +31,11 @@ type AdminOrder = Order & { adminNote: string; updatedAt: number; userId: string
 type AdminBulk = BulkRequest & { adminNote: string; updatedAt: number };
 type Enquiry = { id: string; created_at: number; kind: string; item: string | null; name: string; phone: string; email: string | null; city: string | null; qty: number; message: string | null; status: string; note: string | null; product: { id: number; slug: string; name: string; brand: string } | null };
 type Summary = {
-  orders: Record<string, { count: number; total: number }>; last24h: { count: number; total: number }; openEnquiries: number; openBulk: number; pendingReviews?: number; bankWaiting?: number; callbacks?: number;
+  orders: Record<string, { count: number; total: number }>; last24h: { count: number; total: number }; openEnquiries: number; openBulk: number; pendingReviews?: number; pendingQuestions?: number; bankWaiting?: number; callbacks?: number;
   catalog: { products: number; priceOnRequest: number; noOrigin: number; hidden: number; outOfStock: number };
   setup: { email: boolean; storeEmail: string; admins: number; gaps: string[]; onlinePayments?: boolean; razorpayMode?: string; webhook?: boolean; webhookUrl?: string; bankTransfer?: boolean; whatsapp?: boolean };
 };
-type Tab = "overview" | "orders" | "requests" | "bulk" | "products" | "promos" | "reviews";
+type Tab = "overview" | "orders" | "requests" | "bulk" | "products" | "promos" | "reviews" | "questions" | "tax";
 
 const admin = <T,>(path: string, init?: { method?: string; json?: unknown }) => storeFetch<T>(`/admin/${path}`, init);
 
@@ -75,7 +76,7 @@ export default function StoreAdmin() {
         <div className="ax-wrap">
           <b><Store size={18} /> Store admin</b>
           <nav role="tablist">
-            {([["overview", "Overview", ClipboardList], ["orders", "Orders", Package], ["requests", "Requests", Inbox], ["bulk", "Bulk", Building2], ["products", "Products", Store], ["promos", "Offers", BadgePercent], ["reviews", "Reviews", Star]] as const).map(([k, label, I]) => (
+            {([["overview", "Overview", ClipboardList], ["orders", "Orders", Package], ["requests", "Requests", Inbox], ["bulk", "Bulk", Building2], ["products", "Products", Store], ["promos", "Offers", BadgePercent], ["reviews", "Reviews", Star], ["questions", "Questions", MessageCircleQuestion], ["tax", "Tax", Percent]] as const).map(([k, label, I]) => (
               <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}><I size={15} /> {label}</button>
             ))}
           </nav>
@@ -90,6 +91,8 @@ export default function StoreAdmin() {
         {tab === "products" && <Products />}
         {tab === "promos" && <Promos />}
         {tab === "reviews" && <Reviews />}
+        {tab === "questions" && <Questions />}
+        {tab === "tax" && <TaxRates />}
       </div>
     </div>
   );
@@ -133,6 +136,7 @@ function Overview({ go }: { go: (t: Tab) => void }) {
         <button type="button" onClick={() => go("requests")}><small>Requests</small><b>{s.openEnquiries}</b><span>waiting for a reply</span></button>
         <button type="button" onClick={() => go("bulk")}><small>Bulk requests</small><b>{s.openBulk ?? 0}</b><span>to quote</span></button>
         <button type="button" onClick={() => go("reviews")}><small>Reviews</small><b>{s.pendingReviews ?? 0}</b><span>to check</span></button>
+        <button type="button" onClick={() => go("questions")}><small>Questions</small><b>{s.pendingQuestions ?? 0}</b><span>to answer</span></button>
         <div><small>Last 24 hours</small><b>{s.last24h.count}</b><span>{formatINR(s.last24h.total)}</span></div>
         <div><small>Delivered</small><b>{o("delivered")}</b><span>{formatINR(s.orders.delivered?.total ?? 0)}</span></div>
       </div>
@@ -904,5 +908,93 @@ function ReviewEditor({ r, onSaved }: { r: AdminReview; onSaved: (r: AdminReview
       </div>
       {msg && <p className="ax-adm-msg">{msg}</p>}
     </li>
+  );
+}
+
+/* ------------------------------------------------------------------ update 76: questions and tax */
+
+type AdminQuestion = ProductQuestion & { status: string; email: string | null; product: { id: number; name: string; href: string } | null };
+function Questions() {
+  const [status, setStatus] = useState<string>("pending");
+  const [list, setList] = useState<AdminQuestion[] | null>(null);
+  const [err, setErr] = useState("");
+  const load = useCallback(() => { setErr(""); admin<{ questions: AdminQuestion[] }>(`questions${status ? `?status=${status}` : ""}`).then((r) => setList(r.questions)).catch((e) => setErr(e.message)); }, [status]);
+  useEffect(() => { setList(null); load(); }, [load]);
+  return (
+    <div data-admin="questions">
+      <div className="ax-adm-bar">
+        <div className="seg">{[["pending", "To answer"], ["answered", "Answered"], ["hidden", "Hidden"], ["", "All"]].map(([k, l]) => <button key={k} type="button" className={status === k ? "on" : ""} onClick={() => setStatus(k)}>{l}</button>)}</div>
+        <button type="button" className="ax-btn" onClick={load}><RefreshCw size={15} /></button>
+      </div>
+      <p className="fine">Signed-in customers ask about a product. Your answer shows on the product page under Questions and answers, and the customer gets an email.</p>
+      {err && <p className="ax-form-err">{err}</p>}
+      {!list ? <p className="ax-adm-loading"><Loader2 size={18} className="spin" /> Loading…</p> : list.length === 0 ? <p className="ax-adm-empty">{status === "pending" ? "No questions to answer." : "Nothing here."}</p> : (
+        <ul className="ax-adm-req ax-adm-rv">{list.map((q) => <QuestionEditor key={q.id} q={q} onSaved={(n) => setList((l) => (l ?? []).map((x) => (x.id === n.id ? { ...x, ...n } : x)))} />)}</ul>
+      )}
+    </div>
+  );
+}
+function QuestionEditor({ q, onSaved }: { q: AdminQuestion; onSaved: (q: AdminQuestion) => void }) {
+  const [answer, setAnswer] = useState(q.answer ?? "");
+  const [busy, setBusy] = useState(false), [msg, setMsg] = useState("");
+  const save = async (status?: string) => {
+    setBusy(true); setMsg("");
+    try {
+      const x = await admin<{ question: AdminQuestion }>(`questions/${q.id}`, { method: "PATCH", json: { ...(status ? { status } : {}), answer } });
+      onSaved({ ...q, ...x.question });
+      setMsg(x.question.status === "answered" ? "Answered: it's on the product page." : x.question.status === "hidden" ? "Hidden." : "Saved.");
+    } catch (e) { setMsg((e as Error).message); } finally { setBusy(false); }
+  };
+  return (
+    <li data-q={q.id}>
+      <div className="h">
+        <span className={`kind k-${q.status === "answered" ? "bulk" : q.status === "hidden" ? "general" : "price"}`}>{q.status === "answered" ? "Answered" : q.status === "hidden" ? "Hidden" : "To answer"}</span>
+        {q.product ? <Link href={q.product.href}><b>{q.product.name}</b></Link> : <b>Item {q.productId}</b>}
+        <span className="muted">{when(q.at)} · {q.name}{q.email ? ` · ${q.email}` : ""}</span>
+      </div>
+      <p className="msg">{q.question}</p>
+      <label className="f wide"><span>Answer (shown on the product page)</span><textarea value={answer} onChange={(e) => setAnswer(e.target.value)} rows={3} maxLength={1500} /></label>
+      <div className="acts">
+        <button type="button" className="ax-btn teal" disabled={busy || !answer.trim()} onClick={() => save("answered")}><Check size={15} /> {q.status === "answered" ? "Update answer" : "Publish answer"}</button>
+        {q.status !== "hidden" && <button type="button" className="ax-btn danger" disabled={busy} onClick={() => save("hidden")}>Hide</button>}
+        {busy && <Loader2 size={16} className="spin" />}
+      </div>
+      {msg && <p className="ax-adm-msg">{msg}</p>}
+    </li>
+  );
+}
+
+function TaxRates() {
+  const { data: store } = useStore(true);
+  const [table, setTable] = useState<TaxTable | null>(null);
+  const [edit, setEdit] = useState<Record<string, { hsn: string; rate: string }>>({});
+  const [busy, setBusy] = useState(false), [msg, setMsg] = useState("");
+  useEffect(() => { storeFetch<TaxTable>("/tax").then((t) => { setTable(t); setEdit(Object.fromEntries(Object.entries(t.rates).map(([k, v]) => [k, { hsn: v.hsn, rate: String(v.rate) }]))); }).catch((e) => setMsg(e.message)); }, []);
+  const cats = useMemo(() => [...(store?.categories ?? []).map((c) => ({ slug: c.slug, name: c.name })), { slug: "books", name: "Medical books" }], [store]);
+  const save = async () => {
+    setBusy(true); setMsg("");
+    try {
+      const rates = cats.map((c) => ({ category: c.slug, hsn: edit[c.slug]?.hsn ?? "", rate: edit[c.slug]?.rate ?? "" }));
+      const t = await admin<TaxTable>("tax", { json: { rates } });
+      setTable(t); setMsg("Saved.");
+    } catch (e) { setMsg((e as Error).message); } finally { setBusy(false); }
+  };
+  const missing = cats.filter((c) => !table?.rates[c.slug]).length;
+  return (
+    <div className="ax-adm-tax" data-admin="tax">
+      <p className="fine">Invoices become GST tax invoices once the store's GSTIN is in src/config/business.ts{BUSINESS.gstin ? ` (it is: ${BUSINESS.gstin})` : table?.sellerGstin ? ` (or the STORE_GSTIN setting: ${table.sellerGstin})` : " (it isn't yet; you can also set STORE_GSTIN)"} and every category in an order has an HSN code and GST rate here. Until then customers get an order receipt. Check each code and rate with your accountant.</p>
+      {table && <p className="fine">{missing ? `${missing} categor${missing === 1 ? "y has" : "ies have"} no rate yet.` : "Every category has a rate."}</p>}
+      <table className="ax-adm-table">
+        <thead><tr><th>Category</th><th>HSN code</th><th>GST %</th></tr></thead>
+        <tbody>{cats.map((c) => (
+          <tr key={c.slug}>
+            <td>{c.name}</td>
+            <td><input value={edit[c.slug]?.hsn ?? ""} onChange={(e) => setEdit({ ...edit, [c.slug]: { hsn: e.target.value, rate: edit[c.slug]?.rate ?? "" } })} inputMode="numeric" maxLength={8} aria-label={`HSN code for ${c.name}`} /></td>
+            <td><select value={edit[c.slug]?.rate ?? ""} onChange={(e) => setEdit({ ...edit, [c.slug]: { hsn: edit[c.slug]?.hsn ?? "", rate: e.target.value } })} aria-label={`GST rate for ${c.name}`}><option value="">Not set</option>{[0, 0.25, 3, 5, 12, 18, 28, 40].map((r) => <option key={r} value={r}>{r}%</option>)}</select></td>
+          </tr>
+        ))}</tbody>
+      </table>
+      <div className="acts"><button type="button" className="ax-btn teal" disabled={busy} onClick={save}>{busy ? <Loader2 size={16} className="spin" /> : <Check size={15} />} Save rates</button>{msg && <span className="ax-adm-msg">{msg}</span>}</div>
+    </div>
   );
 }

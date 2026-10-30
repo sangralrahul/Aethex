@@ -171,6 +171,8 @@ export type StoreConfig = {
   whatsapp?: string;
   /** The store has a GSTIN, so a business buyer's GSTIN goes on the invoice. */
   gstInvoice?: boolean;
+  /** update 76: a business buyer can always add their GSTIN (it is shown on the receipt or invoice). */
+  buyerGstin?: boolean;
 };
 const OFFLINE_CONFIG: StoreConfig = { onlinePayments: false, codLimit: COD_LIMIT, onlineLimit: ONLINE_LIMIT, bankTransfer: false, bankMin: BANK_MIN, bankLimit: BANK_LIMIT, bankDays: BANK_DAYS, whatsapp: "", gstInvoice: false };
 export function useStoreConfig() {
@@ -301,3 +303,15 @@ export function saveOrder(o: SavedOrder) {
   try { localStorage.setItem(ORDERS_KEY, JSON.stringify([o, ...savedOrders().filter((x) => x.id !== o.id)].slice(0, 30))); } catch { /* storage blocked */ }
 }
 export const tokenFor = (id: string) => savedOrders().find((o) => o.id === id)?.token;
+
+/* ------------------------------------------------------------------ update 76: product questions, invoice tax */
+
+export interface ProductQuestion { id: string; productId: number; question: string; name: string; answer: string | null; at: number; answeredAt: number | null }
+export function useQuestions(productId: number | undefined) {
+  return useQuery({ queryKey: ["store", "questions", productId], enabled: !!productId, staleTime: 60_000, retry: 0, queryFn: () => storeFetch<{ questions: ProductQuestion[] }>(`/questions/${productId}`).then((r) => r.questions).catch(() => [] as ProductQuestion[]) });
+}
+export const askQuestion = (body: { productId: number; question: string; name?: string }) => storeFetch<{ ok: true; id: string }>("/questions", { json: body });
+export type TaxTable = { rates: Record<string, { hsn: string; rate: number }>; sellerGstin: string };
+export function useTax(enabled = true) {
+  return useQuery({ queryKey: ["store", "tax"], enabled, staleTime: 5 * 60_000, retry: 0, queryFn: () => storeFetch<TaxTable>("/tax").catch(() => ({ rates: {}, sellerGstin: "" }) as TaxTable) });
+}

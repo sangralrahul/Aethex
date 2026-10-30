@@ -125,6 +125,7 @@ const CadusPlans = lazyPage(() => import("@/pages/CadusPlans"));
 const Downloads = lazyPage(() => import("@/pages/Downloads"));
 const legal = (kind: "terms" | "privacy" | "disclaimer" | "about") => () => <CadusLegal kind={kind} />;
 const LegalTerms = legal("terms"), LegalPrivacy = legal("privacy"), LegalDisclaimer = legal("disclaimer"), LegalAbout = legal("about");
+const Invoice = lazyPage(() => import("@/pages/Invoice"));
 const OrderTracking = lazyPage(() => import("@/pages/OrderTracking"));
 const Orders = lazyPage(() => import("@/pages/Orders"));
 const MyReviews = lazyPage(() => import("@/pages/MyReviews"));
@@ -455,6 +456,7 @@ function Router() {
 
                 {/* Orders */}
                 <Route path="/orders" component={Orders} />
+                <Route path="/orders/:id/invoice" component={Invoice} />
                 <Route path="/orders/track" component={OrderTracking} />
                 <Route path="/order/:id" component={OrderPlaced} />
                 <Route path="/shipping-policy" component={StorePolicy} />

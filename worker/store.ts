@@ -46,6 +46,8 @@ export interface StoreEnv extends AuthEnv, RazorpayEnv {
   STORE_BANK_ACCOUNT_NUMBER?: string;
   STORE_BANK_IFSC?: string;
   STORE_BANK_NAME?: string;
+  /** update 76: the store's GSTIN, if it isn't in src/config/business.ts */
+  STORE_GSTIN?: string;
 }
 type DBEnv = StoreEnv & { DB: D1Like };
 
@@ -135,6 +137,12 @@ export const STORE_TABLES = [
     id TEXT PRIMARY KEY, user_id TEXT NOT NULL, label TEXT NOT NULL, data TEXT NOT NULL, is_default INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
   "CREATE INDEX IF NOT EXISTS store_addresses_user ON store_addresses(user_id)",
+  // update 76: questions and answers on a product, and the HSN code and GST rate of each category for invoices
+  `CREATE TABLE IF NOT EXISTS store_questions (
+    id TEXT PRIMARY KEY, product_id INTEGER NOT NULL, question TEXT NOT NULL, name TEXT NOT NULL, user_id TEXT, email TEXT,
+    answer TEXT, status TEXT NOT NULL DEFAULT 'pending', created_at INTEGER NOT NULL, answered_at INTEGER)`,
+  "CREATE INDEX IF NOT EXISTS store_questions_product ON store_questions(product_id, status)",
+  "CREATE TABLE IF NOT EXISTS store_tax (category TEXT PRIMARY KEY, hsn TEXT NOT NULL, rate REAL NOT NULL, updated_at INTEGER NOT NULL)",
 ];
 /** Columns added after a table was first made: added where missing (an existing column is left alone). */
 export const STORE_COLUMNS: [table: string, column: string, type: string][] = [
@@ -549,6 +557,7 @@ async function handleAdmin(request: Request, env: DBEnv, path: string, ctx?: Ctx
       openEnquiries: openEnq?.n || 0,
       openBulk: openBulk?.n || 0,
       pendingReviews: newReviews?.n || 0,
+      pendingQuestions: (await env.DB.prepare("SELECT COUNT(*) AS n FROM store_questions WHERE status = 'pending'").first<{ n: number }>())?.n || 0,
       bankWaiting: bankWaiting?.n || 0,
       callbacks: callbacks?.n || 0,
       catalog: { products: catalog.products.length, priceOnRequest, noOrigin, hidden, outOfStock },
@@ -797,6 +806,64 @@ async function handleAdmin(request: Request, env: DBEnv, path: string, ctx?: Ctx
     await env.DB.prepare("DELETE FROM store_offers WHERE id = ?").bind(fm[1]).run();
     forgetOffers();
     return json({ ok: true });
+  }
+
+  /* update 76: product questions */
+  if (path === "questions" && method === "GET") {
+    const status = str(url.searchParams.get("status"), 20);
+    const ok = ["pending", "answered", "hidden"].includes(status);
+    const { results } = await env.DB.prepare(`SELECT * FROM store_questions${ok ? " WHERE status = ?" : ""} ORDER BY created_at DESC LIMIT 200`).bind(...(ok ? [status] : [])).all<QuestionRow>();
+    return json({
+      questions: results.map((r) => {
+        const p = byId.get(Number(r.product_id));
+        return { ...toQuestion(r), status: r.status, email: r.email, product: p ? { id: p.id, name: isBookId(p.id) ? p.name : `${brandName(p.brand)} ${p.name}`, href: itemHref(p.id, p.slug) } : null };
+      }),
+    });
+  }
+  const qm = /^questions\/(q[a-z0-9]{6,30})$/.exec(path);
+  if (qm && method === "PATCH") {
+    const b = await readJson(request);
+    if (!b) return json({ error: "Send the changes as JSON." }, 400);
+    const r = await env.DB.prepare("SELECT * FROM store_questions WHERE id = ?").bind(qm[1]).first<QuestionRow>();
+    if (!r) return json({ error: "No such question." }, 404);
+    const answer = typeof b.answer === "string" ? longStr(b.answer, 1500) : r.answer;
+    let status = b.status === undefined ? r.status : str(b.status, 20);
+    if (!["pending", "answered", "hidden"].includes(status)) return json({ error: "Status must be pending, answered or hidden." }, 400);
+    if (status !== "hidden" && answer) status = "answered";
+    if (status === "answered" && !answer) return json({ error: "Write the answer first." }, 400);
+    const now = Date.now();
+    const first = status === "answered" && !r.answered_at;
+    await env.DB.prepare("UPDATE store_questions SET answer = ?, status = ?, answered_at = ? WHERE id = ?").bind(answer || null, status, status === "answered" ? (r.answered_at ?? now) : r.answered_at, r.id).run();
+    const p = byId.get(Number(r.product_id));
+    if (first && r.email && p) {
+      const name = isBookId(p.id) ? p.name : `${brandName(p.brand)} ${p.name}`;
+      await sendEmail(env, r.email, `Your question about ${name} has been answered`, shell(`<h2 style="margin:0 0 10px;font-size:19px;">Your question has an answer</h2>
+<p style="margin:0 0 6px;font-size:14px;color:#475467;">${escapeHtml(name)}</p>
+<p style="margin:0 0 10px;font-size:14px;line-height:1.55;"><b>You asked:</b> ${escapeHtml(r.question)}</p>
+<p style="margin:0 0 14px;font-size:14px;line-height:1.55;"><b>Answer from Aethex:</b> ${escapeHtml(answer ?? "")}</p>
+<p style="margin:0;font-size:14px;"><a href="${SITE_URL}${itemHref(p.id, p.slug)}#questions">See it on the product page</a></p>`)).catch(() => false);
+    }
+    return json({ question: { ...toQuestion({ ...r, answer: answer || null, status, answered_at: status === "answered" ? (r.answered_at ?? now) : r.answered_at }), status, email: r.email } });
+  }
+
+  /* update 76: HSN codes and GST rates by category, for invoices */
+  if (path === "tax" && method === "POST") {
+    const b = await readJson(request);
+    const rows = Array.isArray(b?.rates) ? b!.rates : null;
+    if (!rows) return json({ error: "Send the rates as a list." }, 400);
+    const cats = new Set(catalog.categories.map((c) => c.slug));
+    const now = Date.now();
+    for (const x of rows.slice(0, 200)) {
+      const cat = str(x?.category, 80);
+      if (!cats.has(cat) && cat !== "books") return json({ error: `Unknown category: ${cat}` }, 400);
+      const hsn = str(x?.hsn, 8).replace(/\D/g, "");
+      if (!hsn && (x?.rate === "" || x?.rate == null)) { await env.DB.prepare("DELETE FROM store_tax WHERE category = ?").bind(cat).run(); continue; }
+      const rate = Number(x?.rate);
+      if (!/^\d{4,8}$/.test(hsn)) return json({ error: `The HSN code for ${cat} should be 4 to 8 digits.` }, 400);
+      if (![0, 0.25, 3, 5, 12, 18, 28, 40].includes(rate)) return json({ error: `The GST rate for ${cat} should be one of 0, 0.25, 3, 5, 12, 18, 28 or 40 %.` }, 400);
+      await env.DB.prepare("INSERT INTO store_tax (category, hsn, rate, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(category) DO UPDATE SET hsn = excluded.hsn, rate = excluded.rate, updated_at = excluded.updated_at").bind(cat, hsn, rate, now).run();
+    }
+    return json(await taxTable(env));
   }
 
   /* reviews */
@@ -1376,7 +1443,7 @@ async function createOrder(request: Request, db: DBEnv): Promise<Response> {
     if (name.length < 2) return json({ error: "Add the clinic or business name, or untick buying for a business.", field: "business" }, 400);
     business = { name };
     const gstin = str(b.business.gstin, 20).replace(/\s+/g, "").toUpperCase();
-    if (gstin && BUSINESS.gstin) {
+    if (gstin) {
       if (!validGstin(gstin)) return json({ error: "Check the GSTIN: it's 15 letters and digits, like 27ABCDE1234F1Z5.", field: "gstin" }, 400);
       business.gstin = gstin;
     }
@@ -1849,7 +1916,7 @@ export async function handleStore(request: Request, env: StoreEnv, ctx?: Ctx): P
     return json({
       onlinePayments: razorpayReady(env), codLimit: COD_LIMIT, onlineLimit: ONLINE_LIMIT,
       bankTransfer: !!bankDetails(env), bankMin: BANK_MIN, bankLimit: BANK_LIMIT, bankDays: BANK_DAYS,
-      whatsapp: whatsappNumber(env), gstInvoice: !!BUSINESS.gstin,
+      whatsapp: whatsappNumber(env), gstInvoice: !!sellerGstin(env), buyerGstin: true,
     }, 200, { "cache-control": "public, max-age=60" });
   }
   const pp = /^products\/([a-z0-9-]{1,120})$/.exec(path);
@@ -1899,9 +1966,24 @@ export async function handleStore(request: Request, env: StoreEnv, ctx?: Ctx): P
     return json(await productReviews(env as DBEnv, Number(rv[1])), 200, CACHED);
   }
 
+  // update 76: a product's answered questions, and the invoice tax table
+  const qq = /^questions\/(\d{1,7})$/.exec(path);
+  if (qq && method === "GET") {
+    if (!env.DB) return json({ questions: [] });
+    await ensureTables(env.DB);
+    const { results } = await env.DB.prepare("SELECT * FROM store_questions WHERE product_id = ? AND status = 'answered' ORDER BY answered_at DESC LIMIT 100").bind(Number(qq[1])).all<QuestionRow>();
+    return json({ questions: results.map(toQuestion) }, 200, { "cache-control": "no-store" });
+  }
+  if (path === "tax" && method === "GET") {
+    if (!env.DB) return json({ rates: {}, sellerGstin: sellerGstin(env) });
+    await ensureTables(env.DB);
+    return json(await taxTable(env as DBEnv), 200, { "cache-control": "public, max-age=300" });
+  }
+
   if (!env.DB) return json({ error: "The store's database isn't set up on the server yet (D1 binding DB)." }, 503);
   const db = env as DBEnv;
   await ensureTables(db.DB);
+  if (path === "questions" && method === "POST") return createQuestion(request, db);
 
   if (path === "razorpay/webhook" && method === "POST") return razorpayWebhook(request, db);
   if (path.startsWith("admin/") || path === "admin") return handleAdmin(request, db, path.replace(/^admin\/?/, ""), ctx);
@@ -2050,4 +2132,42 @@ export async function handleStore(request: Request, env: StoreEnv, ctx?: Ctx): P
   }
 
   return json({ error: "Not found" }, 404);
+}
+
+/* ------------------------------------------------------------------ update 76: product questions, invoice tax */
+
+type QuestionRow = { id: string; product_id: number; question: string; name: string; user_id: string | null; email: string | null; answer: string | null; status: string; created_at: number; answered_at: number | null };
+const toQuestion = (r: QuestionRow) => ({ id: r.id, productId: Number(r.product_id), question: r.question, name: r.name, answer: r.answer, at: r.created_at, answeredAt: r.answered_at });
+
+async function createQuestion(request: Request, db: DBEnv): Promise<Response> {
+  const user = await currentUser(request, db).catch(() => null);
+  if (!user) return json({ error: "Sign in to ask a question.", signIn: true }, 401);
+  const b = await readJson(request);
+  const pid = Number(b?.productId);
+  const p = Number.isInteger(pid) ? byId.get(pid) : undefined;
+  if (!p) return json({ error: "Product not found." }, 404);
+  const question = longStr(b?.question, 500);
+  if (question.length < 10) return json({ error: "Write your question in a few more words.", field: "question" }, 400);
+  if (/https?:\/\/|www\./i.test(question)) return json({ error: "Please leave links out of your question.", field: "question" }, 400);
+  if (!(await allow(db, `store:q:${user.id}`, 10, 86400_000)) || !(await allow(db, `store:q:ip:${clientIp(request)}`, 20, 86400_000))) return json({ error: "That's a lot of questions for one day. Please try again tomorrow." }, 429);
+  const name = (str(b?.name, 40) || str(user.name, 40) || "A customer").split(" ")[0]!;
+  const id = `q${Date.now().toString(36)}${Array.from(crypto.getRandomValues(new Uint8Array(4)), (x) => x.toString(36)).join("").slice(0, 6)}`;
+  await db.DB.prepare("INSERT INTO store_questions (id, product_id, question, name, user_id, email, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)")
+    .bind(id, p.id, question, name, user.id, normEmail(user.email) || null, Date.now()).run();
+  const pname = isBookId(p.id) ? p.name : `${brandName(p.brand)} ${p.name}`;
+  await sendEmail(db, storeInbox(db), `Question on ${pname}`, shell(`<h2 style="margin:0 0 8px;font-size:19px;">A customer asked a question</h2>
+<p style="margin:0 0 6px;font-size:14px;color:#475467;">${escapeHtml(pname)}</p>
+<p style="margin:0 0 12px;font-size:14px;line-height:1.55;">${escapeHtml(question)}</p>
+<p style="margin:0;font-size:14px;">Answer it in the store admin, under Questions.</p>`)).catch(() => false);
+  return json({ ok: true, id });
+}
+
+/** The store's GSTIN: src/config/business.ts, or the STORE_GSTIN variable when it is set there instead. */
+function sellerGstin(env: StoreEnv): string {
+  const g = (BUSINESS.gstin || String(env.STORE_GSTIN ?? "")).replace(/\s+/g, "").toUpperCase();
+  return validGstin(g) ? g : "";
+}
+async function taxTable(db: DBEnv) {
+  const { results } = await db.DB.prepare("SELECT category, hsn, rate FROM store_tax").all<{ category: string; hsn: string; rate: number }>();
+  return { rates: Object.fromEntries(results.map((r) => [r.category, { hsn: r.hsn, rate: Number(r.rate) }])), sellerGstin: sellerGstin(db) };
 }

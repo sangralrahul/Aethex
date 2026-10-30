@@ -27,6 +27,8 @@ import { Dialog } from "@/components/store/Dialog";
 import { EnquiryDialog } from "@/components/store/EnquiryForm";
 import { CallbackDialog, WhatsAppButton } from "@/components/shop/MoreWays";
 import { AddAllButton } from "@/components/shop/BuyAgain";
+import { ProductQA, RecentlyViewed, TogetherBundle } from "@/components/store/StoreExtras";
+import { recent } from "@/lib/store/recent";
 import { useToast } from "@/hooks/use-toast";
 import { useWishlist } from "@/hooks/use-wishlist";
 import { useSeo } from "@/hooks/use-seo";
@@ -116,6 +118,7 @@ export default function ProductDetail() {
     const firstInStock = vs.find((v) => v.inStock) ?? vs[0];
     setVid(vs.length === 1 ? vs[0].id : vs.length && PRESELECT.has(product.optionName ?? "Option") ? firstInStock?.id ?? null : null);
     setQty(1); setImg(0); setNeedChoice(false);
+    if (!isBookId(product.id)) recent.seen(product.id);
     window.scrollTo({ top: 0 });
     if (window.location.hash === "#ask" && product.priceOnRequest) setAsk("price");
   }, [product?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -447,7 +450,11 @@ export default function ProductDetail() {
         </aside>
       </section>
 
+      {store?.byId.get(product.id) && !inst && <TogetherBundle product={store.byId.get(product.id)!} fromOrders={together} />}
+
       <CustomerReviews productId={product.id} />
+
+      <ProductQA productId={product.id} productName={`${brandName} ${product.name}`} />
 
       {together.length > 0 && store && (
         <section className="ax-wrap ax-pdp-related ax-together">
@@ -466,6 +473,8 @@ export default function ProductDetail() {
           </div>
         </section>
       )}
+
+      <div className="ax-wrap"><RecentlyViewed exclude={product.id} /></div>
 
       {/* phones: price and buttons stay in reach */}
       <div className="ax-pdp-bar">

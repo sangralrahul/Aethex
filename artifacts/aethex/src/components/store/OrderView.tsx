@@ -12,8 +12,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import {
-  Banknote, Briefcase, Building2, Check, CheckCircle2, Clock, Copy, CreditCard, ExternalLink, Gift, Loader2, MapPin, Package, PackageCheck, PenLine, RotateCcw, Star, Truck, XCircle,
-} from "lucide-react";
+  Banknote, Briefcase, Building2, Check, CheckCircle2, Clock, Copy, CreditCard, ExternalLink, Gift, Loader2, MapPin, Package, PackageCheck, PenLine, RotateCcw, Star, Truck, XCircle, FileText } from "lucide-react";
 import { cancelOrder, payOrder, retryPayment, switchToCod, type CustomerOrder } from "@/lib/store/api";
 import { payWithRazorpay } from "@/lib/store/razorpay";
 import { COD_LIMIT, STATUS_LABEL } from "@/lib/store/rules";
@@ -234,7 +233,7 @@ export function OrderView({ order, token, phone, onChange, compact = false }: {
         </div>
       )}
       {!due && order.lines.length > 0 && (
-        <div className="ax-ov-again"><BuyAgainButton lines={order.lines} label={cancelled ? "Order these again" : "Buy it all again"} /></div>
+        <div className="ax-ov-again"><BuyAgainButton lines={order.lines} label={cancelled ? "Order these again" : "Buy it all again"} />{!compact && order.status !== "pending" && <Link href={`/orders/${order.id}/invoice`} className="ax-btn" data-store="invoice-link"><FileText size={16} /> {order.business ? "Invoice (PDF)" : "Receipt (PDF)"}</Link>}</div>
       )}
       {!compact && <p className="ax-ov-help">Questions about this order? Write to <a href={`mailto:${BUSINESS.email}?subject=${encodeURIComponent(`Order ${order.id}`)}`}>{BUSINESS.email}</a>{BUSINESS.phone ? <> or call {BUSINESS.phone}</> : null} with your order number.</p>}
 

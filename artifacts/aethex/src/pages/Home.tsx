@@ -6,6 +6,8 @@
 import { HeroScene } from "@/components/visual/HeroScene";
 import { CardArt } from "@/components/visual/CardArt";
 import { PhotoTiles } from "@/components/layout/MarketTop";
+import { BuyAgainRail } from "@/components/shop/BuyAgain";
+import { RecentlyViewed } from "@/components/store/StoreExtras";
 import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import {
@@ -389,6 +391,8 @@ export default function Home() {
           { title: "For hospitals", sub: "Quotations for any quantity", bg: "wardBeds", href: portalUrl("hospitals") },
           { title: "Medical books", sub: "Every course", bg: "studentBooks", href: "/books" },
         ]} />
+
+      <div className="ax-wrap ec-rails" data-home="for-you"><BuyAgainRail /><RecentlyViewed /></div>
 
       {/* deals */}
       <section className="ec-sec" data-rv data-home="essentials">

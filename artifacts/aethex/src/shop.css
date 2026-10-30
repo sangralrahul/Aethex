@@ -2022,3 +2022,84 @@ button.ec-promo{width:100%}
 .hb-card:hover .ph .hbph{transform:scale(1.06)}
 .hb-card .ph:has(.hbph)>*:not(img){display:none}
 .hb-card .ph:has(.hbph){height:170px}
+
+/* ---------------------------------------------------------------- update 76: store extras */
+.ec-rails{display:grid;gap:8px}
+.ax-recent .ax-h-title .ax-link{background:none;border:0;cursor:pointer;font:inherit}
+.ax-fbt{margin-top:28px;padding:22px 24px;border-radius:16px;background:#fff;border:1px solid #e5e7eb}
+.ax-fbt h2{margin:0;font-size:20px;font-weight:750}
+.ax-fbt .sub{margin:4px 0 0;color:#64748b;font-size:13.5px}
+.ax-fbt-row{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-top:16px}
+.ax-fbt .pics{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.ax-fbt .pic{display:flex;align-items:center;gap:6px;transition:opacity .2s}
+.ax-fbt .pic.off{opacity:.35}
+.ax-fbt .pic a{display:grid;place-items:center;width:110px;height:110px;padding:8px;border-radius:12px;border:1px solid #eef2f6;background:#fff}
+.ax-fbt .pic img{max-width:100%;max-height:100%;object-fit:contain}
+.ax-fbt .plus{color:#94a3b8}
+.ax-fbt .buy p{margin:0 0 10px;font-size:15px}
+.ax-fbt .buy b{font-size:20px;margin-left:4px}
+.ax-fbt .buy s{margin-left:8px;color:#94a3b8;font-size:14px}
+.ax-fbt-list{list-style:none;margin:16px 0 0;padding:0;display:grid;gap:6px}
+.ax-fbt-list label{display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer}
+.ax-fbt-list input{width:17px;height:17px;accent-color:#0f766e}
+.ax-fbt-list span{flex:1;min-width:0}
+.ax-fbt-list em{font-style:normal;font-weight:700}
+.ax-qa{margin-top:28px}
+.ax-qa .cnt{color:#64748b;font-size:14px}
+.ax-qa-search{display:flex;align-items:center;gap:8px;max-width:460px;height:42px;margin:4px 0 14px;padding:0 12px;border-radius:10px;border:1px solid #d0d5dd;background:#fff}
+.ax-qa-search input{flex:1;border:0;outline:0;font:inherit;background:none}
+.ax-qa-search button{border:0;background:none;cursor:pointer;color:#64748b}
+.ax-qa-list{list-style:none;margin:0 0 16px;padding:0;display:grid;gap:12px}
+.ax-qa-list li{padding:16px 18px;border-radius:12px;background:#fff;border:1px solid #e5e7eb}
+.ax-qa-list .q{margin:0;font-weight:650}
+.ax-qa-list .a{margin:8px 0 0;color:#334155;line-height:1.55}
+.ax-qa-list b{color:#0f766e;margin-right:4px}
+.ax-qa-list small{display:block;margin-top:8px;color:#94a3b8;font-size:12.5px}
+.ax-qa-empty{color:#64748b;display:flex;align-items:center;gap:8px}
+.ax-qa-ok{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;background:#ecfdf5;color:#065f46;font-size:14px}
+.ax-qa-form{max-width:640px;padding:16px;border-radius:12px;background:#fff;border:1px solid #e5e7eb}
+.ax-qa-form textarea{width:100%}
+.ax-qa-form .row{display:flex;gap:8px;margin-top:8px}
+.ax-ov-again{display:flex;flex-wrap:wrap;gap:8px}
+.ax-adm-tax .ax-adm-table{width:100%;max-width:720px;border-collapse:collapse;margin:12px 0}
+.ax-adm-tax th,.ax-adm-tax td{padding:8px 10px;border-bottom:1px solid #eef2f6;text-align:left;font-size:14px}
+.ax-adm-tax input,.ax-adm-tax select{height:34px;padding:0 8px;border-radius:7px;border:1px solid #d0d5dd;font:inherit;width:140px}
+.ax-adm-tax .acts{display:flex;align-items:center;gap:12px}
+
+/* invoice */
+.ax-inv-page{padding:24px 0 48px;background:#f1f5f9;min-height:70vh}
+.ax-inv-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.ax-inv{max-width:900px;margin:0 auto;padding:36px 40px;background:#fff;border-radius:6px;box-shadow:0 10px 30px -18px rgba(15,23,42,.35);color:#0f172a;font-size:13.5px}
+.ax-inv header{display:flex;justify-content:space-between;gap:24px;padding-bottom:20px;border-bottom:2px solid #0f172a}
+.ax-inv .seller,.ax-inv .parties>div{display:flex;flex-direction:column;gap:2px}
+.ax-inv .seller b{margin-top:8px;font-size:15px}
+.ax-inv .seller span,.ax-inv .parties span{color:#475569}
+.ax-inv .meta h1{margin:0 0 10px;font-size:24px;text-align:right;letter-spacing:.02em;text-transform:uppercase}
+.ax-inv .meta dl{margin:0;display:grid;gap:3px}
+.ax-inv .meta dl div{display:flex;justify-content:space-between;gap:16px}
+.ax-inv .meta dt{color:#64748b}
+.ax-inv .meta dd{margin:0;font-weight:600}
+.ax-inv .parties{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;padding:18px 0}
+.ax-inv .parties small{text-transform:uppercase;letter-spacing:.06em;font-size:11px;color:#64748b;font-weight:700}
+.ax-inv table{width:100%;border-collapse:collapse;margin-top:6px}
+.ax-inv th{background:#f1f5f9;font-size:12px;text-transform:uppercase;letter-spacing:.03em;color:#475569}
+.ax-inv th,.ax-inv td{padding:9px 8px;border-bottom:1px solid #e2e8f0;text-align:left;vertical-align:top}
+.ax-inv .n{text-align:right;white-space:nowrap}
+.ax-inv .totals{display:flex;flex-direction:column;align-items:flex-end;margin-top:14px}
+.ax-inv .totals dl{margin:0;min-width:280px}
+.ax-inv .totals dl div{display:flex;justify-content:space-between;gap:16px;padding:4px 0}
+.ax-inv .totals dd{margin:0;font-weight:600}
+.ax-inv .totals .grand{border-top:2px solid #0f172a;margin-top:6px;padding-top:8px;font-size:16px;font-weight:800}
+.ax-inv .words{margin:8px 0 0;font-style:italic;color:#334155}
+.ax-inv footer{margin-top:26px;padding-top:14px;border-top:1px solid #e2e8f0;color:#64748b;font-size:12.5px}
+.ax-inv footer p{margin:4px 0}
+@media (max-width:700px){.ax-inv{padding:22px 16px;overflow-x:auto}.ax-inv header{flex-direction:column}.ax-inv .meta h1{text-align:left}.ax-inv .parties{grid-template-columns:minmax(0,1fr)}.ax-inv table{min-width:560px}}
+@media print{
+  body *{visibility:hidden!important}
+  .ax-inv,.ax-inv *{visibility:visible!important}
+  .ax-inv{position:absolute;left:0;top:0;width:100%;max-width:none;margin:0;box-shadow:none;border-radius:0;padding:12mm}
+  .noprint{display:none!important}
+  @page{size:A4;margin:10mm}
+}
+.ax-inv .meta h1{color:#0f172a!important;-webkit-text-fill-color:#0f172a!important;background:none!important;opacity:1!important;animation:none!important}
+.ax-fbt h2,.ax-qa .ax-h-title h2{color:#0b1220;display:flex;align-items:center;gap:8px}.ax-qa .ax-h-title h2 svg{color:#0f766e}.ax-qa-list .q,.ax-fbt-list span{color:#0f172a}
