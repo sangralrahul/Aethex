@@ -5,6 +5,7 @@ import { MapPin, Search, SlidersHorizontal, UserPlus, Video } from "lucide-react
 import { useSeo } from "@/hooks/use-seo";
 import { CITIES, SPECIALTIES, addDays, dateLabel, daySlots, time12, useDoctors, type Doctor } from "@/lib/find";
 import { DoctorCard, FindNav } from "./FindParts";
+import { CompareBar } from "./DoctorTools";
 
 /** The doctor's next consulting slot in the coming week (by hours only; bookings are checked on the profile). */
 function nextSlot(d: Doctor): string | null {
@@ -108,6 +109,7 @@ export default function FindDoctors() {
             ) : doctors.map((d) => <DoctorCard key={d.slug} d={d} next={nextSlot(d)} />)}
         </section>
       </div>
+      <CompareBar />
     </div>
   );
 }

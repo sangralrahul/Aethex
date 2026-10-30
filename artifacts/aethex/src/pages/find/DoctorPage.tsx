@@ -6,7 +6,8 @@ import { ArrowLeft, Award, BadgeCheck, Building2, CalendarCheck, CalendarX2, Che
 import { useSeo } from "@/hooks/use-seo";
 import { useUserAuth } from "@/hooks/use-user-auth";
 import { formatINR } from "@/lib/utils";
-import { addDays, clinicKey, dateLabel, displayName, findApi, freeSlots, hoursText, signInHere, time12, useDoctor, type Appointment, type FindError } from "@/lib/find";
+import { addDays, clinicKey, dateLabel, displayName, findApi, freeSlots, hoursText, signInHere, time12, useDoctor, useFamily, type Appointment, type FindError } from "@/lib/find";
+import { CalendarButtons, CompareBar, MemberForm, SaveCompare } from "./DoctorTools";
 import { Avatar, FindNav, Stars } from "./FindParts";
 
 export default function DoctorPage() {
@@ -24,6 +25,14 @@ export default function DoctorPage() {
   const [form, setForm] = useState({ name: "", phone: "", email: "", age: "", reason: "" });
   const [busy, setBusy] = useState(false), [err, setErr] = useState(""), [done, setDone] = useState<Appointment | null>(null);
   useEffect(() => { if (user) setForm((f) => ({ ...f, name: f.name || user.name || "", email: f.email || user.email || "" })); }, [user]);
+  // update 75: who the appointment is for
+  const fam = useFamily(!!user);
+  const [who, setWho] = useState(""), [adding, setAdding] = useState(false);
+  const pickWho = (id: string) => {
+    setWho(id); setAdding(false);
+    const m = fam.data?.members.find((x) => x.id === id);
+    setForm((f) => (m ? { ...f, name: m.name, age: m.age == null ? "" : String(m.age), phone: m.phone ?? f.phone } : { ...f, name: user?.name || "", age: "" }));
+  };
 
   const days = useMemo(() => {
     if (!data?.doctor.hours) return [];
@@ -39,7 +48,7 @@ export default function DoctorPage() {
     if (!date || !time) { setErr("Choose a date and a time."); return; }
     setBusy(true); setErr("");
     try {
-      const r = await findApi<{ appointment: Appointment }>("/appointments", { slug, date, time, mode, ...form });
+      const r = await findApi<{ appointment: Appointment }>("/appointments", { slug, date, time, mode, ...form, familyId: who || undefined });
       setDone(r.appointment);
       void qc.invalidateQueries({ queryKey: ["find"] });
     } catch (x) {
@@ -70,6 +79,7 @@ export default function DoctorPage() {
                 <p className="sp">{d.specialty}</p>
                 <p className="mu">{d.qualifications}</p>
                 <p className="mu">{d.experience} years experience overall</p>
+                <SaveCompare slug={d.slug} name={d.name} />
                 <div className="tags">
                   <span className="ok"><BadgeCheck size={14} /> Medical registration checked</span>
                   {d.video && <span><Video size={14} /> Video consult</span>}
@@ -146,7 +156,8 @@ export default function DoctorPage() {
                 <CheckCircle2 size={44} />
                 <h2>Appointment booked</h2>
                 <p><b>{displayName(d.name)}</b><br />{dateLabel(done.date, { weekday: "long", day: "numeric", month: "long" })}, {time12(done.time)}<br />{done.mode === "video" ? "Video consultation" : `${d.clinic}, ${d.city}`}</p>
-                <p className="mu">The doctor will confirm it, and we've emailed you the details.</p>
+                <p className="mu">The doctor will confirm it, and we've emailed you the details. We'll also email a reminder the day before.</p>
+                <CalendarButtons a={done} />
                 <Link href="/appointments" className="fd-btn">My appointments</Link>
               </div>
             ) : (
@@ -176,6 +187,13 @@ export default function DoctorPage() {
                 {time && (
                   user ? (
                     <div className="fd-form" data-find="patient">
+                      <h3>Who is this appointment for?</h3>
+                      <div className="fd-who-pick" role="radiogroup" aria-label="Patient" data-find="who">
+                        <button type="button" role="radio" aria-checked={!who} className={!who ? "on" : ""} onClick={() => pickWho("")}>Myself</button>
+                        {fam.data?.members.map((m) => <button key={m.id} type="button" role="radio" aria-checked={who === m.id} className={who === m.id ? "on" : ""} onClick={() => pickWho(m.id)}>{m.name}<small>{m.relation}</small></button>)}
+                        {fam.data && fam.data.members.length < 12 && <button type="button" className="add" onClick={() => setAdding(!adding)} aria-expanded={adding}>+ Family member</button>}
+                      </div>
+                      {adding && fam.data && <MemberForm relations={fam.data.relations} onDone={(m) => { void fam.refetch().then(() => pickWho(m.id)); setWho(m.id); setForm((f) => ({ ...f, name: m.name, age: m.age == null ? "" : String(m.age), phone: m.phone ?? f.phone })); setAdding(false); }} onCancel={() => setAdding(false)} />}
                       <h3>Patient details</h3>
                       <label>Patient's name<input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoComplete="name" /></label>
                       <div className="two">
@@ -199,6 +217,7 @@ export default function DoctorPage() {
           </aside>
         </div>
       </div>
+      <CompareBar />
     </div>
   );
 }

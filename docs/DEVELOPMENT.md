@@ -295,3 +295,11 @@ cancels from `/practice`. Reviews can only be written for `completed` appointmen
 - `MarketTop`: a slide with `bg` fills the whole banner with a photograph under a dark fade (slow zoom); promo tiles take `bg` too. New `PhotoTiles`: a row of photo tiles (six across, a swipe row on phones).
 - Photo tiles on: doctors home, store home, study home, the Knowledge Hub, hospitals and colleges. The Hub's five cards have a photo behind the product picture.
 - Stock photos are scenes only: never used as a listed doctor, a product, a review or a testimonial.
+
+## Update 75: Doctors features
+
+- **Save and compare** (`src/lib/doctorTools.ts`, `src/pages/find/DoctorTools.tsx`): a heart and a Compare toggle on every doctor card and profile, kept in this browser. A bar at the bottom shows the doctors picked (up to 3); `/saved-doctors` lists saved doctors and the side-by-side table (fee, experience, rating, hours, languages, services), marking the lowest fee, most experience and best rating. `GET /api/find/doctors?slugs=a,b` returns live doctors by profile name.
+- **Which doctor should I see?** (`/which-doctor`): symptoms grouped by body area point to the usual specialty (and an alternative), ranked; emergency warning signs are shown first; "Find doctors" opens the search for that specialty and city. Guidance only, not a diagnosis.
+- **Family members** (`/family`, table `find_family`, column `find_appointments.family_id`): add, edit and remove up to 12 people; the booking panel asks who the appointment is for and fills in their details; My appointments says who each one is for and filters by person. Members belong to the account (checked on booking and delete).
+- **Calendar and reminders**: Add to calendar (.ics with a 1-hour alarm, times in UTC from India time) and a Google Calendar link on the confirmation and on upcoming appointments. `runFindReminders` (hourly cron) emails the day-before reminder from 9 AM India time, once (`find_appointments.reminded`).
+- Test: `shots/doctorfeat.mjs`.

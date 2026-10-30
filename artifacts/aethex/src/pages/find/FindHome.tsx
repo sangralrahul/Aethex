@@ -103,6 +103,8 @@ export default function FindHome() {
           { title: "Ask a doctor", sub: "Free, without your name", bg: "doctorSmile", href: "/ask" },
         ]} />
 
+      <div className="ax-wrap"><div className="fd-wd-band" data-find="which-band"><div><b>Not sure which doctor to see?</b><p>Pick your symptoms and we'll point you to the right specialist, then doctors near you.</p></div><Link href="/which-doctor" className="fd-btn">Find the right specialist <ArrowRight size={15} /></Link></div></div>
+
       <section className="fd-sec">
         <div className="ax-wrap">
           <div className="fd-head"><div><h2>Consult a doctor for any health concern</h2><p>Pick what's bothering you; we'll show the right specialists.</p></div><Link href="/doctors" className="fd-more">All specialties <ArrowRight size={15} /></Link></div>

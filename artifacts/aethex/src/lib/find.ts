@@ -31,6 +31,8 @@ export interface Appointment {
   id: string; date: string; time: string; mode: "clinic" | "video"; reason: string | null; status: "booked" | "confirmed" | "cancelled" | "completed" | "no-show";
   link: string | null; note: string | null; patient: { name: string; phone: string; email: string | null; age: number | null }; createdAt: number;
   doctor?: { slug: string; name: string; specialty: string; clinic: string; address: string; city: string }; reviewed?: boolean; prescription?: string | null;
+  /** update 75: the family member it was booked for (null: the account holder) */
+  familyId?: string | null;
 }
 
 /** The specialties a doctor can list under (the same list as worker/find.ts). */
@@ -96,6 +98,11 @@ export const useDoctor = (slug: string) => useQuery({
   retry: (n, e) => (e as FindError).status !== 404 && n < 1,
 });
 export const useMyProfile = () => useQuery({ queryKey: ["find", "me"], queryFn: () => findApi<{ doctor: OwnDoctor | null; email: string; name: string }>("/me"), retry: false });
+/** update 75: family members a patient books for */
+export interface FamilyMember { id: string; name: string; relation: string; age: number | null; gender: string | null; phone: string | null }
+export const useFamily = (enabled = true) => useQuery({ enabled, queryKey: ["find", "family"], queryFn: () => findApi<{ members: FamilyMember[]; relations: string[] }>("/family"), retry: false });
+/** update 75: live doctors by profile name (saved and compared doctors) */
+export const useDoctorsBySlugs = (slugs: string[]) => useQuery({ enabled: slugs.length > 0, queryKey: ["find", "slugs", slugs.join(",")], queryFn: () => findApi<{ doctors: Doctor[] }>(`/doctors?${new URLSearchParams({ slugs: slugs.join(",") })}`), staleTime: 60_000, retry: 1 });
 export const useMyAppointments = () => useQuery({ queryKey: ["find", "mine"], queryFn: () => findApi<{ appointments: Appointment[] }>("/appointments"), retry: false });
 export const usePractice = () => useQuery({ queryKey: ["find", "practice"], queryFn: () => findApi<{ doctor: OwnDoctor; rating: { avg: number; count: number } | null; today: string; appointments: Appointment[]; reviews: Review[]; openQuestions: { id: string; title: string; at: number }[]; articles: { slug: string; title: string; at: number }[]; patients: number }>("/practice/appointments"), retry: false });
 

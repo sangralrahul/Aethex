@@ -40,6 +40,11 @@ export const FIND_TABLES = [
   `CREATE TABLE IF NOT EXISTS find_articles (
     id TEXT PRIMARY KEY, doctor_id TEXT NOT NULL, slug TEXT NOT NULL UNIQUE, title TEXT NOT NULL, summary TEXT, body TEXT NOT NULL,
     specialty TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
+  // update 75: family members a patient books for
+  `CREATE TABLE IF NOT EXISTS find_family (
+    id TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT NOT NULL, relation TEXT NOT NULL, age INTEGER, gender TEXT, phone TEXT,
+    created_at INTEGER NOT NULL)`,
+  "CREATE INDEX IF NOT EXISTS find_family_user ON find_family(user_id, created_at)",
   "CREATE INDEX IF NOT EXISTS find_doctors_search ON find_doctors(status, city, specialty)",
   "CREATE INDEX IF NOT EXISTS find_questions_list ON find_questions(specialty, created_at)",
   "CREATE INDEX IF NOT EXISTS find_answers_q ON find_answers(question_id, created_at)",
@@ -54,6 +59,8 @@ export const FIND_COLUMNS: [string, string, string][] = [
   ["find_doctors", "education", "TEXT"], ["find_doctors", "awards", "TEXT"], ["find_doctors", "memberships", "TEXT"], ["find_doctors", "timeoff", "TEXT"],
   // update 72: doctors can register without an Aethex account; we reach them on these until they sign in
   ["find_doctors", "contact_email", "TEXT"], ["find_doctors", "contact_phone", "TEXT"],
+  // update 75: who the appointment is for, and the day-before reminder
+  ["find_appointments", "family_id", "TEXT"], ["find_appointments", "reminded", "INTEGER"],
   ["find_reviews", "recommend", "INTEGER"], ["find_reviews", "wait", "TEXT"], ["find_reviews", "visited", "TEXT"], ["find_reviews", "reply", "TEXT"],
 ];
 let ready: Promise<void> | null = null;
@@ -88,7 +95,11 @@ type DoctorRow = {
 type ApptRow = {
   id: string; doctor_id: string; user_id: string; patient_name: string; patient_phone: string; patient_email: string | null; patient_age: number | null;
   date: string; time: string; mode: string; reason: string | null; status: string; link: string | null; note: string | null; created_at: number; updated_at: number;
+  family_id?: string | null;
 };
+type FamilyRow = { id: string; user_id: string; name: string; relation: string; age: number | null; gender: string | null; phone: string | null; created_at: number };
+export const RELATIONS = ["Spouse", "Child", "Father", "Mother", "Brother", "Sister", "Grandparent", "Other"];
+const familyOut = (f: FamilyRow) => ({ id: f.id, name: f.name, relation: f.relation, age: f.age, gender: f.gender, phone: f.phone });
 
 const str = (v: unknown, max: number) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : "");
 const longStr = (v: unknown, max: number) => (typeof v === "string" ? v.replace(/\r/g, "").trim().slice(0, max) : "");
@@ -147,6 +158,7 @@ const ownDoctor = (d: DoctorRow) => ({ ...publicDoctor(d), id: d.id, status: d.s
 const apptOut = (a: ApptRow, doctor?: { slug: string; name: string; specialty: string; clinic: string; address: string; city: string }) => ({
   id: a.id, date: a.date, time: a.time, mode: a.mode, reason: a.reason, status: a.status, link: a.link, note: a.note,
   patient: { name: a.patient_name, phone: a.patient_phone, email: a.patient_email, age: a.patient_age }, createdAt: a.created_at, doctor,
+  familyId: a.family_id ?? null,
 });
 
 async function body(request: Request): Promise<Record<string, unknown>> {
@@ -241,6 +253,9 @@ export async function handleFind(request: Request, env: FindEnv): Promise<Respon
     const sort = ["experience", "fee-low", "fee-high", "rating"].includes(String(sp.get("sort"))) ? String(sp.get("sort")) : "relevance";
     const clinic = str(sp.get("clinic"), 140).toLowerCase();
     const where = ["status = 'live'"], args: unknown[] = [];
+    // update 75: the doctors a patient saved or is comparing, by their profile names
+    const slugs = String(sp.get("slugs") ?? "").split(",").map((x) => x.trim().toLowerCase()).filter((x) => /^[a-z0-9-]{1,80}$/.test(x)).slice(0, 30);
+    if (slugs.length) { where.push(`slug IN (${slugs.map(() => "?").join(",")})`); args.push(...slugs); }
     if (city) { where.push("LOWER(city) = ?"); args.push(city); }
     if (specialty) { where.push("specialty = ?"); args.push(specialty); }
     if (video) where.push("video = 1");
@@ -495,6 +510,44 @@ export async function handleFind(request: Request, env: FindEnv): Promise<Respon
     return json({ ok: true, status: want });
   }
 
+  /* update 75: family members */
+  if (path === "/family" && method === "GET") {
+    if (!user) return signIn();
+    const { results } = await db.DB.prepare("SELECT * FROM find_family WHERE user_id = ? ORDER BY created_at ASC").bind(user.id).all<FamilyRow>();
+    return json({ members: results.map(familyOut), relations: RELATIONS });
+  }
+  if (path === "/family" && method === "POST") {
+    if (!user) return signIn();
+    const b = await body(request);
+    const name = str(b.name, 80), relation = RELATIONS.includes(String(b.relation)) ? String(b.relation) : "";
+    const age = b.age === "" || b.age == null ? null : int(b.age, 0, 120);
+    const gender = ["female", "male", "other"].includes(String(b.gender)) ? String(b.gender) : null;
+    const phone = String(b.phone ?? "").replace(/\D/g, "").slice(-10);
+    if (name.length < 2) return json({ error: "Enter their name.", field: "name" }, 400);
+    if (!relation) return json({ error: "Choose how they're related to you.", field: "relation" }, 400);
+    if (b.age !== "" && b.age != null && age == null) return json({ error: "Enter an age between 0 and 120.", field: "age" }, 400);
+    if (phone && !/^[6-9]\d{9}$/.test(phone)) return json({ error: "Enter a 10-digit mobile number, or leave it empty.", field: "phone" }, 400);
+    if (b.id) {
+      const f = await db.DB.prepare("SELECT * FROM find_family WHERE id = ? AND user_id = ?").bind(str(b.id, 40), user.id).first<FamilyRow>();
+      if (!f) return json({ error: "Family member not found." }, 404);
+      await db.DB.prepare("UPDATE find_family SET name = ?, relation = ?, age = ?, gender = ?, phone = ? WHERE id = ?").bind(name, relation, age, gender, phone || null, f.id).run();
+      return json({ member: familyOut({ ...f, name, relation, age, gender, phone: phone || null }) });
+    }
+    const n = await db.DB.prepare("SELECT COUNT(*) AS n FROM find_family WHERE user_id = ?").bind(user.id).first<{ n: number }>();
+    if (Number(n?.n) >= 12) return json({ error: "You can add up to 12 family members." }, 400);
+    const f: FamilyRow = { id: id("f"), user_id: user.id, name, relation, age, gender, phone: phone || null, created_at: Date.now() };
+    await db.DB.prepare("INSERT INTO find_family (id, user_id, name, relation, age, gender, phone, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").bind(f.id, f.user_id, f.name, f.relation, f.age, f.gender, f.phone, f.created_at).run();
+    return json({ member: familyOut(f) });
+  }
+  const famDel = /^\/family\/([a-z0-9]{6,40})\/delete$/.exec(path);
+  if (famDel && method === "POST") {
+    if (!user) return signIn();
+    const f = await db.DB.prepare("SELECT id FROM find_family WHERE id = ? AND user_id = ?").bind(famDel[1], user.id).first<{ id: string }>();
+    if (!f) return json({ error: "Family member not found." }, 404);
+    await db.DB.prepare("DELETE FROM find_family WHERE id = ? AND user_id = ?").bind(f.id, user.id).run();
+    return json({ ok: true });
+  }
+
   /* booking */
   if (path === "/appointments" && method === "POST") {
     if (!user) return signIn();
@@ -505,8 +558,16 @@ export async function handleFind(request: Request, env: FindEnv): Promise<Respon
     if (d.user_id === user.id) return json({ error: "You can't book an appointment with yourself." }, 400);
     const date = /^\d{4}-\d{2}-\d{2}$/.test(String(b.date)) ? String(b.date) : "", time = hhmm(b.time);
     const mode = b.mode === "video" && d.video ? "video" : "clinic";
-    const name = str(b.name, 80), phone = String(b.phone ?? "").replace(/\D/g, "").slice(-10), email = normEmail(b.email) || user.email;
-    const age = b.age === "" || b.age == null ? null : int(b.age, 0, 120);
+    let name = str(b.name, 80), phone = String(b.phone ?? "").replace(/\D/g, "").slice(-10);
+    const email = normEmail(b.email) || user.email;
+    let age = b.age === "" || b.age == null ? null : int(b.age, 0, 120);
+    // update 75: booking for a family member fills in their details
+    let familyId: string | null = null;
+    if (b.familyId) {
+      const f = await db.DB.prepare("SELECT * FROM find_family WHERE id = ? AND user_id = ?").bind(str(b.familyId, 40), user.id).first<FamilyRow>();
+      if (!f) return json({ error: "That family member isn't on your account." }, 400);
+      familyId = f.id; name = f.name; if (age == null) age = f.age; if (!/^[6-9]\d{9}$/.test(phone) && f.phone) phone = f.phone;
+    }
     const h = parseHours(d.hours), now = istNow();
     if (!date || !time || !h) return json({ error: "Choose a date and a time." }, 400);
     if (date < now.date || date > addDays(now.date, BOOK_AHEAD_DAYS) || (date === now.date && mins(time) <= now.min + 30)) return json({ error: "Choose a time at least 30 minutes from now, within the next 30 days." }, 400);
@@ -518,8 +579,8 @@ export async function handleFind(request: Request, env: FindEnv): Promise<Respon
     if (Number(mineSameDay?.n) >= 2) return json({ error: "You already have bookings with this doctor that day." }, 400);
     const aid = id("a"), at = Date.now();
     try {
-      await db.DB.prepare("INSERT INTO find_appointments (id, doctor_id, user_id, patient_name, patient_phone, patient_email, patient_age, date, time, mode, reason, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'booked', ?, ?)")
-        .bind(aid, d.id, user.id, name, phone, email || null, age, date, time, mode, longStr(b.reason, 400) || null, at, at).run();
+      await db.DB.prepare("INSERT INTO find_appointments (id, doctor_id, user_id, patient_name, patient_phone, patient_email, patient_age, date, time, mode, reason, status, created_at, updated_at, family_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'booked', ?, ?, ?)")
+        .bind(aid, d.id, user.id, name, phone, email || null, age, date, time, mode, longStr(b.reason, 400) || null, at, at, familyId).run();
     } catch (e) {
       if (/unique|constraint/i.test(String((e as Error)?.message ?? e))) return json({ error: "Someone just booked that time. Please choose another.", taken: true }, 409);
       throw e;
@@ -706,4 +767,27 @@ export async function handleFind(request: Request, env: FindEnv): Promise<Respon
     }
   }
   return json({ error: "Not found" }, 404);
+}
+
+/**
+ * Update 75: the day-before reminder. Run hourly by the Worker's cron; from 9 AM India time it emails every patient
+ * with a booked or confirmed appointment tomorrow, once.
+ */
+export async function runFindReminders(env: FindEnv): Promise<{ sent: number }> {
+  if (!env.DB) return { sent: 0 };
+  const db = env as DBEnv;
+  await ensure(db.DB);
+  const now = istNow();
+  if (now.min < 9 * 60) return { sent: 0 };
+  const tomorrow = addDays(now.date, 1);
+  const { results } = await db.DB.prepare("SELECT a.*, d.name AS d_name, d.specialty AS d_specialty, d.clinic AS d_clinic, d.address AS d_address, d.city AS d_city FROM find_appointments a JOIN find_doctors d ON d.id = a.doctor_id WHERE a.date = ? AND a.status IN ('booked', 'confirmed') AND a.reminded IS NULL AND a.patient_email IS NOT NULL LIMIT 200").bind(tomorrow).all<ApptRow & Record<string, string>>();
+  let sent = 0;
+  for (const a of results) {
+    await db.DB.prepare("UPDATE find_appointments SET reminded = ? WHERE id = ? AND reminded IS NULL").bind(Date.now(), a.id).run();
+    const when = nice(a.date, a.time);
+    const where = a.mode === "video" ? "Video consultation" : `${a.d_clinic}, ${a.d_address}, ${a.d_city}`;
+    const ok = await sendEmail(env, a.patient_email!, `Reminder: ${a.d_name} tomorrow, ${when}`, apptEmail("Your appointment is tomorrow", [["Doctor", `${a.d_name}, ${a.d_specialty}`], ["When", when], ["Where", where], ["Patient", a.patient_name], ["Status", a.status === "confirmed" ? "Confirmed by the doctor" : "Waiting for the doctor to confirm"]], a.mode === "video" ? "The video link appears in My appointments on doctors.aethex.in once the doctor confirms. Can't make it? Cancel or reschedule there." : "Please arrive 10 minutes early. Can't make it? Cancel or reschedule in My appointments on doctors.aethex.in.")).catch(() => false);
+    if (ok) sent++;
+  }
+  return { sent };
 }

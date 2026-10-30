@@ -2,9 +2,10 @@
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { Building2, CalendarCheck, CalendarClock, FileText, MapPin, Star, ThumbsDown, ThumbsUp, Video, X } from "lucide-react";
+import { Users, Building2, CalendarCheck, CalendarClock, FileText, MapPin, Star, ThumbsDown, ThumbsUp, Video, X } from "lucide-react";
 import { useSeo } from "@/hooks/use-seo";
-import { WAITS, addDays, dateLabel, displayName, findApi, freeSlots, signInHere, time12, useDoctor, useMyAppointments, type Appointment, type FindError } from "@/lib/find";
+import { WAITS, addDays, dateLabel, displayName, findApi, freeSlots, signInHere, time12, useDoctor, useFamily, useMyAppointments, type Appointment, type FindError } from "@/lib/find";
+import { CalendarButtons } from "./DoctorTools";
 import { FindNav, SignInCard } from "./FindParts";
 
 const LABEL: Record<Appointment["status"], string> = { booked: "Waiting for the doctor to confirm", confirmed: "Confirmed", completed: "Completed", "no-show": "Missed", cancelled: "Cancelled" };
@@ -62,7 +63,13 @@ export default function MyAppointments() {
     try { await findApi(`/appointments/${a.id}/cancel`, {}); refresh(); } catch (x) { setErr((x as FindError).message); }
   };
   const today = new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10);
-  const all = data?.appointments ?? [];
+  // update 75: filter by family member
+  const fam = useFamily(!error);
+  const [forWho, setForWho] = useState(() => (typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("for") ?? ""));
+  const people = fam.data?.members ?? [];
+  const nameOf = (a: Appointment) => (a.familyId ? people.find((m) => m.id === a.familyId)?.name ?? a.patient.name : "You");
+  const everyone = data?.appointments ?? [];
+  const all = forWho === "" ? everyone : everyone.filter((a) => (forWho === "me" ? !a.familyId : a.familyId === forWho));
   const upcoming = all.filter((a) => a.date >= today && ["booked", "confirmed"].includes(a.status)).reverse();
   const past = all.filter((a) => !upcoming.includes(a));
 
@@ -75,10 +82,12 @@ export default function MyAppointments() {
         <span className="mu">{dateLabel(a.date, { weekday: "long" })}, {time12(a.time)} · {a.mode === "video" ? <><Video size={13} /> Video consult</> : <><Building2 size={13} /> {a.doctor?.clinic}</>}</span>
         {a.mode === "clinic" && a.doctor && <span className="mu"><MapPin size={13} /> {a.doctor.address}, {a.doctor.city}</span>}
         {a.mode === "video" && a.link && a.status === "confirmed" && <a className="fd-btn sm" href={a.link} target="_blank" rel="noopener noreferrer"><Video size={14} /> Join video consult</a>}
+        {people.length > 0 && <span className="fd-for"><Users size={13} /> For {nameOf(a)}</span>}
         <span className={`pill ${a.status}`}>{LABEL[a.status]}</span>
         {a.note && a.status === "cancelled" && <span className="mu">{a.note}</span>}
       </div>
       <div className="do">
+        {["booked", "confirmed"].includes(a.status) && a.date >= today && <CalendarButtons a={a} />}
         {a.prescription && <Link href={`/prescription/${a.prescription}`} className="fd-btn sm"><FileText size={14} /> Prescription</Link>}
         {["booked", "confirmed"].includes(a.status) && a.date >= today && <button type="button" className="fd-btn sm ghost" onClick={() => setMoving(moving === a.id ? "" : a.id)}><CalendarClock size={14} /> Reschedule</button>}
         {["booked", "confirmed"].includes(a.status) && a.date >= today && <button type="button" className="fd-btn sm danger" onClick={() => void cancel(a)}><X size={14} /> Cancel</button>}
@@ -94,11 +103,16 @@ export default function MyAppointments() {
     <div className="fd-page" data-find="mine">
       <FindNav />
       <div className="ax-wrap fd-narrow">
-        <header className="fd-pagehead"><h1><CalendarCheck size={26} /> My appointments</h1></header>
+        <header className="fd-pagehead"><h1><CalendarCheck size={26} /> My appointments</h1><Link href="/family" className="fd-btn sm ghost"><Users size={15} /> Family members</Link></header>
+        {people.length > 0 && (
+          <div className="kh-tabs fd-tabs2" role="tablist" aria-label="Whose appointments" data-find="for-filter">
+            {[["", "Everyone"], ["me", "Me"], ...people.map((m) => [m.id, m.name])].map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={forWho === k} className={forWho === k ? "on" : ""} onClick={() => setForWho(k!)}>{l}</button>)}
+          </div>
+        )}
         {isLoading ? <div className="fd-card sk" style={{ height: 200 }} />
           : fe?.status === 401 ? <SignInCard title="Sign in to see your appointments" text="Your bookings with doctors on Aethex Doctors appear here." href={signInHere()} />
           : fe ? <div className="fd-empty"><b>Couldn't load your appointments</b><p>{fe.message}</p></div>
-          : !all.length ? <div className="fd-empty"><b>No appointments yet</b><p>Find a doctor and book a time that suits you.</p><Link href="/doctors" className="fd-btn">Find a doctor</Link></div>
+          : !all.length ? <div className="fd-empty"><b>{forWho ? "No appointments for this person" : "No appointments yet"}</b><p>Find a doctor and book a time that suits you.</p><Link href="/doctors" className="fd-btn">Find a doctor</Link></div>
           : <>
             {err && <p className="fd-err">{err}</p>}
             <h2 className="fd-h2">Upcoming</h2>

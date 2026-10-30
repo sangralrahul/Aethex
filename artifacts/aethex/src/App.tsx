@@ -108,6 +108,9 @@ const ArticlePage = lazyPage(() => import("@/pages/find/Articles").then((m) => (
 const WriteArticle = lazyPage(() => import("@/pages/find/Articles").then((m) => ({ default: m.WriteArticle })));
 const PrescriptionPage = lazyPage(() => import("@/pages/find/Prescription"));
 const HealthRecords = lazyPage(() => import("@/pages/find/HealthRecords"));
+const WhichDoctor = lazyPage(() => import("@/pages/find/DoctorTools").then((m) => ({ default: m.WhichDoctor })));
+const SavedDoctors = lazyPage(() => import("@/pages/find/DoctorTools").then((m) => ({ default: m.SavedDoctors })));
+const FamilyPage = lazyPage(() => import("@/pages/find/DoctorTools").then((m) => ({ default: m.FamilyPage })));
 const Products = lazyPage(() => import("@/pages/Products"));
 const ProductDetail = lazyPage(() => import("@/pages/ProductDetail"));
 const BookDetail = lazyPage(() => import("@/pages/BookDetail"));
@@ -425,6 +428,9 @@ function Router() {
                 <Route path="/practice/write" component={WriteArticle} />
                 <Route path="/prescription/:id" component={PrescriptionPage} />
                 <Route path="/records" component={HealthRecords} />
+                <Route path="/which-doctor" component={WhichDoctor} />
+                <Route path="/saved-doctors" component={SavedDoctors} />
+                <Route path="/family" component={FamilyPage} />
 
                 {/* Books Library */}
                 <Route path="/books" component={MedicalBooks} />

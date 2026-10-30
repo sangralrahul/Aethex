@@ -1,8 +1,9 @@
 /** Pieces shared by the Aethex Doctors pages (styles: src/site-find.css, classes fd-*). */
 import { Link, useLocation } from "wouter";
-import { BadgeCheck, Building2, CalendarCheck, FolderHeart, LayoutDashboard, MapPin, MessageCircleQuestionMark, Newspaper, Search, Star, Stethoscope, ThumbsUp, Video, UserPlus } from "lucide-react";
+import { BadgeCheck, Building2, Compass, Heart, CalendarCheck, FolderHeart, LayoutDashboard, MapPin, MessageCircleQuestionMark, Newspaper, Search, Star, Stethoscope, ThumbsUp, Video, UserPlus } from "lucide-react";
 import { formatINR } from "@/lib/utils";
 import { type Doctor, displayName, findHome, hoursText, initials } from "@/lib/find";
+import { SaveCompare } from "./DoctorTools";
 
 export function FindNav() {
   const [loc] = useLocation();
@@ -13,10 +14,12 @@ export function FindNav() {
       <div className="ax-wrap">
         <Link href={home} className={`brand ${loc === home ? "on" : ""}`}><Stethoscope size={17} /> Aethex Doctors</Link>
         <Link href="/doctors" className={on(/^\/doctors?(\/|$)/)}><Search size={15} /> Find doctors</Link>
+        <Link href="/which-doctor" className={on(/^\/which-doctor(\/|$)/)}><Compass size={15} /> Which doctor?</Link>
         <Link href="/clinics" className={on(/^\/clinics?(\/|$)/)}><Building2 size={15} /> Clinics</Link>
         <Link href="/ask" className={on(/^\/ask(\/|$)/)}><MessageCircleQuestionMark size={15} /> Ask a doctor</Link>
         <Link href="/articles" className={on(/^\/articles(\/|$)/)}><Newspaper size={15} /> Health articles</Link>
         <Link href="/appointments" className={on(/^\/(appointments|prescription)(\/|$)/)}><CalendarCheck size={15} /> My appointments</Link>
+        <Link href="/saved-doctors" className={on(/^\/saved-doctors(\/|$)/)}><Heart size={15} /> Saved</Link>
         <Link href="/records" className={on(/^\/records(\/|$)/)}><FolderHeart size={15} /> Health records</Link>
         <span className="sep" />
         <Link href="/list-your-practice" className={`doc ${on(/^\/list-your-practice/)}`}><UserPlus size={15} /> List your practice</Link>
@@ -55,6 +58,7 @@ export function DoctorCard({ d, next }: { d: Doctor; next?: string | null }) {
         </div>
       </Link>
       <div className="fd-card-side">
+        <SaveCompare slug={d.slug} name={d.name} />
         <p className="hrs">{hoursText(d.hours)}</p>
         {next && <p className="next">Next available: <b>{next}</b></p>}
         <Link href={`/doctor/${d.slug}#book`} className="fd-btn">Book clinic visit</Link>
