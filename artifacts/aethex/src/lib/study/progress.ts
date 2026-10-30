@@ -8,9 +8,9 @@
  */
 import { useSyncExternalStore } from "react";
 
-import { MAX_ATTEMPTS, blankStudy, mergeStates, type Attempt, type Bookmark, type BookmarkKind, type QSnap, type StudyState, type WrongItem } from "./merge";
+import { MAX_ATTEMPTS, blankStudy, mergeStates, type Attempt, type Bookmark, type BookmarkKind, type CardState, type ExamTarget, type QSnap, type StudyState, type WrongItem } from "./merge";
 export { mergeStates };
-export type { Attempt, Bookmark, BookmarkKind, QSnap, StudyState, WrongItem };
+export type { Attempt, Bookmark, BookmarkKind, CardState, ExamTarget, QSnap, StudyState, WrongItem };
 
 const KEY = "aethex.study.v1";
 export const GOALS = [10, 20, 30, 50, 75, 100, 150];
@@ -100,6 +100,23 @@ export const study = {
     save({ ...state, bookmarks: { ...state.bookmarks, [b.key]: { ...(cur && !cur.removed ? cur : { ...b, at: now }), note: note.slice(0, 5000), updatedAt: now, removed: false } } });
   },
   clearMastered() { load(); const wrong = { ...state.wrong }; for (const [k, w] of Object.entries(wrong)) if (w.mastered) delete wrong[k]; save({ ...state, wrong }); },
+  /** update 81: a flashcard reviewed; the next review date follows a simple spaced-repetition rule (SM-2 style). */
+  reviewCard(key: string, grade: "again" | "hard" | "good" | "easy") {
+    load();
+    const today = istDay(), cur = state.cards?.[key] ?? { due: today, interval: 0, ease: 2.5, reps: 0, lapses: 0, updatedAt: 0 };
+    let { interval, ease, reps, lapses } = cur;
+    if (grade === "again") { reps = 0; lapses += 1; interval = 0; ease = Math.max(1.3, ease - 0.2); }
+    else {
+      const q = grade === "hard" ? 3 : grade === "good" ? 4 : 5;
+      ease = Math.max(1.3, ease + 0.1 - (5 - q) * (0.08 + (5 - q) * 0.02));
+      interval = reps === 0 ? (grade === "easy" ? 4 : 1) : reps === 1 ? (grade === "hard" ? 3 : 6) : Math.round(interval * (grade === "hard" ? 1.2 : grade === "easy" ? ease * 1.3 : ease));
+      reps += 1;
+    }
+    const due = addDay(today, interval);
+    save({ ...state, days: { ...state.days }, cards: { ...(state.cards ?? {}), [key]: { due, interval, ease: Math.round(ease * 100) / 100, reps, lapses, updatedAt: Date.now() } } });
+  },
+  /** update 81: the exam being prepared for (null clears it). */
+  setExam(name: string, date: string | null) { load(); save({ ...state, exam: date ? { name: name.slice(0, 40), date, at: Date.now() } : { name: "", date: "", at: Date.now() } }); },
 };
 
 function subscribe(f: () => void) { load(); subs.add(f); return () => { subs.delete(f); }; }

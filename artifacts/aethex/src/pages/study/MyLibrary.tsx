@@ -6,9 +6,10 @@
  * - Bookmarks and notes: saved questions, topics, conditions and subjects, each with the student's own note.
  * Kept in this browser, and in the account when signed in. Styles: src/shop.css (.st-*).
  */
+import { ExamPlan, MyFlashcards, dueCards } from "@/components/study/StudyBits2";
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
-import { Bookmark, BookOpen, Cloud, CloudOff, Library, NotebookPen, RotateCcw, Search, Trash2, TrendingUp } from "lucide-react";
+import { CalendarDays, Layers, Bookmark, BookOpen, Cloud, CloudOff, Library, NotebookPen, RotateCcw, Search, Trash2, TrendingUp } from "lucide-react";
 import { useSeo } from "@/hooks/use-seo";
 import { useUserAuth } from "@/hooks/use-user-auth";
 import { PageHero } from "@/components/PageHero";
@@ -16,7 +17,7 @@ import { loginUrl } from "@/lib/host";
 import { bySubject, liveBookmarks, openWrong, study, useStudy, type Bookmark as BM } from "@/lib/study/progress";
 import { BookmarkButton, GoalPicker, Heatmap, NoteButton, Report, Runner, TodayCard, useStudySync, type RunResult } from "@/components/study/StudyBits";
 
-type Tab = "progress" | "revision" | "bookmarks";
+type Tab = "progress" | "revision" | "bookmarks" | "flashcards" | "plan";
 
 function Progress() {
   const s = useStudy();
@@ -103,21 +104,23 @@ export default function MyLibrary() {
   useStudySync();
   const { isLoggedIn } = useUserAuth();
   const s = useStudy();
-  const [tab, setTab] = useState<Tab>(() => { const t = typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("tab"); return t === "revision" || t === "bookmarks" ? t : "progress"; });
-  const nWrong = openWrong(s).length, nBm = liveBookmarks(s).length;
+  const [tab, setTab] = useState<Tab>(() => { const t = typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("tab"); return t === "revision" || t === "bookmarks" || t === "flashcards" || t === "plan" ? t : "progress"; });
+  const nWrong = openWrong(s).length, nBm = liveBookmarks(s).length, nFc = dueCards(s).due.length;
   return (
     <div className="st-page" data-study="library">
       <PageHero tag="My library" title="Your study, in one place" subtitle="Your daily goal and streak, the questions to revise, and everything you bookmarked, with your own notes." icon={<Library className="w-7 h-7" />} />
       <div className="ax-wrap st-lib">
         <p className={`st-sync${isLoggedIn ? " on" : ""}`}>{isLoggedIn ? <><Cloud size={15} /> Saved to your account: it follows you to every device.</> : <><CloudOff size={15} /> Saved in this browser. <a href={loginUrl("/", { next: "/my-library" })}>Sign in</a> to keep it in your account.</>}</p>
         <div className="st-tabs" role="tablist">
-          {([["progress", "Progress", TrendingUp, ""], ["revision", "Revision", RotateCcw, nWrong ? String(nWrong) : ""], ["bookmarks", "Bookmarks and notes", Bookmark, nBm ? String(nBm) : ""]] as const).map(([k, l, I, n]) => (
+          {([["progress", "Progress", TrendingUp, ""], ["revision", "Revision", RotateCcw, nWrong ? String(nWrong) : ""], ["bookmarks", "Bookmarks and notes", Bookmark, nBm ? String(nBm) : ""], ["flashcards", "Flashcards", Layers, nFc ? String(nFc) : ""], ["plan", "Exam plan", CalendarDays, ""]] as const).map(([k, l, I, n]) => (
             <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)} data-tab={k}><I size={16} /> {l}{n && <em>{n}</em>}</button>
           ))}
         </div>
         {tab === "progress" && <Progress />}
         {tab === "revision" && <Revision />}
         {tab === "bookmarks" && <Bookmarks />}
+        {tab === "flashcards" && <MyFlashcards />}
+        {tab === "plan" && <ExamPlan />}
       </div>
     </div>
   );

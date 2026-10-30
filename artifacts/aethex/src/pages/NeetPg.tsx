@@ -8,27 +8,16 @@ import {
   CheckCheck, X, ChevronDown,
 } from "lucide-react";
 
-import { QUESTIONS, type Difficulty, type MCQ, type Subject } from "@/data/neetpgQuestions";
+import { ALL_SUBJECTS, QUESTIONS, type Difficulty, type MCQ, type Subject } from "@/data/neetpgQuestions";
 import { study } from "@/lib/study/progress";
 import { fromBank } from "@/lib/study/questions";
 import { BookmarkButton, TodayCard } from "@/components/study/StudyBits";
+import { Leaderboard } from "@/components/study/StudyBits2";
 
 
 // ── Leaderboard Data ───────────────────────────────────────────────────────
-const LEADERBOARD = [
-  { rank: 1, name: "Dr. Priya Nair", score: 98, time: "18m 42s", avatar: "PN", badge: "🥇" },
-  { rank: 2, name: "Dr. Arjun Sharma", score: 95, time: "21m 05s", avatar: "AS", badge: "🥈" },
-  { rank: 3, name: "Dr. Sneha Kulkarni", score: 93, time: "19m 30s", avatar: "SK", badge: "🥉" },
-  { rank: 4, name: "Dr. Ravi Menon", score: 91, time: "22m 15s", avatar: "RM", badge: "" },
-  { rank: 5, name: "Dr. Kavya Iyer", score: 90, time: "24m 00s", avatar: "KI", badge: "" },
-  { rank: 6, name: "Dr. Harsh Patel", score: 88, time: "20m 55s", avatar: "HP", badge: "" },
-  { rank: 7, name: "Dr. Deepa Reddy", score: 87, time: "25m 10s", avatar: "DR", badge: "" },
-  { rank: 8, name: "Dr. Aakash Gupta", score: 85, time: "23m 40s", avatar: "AG", badge: "" },
-  { rank: 9, name: "Dr. Tanvi Shah", score: 83, time: "27m 05s", avatar: "TS", badge: "" },
-  { rank: 10, name: "Dr. Rohan Joshi", score: 82, time: "26m 30s", avatar: "RJ", badge: "" },
-];
 
-const SUBJECTS: Subject[] = ["Anatomy", "Physiology", "Biochemistry", "Pathology", "Pharmacology", "Microbiology", "Medicine", "Surgery", "Gynaecology"];
+const SUBJECTS: Subject[] = ALL_SUBJECTS;
 const FILTER_TABS = ["All", ...SUBJECTS] as const;
 
 const DIFF_STYLES: Record<Difficulty, { bg: string; color: string; border: string }> = {
@@ -41,6 +30,8 @@ const SUBJ_COLORS: Record<Subject, string> = {
   Anatomy: "#007AFF", Physiology: "#5856D6", Biochemistry: "#FF9500",
   Pathology: "#FF3B30", Pharmacology: "#00C2A8", Microbiology: "#34C759",
   Medicine: "#AF52DE", Surgery: "#FF6B35", Gynaecology: "#FF2D92",
+  Paediatrics: "#0EA5E9", "Community Medicine": "#14B8A6", "Forensic Medicine": "#64748B", Ophthalmology: "#06B6D4", ENT: "#8B5CF6",
+  Psychiatry: "#EC4899", Dermatology: "#F59E0B", Orthopaedics: "#F97316", Anaesthesia: "#3B82F6", Radiology: "#475569",
 };
 
 // ── Helper: Format seconds ─────────────────────────────────────────────────
@@ -647,46 +638,8 @@ export default function NeetPg() {
           </div>
         </div>
 
-        {/* Leaderboard */}
-        <div>
-          <div className="flex items-center gap-3 mb-6">
-            <Trophy className="w-6 h-6" style={{ color: "#FF9500" }} />
-            <h2 className="text-2xl font-display font-bold" style={{ color: "#1C1C1E" }}>Leaderboard</h2>
-          </div>
-          <div className="rounded-2xl overflow-hidden" style={{ background: "#FFFFFF", border: "1px solid rgba(60,60,67,0.1)", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
-            {/* Header */}
-            <div className="grid grid-cols-[48px_1fr_80px_80px] gap-4 px-6 py-3 text-xs font-bold"
-              style={{ background: "rgba(0,122,255,0.05)", borderBottom: "1px solid rgba(60,60,67,0.08)", color: "#AEAEB2" }}>
-              <span>Rank</span><span>Doctor</span><span className="text-center">Score</span><span className="text-center">Time</span>
-            </div>
-            {LEADERBOARD.map((entry, i) => (
-              <div key={i} className="grid grid-cols-[48px_1fr_80px_80px] gap-4 px-6 py-4 items-center transition-all hover:bg-gray-50"
-                style={{ borderBottom: i < LEADERBOARD.length - 1 ? "1px solid rgba(60,60,67,0.06)" : "none" }}>
-                <div className="flex items-center justify-center">
-                  {entry.badge
-                    ? <span className="text-lg">{entry.badge}</span>
-                    : <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
-                        style={{ background: "rgba(60,60,67,0.08)", color: "#636366" }}>
-                        {entry.rank}
-                      </span>}
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                    style={{ background: `rgba(0,122,255,0.1)`, color: "#007AFF" }}>
-                    {entry.avatar}
-                  </div>
-                  <span className="text-sm font-semibold" style={{ color: "#1C1C1E" }}>{entry.name}</span>
-                </div>
-                <div className="text-center">
-                  <span className="text-sm font-bold" style={{ color: entry.score >= 90 ? "#34C759" : entry.score >= 75 ? "#FF9500" : "#1C1C1E" }}>
-                    {entry.score}%
-                  </span>
-                </div>
-                <div className="text-center text-xs font-medium" style={{ color: "#636366" }}>{entry.time}</div>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* Leaderboard: update 81, real mock-test results of students who chose to show their name */}
+        <div className="mt-12"><Leaderboard /></div>
       </div>
     </div>
   );

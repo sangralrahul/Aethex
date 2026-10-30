@@ -1,12 +1,15 @@
 /**
  * The NEET-PG question bank used by the NEET-PG practice, the quick test, the custom test builder (update 77) and the
- * revision deck. Moved out of src/pages/NeetPg.tsx unchanged.
+ * revision deck. Moved out of src/pages/NeetPg.tsx unchanged; update 81 adds the questions in src/data/neetpgMore.ts.
  */
+import { MORE } from "./neetpgMore";
 // ── Types ──────────────────────────────────────────────────────────────────
 export type Difficulty = "Easy" | "Medium" | "Hard";
 export type Subject =
   | "Anatomy" | "Physiology" | "Biochemistry" | "Pathology"
-  | "Pharmacology" | "Microbiology" | "Medicine" | "Surgery" | "Gynaecology";
+  | "Pharmacology" | "Microbiology" | "Medicine" | "Surgery" | "Gynaecology"
+  // update 81
+  | "Paediatrics" | "Community Medicine" | "Forensic Medicine" | "Ophthalmology" | "ENT" | "Psychiatry" | "Dermatology" | "Orthopaedics" | "Anaesthesia" | "Radiology";
 
 export interface MCQ {
   id: number;
@@ -20,7 +23,7 @@ export interface MCQ {
 }
 
 // ── Question Bank ──────────────────────────────────────────────────────────
-export const QUESTIONS: MCQ[] = [
+const FIRST: MCQ[] = [
   {
     id: 1,
     subject: "Anatomy",
@@ -317,3 +320,7 @@ export const QUESTIONS: MCQ[] = [
     reference: "Harrison's Principles of Internal Medicine",
   },
 ];
+
+/** Every question: the first twenty and those added in update 81. */
+export const QUESTIONS: MCQ[] = [...FIRST, ...MORE];
+export const ALL_SUBJECTS: Subject[] = [...new Set(QUESTIONS.map((q) => q.subject))];

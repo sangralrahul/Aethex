@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { MyCardsBanner } from "@/components/study/StudyBits2";
 import { useSeo } from "@/hooks/use-seo";
 import { Link, useRoute } from "wouter";
 import { Brain, RotateCcw, ChevronLeft, Check, X } from "lucide-react";
@@ -27,6 +28,7 @@ function DeckList() {
         subtitle="Spaced repetition powered by the SM-2 algorithm"
       />
       <div className="ax-wrap ax-py">
+        <div style={{ marginBottom: 16 }}><MyCardsBanner /></div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {decks.map((d) => {
             const s = deckStats(d.id);

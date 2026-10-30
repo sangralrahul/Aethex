@@ -4,7 +4,11 @@ export interface Attempt { key: string; subject: string; correct: boolean; at: n
 export interface WrongItem { q: QSnap; at: number; tries: number; mastered?: number; updatedAt: number }
 export type BookmarkKind = "question" | "topic" | "condition" | "subject";
 export interface Bookmark { key: string; kind: BookmarkKind; title: string; href?: string; subject?: string; q?: QSnap; note?: string; at: number; updatedAt: number; removed?: boolean }
-export interface StudyState { v: 1; goal: number; goalAt: number; days: Record<string, number>; attempts: Attempt[]; wrong: Record<string, WrongItem>; bookmarks: Record<string, Bookmark>; updatedAt: number }
+/** update 81: a flashcard's review schedule (spaced repetition), by the card's key */
+export interface CardState { due: string; interval: number; ease: number; reps: number; lapses: number; updatedAt: number }
+/** update 81: the exam the student is preparing for */
+export interface ExamTarget { name: string; date: string; at: number }
+export interface StudyState { v: 1; goal: number; goalAt: number; days: Record<string, number>; attempts: Attempt[]; wrong: Record<string, WrongItem>; bookmarks: Record<string, Bookmark>; updatedAt: number; cards?: Record<string, CardState>; exam?: ExamTarget | null }
 
 export const MAX_ATTEMPTS = 3000;
 export const blankStudy = (): StudyState => ({ v: 1, goal: 30, goalAt: 0, days: {}, attempts: [], wrong: {}, bookmarks: {}, updatedAt: 0 });
@@ -22,6 +26,7 @@ export function mergeStates(a: StudyState, b: StudyState): StudyState {
     return out;
   };
   const goalFromB = b.goalAt > a.goalAt;
-  return { v: 1, goal: goalFromB ? b.goal : a.goal, goalAt: Math.max(a.goalAt, b.goalAt), days, attempts, wrong: pick(a.wrong, b.wrong), bookmarks: pick(a.bookmarks, b.bookmarks), updatedAt: Math.max(a.updatedAt, b.updatedAt) };
+  const exam = (b.exam?.at ?? 0) > (a.exam?.at ?? 0) ? b.exam ?? null : a.exam ?? null;
+  return { v: 1, goal: goalFromB ? b.goal : a.goal, goalAt: Math.max(a.goalAt, b.goalAt), days, attempts, wrong: pick(a.wrong, b.wrong), bookmarks: pick(a.bookmarks, b.bookmarks), updatedAt: Math.max(a.updatedAt, b.updatedAt), cards: pick(a.cards ?? {}, b.cards ?? {}), exam };
 }
 

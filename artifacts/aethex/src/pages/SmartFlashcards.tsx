@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { MyCardsBanner } from "@/components/study/StudyBits2";
 import { motion, AnimatePresence } from "framer-motion";
 import { BookOpen, Plus, Loader2, RotateCcw, CheckCircle, XCircle, ChevronDown, Trash2, Brain, Clock } from "lucide-react";
 
@@ -107,6 +108,7 @@ Respond ONLY as valid JSON (no markdown):
 
   return (
     <div className="min-h-screen" style={{ background: "#0B0F1A", color: "#fff" }}>
+      <div className="max-w-4xl mx-auto px-4 pt-6"><MyCardsBanner /></div>
       <div style={{ background: "linear-gradient(135deg,#0B0F1A,#0d1020)", borderBottom: "1px solid rgba(139,92,246,0.2)", padding: "48px 0 32px" }}>
         <div className="max-w-4xl mx-auto px-4">
           <div className="flex items-center gap-3 mb-2">
