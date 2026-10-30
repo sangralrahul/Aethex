@@ -12,9 +12,14 @@ import {
 import { useSeo } from "@/hooks/use-seo";
 import { CITIES, CONCERNS, SPECIALTIES, findHome, useDoctors } from "@/lib/find";
 import { FindNav } from "./FindParts";
-import { HeroScene } from "@/components/visual/HeroScene";
+import { MarketTop } from "@/components/layout/MarketTop";
 import { CardArt } from "@/components/visual/CardArt";
 
+/** The specialties down the side of the home page, with their icons. */
+const SPEC_LIST: [string, typeof Stethoscope][] = [
+  ["General Physician", Stethoscope], ["Paediatrician", Baby], ["Gynaecologist / Obstetrician", Flower2], ["Dermatologist", Sparkles], ["Dentist", Smile],
+  ["Orthopaedic Surgeon", Bone], ["ENT Specialist", Ear], ["Ophthalmologist", Eye], ["Cardiologist", HeartPulse], ["Psychiatrist", Brain], ["Endocrinologist", Droplet],
+];
 const CONCERN_ICON = [Thermometer, Baby, Flower2, Sparkles, Smile, Bone, Ear, Eye, HeartPulse, Brain, Droplet, Soup];
 
 export default function FindHome() {
@@ -37,15 +42,12 @@ export default function FindHome() {
   return (
     <div className="fd-page" data-find="home">
       <FindNav />
-      {/* update 67: the same hero as the other platforms, in the Doctors blue */}
-      <section className="ax-ihero fd-hero2">
-        <div className="ax-ihero-bg" aria-hidden="true"><i /><i /><i /><HeroScene kind="pulse" rgb="56,189,248" ghosts={["stethoscope", "otoscope"]} /></div>
-        <div className="ax-wrap ax-ihero-in">
-          <div className="txt">
-            <span className="eyebrow"><Stethoscope size={15} /> Aethex Doctors<em>Clinic visits and video consults</em></span>
-            <h1>Find a doctor. Book a visit.</h1>
-            <p>Search by city and specialty, see fees and consulting hours, and book a clinic visit or a video consult in a minute.</p>
-          <form className="fd-search" onSubmit={search} role="search">
+      {/* update 71: the marketplace top, like the Store's */}
+      <MarketTop
+        portal="doctors"
+        title="Find a doctor. Book a visit."
+        sub="Checked doctors and clinics near you: see fees and consulting hours, book a clinic visit or a video consult."
+        right={<form className="fd-search" onSubmit={search} role="search">
             <label className="city"><MapPin size={18} />
               <input list="fd-cities" value={city} onChange={(e) => setCity(e.target.value)} placeholder="City" aria-label="City" />
               <datalist id="fd-cities">{(data?.cities.length ? data.cities.map((c) => c.city) : CITIES).map((c) => <option key={c} value={c} />)}</datalist>
@@ -55,26 +57,29 @@ export default function FindHome() {
               <datalist id="fd-specs">{SPECIALTIES.map((s) => <option key={s} value={s} />)}</datalist>
             </label>
             <button type="submit" className="fd-btn lg">Search</button>
-          </form>
-          <div className="fd-quick">
-            {["General Physician", "Paediatrician", "Gynaecologist / Obstetrician", "Dermatologist", "Dentist", "Orthopaedic Surgeon"].map((s) => (
-              <button key={s} type="button" onClick={() => go(`/doctors?specialty=${encodeURIComponent(s)}${city ? `&city=${encodeURIComponent(city)}` : ""}`)}>{s}</button>
-            ))}
-          </div>
-            <ul className="fd-assure">
-              <li><BadgeCheck size={16} /> Every doctor's registration is checked before they're listed</li>
-              <li><Sparkles size={16} /> Reviews only from completed visits</li>
-            </ul>
-          </div>
-          <div className="art" aria-hidden="true">
-            {["stethoscope", "bp-monitor", "otoscope", "thermometer"].map((n, i) => <span key={n} className={`ph p${i}`}><img src={`${import.meta.env.BASE_URL}product-images/${n}.jpg`} alt="" loading="eager" decoding="async" /></span>)}
-            <div className="ticket">
-              <b><ShieldCheck size={16} /> Checked doctors only</b>
-              <small>Each doctor's medical registration number is checked before the profile goes live.</small>
-            </div>
-          </div>
-        </div>
-      </section>
+          </form>}
+        deptTitle="Specialties"
+        depts={SPEC_LIST.map(([sp, I]) => ({ label: sp, icon: I, href: `/doctors?specialty=${encodeURIComponent(sp)}${city ? `&city=${encodeURIComponent(city)}` : ""}` }))}
+        all={{ label: "All specialties", href: "/doctors" }}
+        scene="pulse" rgb="56,189,248"
+        slides={[
+          { kicker: "Clinic visits", title: "Book a doctor near you", text: "Search by city and specialty, see the doctor's free times and book in a minute. The doctor confirms by email.", cta: { label: "Find doctors", onClick: () => search() }, second: { label: "Clinics", href: "/clinics" }, tone: "navy", photo: "stethoscope", icon: CalendarCheck },
+          { kicker: "Video consults", title: "See a doctor from home", text: "Doctors who also consult online, with their own video link. Book a time that suits you.", cta: { label: "Video consults", onClick: () => search(undefined, { video: "1" }) }, tone: "blue", photo: "oximeter", icon: Video },
+          { kicker: "Ask a doctor", title: "Ask a health question, free", text: "Post your question without your name. Doctors whose registration we've checked answer, usually within a day.", cta: { label: "Ask a question", href: "/ask" }, second: { label: "Health articles", href: "/articles" }, tone: "ink", photo: "otoscope", icon: MessageCircleQuestionMark },
+          { kicker: "For doctors", title: "List your practice. Free.", text: "Add your clinic, fees and consulting hours. Patients book your free slots and you confirm them from your dashboard.", cta: { label: "List your practice", href: "/list-your-practice" }, second: { label: "Practice dashboard", href: "/practice" }, tone: "slate", photo: "bp-monitor", icon: UserPlus },
+        ]}
+        promos={[
+          { kicker: "Health records", title: "Your reports in one place", text: "Kept on your device", href: "/records", icon: FolderHeart },
+          { kicker: "Clinics", title: "Clinics near you", text: "Every doctor at each clinic", href: "/clinics", icon: Building2, dark: true },
+        ]}
+        trust={[
+          { icon: BadgeCheck, t: "Checked doctors", d: "Registration verified" },
+          { icon: Sparkles, t: "Real reviews", d: "Only after a visit" },
+          { icon: Video, t: "Video consults", d: "From your home" },
+          { icon: MessageCircleQuestionMark, t: "Ask free", d: "Answers from doctors" },
+          { icon: FolderHeart, t: "Health records", d: "On your device only" },
+        ]}
+      />
 
       <section className="fd-services">
         <div className="ax-wrap fd-svc-grid">

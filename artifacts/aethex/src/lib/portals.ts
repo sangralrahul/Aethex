@@ -70,6 +70,8 @@ export interface PortalConfig {
   search: { placeholder: string; to: (q: string) => string; suggestions: string[] } | null;
   shop: boolean;
   cta: NavLink | null;
+  /** A link at the right end of the category strip. */
+  help?: NavLink;
   account: NavLink[];
   footer: { title: string; links: NavLink[] }[];
 }
@@ -87,6 +89,7 @@ export const PORTALS: Record<Site, PortalConfig> = {
     search: { placeholder: "Search products, brands and books", to: (q) => `/shop?search=${encodeURIComponent(q)}`, suggestions: ["BP monitor", "Littmann stethoscope", "Pulse oximeter", "Glucometer", "Knee support", "Nebulizer", "Otoscope"] },
     shop: true,
     cta: null,
+    help: { href: "/orders/track", label: "Track an order" },
     account: [{ href: "/account", label: "My account" }, { href: "/orders", label: "My orders" }, { href: "/orders/track", label: "Track an order" }, { href: "/wishlist", label: "Wishlist" }, { href: "/my-reviews", label: "My reviews" }],
     footer: [
       { title: "Shop", links: [{ href: "/shop", label: "All products" }, { href: "/category/bp-monitors", label: "BP monitors" }, { href: "/category/stethoscopes", label: "Stethoscopes" }, { href: "/category/diagnostic-instruments", label: "Diagnostic instruments" }, { href: "/category/diabetes-care", label: "Diabetes care" }, { href: "/books", label: "Medical books" }, { href: "/brands", label: "All brands" }] },
@@ -115,9 +118,10 @@ export const PORTALS: Record<Site, PortalConfig> = {
       { href: "/study-hub", label: "Study Hub" }, { href: "/neet-pg", label: "NEET-PG" }, { href: "/study-hub/medical-knowledge-hub", label: "Knowledge Hub" },
       { href: "/mock-test", label: "Mock tests" }, { href: "/flashcards", label: "Flashcards" }, { href: "/case-of-the-day", label: "Case of the day" }, { href: "/tools", label: "Clinical tools" },
     ],
-    search: null,
+    search: { placeholder: "Search topics, conditions and subjects", to: (q) => `/study-hub/medical-knowledge-hub?q=${encodeURIComponent(q)}`, suggestions: ["Brachial plexus", "Heart failure", "Diabetes mellitus", "Antibiotics", "Stroke", "Anaemia"] },
     shop: false,
     cta: { href: "/mock-test", label: "Take a mock test" },
+    help: { href: "/cme-hub", label: "CME Hub" },
     account: [{ href: "/account", label: "My account" }, { href: "/progress-tracker", label: "My progress" }, { href: "/cme-hub", label: "CME Hub" }, { href: "/study-planner", label: "Study planner" }],
     footer: [
       { title: "Prepare", links: [{ href: "/study-hub", label: "Study Hub" }, { href: "/neet-pg", label: "NEET-PG" }, { href: "/mock-test", label: "Mock tests" }, { href: "/flashcards", label: "Flashcards" }, { href: "/study-planner", label: "Study planner" }, { href: "/cme-hub", label: "CME Hub" }] },
@@ -128,8 +132,8 @@ export const PORTALS: Record<Site, PortalConfig> = {
   hospitals: {
     name: "for Hospitals",
     tagline: "Hospital furniture, ICU, emergency, diagnostic and lab equipment: send one list, get one quotation.",
-    links: [{ href: "/", label: "Overview" }, { href: "/#list", label: "Build your list" }, { href: "/#how", label: "How it works" }, { href: "/institutions", label: "Directory" }, { href: "/account/quotations", label: "My quotations" }],
-    search: null,
+    links: [{ href: "/", label: "Overview" }, { href: "/category/hospital-furniture", label: "Beds and furniture" }, { href: "/category/icu-equipment", label: "ICU" }, { href: "/category/emergency-care", label: "Emergency" }, { href: "/category/syringes-needles", label: "Syringes and IV" }, { href: "/category/lab-equipment", label: "Laboratory" }, { href: "/#list", label: "Build your list" }, { href: "/#how", label: "How it works" }, { href: "/institutions", label: "Directory" }, { href: "/account/quotations", label: "My quotations" }],
+    search: { placeholder: "Search hospital equipment and supplies", to: (q) => `/shop?search=${encodeURIComponent(q)}`, suggestions: ["ICU bed", "Patient monitor", "Defibrillator", "Syringe pump", "Wheelchair", "Oxygen"] },
     shop: false,
     cta: { href: "/#list", label: "Request a quotation" },
     account: [{ href: "/account/quotations", label: "My quotations" }, { href: "/account", label: "My account" }],
@@ -142,8 +146,8 @@ export const PORTALS: Record<Site, PortalConfig> = {
   medicalcolleges: {
     name: "for Medical Colleges",
     tagline: "Skills trainers, manikins, anatomy models, lab equipment and textbooks: one list, one quotation.",
-    links: [{ href: "/", label: "Overview" }, { href: "/#list", label: "Build your list" }, { href: "/#how", label: "How it works" }, { href: "/books", label: "Textbooks" }, { href: "/account/quotations", label: "My quotations" }],
-    search: null,
+    links: [{ href: "/", label: "Overview" }, { href: "/category/skills-simulators", label: "Skills lab" }, { href: "/category/anatomy-models", label: "Anatomy models" }, { href: "/category/lab-equipment", label: "Laboratory" }, { href: "/category/stethoscopes", label: "Stethoscopes" }, { href: "/books", label: "Textbooks" }, { href: "/#list", label: "Build your list" }, { href: "/#how", label: "How it works" }, { href: "/account/quotations", label: "My quotations" }],
+    search: { placeholder: "Search skills-lab, anatomy and lab equipment", to: (q) => `/shop?search=${encodeURIComponent(q)}`, suggestions: ["CPR manikin", "Skeleton model", "Microscope", "Stethoscope", "Centrifuge", "IV arm"] },
     shop: false,
     cta: { href: "/#list", label: "Request a quotation" },
     account: [{ href: "/account/quotations", label: "My quotations" }, { href: "/account", label: "My account" }],

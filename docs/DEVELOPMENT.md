@@ -247,6 +247,14 @@ Study tools, flashcard decks, clinical tools, CME modules, the Doctors services 
 college departments and ready-made lists, and the Store's practice, promo and promise cards. Shaded section bands carry a
 drifting dot pattern. Do not name a class `ring`: Tailwind's `.ring` draws an outline.
 
+Update 71, the marketplace redesign: every platform uses the Store's layout. The portal header has two rows: logo, a
+wide search bar (each platform searches its own content: products, doctors, Knowledge Hub topics, or the catalogue for
+hospitals and colleges) and account; then a category strip (`PORTALS[...].links`, plus `help` at its right end; Doctors
+keeps its own FindNav strip). Each home page starts with `MarketTop` (`src/components/layout/MarketTop.tsx`): a title
+strip with the page's search or actions, departments on the left, a rotating banner with product photos and the living
+background, two promo tiles, and a strip of promises. It reuses the Store's `ec-*` styles; `.mk-<portal>` sets the
+colours. The Knowledge Hub reads `?q=` from the header search.
+
 ## Aethex Doctors
 
 `worker/find.ts` (`/api/find/*`), tables in `migrations/0006_find.sql` (also created on first use). Doctors list

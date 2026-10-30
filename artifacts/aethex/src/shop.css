@@ -1883,3 +1883,80 @@ li.has-art .cart .glow{width:140px;height:140px;right:-40px;bottom:-60px}
 .ax-sth-band,.kh-band,.ax-bulk .ax-bulk-how,.cme-more{background-image:radial-gradient(rgba(15,23,42,.07) 1px,transparent 1.6px);background-size:22px 22px;animation:band-drift 60s linear infinite}
 @keyframes band-drift{to{background-position:220px 110px}}
 @media (prefers-reduced-motion:reduce){.ax-sth-band,.kh-band,.ax-bulk .ax-bulk-how,.cme-more{animation:none}}
+
+/* ================================================================ update 71: the marketplace redesign, all platforms */
+/* header: logo, a wide search bar, account; then a category strip */
+.ax-phead .ax-head-in{gap:16px}
+.ax-phead .mk-search{flex:1;width:auto;max-width:700px;height:44px;margin:0 6px;padding:0 10px 0 14px;border-radius:11px;background:#f4f6f8;border:1px solid #e4e7ec;color:#667085}
+.ax-phead .mk-search:hover{border-color:#cbd2dc;background:#fff}
+.ax-phead .mk-search span{display:block;flex:1;min-width:0;text-align:left;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:14.5px}
+.ax-phead .mk-search kbd{display:inline-block}
+.mk-catbar{background:#fff;border-top:1px solid #eef0f3}
+.mk-catbar .ax-wrap{display:flex;align-items:center;gap:2px;height:44px;overflow-x:auto;scrollbar-width:none;white-space:nowrap}
+.mk-catbar .ax-wrap::-webkit-scrollbar{display:none}
+.mk-catbar a{display:inline-flex;align-items:center;flex-shrink:0;height:32px;padding:0 12px;border-radius:8px;color:#344054;font-size:14px;font-weight:500;text-decoration:none}
+.mk-catbar a:hover{background:#f4f6f8;color:#0b1220}
+.mk-catbar a.on{background:#f1f3f6;color:#0b1220;font-weight:650}
+.mk-catbar a.help{margin-left:auto;font-weight:600}
+.ax-phead[data-portal-header=store] .mk-catbar a.help{color:#0f766e}
+.ax-phead[data-portal-header=study] .mk-catbar a.help{color:#6d28d9}
+.ax-phead[data-portal-header=hospitals] .mk-catbar a.help{color:#0e7490}
+.ax-phead[data-portal-header=medicalcolleges] .mk-catbar a.help{color:#b45309}
+@media (max-width:1180px){.ax-phead .mk-search kbd{display:none}}
+@media (max-width:760px){
+  .ax-phead .ax-head-in{flex-wrap:wrap;height:auto;min-height:60px;row-gap:8px;padding-top:8px;padding-bottom:10px}
+  .ax-phead .mk-search{order:3;flex:1 1 100%;max-width:none;width:100%;margin:0;height:42px;justify-content:flex-start}
+  .ax-phead .mk-search span{display:block}
+  .mk-catbar .ax-wrap{height:40px}
+}
+
+/* the home-page top */
+.mk{--ec-teal:#0f766e;--ec-teal2:#0b5f58;--ec-teal-bg:#e7f4f1;background:#f4f6f8;padding:0 0 4px;color:#0b1220}
+.mk-doctors{--ec-teal:#1d4ed8;--ec-teal2:#1e40af;--ec-teal-bg:#eaf0fe}
+.mk-study{--ec-teal:#6d28d9;--ec-teal2:#5b21b6;--ec-teal-bg:#f3eefe}
+.mk-hospitals{--ec-teal:#0e7490;--ec-teal2:#0b5f76;--ec-teal-bg:#e7f4f7}
+.mk-medicalcolleges{--ec-teal:#b45309;--ec-teal2:#92400e;--ec-teal-bg:#fdf3e7}
+.mk-strip{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;padding-top:22px;padding-bottom:18px}
+.mk-title{min-width:0;flex:1 1 380px}
+.mk-title h1{margin:0;font-family:var(--ax-display);font-size:clamp(24px,2.3vw,32px);line-height:1.15;font-weight:760;letter-spacing:-.025em;color:#0b1220}
+.mk-title p{margin:6px 0 0;max-width:70ch;font-size:14.5px;line-height:1.55;color:#475467}
+.mk-right{flex:0 1 auto;min-width:0}
+.mk-right .fd-search{margin:0;width:min(680px,100%);max-width:none;padding:6px;border-radius:12px;border:1px solid #e4e7ec;box-shadow:0 10px 30px -20px rgba(16,24,40,.35)}
+.mk-right .fd-search label{height:46px}
+.mk-right .fd-search .fd-btn{height:46px}
+.mk-hs{width:min(560px,100vw - 32px)}
+.mk .ax-bulk-hero-acts .ax-btn:not(.teal){background:#fff}
+.mk .ec-depts button{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border:0;border-radius:8px;background:none;color:#344054;font:inherit;font-size:14px;font-weight:500;text-align:left;cursor:pointer}
+.mk .ec-depts button svg{flex-shrink:0;color:var(--ec-teal)}
+.mk .ec-depts button span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mk .ec-depts button .ch{color:#98a2b3;opacity:0;transition:opacity .15s,transform .15s}
+.mk .ec-depts button:hover{background:#f4f6f8;color:#0b1220}
+.mk .ec-depts button:hover .ch{opacity:1;transform:translateX(2px)}
+.mk .ec-depts button.all{margin-top:auto;padding-top:12px;color:var(--ec-teal);font-weight:600}
+.ec-slide.violet{background:linear-gradient(120deg,#1e0b4b 0,#3b1585 60%,#6d28d9 100%)}
+.ec-slide.blue{background:linear-gradient(120deg,#0a1a4a 0,#173aa8 65%,#1d4ed8 100%)}
+.ec-slide.cyan{background:linear-gradient(120deg,#05232d 0,#0b5f76 65%,#0e7490 100%)}
+.ec-slide.amber{background:linear-gradient(120deg,#2a1404 0,#7c3a0a 65%,#b45309 100%)}
+.ec-slide .pic.ico span{position:relative;display:grid;place-items:center;width:min(300px,72%);aspect-ratio:1;color:var(--ec-teal)}
+.ec-slide .pic.ico svg{width:52%;height:52%}
+.mk .ec-slide small{color:#e2e8f0}
+.mk .mk-promo{background:var(--ec-teal-bg);color:var(--ec-teal)}
+.mk .mk-promo b{color:#0b1220}
+.mk .mk-promo .art{color:var(--ec-teal);opacity:.45}
+.mk .mk-promo.dark{background:#0b1220;color:#cbd5e1}
+.mk .mk-promo.dark b{color:#fff}
+.mk .mk-promo.dark .art{opacity:.6}
+.mk .ec-services .ic{background:var(--ec-teal-bg);color:var(--ec-teal)}
+.mk-trust{padding-bottom:6px}
+@media (max-width:1180px){.mk-right{flex:1 1 100%}.mk-right .fd-search,.mk-hs{width:100%}}
+@media (max-width:860px){.mk .ec-promos{grid-template-columns:1fr 1fr;grid-template-rows:none}}
+@media (max-width:640px){
+  .mk-strip{padding-top:16px;padding-bottom:14px}
+  .mk .ec-promos{grid-template-columns:1fr}
+  .mk-right .fd-search{flex-direction:column}
+  .mk .ax-bulk-hero-acts .ax-btn{flex:1 1 100%;justify-content:center}
+}
+.mk .ec-slide h2{color:#fff}
+.mk .ec-slide p{color:rgba(255,255,255,.8)}
+.fd-page .mk + .fd-services{margin-top:0;padding-top:28px}
+.fd-docband{background:radial-gradient(600px 260px at 100% 0,rgba(56,189,248,.24),transparent 70%),linear-gradient(150deg,#071225,#0d2148 70%,#10275a)}

@@ -68,13 +68,8 @@ export function PortalHeader({ portal }: { portal: Site }) {
       <header className={`ax-head ax-phead no-print ${scrolled ? "scrolled" : ""}`} data-portal-header={portal}>
         <div className="ax-wrap ax-head-in">
           <PortalLogo portal={portal} />
-          {cfg.links.length > 0 && (
-            <nav className="ax-pnav" aria-label={`Aethex ${cfg.name}`}>
-              {cfg.links.map((l) => <L key={l.href} to={l.href} className={isOn(l) ? "on" : ""}>{l.label}</L>)}
-            </nav>
-          )}
+          {cfg.search && <button type="button" className="ax-search-btn mk-search" onClick={() => setSearching(true)} aria-label="Search"><Search size={17} /><span>{cfg.search.placeholder}</span><kbd>Ctrl K</kbd></button>}
           <div className="ax-head-r">
-            {cfg.search && <button type="button" className="ax-search-btn" onClick={() => setSearching(true)} aria-label="Search"><Search size={16} /><span>{portal === "store" ? "Search the store" : "Search doctors"}</span><kbd>Ctrl K</kbd></button>}
             {cfg.shop && <CartIcons />}
             <div className="ax-acct" ref={acctRef}>
               <button type="button" className="ax-acct-btn" onClick={() => setAcct(!acct)} aria-expanded={acct} aria-label="Account">
@@ -94,6 +89,14 @@ export function PortalHeader({ portal }: { portal: Site }) {
             <button type="button" className="ax-icon ax-burger" onClick={() => setMobile(true)} aria-label="Open menu"><Menu size={21} /></button>
           </div>
         </div>
+        {cfg.links.length > 0 && (
+          <nav className="mk-catbar" aria-label={`Aethex ${cfg.name}`}>
+            <div className="ax-wrap">
+              {cfg.links.map((l, k) => <L key={l.href} to={l.href} className={`${isOn(l) ? "on" : ""}${k === 0 ? " first" : ""}`}>{l.label}</L>)}
+              {cfg.help && <L to={cfg.help.href} className="help">{cfg.help.label}</L>}
+            </div>
+          </nav>
+        )}
       </header>
 
       {searching && cfg.search && (
@@ -104,7 +107,7 @@ export function PortalHeader({ portal }: { portal: Site }) {
               <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={cfg.search.placeholder} aria-label="Search" />
               <button type="button" className="ax-icon" onClick={() => setSearching(false)} aria-label="Close search"><X size={18} /></button>
             </form>
-            {portal === "store" && q.trim().length >= 2 ? <SearchResults q={q.trim()} onGo={() => setSearching(false)} onAll={() => run(q)} /> : (
+            {(portal === "store" || portal === "hospitals" || portal === "medicalcolleges") && q.trim().length >= 2 ? <SearchResults q={q.trim()} onGo={() => setSearching(false)} onAll={() => run(q)} /> : (
               <div className="sugg"><p>Popular</p><div>{cfg.search.suggestions.map((s) => <button key={s} type="button" onClick={() => run(s)}>{s}</button>)}</div></div>
             )}
           </div>

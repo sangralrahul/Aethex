@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useMemo, useState, type ComponentType } from "react";
 import { Link, useLocation } from "wouter";
 import { sitePortal } from "@/lib/portals";
-import { HeroScene } from "@/components/visual/HeroScene";
+import { MarketTop } from "@/components/layout/MarketTop";
 import { CardArt } from "@/components/visual/CardArt";
 import {
   Accessibility, Droplet, HeartHandshake, Mail, Scale, Wind,
@@ -46,12 +46,6 @@ function sectionProducts(store: StoreData, sec: BulkSection): ProductSummary[] {
   for (let i = 0; queues.some((q) => i < q.length); i++) for (const q of queues) if (i < q.length) out.push(q[i]);
   return out;
 }
-
-const HERO_PHOTOS: Record<Segment, string[]> = {
-  hospital: ["ecg", "laryngoscope", "xray-viewer", "oximeter"],
-  college: ["stethoscope", "neuro-kit", "surgical-set", "medical-book"],
-};
-const IMG = (n: string) => `${import.meta.env.BASE_URL}product-images/${n}.jpg`;
 
 const DEPT_ICONS: Record<string, ComponentType<LucideProps>> = {
   beds: BedDouble, icu: HeartPulse, emergency: Siren, iv: Syringe, wards: Activity, diagnostics: Stethoscope, respiratory: Wind,
@@ -101,40 +95,46 @@ export default function BulkPortal({ segment }: { segment: Segment }) {
 
   return (
     <div className={`ax-bulk seg-${segment}`}>
-      <section className="ax-ihero">
-        <div className="ax-ihero-bg" aria-hidden="true"><i /><i /><i />{segment === "hospital" ? <HeroScene kind={["cross", "pulse"]} rgb="34,211,238" ghosts={["ecg", "xray-viewer"]} /> : <HeroScene kind={["dna", "molecules"]} rgb="251,191,36" ghosts={["neuro-kit", "stethoscope"]} />}</div>
-        <div className="ax-wrap ax-ihero-in">
-          <div className="txt">
-            <span className="eyebrow"><Icon segment={segment} /> {cfg.tag}<em>Institutional supply</em></span>
-            <h1>{cfg.title}</h1>
-            <p>{cfg.subtitle}</p>
-            <div className="ax-bulk-hero-acts">
-              <button type="button" className="ax-btn teal lg" onClick={openQuote}><ClipboardList size={17} /> Request a quotation</button>
-              <a href="#catalogue" className="ax-btn lg ghost">Browse the catalogue <ArrowRight size={16} /></a>
-              <a href="#how" className="ax-btn lg ghost subtle">How it works</a>
-            </div>
-            <dl className="facts">
-              <div><dt>{store ? total.toLocaleString("en-IN") : "…"}</dt><dd>products for {segment === "hospital" ? "hospitals" : "colleges"}</dd></div>
-              <div><dt>{store ? brands.length : "…"}</dt><dd>brands</dd></div>
-              <div><dt>{cfg.sections.length}</dt><dd>departments covered</dd></div>
-            </dl>
+      {/* update 71: the marketplace top, like the Store's */}
+      <MarketTop
+        portal={segment === "hospital" ? "hospitals" : "medicalcolleges"}
+        title={cfg.title}
+        sub={cfg.subtitle}
+        right={
+          <div className="ax-bulk-hero-acts">
+            <button type="button" className="ax-btn teal lg" onClick={openQuote}><ClipboardList size={17} /> Request a quotation</button>
+            <a href="#how" className="ax-btn lg">How it works</a>
           </div>
-          <div className="art" aria-hidden="true">
-            {HERO_PHOTOS[segment].map((n, i) => <span key={n} className={`ph p${i}`}><img src={IMG(n)} alt="" loading="eager" decoding="async" /></span>)}
-            <div className="ticket">
-              <b><ClipboardCheck size={16} /> One list, one quotation</b>
-              <small>Every ward and department together, with delivery to your {who}.</small>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <div className="ax-wrap"><ul className="ax-bulk-points" aria-label="Why order with Aethex">
-        <li><ShieldCheck size={20} /><div><b>Genuine products</b><small>From the brands' own ranges, with the manufacturer's warranty</small></div></li>
-        <li><ListChecks size={20} /><div><b>Any quantity</b><small>One list for every department, quoted together</small></div></li>
-        <li><CalendarClock size={20} /><div><b>Order ahead</b><small>Pick a delivery date, or repeat every month or quarter</small></div></li>
-        <li><Banknote size={20} /><div><b>Bank transfer or PO</b><small>On quotations; small orders can be cash on delivery</small></div></li>
-      </ul></div>
+        }
+        deptTitle="Departments"
+        depts={cfg.sections.map((sec) => ({ key: sec.id, label: sec.short, icon: DEPT_ICONS[sec.id] ?? Package, onClick: () => pick(sec.id) }))}
+        all={{ label: "Whole catalogue", href: "#catalogue" }}
+        scene={segment === "hospital" ? ["cross", "pulse"] : ["dna", "molecules"]} rgb={segment === "hospital" ? "34,211,238" : "251,191,36"}
+        slides={segment === "hospital" ? [
+          { kicker: "One quotation", title: "Equip every ward from one list", text: "Add beds, monitors, emergency kit and consumables with the quantities you need, and we'll send your prices with delivery.", cta: { label: "Request a quotation", onClick: openQuote }, second: { label: "Browse the catalogue", href: "#catalogue" }, tone: "cyan", photo: "ecg", icon: ClipboardList },
+          { kicker: "Ready-made lists", title: "Start from a crash cart or an ICU bed", text: "Lists for a crash cart, an ICU bed, a new ward, a month of IV supplies and more. Change the quantities, then send.", cta: { label: "See the lists", href: "#kits" }, tone: "ink", photo: "laryngoscope", icon: ListChecks },
+          { kicker: "Diagnostics", title: "Vital signs at every bedside", text: "BP monitors, pulse oximeters, thermometers and diagnostic sets from the makers we stock.", cta: { label: "Vital signs", onClick: () => pick("wards") }, tone: "navy", photo: "bp-monitor", icon: HeartPulse },
+          { kicker: "Order ahead", title: "Repeat every month or quarter", text: "Pick the date you need it by, or schedule repeat deliveries. Pay by bank transfer or against your purchase order.", cta: { label: "How it works", href: "#how" }, tone: "slate", photo: "xray-viewer", icon: CalendarClock },
+        ] : [
+          { kicker: "One quotation", title: "Equip the skills lab and every batch", text: "Stethoscopes for students, manikins and trainers, anatomy models and lab equipment, with the quantities you need.", cta: { label: "Request a quotation", onClick: openQuote }, second: { label: "Browse the catalogue", href: "#catalogue" }, tone: "amber", photo: "stethoscope", icon: ClipboardList },
+          { kicker: "Ready-made lists", title: "A kit for every student", text: "Start from a student clinical kit, a skills station or a simulation lab, then change the quantities.", cta: { label: "See the lists", href: "#kits" }, tone: "ink", photo: "neuro-kit", icon: ListChecks },
+          { kicker: "Anatomy and labs", title: "Models, microscopes and glassware", text: "Skeletons, torsos and organ models, microscopes, centrifuges and lab essentials for every department.", cta: { label: "Anatomy models", onClick: () => pick("anatomy") }, tone: "navy", photo: "surgical-set", icon: Microscope },
+          { kicker: "Library", title: "Textbooks for every course", text: "Standard titles from MBBS to PG, quoted together with the rest of your list.", cta: { label: "Textbooks", href: "/books" }, tone: "slate", photo: "medical-book", icon: BookOpen },
+        ]}
+        promos={[
+          { kicker: "Your quotations", title: "Where every request stands", text: "Sign in to see them", href: "/account/quotations", icon: ClipboardCheck },
+          segment === "hospital"
+            ? { kicker: "Directory", title: "Hospitals and colleges in India", text: "Search the directory", href: "/institutions", icon: Building2, dark: true }
+            : { kicker: "Textbooks", title: "For the library and departments", text: "Every course", href: "/books", icon: BookOpen, dark: true },
+        ]}
+        trust={[
+          { icon: ShieldCheck, t: "Genuine products", d: "With the maker's warranty" },
+          { icon: ListChecks, t: "Any quantity", d: "One list, quoted together" },
+          { icon: CalendarClock, t: "Order ahead", d: "Or repeat monthly" },
+          { icon: Banknote, t: "Bank transfer or PO", d: "On quotations" },
+          { icon: Package, t: store ? `${total.toLocaleString("en-IN")} products` : "The full catalogue", d: store ? `${brands.length} brands` : "From verified brands" },
+        ]}
+      />
 
       <section className="ax-wrap ax-depts" aria-labelledby="depts-h">
         <div className="ax-ihead"><span>Departments</span><h2 id="depts-h">{segment === "hospital" ? "Everything a hospital runs on" : "Everything a medical college teaches with"}</h2>
@@ -250,10 +250,6 @@ export default function BulkPortal({ segment }: { segment: Segment }) {
       <QuoteDialog open={quote} segment={segment} done={done} onDone={(r) => { setDone(r); bulk.clear(); }} onClose={() => setQuote(false)} />
     </div>
   );
-}
-
-function Icon({ segment }: { segment: Segment }) {
-  return segment === "hospital" ? <Hospital size={15} /> : <GraduationCap size={15} />;
 }
 
 /* ------------------------------------------------------------------ ready-made lists */

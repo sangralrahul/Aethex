@@ -13,7 +13,8 @@ import {
 } from "lucide-react";
 import { cadusUrl } from "@/lib/host";
 import { CardArt } from "@/components/visual/CardArt";
-import { HeroScene } from "@/components/visual/HeroScene";
+import { MarketTop } from "@/components/layout/MarketTop";
+import { khIcon } from "@/components/MedKnowledge/KhParts";
 import { TopLayer } from "@/components/shop/TopLayer";
 import { useSeo } from "@/hooks/use-seo";
 import { medicalSubjects } from "@/data/medicalSubjects";
@@ -447,34 +448,34 @@ export default function StudyHub() {
 
   return (
     <div className={`ax-sth${compareIds.length ? " has-bar" : ""}`}>
-      {/* hero (update 67: the same hero as the other platforms, in Study's violet) */}
-      <section className="ax-ihero ax-sth-hero2">
-        <div className="ax-ihero-bg" aria-hidden="true"><i /><i /><i /><HeroScene kind="molecules" rgb="167,139,250" ghosts={["neuro-kit", "ecg"]} /></div>
-        <div className="ax-wrap ax-ihero-in">
-          <div className="txt">
-            <span className="eyebrow"><GraduationCap size={15} /> Aethex Study<em>NEET-PG · NExT · FMGE · USMLE</em></span>
-            <h1>Prepare for NEET&#8209;PG and beyond</h1>
-            <p>Question banks, mock tests, flashcards and a reference for every subject and condition, for NEET-PG, NExT, FMGE and USMLE.</p>
-            <div className="srch"><HubSearch big placeholder="Search any topic or condition" /></div>
-            <div className="ax-sth-exams">
-              <span>Preparing for</span>
-              <Link href="/neet-pg">NEET-PG</Link><Link href="/neet-pg">NExT</Link><Link href="/mock-test">FMGE</Link><Link href={HUB}>USMLE</Link>
-            </div>
-            <dl className="facts">
-              <div><dt>{stats.subjects}</dt><dd>subjects</dd></div>
-              <div><dt>{stats.topics.toLocaleString("en-IN")}</dt><dd>topics</dd></div>
-              <div><dt>{stats.conditions.toLocaleString("en-IN")}</dt><dd>conditions</dd></div>
-            </dl>
-          </div>
-          <Link href="/case-of-the-day" className="ax-sth-case">
-            <span className="top"><span><ClipboardList size={15} /> Case of the day</span><em>{todays.specialty}</em></span>
-            <b>{todays.title}</b>
-            <p>{todays.patient_info.age}-year-old {String(todays.patient_info.gender).toLowerCase()}: {todays.patient_info.chief_complaint}</p>
-            <span className="opts">{todays.options.slice(0, 4).map((o) => <span key={o.id}><i>{o.id}</i>{o.text}</span>)}</span>
-            <span className="go">Solve today's case <ArrowRight size={16} /></span>
-          </Link>
-        </div>
-      </section>
+      {/* update 71: the marketplace top, like the Store's */}
+      <MarketTop
+        portal="study"
+        title={<>Prepare for NEET&#8209;PG and beyond</>}
+        sub="Question banks, mock tests, flashcards and a reference for every subject and condition, for NEET-PG, NExT, FMGE and USMLE."
+        right={<div className="mk-hs"><HubSearch big placeholder="Search any topic or condition" /></div>}
+        deptTitle="Subjects"
+        depts={medicalSubjects.slice(0, 11).map((sub) => ({ label: sub.name, icon: khIcon(sub.slug), href: `${HUB}/subjects/${sub.slug}` }))}
+        all={{ label: "All subjects", href: HUB }}
+        scene="molecules" rgb="167,139,250"
+        slides={[
+          { kicker: "NEET-PG", title: "Practise by subject, with explanations", text: "A question bank in the NEET-PG pattern, with an explanation for every answer and your results by subject.", cta: { label: "Start practising", href: "/neet-pg" }, second: { label: "Take a mock test", href: "/mock-test" }, tone: "violet", photo: "test-books", icon: Brain },
+          { kicker: `Case of the day · ${todays.specialty}`, title: todays.title, text: `${todays.patient_info.age}-year-old ${String(todays.patient_info.gender).toLowerCase()}: ${todays.patient_info.chief_complaint}`, cta: { label: "Solve today's case", href: "/case-of-the-day" }, tone: "ink", photo: "stethoscope", icon: ClipboardList },
+          { kicker: "Medical Knowledge Hub", title: "Every subject, every condition", text: `${stats.subjects} subjects, ${stats.topics.toLocaleString("en-IN")} topics and ${stats.conditions.toLocaleString("en-IN")} conditions, with diagrams, questions and flashcards.`, cta: { label: "Open the Knowledge Hub", href: HUB }, tone: "navy", photo: "medical-book", icon: BookOpen },
+          { kicker: "Revise", title: "Flashcards with spaced repetition", text: "High-yield facts that come back just before you forget them.", cta: { label: "Open flashcards", href: "/flashcards" }, second: { label: "Study planner", href: "/study-planner" }, tone: "slate", photo: "neuro-kit", icon: Layers },
+        ]}
+        promos={[
+          { kicker: "Mock test", title: "A timed paper in the exam pattern", text: "+4 / −1 marking", href: "/mock-test", icon: Timer },
+          { kicker: "CME Hub", title: "Refreshers for practising doctors", text: "Free to read", href: "/cme-hub", icon: GraduationCap, dark: true },
+        ]}
+        trust={[
+          { icon: BookOpen, t: `${stats.subjects} subjects`, d: "Pre-clinical to clinical" },
+          { icon: Layers, t: `${stats.topics.toLocaleString("en-IN")} topics`, d: "Read, practise, revise" },
+          { icon: Stethoscope, t: `${stats.conditions.toLocaleString("en-IN")} conditions`, d: "With ICD-10 codes" },
+          { icon: Timer, t: "NEET-PG pattern", d: "+4 / −1 marking" },
+          { icon: CheckCircle2, t: "Free to study", d: "Notes, questions, flashcards" },
+        ]}
+      />
 
       {/* tools */}
       <section className="ax-wrap ax-sth-sec">

@@ -4,8 +4,8 @@
  * background, figures counted from the data, line icons instead of emoji, subjects filtered by stage.
  * Styles: src/shop.css (.kh-*).
  */
-import { useMemo, useState } from "react";
-import { Link } from "wouter";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearch } from "wouter";
 import { ArrowRight, BookOpen, ChevronRight, ClipboardCheck, Layers, Network, Search, X } from "lucide-react";
 import { useSeo } from "@/hooks/use-seo";
 import { CardArt } from "@/components/visual/CardArt";
@@ -18,7 +18,10 @@ const STAGES = ["All", "Pre-Clinical", "Para-Clinical", "Clinical"] as const;
 
 export default function MedicalKnowledgeHub() {
   useSeo({ title: "Medical Knowledge Hub: subjects, topics and conditions | Aethex Study", description: "Browse every subject, topic and condition in the Aethex Medical Knowledge Hub, with explanations, diagrams, exam questions and flashcards.", path: KH_HUB });
-  const [query, setQuery] = useState("");
+  // The header's search sends "?q=" here.
+  const urlQ = useSearch();
+  const [query, setQuery] = useState(() => new URLSearchParams(typeof window === "undefined" ? "" : window.location.search).get("q") ?? "");
+  useEffect(() => { const q = new URLSearchParams(urlQ).get("q"); if (q) setQuery(q); }, [urlQ]);
   const [stage, setStage] = useState<(typeof STAGES)[number]>("All");
 
   const stats = useMemo(() => ({
