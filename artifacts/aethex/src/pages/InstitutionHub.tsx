@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { useSeo } from "@/hooks/use-seo";
 import { PageHero } from "@/components/PageHero";
+import { sitePortal } from "@/lib/portals";
 import { mainUrl } from "@/lib/host";
 import { motion } from "framer-motion";
 import {
@@ -133,10 +134,10 @@ export default function InstitutionHub({ mode }: InstitutionHubProps = {}) {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: "#F5F5F7" }}>
+    <div className="min-h-screen" style={{ background: "#F7F8FA" }}>
 
       <PageHero
-        tag={mode === "colleges" ? "Medical College Partnerships" : mode === "hospitals" ? "Hospital Partnerships" : "Institutional Partnerships"}
+        tag={mode === "colleges" ? "Directory" : mode === "hospitals" ? "Directory" : "Directory"}
         title={mode === "colleges" ? "Medical Colleges" : mode === "hospitals" ? "Major Hospitals" : "Colleges & Hospitals"}
         subtitle={mode === "colleges"
           ? "A directory of NMC-recognised medical colleges across India. Buying supplies for a college? Order in bulk with Aethex for Medical Colleges."
@@ -144,10 +145,14 @@ export default function InstitutionHub({ mode }: InstitutionHubProps = {}) {
           ? "A directory of major hospitals across India. Buying supplies for a hospital? Order in bulk with Aethex for Hospitals."
           : "A directory of NMC-recognised medical colleges and major hospitals across India. Buying supplies? Order in bulk with Aethex for Hospitals or Aethex for Medical Colleges."}
         right={
+          sitePortal() ? (
+            <Link href="/" className="ax-btn teal"><ClipboardList size={16} /> Request a quotation</Link>
+          ) : (
           <div className="flex flex-wrap gap-2">
             <Link href="/hospitals" className="ax-btn teal"><Hospital size={16} /> For hospitals</Link>
             <Link href="/medical-colleges" className="ax-btn teal"><GraduationCap size={16} /> For medical colleges</Link>
           </div>
+          )
         }
         icon={mode === "colleges"
           ? <GraduationCap className="w-7 h-7" style={{ color: "rgba(255,255,255,0.82)" }} />

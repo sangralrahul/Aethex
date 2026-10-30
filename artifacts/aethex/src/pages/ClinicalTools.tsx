@@ -283,7 +283,7 @@ export default function ClinicalTools() {
   }, [query, activeCategory]);
 
   return (
-    <div className="min-h-screen" style={{ background: "#F5F3EE" }}>
+    <div className="min-h-screen" style={{ background: "#F7F8FA" }}>
 
       <PageHero
         tag="13 Tools · 21 Calculators"
@@ -321,9 +321,9 @@ export default function ClinicalTools() {
               onClick={() => setActiveCategory(cat.id)}
               className="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200"
               style={activeCategory === cat.id ? {
-                background: "linear-gradient(135deg,#007AFF,#00C2A8)",
+                background: "linear-gradient(135deg,#6D28D9,#4F46E5)",
                 color: "#FFFFFF",
-                boxShadow: "0 2px 8px rgba(0,122,255,0.3)",
+                boxShadow: "0 2px 8px rgba(109,40,217,0.3)",
                 border: "1px solid transparent",
               } : {
                 background: "#FFFFFF",
@@ -416,7 +416,7 @@ export default function ClinicalTools() {
 
         {/* Cadus CTA */}
         <div className="mt-14 rounded-2xl p-8 text-center relative overflow-hidden"
-          style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)" }}>
+          style={{ background: "linear-gradient(135deg,#6D28D9,#4F46E5)" }}>
           <div className="absolute inset-0 pointer-events-none"
             style={{ background: "radial-gradient(ellipse at top right, rgba(255,255,255,0.12) 0%, transparent 60%)" }} />
           <div className="relative z-10">

@@ -178,7 +178,7 @@ export default function Account() {
           </div>
           <h2 className="text-xl font-display font-bold text-[#1c1c1e] mb-2">Sign in to access your account</h2>
           <p className="text-[#6c6c70] text-sm mb-6">Manage your profile, addresses, orders, and Cadus Pro subscription.</p>
-          <Link href="/" className="px-6 py-3 bg-[#00C2A8] text-[#F5F3EE] font-bold rounded-xl hover:bg-[#00D4B8] transition-colors">
+          <Link href="/" className="px-6 py-3 bg-[#00C2A8] text-[#F7F8FA] font-bold rounded-xl hover:bg-[#00D4B8] transition-colors">
             Sign In
           </Link>
         </div>
@@ -374,7 +374,7 @@ export default function Account() {
                         className="w-full px-4 py-3 bg-black/5 border border-black/10 rounded-xl text-[#1c1c1e] placeholder-black/30 focus:outline-none focus:border-[#00C2A8]/50" />
                     </div>
                     <button onClick={handleSaveProfile}
-                      className="px-5 py-2.5 bg-[#00C2A8] text-[#F5F3EE] font-bold rounded-xl hover:bg-[#00D4B8] transition-colors text-sm">
+                      className="px-5 py-2.5 bg-[#00C2A8] text-[#F7F8FA] font-bold rounded-xl hover:bg-[#00D4B8] transition-colors text-sm">
                       Save Changes
                     </button>
                   </div>

@@ -126,7 +126,7 @@ export default function CaseOfTheDay() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: "#F5F3EE" }}>
+    <div className="min-h-screen" style={{ background: "#F7F8FA" }}>
       <PageHero width="3xl"
         tag="Daily Clinical Learning"
         title="Case of the Day"
@@ -134,7 +134,7 @@ export default function CaseOfTheDay() {
         icon={<Stethoscope className="w-7 h-7" style={{ color: "rgba(255,255,255,0.82)" }} />}
       />
       {/* Case navigation bar */}
-      <div className="py-3" style={{ borderBottom: "1px solid rgba(60,60,67,0.08)", background: "#F5F3EE" }}>
+      <div className="py-3" style={{ borderBottom: "1px solid rgba(60,60,67,0.08)", background: "#F7F8FA" }}>
         <div className="max-w-3xl mx-auto px-4 flex items-center justify-between">
           <span className="text-xs font-medium" style={{ color: "#8E8E93" }}>
             Case {caseIndex + 1} of {clinicalCases.length}
@@ -348,7 +348,7 @@ export default function CaseOfTheDay() {
           <div className="rounded-2xl p-4 flex items-center gap-3"
             style={{ background: "linear-gradient(135deg, rgba(0,122,255,0.06) 0%, rgba(0,194,168,0.06) 100%)", border: "1px solid rgba(0,122,255,0.15)" }}>
             <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-              style={{ background: "linear-gradient(135deg, #007AFF, #00C2A8)" }}>
+              style={{ background: "linear-gradient(135deg, #6D28D9, #4F46E5)" }}>
               <Sparkles className="w-4 h-4 text-white" />
             </div>
             <div className="flex-1">

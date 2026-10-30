@@ -205,7 +205,7 @@ const POSTS: Post[] = [
 ];
 
 const tierColors: Record<string, { bg: string; color: string; label: string }> = {
-  Free: { bg: "#F5F3EE", color: "#636366", label: "Member" },
+  Free: { bg: "#F7F8FA", color: "#636366", label: "Member" },
   Pro: { bg: "rgba(0,122,255,0.1)", color: "#007AFF", label: "Pro" },
   Magnus: { bg: "rgba(0,194,168,0.12)", color: "#00A893", label: "Magnus" },
 };
@@ -274,7 +274,7 @@ function PostCard({ post }: { post: Post }) {
                 </span>
               )}
               {post.tags.map(t => (
-                <span key={t} className="text-[11px] px-2 py-0.5 rounded-full" style={{ background: "#F5F3EE", color: "#636366" }}>#{t}</span>
+                <span key={t} className="text-[11px] px-2 py-0.5 rounded-full" style={{ background: "#F7F8FA", color: "#636366" }}>#{t}</span>
               ))}
             </div>
 
@@ -292,7 +292,7 @@ function PostCard({ post }: { post: Post }) {
             {expanded && (
               <div className="mt-4 space-y-3">
                 {comments.map(c => (
-                  <div key={c.id} className="flex gap-3 p-3 rounded-xl" style={{ background: "#F5F3EE" }}>
+                  <div key={c.id} className="flex gap-3 p-3 rounded-xl" style={{ background: "#F7F8FA" }}>
                     <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: "rgba(0,194,168,0.12)", color: "#00A893" }}>
                       {c.author.replace("Dr ", "").charAt(0)}
                     </div>
@@ -320,7 +320,7 @@ function PostCard({ post }: { post: Post }) {
                     onChange={e => setCommentText(e.target.value)}
                     placeholder="Add a comment…"
                     className="flex-1 px-3 py-2 rounded-xl text-sm focus:outline-none"
-                    style={{ background: "#F5F3EE", border: "1px solid rgba(60,60,67,0.12)", color: "#1C1C1E" }}
+                    style={{ background: "#F7F8FA", border: "1px solid rgba(60,60,67,0.12)", color: "#1C1C1E" }}
                     onKeyDown={e => {
                       if (e.key === "Enter" && commentText.trim()) {
                         setComments(prev => [...prev, { id: Date.now(), author: "You", specialty: "Member", tier: "Free", text: commentText, time: "just now", upvotes: 0 }]);
@@ -380,7 +380,7 @@ export default function Community() {
   const trending = [...POSTS].sort((a, b) => b.upvotes - a.upvotes).slice(0, 5);
 
   return (
-    <div className="min-h-screen" style={{ background: "#F5F3EE" }}>
+    <div className="min-h-screen" style={{ background: "#F7F8FA" }}>
       <PageHero width="6xl"
         tag="Community"
         title="Doctor Community"

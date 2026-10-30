@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { HeroScene } from "@/components/visual/HeroScene";
 import { Link } from "wouter";
 import {
   Brain, Calendar, Clock, Target, CheckCircle2, Circle,
@@ -55,18 +56,18 @@ export default function StudyPlanner() {
   const pct = Math.round((done / schedule.length) * 100);
 
   return (
-    <div className="min-h-screen" style={{ background: "#F2F2F7" }}>
+    <div className="min-h-screen" style={{ background: "#F7F8FA" }}>
       {/* Hero */}
       <div className="relative overflow-hidden pt-14 pb-16">
-        <div className="absolute inset-0" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=1600&q=80')", backgroundSize: "cover", backgroundPosition: "center" }} />
-        <div className="absolute inset-0" style={{ background: "linear-gradient(135deg,rgba(8,18,36,0.95) 0%,rgba(10,26,50,0.9) 100%)" }} />
+        <div className="absolute inset-0" style={{ background: "radial-gradient(900px 380px at 88% -30%,rgba(167,139,250,.26),transparent 60%),linear-gradient(160deg,#071225 0%,#0b1a33 60%,#0a1630 100%)" }} />
+        <div className="absolute inset-0"><HeroScene kind="molecules" rgb="167,139,250" /></div>
         <div className="relative z-10 max-w-4xl mx-auto px-4 text-center">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-5" style={{ background: "rgba(0,122,255,0.15)", border: "1px solid rgba(0,122,255,0.25)", color: "#60A5FA" }}>
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-5" style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.16)", color: "#C4B5FD" }}>
             <Sparkles className="w-3.5 h-3.5" />
             <span className="text-xs font-semibold">Powered by Cadus</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-black text-white mb-3" style={{ letterSpacing: "-1px" }}>
-            AI NEET-PG <span style={{ background: "linear-gradient(135deg,#00C2A8,#007AFF)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Study Planner</span>
+            NEET-PG study planner
           </h1>
           <p className="text-base max-w-xl mx-auto mb-0" style={{ color: "rgba(255,255,255,0.6)" }}>
             Enter your exam date and Cadus builds a personalised day-by-day schedule — adapted to your weak areas.
@@ -132,7 +133,7 @@ export default function StudyPlanner() {
 
             <button onClick={handleGenerate} disabled={!examDate || generating}
               className="w-full py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-              style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)", color: "#FFFFFF", boxShadow: "0 4px 16px rgba(0,122,255,0.3)" }}>
+              style={{ background: "linear-gradient(135deg,#6D28D9,#4F46E5)", color: "#FFFFFF", boxShadow: "0 4px 16px rgba(109,40,217,0.3)" }}>
               {generating ? (
                 <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Cadus is building your plan...</>
               ) : (
@@ -143,7 +144,7 @@ export default function StudyPlanner() {
         ) : (
           <div className="space-y-6">
             {/* Progress */}
-            <div className="rounded-2xl p-6" style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)" }}>
+            <div className="rounded-2xl p-6" style={{ background: "linear-gradient(135deg,#6D28D9,#4F46E5)" }}>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="font-bold text-white">Your Progress</h2>
                 <span className="text-white/80 text-sm">{done}/{schedule.length} days done</span>

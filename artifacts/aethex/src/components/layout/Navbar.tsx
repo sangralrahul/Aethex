@@ -77,7 +77,7 @@ const SECTIONS: Section[] = [
       { href: "/mock-test", label: "Mock tests", hint: "Timed practice exams", icon: Timer },
       { href: "/flashcards", label: "Flashcards", hint: "Spaced revision", icon: Layers },
       { href: "/case-of-the-day", label: "Case of the day", hint: "One clinical case daily", icon: ClipboardList },
-      { href: "/cme-hub", label: "CME Hub", hint: "Courses and certificates", icon: Star },
+      { href: "/cme-hub", label: "CME Hub", hint: "Clinical refresher modules", icon: Star },
       { href: "/live-classes", label: "Live classes", hint: "Sessions with faculty", icon: MessageSquare },
     ],
   },
@@ -111,7 +111,7 @@ const ACCOUNT_LINKS: Item[] = [
   { href: "/orders", label: "My orders", icon: Package },
   { href: "/orders/track", label: "Track an order", icon: ShoppingBag },
   { href: "/wishlist", label: "Wishlist", icon: Heart },
-  { href: "/cme-hub", label: "CME certificates", icon: GraduationCap },
+  { href: "/cme-hub", label: "CME Hub", icon: GraduationCap },
   { href: "/my-reviews", label: "My reviews", icon: Star },
   { href: "/account/quotations", label: "Quotation requests", icon: ClipboardList },
 ];

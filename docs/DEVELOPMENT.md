@@ -234,6 +234,12 @@ and headings rise into view on scroll; it marks elements with `data-axrv` and th
 (`src/pages/StudyHub/MedicalKnowledgeHub/`) uses the same hero (`KhHero` in `src/components/MedKnowledge/KhParts.tsx`),
 line icons instead of emoji, Study's violet, figures counted from the data, and light backgrounds for its diagrams.
 
+Update 69: `PageHero` (the header of the inner pages) takes the colour and living background of the platform it is on.
+Doctors pages use the Doctors blue and dark page banners (`.fd-pagehead`). Rule kept since: no invented figures,
+people, ratings or accreditations. The CME Hub (`src/pages/CmeHub.tsx`) lists refresher modules that open the
+Knowledge Hub and says plainly that they carry no CME credit; `/cme-certificate` issues no certificates; Mentorship
+lists no mentors until real doctors agree to mentor.
+
 ## Aethex Doctors
 
 `worker/find.ts` (`/api/find/*`), tables in `migrations/0006_find.sql` (also created on first use). Doctors list

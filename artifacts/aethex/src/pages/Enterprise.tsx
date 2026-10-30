@@ -41,7 +41,7 @@ export default function Enterprise() {
           </h1>
           <p className="text-base max-w-2xl mx-auto mb-8" style={{ color: "rgba(255,255,255,0.6)" }}>Give your students India's most advanced medical learning platform. Bulk licensing, faculty dashboards, branded certificates, and Cadus — at scale.</p>
           <div className="flex items-center justify-center gap-8 flex-wrap">
-            {[{ v: "50+", l: "Colleges Enrolled" }, { v: "25,000+", l: "Students Active" }, { v: "NMC", l: "Recognised CME" }].map((s, i) => (
+            {[{ v: "Per seat", l: "Yearly licences" }, { v: "Faculty", l: "Dashboards" }, { v: "Bulk", l: "Student onboarding" }].map((s, i) => (
               <div key={i} className="text-center">
                 <div className="text-3xl font-black text-white">{s.v}</div>
                 <div className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>{s.l}</div>

@@ -49,7 +49,7 @@ export default function MockTest() {
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [flagged, setFlagged] = useState<Set<number>>(new Set());
-  const [timeLeft, setTimeLeft] = useState(180 * 60);
+  const [timeLeft, setTimeLeft] = useState(MOCK_QUESTIONS.length * 60);
   const [showExplanation, setShowExplanation] = useState(false);
 
   useEffect(() => {
@@ -60,7 +60,7 @@ export default function MockTest() {
 
   const q = MOCK_QUESTIONS[current];
   const mins = Math.floor(timeLeft / 60), secs = timeLeft % 60;
-  const pctTime = (timeLeft / (180 * 60)) * 100;
+  const pctTime = (timeLeft / (MOCK_QUESTIONS.length * 60)) * 100;
   const totalCorrect = SUBJECTS_BREAKDOWN.reduce((a, s) => a + s.correct, 0);
   const totalQ = SUBJECTS_BREAKDOWN.reduce((a, s) => a + s.total, 0);
   const score = Math.round((totalCorrect / totalQ) * 100);
@@ -74,13 +74,13 @@ export default function MockTest() {
     <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: "#F2F2F7" }}>
       <div className="max-w-lg w-full">
         <div className="rounded-3xl p-8 text-center" style={{ background: "#FFFFFF", border: "1px solid rgba(60,60,67,0.1)", boxShadow: "0 8px 32px rgba(0,0,0,0.08)" }}>
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5" style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)" }}>
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5" style={{ background: "linear-gradient(135deg,#6D28D9,#4F46E5)" }}>
             <Brain className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-black mb-2" style={{ color: "#1C1C1E" }}>NEET-PG Mock Test</h1>
-          <p className="text-sm mb-6" style={{ color: "#636366" }}>Simulate the real NEET-PG exam experience with full 300-question mock</p>
+          <p className="text-sm mb-6" style={{ color: "#636366" }}>A short timed paper in the NEET-PG pattern, one minute a question, with a full review at the end.</p>
           <div className="grid grid-cols-3 gap-3 mb-8">
-            {[{ v: "300", l: "Questions" }, { v: "3h", l: "Duration" }, { v: "19", l: "Subjects" }].map((s, i) => (
+            {[{ v: String(MOCK_QUESTIONS.length), l: "Questions" }, { v: `${MOCK_QUESTIONS.length} min`, l: "Duration" }, { v: "+4 / −1", l: "Marking" }].map((s, i) => (
               <div key={i} className="rounded-xl py-3" style={{ background: "#F2F2F7" }}>
                 <div className="text-xl font-black" style={{ color: "#007AFF" }}>{s.v}</div>
                 <div className="text-[11px]" style={{ color: "#AEAEB2" }}>{s.l}</div>
@@ -94,10 +94,10 @@ export default function MockTest() {
               </div>
             ))}
           </div>
-          <button onClick={() => setPhase("exam")} className="w-full py-4 rounded-2xl font-bold text-base" style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)", color: "#FFFFFF" }}>
+          <button onClick={() => setPhase("exam")} className="w-full py-4 rounded-2xl font-bold text-base" style={{ background: "linear-gradient(135deg,#6D28D9,#4F46E5)", color: "#FFFFFF" }}>
             Start Mock Test →
           </button>
-          <p className="text-xs mt-3" style={{ color: "#AEAEB2" }}>Demo: Showing 20 of 300 questions</p>
+          <p className="text-xs mt-3" style={{ color: "#AEAEB2" }}>For longer practice by subject, use the NEET-PG question bank.</p>
         </div>
       </div>
     </div>
@@ -107,7 +107,7 @@ export default function MockTest() {
     <div className="min-h-screen" style={{ background: "#F2F2F7" }}>
       <div className="max-w-3xl mx-auto px-4 py-10">
         {/* Score card */}
-        <div className="rounded-3xl p-8 mb-6 text-center relative overflow-hidden" style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)" }}>
+        <div className="rounded-3xl p-8 mb-6 text-center relative overflow-hidden" style={{ background: "linear-gradient(135deg,#6D28D9,#4F46E5)" }}>
           <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at top, rgba(255,255,255,0.15) 0%, transparent 60%)" }} />
           <div className="relative z-10">
             <Trophy className="w-12 h-12 text-white mx-auto mb-3" />
@@ -173,7 +173,7 @@ export default function MockTest() {
         </div>
 
         <button onClick={() => { setPhase("intro"); setAnswers({}); setFlagged(new Set()); setTimeLeft(180 * 60); setCurrent(0); }}
-          className="w-full py-3.5 rounded-2xl font-bold" style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)", color: "#FFFFFF" }}>
+          className="w-full py-3.5 rounded-2xl font-bold" style={{ background: "linear-gradient(135deg,#6D28D9,#4F46E5)", color: "#FFFFFF" }}>
           Take Another Mock Test
         </button>
       </div>
@@ -218,7 +218,7 @@ export default function MockTest() {
                   className="w-full text-left px-4 py-3 rounded-xl text-sm transition-all"
                   style={{
                     background: correct ? "rgba(0,194,168,0.08)" : wrong ? "rgba(239,68,68,0.08)" : sel ? "rgba(0,122,255,0.08)" : "#F2F2F7",
-                    border: `1px solid ${correct ? "rgba(0,194,168,0.3)" : wrong ? "rgba(239,68,68,0.3)" : sel ? "rgba(0,122,255,0.3)" : "transparent"}`,
+                    border: `1px solid ${correct ? "rgba(0,194,168,0.3)" : wrong ? "rgba(239,68,68,0.3)" : sel ? "rgba(109,40,217,0.3)" : "transparent"}`,
                     color: "#1C1C1E",
                   }}>
                   <span className="font-bold mr-2" style={{ color: correct ? "#00C2A8" : wrong ? "#EF4444" : sel ? "#007AFF" : "#AEAEB2" }}>{String.fromCharCode(65 + i)}.</span>{opt}

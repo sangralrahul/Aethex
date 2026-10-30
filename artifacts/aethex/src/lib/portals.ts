@@ -118,7 +118,7 @@ export const PORTALS: Record<Site, PortalConfig> = {
     search: null,
     shop: false,
     cta: { href: "/mock-test", label: "Take a mock test" },
-    account: [{ href: "/account", label: "My account" }, { href: "/progress-tracker", label: "My progress" }, { href: "/cme-hub", label: "CME certificates" }, { href: "/study-planner", label: "Study planner" }],
+    account: [{ href: "/account", label: "My account" }, { href: "/progress-tracker", label: "My progress" }, { href: "/cme-hub", label: "CME Hub" }, { href: "/study-planner", label: "Study planner" }],
     footer: [
       { title: "Prepare", links: [{ href: "/study-hub", label: "Study Hub" }, { href: "/neet-pg", label: "NEET-PG" }, { href: "/mock-test", label: "Mock tests" }, { href: "/flashcards", label: "Flashcards" }, { href: "/study-planner", label: "Study planner" }, { href: "/cme-hub", label: "CME Hub" }] },
       { title: "Learn", links: [{ href: "/study-hub/medical-knowledge-hub", label: "Medical Knowledge Hub" }, { href: "/case-of-the-day", label: "Case of the day" }, { href: "/cases", label: "Clinical cases" }, { href: "/drug-reference", label: "Drug reference" }, { href: "/drug-interaction-checker", label: "Drug interactions" }, { href: "/calculator", label: "Medical calculators" }] },

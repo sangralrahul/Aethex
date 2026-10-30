@@ -19,50 +19,9 @@ interface Mentor {
   sessionRate: string;
 }
 
-const MENTORS: Mentor[] = [
-  {
-    id: 1, name: "Dr. Priya Mehta", specialty: "Cardiology", designation: "Consultant Cardiologist", hospital: "AIIMS Delhi",
-    experience: 12, rating: 4.9, reviews: 87, slots: 3, tags: ["NEET-PG", "Interventional Cardiology", "Research"],
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=priya&backgroundColor=b6e3f4",
-    bio: "Interventional cardiologist with 12 years of clinical experience. Passionate about guiding NEET-PG aspirants and junior residents through cardiology training.",
-    verified: true, sessionRate: "Free",
-  },
-  {
-    id: 2, name: "Dr. Arjun Nair", specialty: "Neurosurgery", designation: "Associate Professor", hospital: "NIMHANS Bangalore",
-    experience: 9, rating: 4.8, reviews: 63, slots: 2, tags: ["Surgery", "USMLE", "Academic career"],
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=arjun&backgroundColor=c0aede",
-    bio: "Neurosurgeon with experience in NIMHANS. Mentors students aspiring for surgical specialties and those preparing for USMLE. Strong interest in academic medicine.",
-    verified: true, sessionRate: "Free",
-  },
-  {
-    id: 3, name: "Dr. Kavitha Rajan", specialty: "Paediatrics", designation: "Senior Resident", hospital: "PGIMER Chandigarh",
-    experience: 5, rating: 4.7, reviews: 41, slots: 5, tags: ["NEET-PG", "Paediatric ICU", "Research papers"],
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=kavitha&backgroundColor=ffd5dc",
-    bio: "Paediatrics resident passionate about neonatal care and teaching. Has guided 40+ students through their NEET-PG preparation with a practical approach.",
-    verified: true, sessionRate: "Free",
-  },
-  {
-    id: 4, name: "Dr. Sanjay Iyer", specialty: "Radiology", designation: "DNB Radiologist", hospital: "Medanta Gurugram",
-    experience: 7, rating: 4.6, reviews: 38, slots: 4, tags: ["Radiology", "Fellowship guidance", "Career switch"],
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=sanjay&backgroundColor=d1f4d9",
-    bio: "Radiologist specialising in CT and MRI. Helps doctors transition into radiology and guides them through DNB and fellowship applications.",
-    verified: false, sessionRate: "Free",
-  },
-  {
-    id: 5, name: "Dr. Nisha Pillai", specialty: "Psychiatry", designation: "Assistant Professor", hospital: "NIMHANS Bangalore",
-    experience: 8, rating: 4.9, reviews: 52, slots: 2, tags: ["Psychiatry", "Mental health", "Research"],
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=nisha&backgroundColor=ffdfbf",
-    bio: "Psychiatrist and researcher with publications in Lancet Psychiatry. Guides students through psychiatry residency and research methodology.",
-    verified: true, sessionRate: "Free",
-  },
-  {
-    id: 6, name: "Dr. Rahul Sharma", specialty: "Emergency Medicine", designation: "ED Director", hospital: "Apollo Delhi",
-    experience: 15, rating: 4.7, reviews: 71, slots: 1, tags: ["Emergency", "USMLE", "Clinical skills"],
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=rahul&backgroundColor=b6d7f4",
-    bio: "Emergency medicine specialist with 15 years of high-volume ED experience. Mentors doctors on clinical decision-making, procedures, and career planning.",
-    verified: true, sessionRate: "Free",
-  },
-];
+// Update 69: the list used to hold invented doctors (with real hospital names, ratings and reviews). Mentors appear
+// here only once real doctors have agreed to mentor.
+const MENTORS: Mentor[] = [];
 
 const SPECIALTIES = ["All", "Cardiology", "Neurosurgery", "Paediatrics", "Radiology", "Psychiatry", "Emergency Medicine"];
 
@@ -131,6 +90,12 @@ export default function Mentorship() {
           ))}
         </div>
 
+        {filtered.length === 0 && (
+          <div className="rounded-2xl p-8 text-center" style={{ background: "#161B2E", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <p className="text-lg font-semibold">Mentors are joining</p>
+            <p className="mt-2 text-sm" style={{ color: "rgba(255,255,255,0.6)" }}>We are inviting senior doctors and residents to mentor. If you'd like to mentor, write to <a href="mailto:support@aethex.in" style={{ color: "#00c864" }}>support@aethex.in</a>.</p>
+          </div>
+        )}
         {/* Mentor Grid */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((mentor, i) => (

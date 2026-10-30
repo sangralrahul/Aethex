@@ -108,7 +108,7 @@ function DrugCard({ drug, onViewDetails }: { drug: Drug; onViewDetails: (d: Drug
         <button
           onClick={() => onViewDetails(drug)}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all hover:opacity-90"
-          style={{ background: "linear-gradient(135deg, #007AFF, #00C2A8)", color: "#FFFFFF" }}>
+          style={{ background: "linear-gradient(135deg, #6D28D9, #4F46E5)", color: "#FFFFFF" }}>
           <Info className="w-3 h-3" />
           Full Details
         </button>
@@ -147,7 +147,7 @@ function LockedDrugCard({ drug, onUnlock }: { drug: Drug; onUnlock: () => void }
         <button
           onClick={onUnlock}
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-semibold transition-all hover:opacity-90"
-          style={{ background: "linear-gradient(135deg, #007AFF, #00C2A8)", color: "#FFFFFF" }}>
+          style={{ background: "linear-gradient(135deg, #6D28D9, #4F46E5)", color: "#FFFFFF" }}>
           <Crown className="w-3.5 h-3.5" />
           Unlock Access
         </button>
@@ -327,7 +327,7 @@ function SubscriptionModal({ onClose }: { onClose: () => void }) {
         style={{ background: "#FFFFFF", boxShadow: "0 32px 80px rgba(0,0,0,0.25)" }}>
         {/* Header */}
         <div className="relative px-6 py-6 text-center overflow-hidden"
-          style={{ background: "linear-gradient(135deg, #007AFF, #00C2A8)" }}>
+          style={{ background: "linear-gradient(135deg, #6D28D9, #4F46E5)" }}>
           <div className="absolute inset-0 pointer-events-none"
             style={{ background: "radial-gradient(ellipse at top, rgba(255,255,255,0.15) 0%, transparent 70%)" }} />
           <button onClick={onClose}
@@ -380,7 +380,7 @@ function SubscriptionModal({ onClose }: { onClose: () => void }) {
                 }}>
                 {plan.popular && (
                   <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-[10px] font-bold text-white"
-                    style={{ background: "linear-gradient(135deg, #007AFF, #00C2A8)" }}>
+                    style={{ background: "linear-gradient(135deg, #6D28D9, #4F46E5)" }}>
                     MOST POPULAR
                   </span>
                 )}
@@ -399,11 +399,11 @@ function SubscriptionModal({ onClose }: { onClose: () => void }) {
 
           <button
             className="w-full mt-3 py-3.5 rounded-2xl font-bold text-white text-sm transition-all hover:opacity-90"
-            style={{ background: "linear-gradient(135deg, #007AFF, #00C2A8)" }}>
+            style={{ background: "linear-gradient(135deg, #6D28D9, #4F46E5)" }}>
             Start Pro Access
           </button>
           <p className="text-center text-[11px] mt-2" style={{ color: "#AEAEB2" }}>
-            Cancel anytime · Trusted by 50,000+ doctors
+            Cancel anytime
           </p>
         </div>
       </div>
@@ -466,13 +466,13 @@ export default function DrugReference() {
   const totalLocked = DRUG_DATABASE.length - totalFree;
 
   return (
-    <div className="min-h-screen" style={{ background: "#F5F3EE" }}>
+    <div className="min-h-screen" style={{ background: "#F7F8FA" }}>
 
       {/* ── Hero ──────────────────────────────────────────────────── */}
       <PageHero
         tag="Drug Reference"
         title="Indian Drug Reference"
-        subtitle={`${DRUG_DATABASE.length}+ drugs · CDSCO & WHO Schedules · First ${FREE_DRUG_LIMIT} free`}
+        subtitle={`${DRUG_DATABASE.length} drugs with Indian brands, forms, doses and CDSCO schedules`}
         icon={<Pill className="w-7 h-7" style={{ color: "rgba(255,255,255,0.85)" }} />}
         right={
           <div className="relative w-full sm:w-80">
@@ -569,7 +569,7 @@ export default function DrugReference() {
                   <button
                     onClick={() => setShowSubscription(true)}
                     className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-semibold transition-all hover:opacity-90"
-                    style={{ background: "linear-gradient(135deg, #007AFF, #00C2A8)", color: "#FFFFFF" }}>
+                    style={{ background: "linear-gradient(135deg, #6D28D9, #4F46E5)", color: "#FFFFFF" }}>
                     <Crown className="w-3.5 h-3.5" />
                     Unlock All
                   </button>
@@ -579,7 +579,7 @@ export default function DrugReference() {
                 <div className="mb-4 p-4 rounded-2xl flex items-center gap-3"
                   style={{ background: "linear-gradient(135deg, rgba(0,122,255,0.06), rgba(0,194,168,0.06))", border: "1px solid rgba(0,122,255,0.15)" }}>
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: "linear-gradient(135deg, #007AFF, #00C2A8)" }}>
+                    style={{ background: "linear-gradient(135deg, #6D28D9, #4F46E5)" }}>
                     <Crown className="w-5 h-5 text-white" />
                   </div>
                   <div className="flex-1">
@@ -589,7 +589,7 @@ export default function DrugReference() {
                   <button
                     onClick={() => setShowSubscription(true)}
                     className="shrink-0 px-4 py-2 rounded-xl text-[12px] font-bold transition-all hover:opacity-90 hidden sm:block"
-                    style={{ background: "linear-gradient(135deg, #007AFF, #00C2A8)", color: "#FFFFFF" }}>
+                    style={{ background: "linear-gradient(135deg, #6D28D9, #4F46E5)", color: "#FFFFFF" }}>
                     View Plans
                   </button>
                 </div>
@@ -610,7 +610,7 @@ export default function DrugReference() {
                       <p className="text-[12px] text-center mb-3" style={{ color: "#636366" }}>Subscribe to access all</p>
                       <button
                         className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-semibold"
-                        style={{ background: "linear-gradient(135deg, #007AFF, #00C2A8)", color: "#FFFFFF" }}>
+                        style={{ background: "linear-gradient(135deg, #6D28D9, #4F46E5)", color: "#FFFFFF" }}>
                         <Crown className="w-3.5 h-3.5" /> Unlock Access
                       </button>
                     </div>

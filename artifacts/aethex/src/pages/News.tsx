@@ -54,7 +54,7 @@ export default function MedicalNews() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: "#F5F3EE" }}>
+    <div className="min-h-screen" style={{ background: "#F7F8FA" }}>
       <PageHero
         tag="Live Medical News"
         title="Medical News"

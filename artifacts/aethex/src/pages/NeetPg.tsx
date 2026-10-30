@@ -423,7 +423,7 @@ function PracticeMode({ questions, onExit }: { questions: MCQ[]; onExit: () => v
       {/* Progress bar */}
       <div className="h-2 rounded-full mb-8 overflow-hidden" style={{ background: "rgba(60,60,67,0.1)" }}>
         <div className="h-full rounded-full transition-all duration-500"
-          style={{ width: `${progress}%`, background: "linear-gradient(90deg,#007AFF,#00C2A8)" }} />
+          style={{ width: `${progress}%`, background: "linear-gradient(90deg,#6D28D9,#4F46E5)" }} />
       </div>
 
       {/* Question Card */}
@@ -517,7 +517,7 @@ function PracticeMode({ questions, onExit }: { questions: MCQ[]; onExit: () => v
         <div className="flex justify-end">
           <button onClick={handleNext}
             className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90"
-            style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)", color: "#FFFFFF" }}>
+            style={{ background: "linear-gradient(135deg,#6D28D9,#4F46E5)", color: "#FFFFFF" }}>
             {idx + 1 >= questions.length ? "Finish" : "Next Question"}
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -644,7 +644,7 @@ function QuickTest({ onExit }: { onExit: () => void }) {
 
           <button onClick={startTest}
             className="w-full py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-2 transition-all hover:opacity-90"
-            style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)", color: "#FFFFFF", boxShadow: "0 4px 20px rgba(0,122,255,0.3)" }}>
+            style={{ background: "linear-gradient(135deg,#6D28D9,#4F46E5)", color: "#FFFFFF", boxShadow: "0 4px 20px rgba(109,40,217,0.3)" }}>
             <Play className="w-5 h-5" />
             Start Test
           </button>
@@ -665,7 +665,7 @@ function QuickTest({ onExit }: { onExit: () => void }) {
           </div>
         </div>
         <div className="h-2 rounded-full mb-8 overflow-hidden" style={{ background: "rgba(60,60,67,0.1)" }}>
-          <div className="h-full rounded-full transition-all" style={{ width: `${progress}%`, background: "linear-gradient(90deg,#007AFF,#00C2A8)" }} />
+          <div className="h-full rounded-full transition-all" style={{ width: `${progress}%`, background: "linear-gradient(90deg,#6D28D9,#4F46E5)" }} />
         </div>
         <div className="rounded-2xl p-6 lg:p-8"
           style={{ background: "#FFFFFF", border: "1px solid rgba(60,60,67,0.1)", boxShadow: "0 2px 16px rgba(0,0,0,0.06)" }}>
@@ -703,7 +703,7 @@ function QuickTest({ onExit }: { onExit: () => void }) {
           {answered && (
             <button onClick={handleNext}
               className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all hover:opacity-90"
-              style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)", color: "#FFFFFF" }}>
+              style={{ background: "linear-gradient(135deg,#6D28D9,#4F46E5)", color: "#FFFFFF" }}>
               {idx + 1 >= questions.length ? "View Results" : "Next"} <ChevronRight className="w-4 h-4" />
             </button>
           )}
@@ -773,7 +773,7 @@ function QuickTest({ onExit }: { onExit: () => void }) {
 
       <div className="flex gap-3">
         <button onClick={() => { setPhase("setup"); setAnswers([]); }} className="flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all hover:opacity-90"
-          style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)", color: "#FFFFFF" }}>
+          style={{ background: "linear-gradient(135deg,#6D28D9,#4F46E5)", color: "#FFFFFF" }}>
           <RefreshCw className="w-4 h-4" /> Try Again
         </button>
         <button onClick={onExit} className="px-6 py-3 rounded-xl font-semibold text-sm transition-all hover:bg-gray-100"
@@ -799,7 +799,7 @@ export default function NeetPg() {
 
   if (mode === "practice") {
     return (
-      <div className="min-h-screen py-12" style={{ background: "#F5F3EE" }}>
+      <div className="min-h-screen py-12" style={{ background: "#F7F8FA" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <PracticeMode questions={filteredQuestions.length ? filteredQuestions : QUESTIONS} onExit={() => setMode("hub")} />
         </div>
@@ -809,7 +809,7 @@ export default function NeetPg() {
 
   if (mode === "quicktest") {
     return (
-      <div className="min-h-screen py-12" style={{ background: "#F5F3EE" }}>
+      <div className="min-h-screen py-12" style={{ background: "#F7F8FA" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <QuickTest onExit={() => setMode("hub")} />
         </div>
@@ -818,19 +818,19 @@ export default function NeetPg() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: "#F5F3EE" }}>
+    <div className="min-h-screen" style={{ background: "#F7F8FA" }}>
 
       {/* ── Hero ── */}
       <PageHero
         tag="NEET-PG"
         title="NEET-PG MCQ Engine"
-        subtitle="AI-powered practice questions for NEET-PG, USMLE & Indian medical entrance exams. Detailed explanations, subject analysis, leaderboards."
+        subtitle="Practice questions for NEET-PG, NExT and USMLE, with an explanation for every answer and your results by subject."
         icon={<Brain className="w-7 h-7" style={{ color: "rgba(255,255,255,0.85)" }} />}
         right={
           <div className="flex flex-col sm:flex-row gap-3">
             <button onClick={() => setMode("practice")}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90"
-              style={{ background: "#007A69", color: "#FFFFFF" }}>
+              style={{ background: "#6D28D9", color: "#FFFFFF" }}>
               <Play className="w-4 h-4" /> Practice Mode
             </button>
             <button onClick={() => setMode("quicktest")}
@@ -847,10 +847,10 @@ export default function NeetPg() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
-              { value: `${QUESTIONS.length}+`, label: "Total Questions", icon: BookOpen, color: "#007AFF" },
-              { value: `${SUBJECTS.length}`, label: "Subjects Covered", icon: Brain, color: "#5856D6" },
-              { value: "12,400+", label: "Tests Taken", icon: Target, color: "#00C2A8" },
-              { value: "72%", label: "Average Score", icon: BarChart3, color: "#FF9500" },
+              { value: `${QUESTIONS.length}`, label: "Questions", icon: BookOpen, color: "#6D28D9" },
+              { value: `${SUBJECTS.length}`, label: "Subjects covered", icon: Brain, color: "#6D28D9" },
+              { value: "2", label: "Modes: practice and timed", icon: Target, color: "#6D28D9" },
+              { value: "+4 / −1", label: "NEET-PG marking", icon: BarChart3, color: "#6D28D9" },
             ].map((stat, i) => {
               const Icon = stat.icon;
               return (
@@ -875,15 +875,15 @@ export default function NeetPg() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
           {[
             {
-              icon: Play, title: "Practice Mode", color: "#007AFF",
-              gradient: "from-blue-600 to-blue-900",
+              icon: Play, title: "Practice Mode", color: "#6D28D9",
+              gradient: "from-violet-700 to-indigo-950",
               desc: "Go through questions one by one with instant feedback, detailed explanations, and per-question timer. Great for deep learning.",
               features: ["Instant correct/wrong feedback", "Detailed explanations", "Per-question timer", "Subject & difficulty tags"],
               cta: "Start Practicing", mode: "practice" as Mode,
             },
             {
-              icon: Zap, title: "Quick Test Mode", color: "#007A69",
-              gradient: "from-teal-500 to-teal-800",
+              icon: Zap, title: "Quick Test Mode", color: "#4338CA",
+              gradient: "from-indigo-600 to-slate-900",
               desc: "Configure a timed mock test by subject, difficulty, and question count. Get a full performance analysis at the end.",
               features: ["Choose 10 / 20 / 30 Qs", "Filter by subject & difficulty", "Full timer for the test", "Subject-wise score analysis"],
               cta: "Start Quick Test", mode: "quicktest" as Mode,

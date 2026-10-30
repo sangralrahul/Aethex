@@ -460,7 +460,7 @@ function CaseCard({ c }: { c: ClinicalCase }) {
 
         <div className="flex flex-wrap gap-1.5 mt-2">
           {c.tags.slice(0, 4).map(t => (
-            <span key={t} className="text-[11px] px-2 py-0.5 rounded-full" style={{ background: "#F5F3EE", color: "#636366" }}>#{t}</span>
+            <span key={t} className="text-[11px] px-2 py-0.5 rounded-full" style={{ background: "#F7F8FA", color: "#636366" }}>#{t}</span>
           ))}
         </div>
       </div>
@@ -582,7 +582,7 @@ export default function ClinicalCases() {
     ), [search, specialty, difficulty]);
 
   return (
-    <div className="min-h-screen" style={{ background: "#F5F3EE" }}>
+    <div className="min-h-screen" style={{ background: "#F7F8FA" }}>
       <PageHero width="4xl"
         tag="Case Library"
         title="Clinical Cases"

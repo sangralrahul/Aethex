@@ -3,6 +3,7 @@ import { useSeo } from "@/hooks/use-seo";
 import { Link, useRoute } from "wouter";
 import { Brain, RotateCcw, ChevronLeft, Check, X } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
+import { KhIcon, khIcon } from "@/components/MedKnowledge/KhParts";
 import { Button } from "@/components/ui/button";
 import { useFlashcards } from "@/hooks/use-flashcards";
 
@@ -18,7 +19,7 @@ export default function Flashcards() {
 function DeckList() {
   const { decks, deckStats } = useFlashcards();
   return (
-    <div style={{ background: "#F5F3EE", minHeight: "100vh" }}>
+    <div style={{ background: "#F7F8FA", minHeight: "100vh" }}>
       <PageHero
         icon={<Brain className="w-6 h-6" />}
         title="Smart Flashcards"
@@ -33,7 +34,7 @@ function DeckList() {
               <Link key={d.id} href={`/flashcards/${d.id}`}>
                 <a className="block bg-white rounded-2xl p-5 border border-slate-200 hover:shadow-lg transition-shadow cursor-pointer">
                   <div className="flex items-start justify-between mb-3">
-                    <div className="text-3xl">{d.emoji}</div>
+                    <KhIcon slug={d.subject.toLowerCase()} color="#6d28d9" />
                     {s.due > 0 && (
                       <span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background: "#FEE2E2", color: "#B91C1C" }}>
                         {s.due} due
@@ -87,8 +88,8 @@ function DeckStudy({ deckId }: { deckId: string }) {
   }
 
   return (
-    <div style={{ background: "#F5F3EE", minHeight: "100vh" }}>
-      <PageHero width="3xl" icon={<span className="text-2xl">{deck.emoji}</span>} title={deck.name} subtitle={deck.subject} />
+    <div style={{ background: "#F7F8FA", minHeight: "100vh" }}>
+      <PageHero width="3xl" icon={(() => { const I = khIcon(deck.subject.toLowerCase()); return <I className="w-7 h-7" />; })()} title={deck.name} subtitle={deck.subject} />
       <div className="max-w-3xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-4">
           <Link href="/flashcards">

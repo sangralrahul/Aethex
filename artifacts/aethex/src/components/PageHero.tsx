@@ -1,6 +1,17 @@
 import { type ReactNode } from "react";
 import { Link } from "wouter";
 import { ChevronRight } from "lucide-react";
+import { HeroScene, type SceneKind } from "@/components/visual/HeroScene";
+import { PORTALS, sitePortal } from "@/lib/portals";
+
+/** Update 69: each platform's colour and living background (the same as its home page hero). */
+const LOOK: Record<string, { kind: SceneKind | SceneKind[]; rgb: string }> = {
+  study: { kind: "molecules", rgb: "167,139,250" },
+  doctors: { kind: "pulse", rgb: "56,189,248" },
+  hospitals: { kind: ["cross", "pulse"], rgb: "34,211,238" },
+  medicalcolleges: { kind: "dna", rgb: "251,191,36" },
+  store: { kind: "pulse", rgb: "94,234,212" },
+};
 
 interface PageHeroProps {
   tag?: string;
@@ -19,13 +30,17 @@ interface PageHeroProps {
  * background. Styles: src/shop.css (.ax-ph).
  */
 export function PageHero({ tag, title, subtitle, icon, right, width }: PageHeroProps) {
+  const portal = sitePortal() ?? "study";
+  const look = LOOK[portal] ?? LOOK.study!;
+  const home = PORTALS[portal as keyof typeof PORTALS]?.name.replace(/^for /, "") ?? "Home";
   return (
-    <header className="ax-ph">
+    <header className={`ax-ph p-${portal}`}>
       <span className="ax-ph-glow a" aria-hidden="true" />
       <span className="ax-ph-glow b" aria-hidden="true" />
+      <HeroScene kind={look.kind} rgb={look.rgb} />
       <div className="ax-wrap ax-ph-in" data-w={width}>
         <nav className="ax-ph-crumbs" aria-label="Breadcrumb">
-          <Link href="/">Home</Link>
+          <Link href="/">{home}</Link>
           <ChevronRight size={13} aria-hidden="true" />
           <span aria-current="page">{tag || title}</span>
         </nav>

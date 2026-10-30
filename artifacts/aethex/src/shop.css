@@ -1786,3 +1786,71 @@ img.ax-pimg.crop{padding:0!important;clip-path:var(--ax-clip);transform:translat
 .ec-ban-scene .ax-scene .pulse{height:70px;opacity:.5}
 @media (max-width:760px){.ec-ban-scene{-webkit-mask-image:none;mask-image:none;opacity:.6}}
 @media (max-width:640px){.ax-ihero .eyebrow{height:auto;flex-wrap:wrap;row-gap:4px;padding:6px 8px 6px 12px;border-radius:14px}.kh-page .kh-hero:not(.compact) .eyebrow em{display:none}}
+
+/* ---------------------------------------------------------------- update 69: inner-page headers in each platform's colour */
+.ax-ph{--ip-a:#a78bfa;--ip-b:#6d28d9;background:radial-gradient(900px 380px at 88% -30%,var(--ip-glow,rgba(167,139,250,.24)),transparent 60%),linear-gradient(160deg,#071225 0%,#0b1a33 60%,#0a1630 100%)}
+.ax-ph .ax-scene{z-index:-1}
+.ax-ph.p-study{--ip-a:#a78bfa;--ip-b:#6d28d9;--ip-glow:rgba(167,139,250,.26)}
+.ax-ph.p-doctors{--ip-a:#38bdf8;--ip-b:#1d4ed8;--ip-glow:rgba(56,189,248,.24)}
+.ax-ph.p-hospitals{--ip-a:#22d3ee;--ip-b:#0e7490;--ip-glow:rgba(34,211,238,.22)}
+.ax-ph.p-medicalcolleges{--ip-a:#fbbf24;--ip-b:#b45309;--ip-glow:rgba(251,191,36,.2)}
+.ax-ph.p-store{--ip-a:#5eead4;--ip-b:#0f766e;--ip-glow:rgba(94,234,212,.2)}
+.ax-ph-glow.a{background:radial-gradient(closest-side,var(--ip-b),transparent);opacity:.45}
+.ax-ph-glow.b{background:radial-gradient(closest-side,var(--ip-a),transparent);opacity:.25}
+.ax-ph-icon{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.16);color:var(--ip-a)}
+.ax-ph-icon svg{color:var(--ip-a)!important}
+.ax-ph-tag{color:var(--ip-a)}
+.ax-ph-tag::before{background:var(--ip-a)}
+.ax-ph-in{position:relative;z-index:1;padding-top:26px;padding-bottom:48px}
+.ax-ph .ax-scene .pulse{height:70px;opacity:.45}
+
+/* update 69: Aethex Doctors in its own blue (the header's), and page headers as dark banners */
+.fd-page{--hb-sky:#1d4ed8;--hb-sky2:#1e40af;--hb-navy:#0b1a33;--hb-navy2:#071225}
+.fd-pagehead{position:relative;overflow:hidden;isolation:isolate;margin:24px 0 26px;padding:30px 32px 28px;border-radius:20px;color:#fff;background:radial-gradient(520px 240px at 100% 0,rgba(56,189,248,.28),transparent 70%),linear-gradient(150deg,#071225,#0d2148 70%,#10275a)}
+.fd-pagehead::before{content:"";position:absolute;inset:0;z-index:-1;background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:40px 40px;-webkit-mask-image:radial-gradient(ellipse at 80% 20%,#000 20%,transparent 75%);mask-image:radial-gradient(ellipse at 80% 20%,#000 20%,transparent 75%)}
+.fd-pagehead::after{content:"";position:absolute;right:-60px;bottom:-80px;z-index:-1;width:260px;height:260px;border-radius:50%;background:#38bdf8;filter:blur(70px);opacity:.25;animation:ax-idrift 16s ease-in-out infinite alternate}
+.fd-page .fd-pagehead h1{color:#fff}
+.fd-page .fd-pagehead h1 svg{color:#7dd3fc}
+.fd-page .fd-pagehead p{margin:10px 0 0;color:rgba(255,255,255,.72)}
+.fd-pagehead p a{color:#7dd3fc}
+@media (max-width:640px){.fd-pagehead{padding:24px 20px;border-radius:16px}}
+.fd-hero{background:radial-gradient(800px 360px at 90% -20%,rgba(56,189,248,.26),transparent 60%),linear-gradient(160deg,#071225 0%,#0b1a33 60%,#0a1630 100%)}
+
+/* update 69: CME Hub */
+.cme-page{background:#fff;padding-bottom:56px}
+.cme-body{padding-top:32px}
+.cme-facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:0;padding:20px 8px;border:1px solid var(--ax-line);border-radius:18px;background:#fff}
+.cme-facts div{padding:0 20px;border-left:1px solid var(--ax-line)}
+.cme-facts div:first-child{border-left:0}
+.cme-facts dt{font-family:var(--ax-display);font-size:28px;font-weight:750;color:var(--ax-ink)}
+.cme-facts dd{margin:2px 0 0;font-size:13px;color:var(--ax-t3)}
+.cme-note{display:flex;gap:10px;align-items:flex-start;margin:16px 0 0;padding:14px 16px;border-radius:14px;background:#f3eefe;border:1px solid #e4d9fd;font-size:14px;line-height:1.55;color:#3b2a6b}
+.cme-note svg{flex-shrink:0;margin-top:2px;color:#6d28d9}
+.cme-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-top:48px}
+.cme-head .ax-ihead>span{color:#6d28d9}
+.cme-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+.cme-card{display:flex;flex-direction:column;gap:10px;padding:22px;border-radius:18px;border:1px solid var(--ax-line);background:#fff;transition:border-color .2s,box-shadow .2s}
+.cme-card:hover{border-color:#c4b5fd;box-shadow:0 18px 36px -26px rgba(76,29,149,.45)}
+.cme-card .top{display:flex;align-items:center;gap:10px}
+.cme-card .ic{display:grid;place-items:center;width:40px;height:40px;border-radius:11px;border:1px solid}
+.cme-card .sp{font-size:13px;font-weight:700}
+.cme-card h3{margin:4px 0 0;font-size:17px;line-height:1.35;font-weight:700;color:var(--ax-ink)}
+.cme-card p{margin:0;font-size:14px;line-height:1.55;color:var(--ax-t2)}
+.cme-card .tags{list-style:none;display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 0;padding:0}
+.cme-card .tags li{padding:3px 9px;border-radius:999px;background:var(--ax-band);font-size:12px;font-weight:600;color:var(--ax-t2)}
+.cme-card .meta{display:flex;gap:16px;font-size:13px;color:var(--ax-t3)}
+.cme-card .meta span{display:inline-flex;align-items:center;gap:6px}
+.cme-card .go{margin-top:auto;align-self:flex-start;color:#6d28d9;border-color:#e4d9fd}
+.cme-card .go:hover{background:#f7f5ff}
+.cme-more{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-top:48px;padding:28px 32px;border-radius:20px;background:var(--ax-band);border:1px solid var(--ax-line)}
+.cme-more h2{margin:0;font-size:22px;font-weight:750;color:var(--ax-ink)}
+.cme-more p{margin:6px 0 0;max-width:60ch;font-size:14.5px;color:var(--ax-t2)}
+.cme-more .acts{display:flex;gap:10px;flex-wrap:wrap}
+.cme-page .ax-btn.teal{background:#6d28d9;border-color:#6d28d9;color:#fff}
+.cme-page .ax-btn.teal:hover{background:#5b21b6;border-color:#5b21b6}
+.cme-cert{padding:36px;border-radius:20px;border:1px solid var(--ax-line);background:#fff}
+.cme-cert .ic{display:grid;place-items:center;width:48px;height:48px;border-radius:14px;background:#f3eefe;color:#6d28d9}
+.cme-cert h2{margin:18px 0 0;font-size:24px;font-weight:750;color:var(--ax-ink)}
+.cme-cert p{margin:12px 0 0;max-width:68ch;font-size:15px;line-height:1.65;color:var(--ax-t2)}
+.cme-cert .acts{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
+@media (max-width:640px){.cme-facts{grid-template-columns:1fr 1fr;row-gap:16px}.cme-facts div:nth-child(3){border-left:0}.cme-grid{grid-template-columns:1fr}.cme-cert{padding:24px}}

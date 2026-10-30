@@ -655,7 +655,7 @@ function CalcCard({ calc, initialOpen }: { calc: Calculator; initialOpen?: boole
                 {f.type === "select" ? (
                   <select
                     className="w-full px-3 py-2 rounded-xl text-sm focus:outline-none"
-                    style={{ background: "#F5F3EE", border: "1px solid rgba(60,60,67,0.12)", color: "#1C1C1E" }}
+                    style={{ background: "#F7F8FA", border: "1px solid rgba(60,60,67,0.12)", color: "#1C1C1E" }}
                     value={values[f.id] ?? ""}
                     onChange={e => setValues(v => ({ ...v, [f.id]: e.target.value }))}
                   >
@@ -667,7 +667,7 @@ function CalcCard({ calc, initialOpen }: { calc: Calculator; initialOpen?: boole
                     type="number"
                     min={f.min} max={f.max} step={f.step ?? 1}
                     className="w-full px-3 py-2 rounded-xl text-sm focus:outline-none"
-                    style={{ background: "#F5F3EE", border: "1px solid rgba(60,60,67,0.12)", color: "#1C1C1E" }}
+                    style={{ background: "#F7F8FA", border: "1px solid rgba(60,60,67,0.12)", color: "#1C1C1E" }}
                     value={values[f.id] ?? ""}
                     onChange={e => setValues(v => ({ ...v, [f.id]: e.target.value }))}
                     placeholder={`Enter ${f.label.toLowerCase()}`}
@@ -725,7 +725,7 @@ export default function CalculatorPage() {
   }, [search, category, activeId]);
 
   return (
-    <div className="min-h-screen" style={{ background: "#F5F3EE" }}>
+    <div className="min-h-screen" style={{ background: "#F7F8FA" }}>
       <PageHero width="5xl"
         tag="Clinical Calculators"
         title="Medical Calculator Suite"
