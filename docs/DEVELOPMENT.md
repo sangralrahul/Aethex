@@ -262,6 +262,11 @@ and per email). The profile is saved `pending` with `user_id = 'reg:…'` and `c
 (by a code or Google, so the email is proven), the profile becomes theirs. Booking and approval emails go to the
 account's email, or to `contact_email` until then.
 
+Update 73: aethex.in (`src/pages/Hub.tsx`) has one search across doctors, products and study topics (it opens the
+right platform with the search done), and each of the five cards links straight to its platform's four most common
+tasks, with the button in the platform's colour and its address underneath. On phones the cards drop the picture and
+show the tasks as a grid of buttons, so all five fit in a short scroll.
+
 ## Aethex Doctors
 
 `worker/find.ts` (`/api/find/*`), tables in `migrations/0006_find.sql` (also created on first use). Doctors list

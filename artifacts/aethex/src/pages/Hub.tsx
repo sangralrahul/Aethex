@@ -3,9 +3,11 @@
  * one per platform (find., store., study., hospitals. and medicalcolleges.aethex.in), with the catalogue's own
  * product photos, three facts each and a button. A soft animated background, cards that rise in, photos that drift.
  * Cadus is inside every portal (and on the header button). Styles: src/site-hub.css (hb-*).
+ * Update 73: one search across doctors, products and study topics, and in each card direct links to the platform's
+ * most common tasks, the button in the platform's colour and its address; compact cards on phones.
  */
-import { useEffect, useRef, type ReactNode } from "react";
-import { ArrowRight, Building2, CalendarCheck, Check, GraduationCap, Hospital, ShieldCheck, ShoppingBag, Sparkles } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { ArrowRight, Building2, CalendarCheck, ChevronRight, GraduationCap, Hospital, Search, ShieldCheck, ShoppingBag, Sparkles } from "lucide-react";
 import { Logo } from "@/components/layout/Navbar";
 import { useSeo } from "@/hooks/use-seo";
 import { cadusUrl, loginUrl, mainUrl, portalUrl, type Portal } from "@/lib/host";
@@ -94,13 +96,46 @@ const ART: Record<string, ReactNode> = { doctors: <FindArt />, store: <StoreArt 
 
 
 
-const CARDS: { id: Portal; tone: string; icon: ReactNode; photo: string; title: string; who: string; points: string[]; cta: string }[] = [
-  { id: "doctors", tone: "blue", icon: <CalendarCheck size={20} />, photo: "stethoscope", title: "Find a doctor", who: "For patients", points: ["Search by city and specialty", "Clinic visit or video consult", "Every registration checked"], cta: "Book now" },
-  { id: "store", tone: "teal", icon: <ShoppingBag size={20} />, photo: "bp-monitor", title: "Medical store", who: "For everyone", points: ["Genuine, verified brands", "Cash on delivery across India", `Free delivery from ${formatINR(FREE_DELIVERY_FROM)}`], cta: "Shop now" },
-  { id: "study", tone: "violet", icon: <GraduationCap size={20} />, photo: "test-books", title: "Study", who: "For students", points: ["NEET-PG preparation", "Mock tests and flashcards", "Every subject, every exam"], cta: "Start studying" },
-  { id: "hospitals", tone: "cyan", icon: <Hospital size={20} />, photo: "ecg", title: "Hospitals", who: "For institutions", points: ["ICU, emergency and furniture", "One list, one quotation", "Bank transfer or purchase order"], cta: "Get a quotation" },
-  { id: "medicalcolleges", tone: "amber", icon: <Building2 size={20} />, photo: "surgical-set", title: "Medical colleges", who: "For institutions", points: ["Skills labs and manikins", "Anatomy models and lab equipment", "Textbooks for every course"], cta: "Equip your college" },
+type Quick = { label: string; path: string };
+/** Update 73: each card goes straight to the most common tasks on its platform. */
+const CARDS: { id: Portal; tone: string; icon: ReactNode; photo: string; title: string; who: string; text: string; quick: Quick[]; cta: string }[] = [
+  { id: "doctors", tone: "blue", icon: <CalendarCheck size={20} />, photo: "stethoscope", title: "Find a doctor", who: "For patients", text: "Checked doctors near you: clinic visits and video consults.",
+    quick: [{ label: "Find doctors near me", path: "/doctors" }, { label: "Video consultation", path: "/doctors?video=1" }, { label: "Ask a doctor, free", path: "/ask" }, { label: "Register your practice", path: "/list-your-practice" }], cta: "Book a doctor" },
+  { id: "store", tone: "teal", icon: <ShoppingBag size={20} />, photo: "bp-monitor", title: "Medical store", who: "For everyone", text: `Genuine brands, cash on delivery, free delivery from ${formatINR(FREE_DELIVERY_FROM)}.`,
+    quick: [{ label: "BP monitors", path: "/category/bp-monitors" }, { label: "Stethoscopes", path: "/category/stethoscopes" }, { label: "Medical books", path: "/books" }, { label: "Track an order", path: "/orders/track" }], cta: "Shop now" },
+  { id: "study", tone: "violet", icon: <GraduationCap size={20} />, photo: "test-books", title: "Study", who: "For students and doctors", text: "NEET-PG questions, mock tests, flashcards and a reference for every subject.",
+    quick: [{ label: "NEET-PG questions", path: "/neet-pg" }, { label: "Take a mock test", path: "/mock-test" }, { label: "Medical Knowledge Hub", path: "/study-hub/medical-knowledge-hub" }, { label: "Case of the day", path: "/case-of-the-day" }], cta: "Start studying" },
+  { id: "hospitals", tone: "cyan", icon: <Hospital size={20} />, photo: "ecg", title: "Hospitals", who: "For hospitals and clinics", text: "Beds, ICU, emergency and consumables: one list, one quotation.",
+    quick: [{ label: "Request a quotation", path: "/#list" }, { label: "ICU and monitoring", path: "/#icu" }, { label: "Beds and furniture", path: "/#beds" }, { label: "My quotations", path: "/account/quotations" }], cta: "Get a quotation" },
+  { id: "medicalcolleges", tone: "amber", icon: <Building2 size={20} />, photo: "surgical-set", title: "Medical colleges", who: "For colleges and departments", text: "Skills labs, anatomy models, lab equipment and textbooks.",
+    quick: [{ label: "Request a quotation", path: "/#list" }, { label: "Skills lab trainers", path: "/#simulation" }, { label: "Anatomy models", path: "/#anatomy" }, { label: "Textbooks", path: "/books" }], cta: "Equip your college" },
 ];
+
+/** One search for everything: doctors, products or study topics. */
+const SEARCH: { id: "doctors" | "store" | "study"; label: string; placeholder: string; to: (q: string) => string }[] = [
+  { id: "doctors", label: "Doctors", placeholder: "Search doctors, specialties or clinics", to: (q) => portalUrl("doctors", `/doctors?q=${encodeURIComponent(q)}`) },
+  { id: "store", label: "Products", placeholder: "Search BP monitors, stethoscopes, books…", to: (q) => portalUrl("store", `/shop?search=${encodeURIComponent(q)}`) },
+  { id: "study", label: "Study topics", placeholder: "Search a topic or condition", to: (q) => portalUrl("study", `/study-hub/medical-knowledge-hub?q=${encodeURIComponent(q)}`) },
+];
+
+function HubSearch() {
+  const [tab, setTab] = useState<(typeof SEARCH)[number]["id"]>("doctors");
+  const [q, setQ] = useState("");
+  const cur = SEARCH.find((x) => x.id === tab)!;
+  const go = (e: FormEvent) => { e.preventDefault(); const t = q.trim(); window.location.href = t ? cur.to(t) : portalUrl(tab); };
+  return (
+    <form className="hb-search" onSubmit={go} role="search" data-home="search">
+      <div className="tabs" role="tablist" aria-label="Search in">
+        {SEARCH.map((x) => <button key={x.id} type="button" role="tab" aria-selected={tab === x.id} className={tab === x.id ? "on" : ""} onClick={() => setTab(x.id)}>{x.label}</button>)}
+      </div>
+      <div className="box">
+        <Search size={19} aria-hidden="true" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={cur.placeholder} aria-label={cur.placeholder} />
+        <button type="submit">Search</button>
+      </div>
+    </form>
+  );
+}
 
 export default function Hub() {
   useSeo({
@@ -127,16 +162,23 @@ export default function Hub() {
         <p>Choose the platform you need. Cadus, the clinical assistant, is inside every one.</p>
       </section>
 
+      <HubSearch />
+
       <section className="hb-cards" aria-label="Aethex platforms">
         {CARDS.map((c, i) => (
-          <a key={c.id} href={portalUrl(c.id)} className={`hb-card ${c.tone}`} data-portal={c.id} style={{ animationDelay: `${0.12 + i * 0.09}s` }}>
+          <article key={c.id} className={`hb-card ${c.tone}`} data-portal={c.id} style={{ animationDelay: `${0.12 + i * 0.09}s` }}>
             <span className="ph">{ART[c.id]}<img src={IMG(c.photo)} alt="" loading="eager" decoding="async" style={{ animationDelay: `${-i * 1.7}s` }} /></span>
-            <span className="ic">{c.icon}</span>
-            <b>{c.title}</b>
-            <small>{c.who}</small>
-            <ul>{c.points.map((p) => <li key={p}><Check size={14} /> {p}</li>)}</ul>
-            <em>{c.cta} <ArrowRight size={15} /></em>
-          </a>
+            <div className="hd">
+              <span className="ic">{c.icon}</span>
+              <span className="tt"><b>{c.title}</b><small>{c.who}</small></span>
+            </div>
+            <p className="tx">{c.text}</p>
+            <ul className="quick" aria-label={`${c.title}: go straight to`}>
+              {c.quick.map((q) => <li key={q.label}><a href={portalUrl(c.id, q.path)}>{q.label}<ChevronRight size={15} /></a></li>)}
+            </ul>
+            <a href={portalUrl(c.id)} className="main">{c.cta} <ArrowRight size={15} /></a>
+            <small className="dom">{c.id}.aethex.in</small>
+          </article>
         ))}
       </section>
 

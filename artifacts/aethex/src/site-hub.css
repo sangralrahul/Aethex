@@ -745,3 +745,51 @@
 .ax-portal-store .ec-catbar,.ax-site:has(.ax-phead[data-portal-header=store]) .ec-catbar{display:none}
 .ax-site:has(.ax-phead[data-portal-header=doctors]) .fd-subnav a.brand{display:none}
 @media (max-width:440px){.ax-phead .ax-head-in{gap:8px}.ax-phead .ax-head-r{gap:4px}.ax-phead .ax-icon.wish{display:none}.ax-plogo{gap:7px}.ax-plogo .ax-logo-mark{width:30px;height:30px}}
+
+/* ---------------------------------------------------------------- update 73: easier access from aethex.in */
+.hb-card{--c:#1d4ed8;--cb:#eaf0fe}
+.hb-card.teal{--c:#0f766e;--cb:#e7f4f1}.hb-card.violet{--c:#6d28d9;--cb:#f3eefe}.hb-card.cyan{--c:#0e7490;--cb:#e7f4f7}.hb-card.amber{--c:#b45309;--cb:#fdf3e7}
+.hb-card{position:relative;border-top:3px solid var(--c)}
+.hb-card .hd{display:flex;align-items:center;gap:12px;margin-top:6px}
+.hb-card .hd .ic{margin-top:0;flex-shrink:0}
+.hb-card .tt{display:flex;flex-direction:column;min-width:0}
+.hb-card .tt small{margin-top:1px}
+.hb-card .tx{margin:2px 0 0;font-size:13.5px;line-height:1.5;color:#475467}
+.hb-card ul.quick{gap:2px;margin:4px 0 0;padding:6px 0 0;border-top:1px solid #eef0f3}
+.hb-card ul.quick li{display:block}
+.hb-card ul.quick a{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 8px;margin:0 -8px;border-radius:8px;color:#1f2937;font-size:14px;font-weight:550;text-decoration:none;transition:background .15s,color .15s}
+.hb-card ul.quick a svg{flex-shrink:0;color:#98a2b3;transition:transform .15s,color .15s}
+.hb-card ul.quick a:hover,.hb-card ul.quick a:focus-visible{background:var(--cb);color:var(--c)}
+.hb-card ul.quick a:hover svg{transform:translateX(2px);color:var(--c)}
+.hb-card .main{display:flex;align-items:center;justify-content:center;gap:7px;height:46px;margin-top:auto;border-radius:10px;background:var(--c);color:#fff;font-size:14.5px;font-weight:700;text-decoration:none;transition:filter .2s,transform .2s}
+.hb-card .main:hover{filter:brightness(1.1)}
+.hb-card .main svg{transition:transform .2s}
+.hb-card .main:hover svg{transform:translateX(3px)}
+.hb-card .dom{margin:2px 0 0;text-align:center;font-size:12px;color:#98a2b3;letter-spacing:.01em}
+.hb-card:hover{border-top-color:var(--c)}
+
+.hb-search{width:min(760px,calc(100% - 40px));margin:0 auto 26px;animation:hbUp .8s cubic-bezier(.2,.8,.2,1) .06s both}
+.hb-search .tabs{display:flex;justify-content:center;gap:6px;margin-bottom:10px}
+.hb-search .tabs button{height:32px;padding:0 14px;border-radius:999px;border:1px solid #e4e7ec;background:#fff;font:inherit;font-size:13.5px;font-weight:600;color:#475467;cursor:pointer}
+.hb-search .tabs button.on{background:#0f172a;border-color:#0f172a;color:#fff}
+.hb-search .box{display:flex;align-items:center;gap:10px;height:58px;padding:0 6px 0 18px;border-radius:16px;background:#fff;border:1px solid #e4e7ec;box-shadow:0 18px 40px -26px rgba(16,24,40,.45);color:#667085}
+.hb-search .box:focus-within{border-color:#94a3b8;box-shadow:0 0 0 4px rgba(15,23,42,.06),0 18px 40px -26px rgba(16,24,40,.45)}
+.hb-search input{flex:1;min-width:0;height:100%;border:0;outline:0;background:none;font:inherit;font-size:16px;color:#0f172a}
+.hb-search .box button{height:46px;padding:0 22px;border:0;border-radius:11px;background:#0f172a;color:#fff;font:inherit;font-size:15px;font-weight:700;cursor:pointer}
+.hb-search .box button:hover{background:#1e293b}
+
+@media (max-width:1180px){.hb-cards{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:640px){
+  .hb-search{margin-bottom:18px}
+  .hb-search .box{height:52px;padding-left:14px}
+  .hb-search .box button{padding:0 14px}
+  .hb-cards{grid-template-columns:1fr;gap:12px}
+  .hb-card .ph{display:none}
+  .hb-card{padding:16px}
+  .hb-card .hd{margin-top:0}
+  .hb-card ul.quick{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .hb-card ul.quick a{margin:0;padding:9px 10px;border:1px solid #eef0f3;border-radius:10px;font-size:13px;line-height:1.3}
+  .hb-card ul.quick a svg{display:none}
+  .hb-card .main{height:44px}
+}
+@media (max-width:480px){.hb-top nav a:not(.p){display:inline-flex;font-size:14px}.hb-top nav{gap:12px}.hb-top nav a.p{padding:0 12px}}
