@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useMemo, useState, type ComponentType } from "react";
 import { Link, useLocation } from "wouter";
 import { sitePortal } from "@/lib/portals";
-import { MarketTop } from "@/components/layout/MarketTop";
+import { MarketTop, PhotoTiles } from "@/components/layout/MarketTop";
 import { CardArt } from "@/components/visual/CardArt";
 import {
   Accessibility, Droplet, HeartHandshake, Mail, Scale, Wind,
@@ -111,21 +111,21 @@ export default function BulkPortal({ segment }: { segment: Segment }) {
         all={{ label: "Whole catalogue", href: "#catalogue" }}
         scene={segment === "hospital" ? ["cross", "pulse"] : ["dna", "molecules"]} rgb={segment === "hospital" ? "34,211,238" : "251,191,36"}
         slides={segment === "hospital" ? [
-          { kicker: "One quotation", title: "Equip every ward from one list", text: "Add beds, monitors, emergency kit and consumables with the quantities you need, and we'll send your prices with delivery.", cta: { label: "Request a quotation", onClick: openQuote }, second: { label: "Browse the catalogue", href: "#catalogue" }, tone: "cyan", photo: "ecg", icon: ClipboardList },
-          { kicker: "Ready-made lists", title: "Start from a crash cart or an ICU bed", text: "Lists for a crash cart, an ICU bed, a new ward, a month of IV supplies and more. Change the quantities, then send.", cta: { label: "See the lists", href: "#kits" }, tone: "ink", photo: "laryngoscope", icon: ListChecks },
-          { kicker: "Diagnostics", title: "Vital signs at every bedside", text: "BP monitors, pulse oximeters, thermometers and diagnostic sets from the makers we stock.", cta: { label: "Vital signs", onClick: () => pick("wards") }, tone: "navy", photo: "bp-monitor", icon: HeartPulse },
-          { kicker: "Order ahead", title: "Repeat every month or quarter", text: "Pick the date you need it by, or schedule repeat deliveries. Pay by bank transfer or against your purchase order.", cta: { label: "How it works", href: "#how" }, tone: "slate", photo: "xray-viewer", icon: CalendarClock },
+          { kicker: "One quotation", title: "Equip every ward from one list", text: "Add beds, monitors, emergency kit and consumables with the quantities you need, and we'll send your prices with delivery.", cta: { label: "Request a quotation", onClick: openQuote }, second: { label: "Browse the catalogue", href: "#catalogue" }, tone: "cyan", bg: "wardBeds", icon: ClipboardList },
+          { kicker: "Ready-made lists", title: "Start from a crash cart or an ICU bed", text: "Lists for a crash cart, an ICU bed, a new ward, a month of IV supplies and more. Change the quantities, then send.", cta: { label: "See the lists", href: "#kits" }, tone: "ink", bg: "operatingRoom", icon: ListChecks },
+          { kicker: "Diagnostics", title: "Vital signs at every bedside", text: "BP monitors, pulse oximeters, thermometers and diagnostic sets from the makers we stock.", cta: { label: "Vital signs", onClick: () => pick("wards") }, tone: "navy", bg: "icuMonitor", icon: HeartPulse },
+          { kicker: "Order ahead", title: "Repeat every month or quarter", text: "Pick the date you need it by, or schedule repeat deliveries. Pay by bank transfer or against your purchase order.", cta: { label: "How it works", href: "#how" }, tone: "slate", bg: "corridor", icon: CalendarClock },
         ] : [
-          { kicker: "One quotation", title: "Equip the skills lab and every batch", text: "Stethoscopes for students, manikins and trainers, anatomy models and lab equipment, with the quantities you need.", cta: { label: "Request a quotation", onClick: openQuote }, second: { label: "Browse the catalogue", href: "#catalogue" }, tone: "amber", photo: "stethoscope", icon: ClipboardList },
-          { kicker: "Ready-made lists", title: "A kit for every student", text: "Start from a student clinical kit, a skills station or a simulation lab, then change the quantities.", cta: { label: "See the lists", href: "#kits" }, tone: "ink", photo: "neuro-kit", icon: ListChecks },
-          { kicker: "Anatomy and labs", title: "Models, microscopes and glassware", text: "Skeletons, torsos and organ models, microscopes, centrifuges and lab essentials for every department.", cta: { label: "Anatomy models", onClick: () => pick("anatomy") }, tone: "navy", photo: "surgical-set", icon: Microscope },
-          { kicker: "Library", title: "Textbooks for every course", text: "Standard titles from MBBS to PG, quoted together with the rest of your list.", cta: { label: "Textbooks", href: "/books" }, tone: "slate", photo: "medical-book", icon: BookOpen },
+          { kicker: "One quotation", title: "Equip the skills lab and every batch", text: "Stethoscopes for students, manikins and trainers, anatomy models and lab equipment, with the quantities you need.", cta: { label: "Request a quotation", onClick: openQuote }, second: { label: "Browse the catalogue", href: "#catalogue" }, tone: "amber", bg: "lectureHall", icon: ClipboardList },
+          { kicker: "Ready-made lists", title: "A kit for every student", text: "Start from a student clinical kit, a skills station or a simulation lab, then change the quantities.", cta: { label: "See the lists", href: "#kits" }, tone: "ink", bg: "studentScrubs", icon: ListChecks },
+          { kicker: "Anatomy and labs", title: "Models, microscopes and glassware", text: "Skeletons, torsos and organ models, microscopes, centrifuges and lab essentials for every department.", cta: { label: "Anatomy models", onClick: () => pick("anatomy") }, tone: "navy", bg: "microscopeLab", icon: Microscope },
+          { kicker: "Library", title: "Textbooks for every course", text: "Standard titles from MBBS to PG, quoted together with the rest of your list.", cta: { label: "Textbooks", href: "/books" }, tone: "slate", bg: "studentBooks", icon: BookOpen },
         ]}
         promos={[
-          { kicker: "Your quotations", title: "Where every request stands", text: "Sign in to see them", href: "/account/quotations", icon: ClipboardCheck },
+          { kicker: "Your quotations", title: "Where every request stands", text: "Sign in to see them", href: "/account/quotations", icon: ClipboardCheck, bg: segment === "hospital" ? "reception" : "lectureRoom" },
           segment === "hospital"
-            ? { kicker: "Directory", title: "Hospitals and colleges in India", text: "Search the directory", href: "/institutions", icon: Building2, dark: true }
-            : { kicker: "Textbooks", title: "For the library and departments", text: "Every course", href: "/books", icon: BookOpen, dark: true },
+            ? { kicker: "Directory", title: "Hospitals and colleges in India", text: "Search the directory", href: "/institutions", icon: Building2, dark: true, bg: "hospitalRoom" }
+            : { kicker: "Textbooks", title: "For the library and departments", text: "Every course", href: "/books", icon: BookOpen, dark: true, bg: "studentBooks" },
         ]}
         trust={[
           { icon: ShieldCheck, t: "Genuine products", d: "With the maker's warranty" },
@@ -135,6 +135,24 @@ export default function BulkPortal({ segment }: { segment: Segment }) {
           { icon: Package, t: store ? `${total.toLocaleString("en-IN")} products` : "The full catalogue", d: store ? `${brands.length} brands` : "From verified brands" },
         ]}
       />
+
+      <PhotoTiles id="spaces" kicker={segment === "hospital" ? "Shop by area" : "Shop by space"} title={segment === "hospital" ? "From the ward to the operating room" : "From the lecture hall to the skills lab"}
+        more={{ label: "Whole catalogue", href: "#catalogue" }}
+        tiles={segment === "hospital" ? [
+          { key: "beds", title: "Wards and beds", sub: "Beds and furniture", bg: "ward", onClick: () => pick("beds") },
+          { key: "icu", title: "ICU", sub: "Monitoring", bg: "icuMonitor", onClick: () => pick("icu") },
+          { key: "emergency", title: "Emergency", sub: "Crash carts and airway", bg: "operatingRoom", onClick: () => pick("emergency") },
+          { key: "iv", title: "IV and infusion", sub: "Syringes and IV sets", bg: "ivStand", onClick: () => pick("iv") },
+          { key: "wards", title: "Vital signs", sub: "BP, SpO₂, temperature", bg: "bpCheck", onClick: () => pick("wards") },
+          { key: "diagnostics", title: "OPD and diagnostics", sub: "Examination sets", bg: "doctorPatient", onClick: () => pick("diagnostics") },
+        ] : [
+          { key: "anatomy", title: "Anatomy", sub: "Skeletons and models", bg: "lectureRoom", onClick: () => pick("anatomy") },
+          { key: "simulation", title: "Skills lab", sub: "Manikins and trainers", bg: "studentScrubs", onClick: () => pick("simulation") },
+          { key: "labs", title: "Laboratory", sub: "Microscopes and glassware", bg: "microscopeLab", onClick: () => pick("labs") },
+          { key: "skills", title: "Clinical skills", sub: "Diagnostic sets", bg: "stethoscopeHand", onClick: () => pick("skills") },
+          { key: "departments", title: "Teaching hospital", sub: "Wards and OPD", bg: "wardBeds", onClick: () => pick("departments") },
+          { key: "books", title: "Library", sub: "Textbooks for every course", bg: "studentBooks", href: "/books" },
+        ]} />
 
       <section className="ax-wrap ax-depts" aria-labelledby="depts-h">
         <div className="ax-ihead"><span>Departments</span><h2 id="depts-h">{segment === "hospital" ? "Everything a hospital runs on" : "Everything a medical college teaches with"}</h2>

@@ -12,7 +12,7 @@ import {
 import { useSeo } from "@/hooks/use-seo";
 import { CITIES, CONCERNS, SPECIALTIES, findHome, useDoctors } from "@/lib/find";
 import { FindNav } from "./FindParts";
-import { MarketTop } from "@/components/layout/MarketTop";
+import { MarketTop, PhotoTiles } from "@/components/layout/MarketTop";
 import { CardArt } from "@/components/visual/CardArt";
 
 /** The specialties down the side of the home page, with their icons. */
@@ -63,14 +63,14 @@ export default function FindHome() {
         all={{ label: "All specialties", href: "/doctors" }}
         scene="pulse" rgb="56,189,248"
         slides={[
-          { kicker: "Clinic visits", title: "Book a doctor near you", text: "Search by city and specialty, see the doctor's free times and book in a minute. The doctor confirms by email.", cta: { label: "Find doctors", onClick: () => search() }, second: { label: "Clinics", href: "/clinics" }, tone: "navy", photo: "stethoscope", icon: CalendarCheck },
-          { kicker: "Video consults", title: "See a doctor from home", text: "Doctors who also consult online, with their own video link. Book a time that suits you.", cta: { label: "Video consults", onClick: () => search(undefined, { video: "1" }) }, tone: "blue", photo: "oximeter", icon: Video },
-          { kicker: "Ask a doctor", title: "Ask a health question, free", text: "Post your question without your name. Doctors whose registration we've checked answer, usually within a day.", cta: { label: "Ask a question", href: "/ask" }, second: { label: "Health articles", href: "/articles" }, tone: "ink", photo: "otoscope", icon: MessageCircleQuestionMark },
-          { kicker: "For doctors", title: "List your practice. Free.", text: "Add your clinic, fees and consulting hours. Patients book your free slots and you confirm them from your dashboard.", cta: { label: "List your practice", href: "/list-your-practice" }, second: { label: "Practice dashboard", href: "/practice" }, tone: "slate", photo: "bp-monitor", icon: UserPlus },
+          { kicker: "Clinic visits", title: "Book a doctor near you", text: "Search by city and specialty, see the doctor's free times and book in a minute. The doctor confirms by email.", cta: { label: "Find doctors", onClick: () => search() }, second: { label: "Clinics", href: "/clinics" }, tone: "navy", bg: "consultation", icon: CalendarCheck },
+          { kicker: "Video consults", title: "See a doctor from home", text: "Doctors who also consult online, with their own video link. Book a time that suits you.", cta: { label: "Video consults", onClick: () => search(undefined, { video: "1" }) }, tone: "blue", bg: "videoConsult", icon: Video },
+          { kicker: "Ask a doctor", title: "Ask a health question, free", text: "Post your question without your name. Doctors whose registration we've checked answer, usually within a day.", cta: { label: "Ask a question", href: "/ask" }, second: { label: "Health articles", href: "/articles" }, tone: "ink", bg: "doctorLaptop", icon: MessageCircleQuestionMark },
+          { kicker: "For doctors", title: "List your practice. Free.", text: "Add your clinic, fees and consulting hours. Patients book your free slots and you confirm them from your dashboard.", cta: { label: "List your practice", href: "/list-your-practice" }, second: { label: "Practice dashboard", href: "/practice" }, tone: "slate", bg: "doctorDesk", icon: UserPlus },
         ]}
         promos={[
-          { kicker: "Health records", title: "Your reports in one place", text: "Kept on your device", href: "/records", icon: FolderHeart },
-          { kicker: "Clinics", title: "Clinics near you", text: "Every doctor at each clinic", href: "/clinics", icon: Building2, dark: true },
+          { kicker: "Health records", title: "Your reports in one place", text: "Kept on your device", href: "/records", icon: FolderHeart, bg: "stethoscopePills" },
+          { kicker: "Clinics", title: "Clinics near you", text: "Every doctor at each clinic", href: "/clinics", icon: Building2, dark: true, bg: "reception" },
         ]}
         trust={[
           { icon: BadgeCheck, t: "Checked doctors", d: "Registration verified" },
@@ -91,6 +91,17 @@ export default function FindHome() {
           <Link href="/records" className="fd-svc rose has-art"><CardArt icon={FolderHeart} color="#be123c" /><span className="ic"><FolderHeart size={26} /></span><b>Health records</b><small>Reports and prescriptions, on your device</small></Link>
         </div>
       </section>
+
+      <PhotoTiles kicker="Book in a minute" title="Care for every need" text="Checked doctors, at their clinic or on video."
+        more={{ label: "All doctors", href: "/doctors" }}
+        tiles={[
+          { title: "Clinic visit", sub: "See a doctor near you", bg: "consultTablet", onClick: () => search() },
+          { title: "Video consult", sub: "From your home", bg: "videoConsult", onClick: () => search(undefined, { video: "1" }) },
+          { title: "General check-up", sub: "General Physician", bg: "bpCheck", href: `/doctors?specialty=${encodeURIComponent("General Physician")}` },
+          { title: "Heart care", sub: "Cardiologist", bg: "stethoscopeHand", href: `/doctors?specialty=${encodeURIComponent("Cardiologist")}` },
+          { title: "Women's health", sub: "Gynaecologist", bg: "doctorWoman", href: `/doctors?specialty=${encodeURIComponent("Gynaecologist / Obstetrician")}` },
+          { title: "Ask a doctor", sub: "Free, without your name", bg: "doctorSmile", href: "/ask" },
+        ]} />
 
       <section className="fd-sec">
         <div className="ax-wrap">

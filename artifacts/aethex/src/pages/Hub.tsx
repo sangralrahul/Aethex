@@ -7,6 +7,7 @@
  * most common tasks, the button in the platform's colour and its address; compact cards on phones.
  */
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { hideBroken, ph, type PhotoKey } from "@/config/photos";
 import { ArrowRight, Building2, CalendarCheck, ChevronRight, GraduationCap, Hospital, Search, ShieldCheck, ShoppingBag, Sparkles } from "lucide-react";
 import { Logo } from "@/components/layout/Navbar";
 import { useSeo } from "@/hooks/use-seo";
@@ -98,16 +99,16 @@ const ART: Record<string, ReactNode> = { doctors: <FindArt />, store: <StoreArt 
 
 type Quick = { label: string; path: string };
 /** Update 73: each card goes straight to the most common tasks on its platform. */
-const CARDS: { id: Portal; tone: string; icon: ReactNode; photo: string; title: string; who: string; text: string; quick: Quick[]; cta: string }[] = [
-  { id: "doctors", tone: "blue", icon: <CalendarCheck size={20} />, photo: "stethoscope", title: "Find a doctor", who: "For patients", text: "Checked doctors near you: clinic visits and video consults.",
+const CARDS: { id: Portal; tone: string; icon: ReactNode; photo: string; bg: PhotoKey; title: string; who: string; text: string; quick: Quick[]; cta: string }[] = [
+  { id: "doctors", bg: "consultation", tone: "blue", icon: <CalendarCheck size={20} />, photo: "stethoscope", title: "Find a doctor", who: "For patients", text: "Checked doctors near you: clinic visits and video consults.",
     quick: [{ label: "Find doctors near me", path: "/doctors" }, { label: "Video consultation", path: "/doctors?video=1" }, { label: "Ask a doctor, free", path: "/ask" }, { label: "Register your practice", path: "/list-your-practice" }], cta: "Book a doctor" },
-  { id: "store", tone: "teal", icon: <ShoppingBag size={20} />, photo: "bp-monitor", title: "Medical store", who: "For everyone", text: `Genuine brands, cash on delivery, free delivery from ${formatINR(FREE_DELIVERY_FROM)}.`,
+  { id: "store", bg: "bpCheck", tone: "teal", icon: <ShoppingBag size={20} />, photo: "bp-monitor", title: "Medical store", who: "For everyone", text: `Genuine brands, cash on delivery, free delivery from ${formatINR(FREE_DELIVERY_FROM)}.`,
     quick: [{ label: "BP monitors", path: "/category/bp-monitors" }, { label: "Stethoscopes", path: "/category/stethoscopes" }, { label: "Medical books", path: "/books" }, { label: "Track an order", path: "/orders/track" }], cta: "Shop now" },
-  { id: "study", tone: "violet", icon: <GraduationCap size={20} />, photo: "test-books", title: "Study", who: "For students and doctors", text: "NEET-PG questions, mock tests, flashcards and a reference for every subject.",
+  { id: "study", bg: "lectureHall", tone: "violet", icon: <GraduationCap size={20} />, photo: "test-books", title: "Study", who: "For students and doctors", text: "NEET-PG questions, mock tests, flashcards and a reference for every subject.",
     quick: [{ label: "NEET-PG questions", path: "/neet-pg" }, { label: "Take a mock test", path: "/mock-test" }, { label: "Medical Knowledge Hub", path: "/study-hub/medical-knowledge-hub" }, { label: "Case of the day", path: "/case-of-the-day" }], cta: "Start studying" },
-  { id: "hospitals", tone: "cyan", icon: <Hospital size={20} />, photo: "ecg", title: "Hospitals", who: "For hospitals and clinics", text: "Beds, ICU, emergency and consumables: one list, one quotation.",
+  { id: "hospitals", bg: "wardBeds", tone: "cyan", icon: <Hospital size={20} />, photo: "ecg", title: "Hospitals", who: "For hospitals and clinics", text: "Beds, ICU, emergency and consumables: one list, one quotation.",
     quick: [{ label: "Request a quotation", path: "/#list" }, { label: "ICU and monitoring", path: "/#icu" }, { label: "Beds and furniture", path: "/#beds" }, { label: "My quotations", path: "/account/quotations" }], cta: "Get a quotation" },
-  { id: "medicalcolleges", tone: "amber", icon: <Building2 size={20} />, photo: "surgical-set", title: "Medical colleges", who: "For colleges and departments", text: "Skills labs, anatomy models, lab equipment and textbooks.",
+  { id: "medicalcolleges", bg: "microscopeLab", tone: "amber", icon: <Building2 size={20} />, photo: "surgical-set", title: "Medical colleges", who: "For colleges and departments", text: "Skills labs, anatomy models, lab equipment and textbooks.",
     quick: [{ label: "Request a quotation", path: "/#list" }, { label: "Skills lab trainers", path: "/#simulation" }, { label: "Anatomy models", path: "/#anatomy" }, { label: "Textbooks", path: "/books" }], cta: "Equip your college" },
 ];
 
@@ -167,7 +168,7 @@ export default function Hub() {
       <section className="hb-cards" aria-label="Aethex platforms">
         {CARDS.map((c, i) => (
           <article key={c.id} className={`hb-card ${c.tone}`} data-portal={c.id} style={{ animationDelay: `${0.12 + i * 0.09}s` }}>
-            <span className="ph">{ART[c.id]}<img src={IMG(c.photo)} alt="" loading="eager" decoding="async" style={{ animationDelay: `${-i * 1.7}s` }} /></span>
+            <span className="ph"><img className="hbph" onError={hideBroken} src={ph(c.bg, 640, 360)} alt="" loading="eager" decoding="async" />{ART[c.id]}<img src={IMG(c.photo)} alt="" loading="eager" decoding="async" style={{ animationDelay: `${-i * 1.7}s` }} /></span>
             <div className="hd">
               <span className="ic">{c.icon}</span>
               <span className="tt"><b>{c.title}</b><small>{c.who}</small></span>

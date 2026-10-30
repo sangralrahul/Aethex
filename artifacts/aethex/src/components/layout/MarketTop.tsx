@@ -8,12 +8,15 @@ import { useEffect, useState, type ComponentType, type ReactNode } from "react";
 import { Link } from "wouter";
 import { ArrowRight, ChevronLeft, ChevronRight, type LucideProps } from "lucide-react";
 import { HeroScene, type SceneKind } from "@/components/visual/HeroScene";
+import { hideBroken, ph, type PhotoKey } from "@/config/photos";
 
 type Icon = ComponentType<LucideProps>;
 export interface MkAction { label: string; href?: string; onClick?: () => void }
 export interface MkDept { label: string; icon: Icon; href?: string; onClick?: () => void; key?: string }
-export interface MkSlide { kicker: string; title: string; text: string; cta: MkAction; second?: MkAction; tone: string; photo?: string; icon: Icon }
-export interface MkPromo { kicker: string; title: string; text: string; href: string; icon: Icon; dark?: boolean }
+/** bg: a photograph (src/config/photos.ts) filling the whole banner; the product picture is then left out. */
+export interface MkSlide { kicker: string; title: string; text: string; cta: MkAction; second?: MkAction; tone: string; photo?: string; bg?: PhotoKey; icon: Icon }
+export interface MkPromo { kicker: string; title: string; text: string; href: string; icon: Icon; dark?: boolean; bg?: PhotoKey; onClick?: () => void }
+export interface MkTile { title: string; sub?: string; bg: PhotoKey; href?: string; onClick?: () => void; key?: string }
 export interface MkTrust { icon: Icon; t: string; d: string }
 
 const IMG = (n: string) => `${import.meta.env.BASE_URL}product-images/${n}.jpg`;
@@ -40,7 +43,8 @@ function Slider({ slides, scene, rgb }: { slides: MkSlide[]; scene: SceneKind | 
       {slides.map((b, k) => {
         const I = b.icon;
         return (
-          <div key={b.title} className={`ec-slide ${b.tone}${k === i ? " on" : ""}`} aria-hidden={k !== i}>
+          <div key={b.title} className={`ec-slide ${b.tone}${b.bg ? " has-bg" : ""}${k === i ? " on" : ""}`} aria-hidden={k !== i}>
+            {b.bg && <img className="mk-bg" onError={hideBroken} src={ph(b.bg, 1400)} srcSet={`${ph(b.bg, 800)} 800w, ${ph(b.bg, 1400)} 1400w, ${ph(b.bg, 2000)} 2000w`} sizes="(max-width: 900px) 100vw, 60vw" alt="" loading={k === 0 ? "eager" : "lazy"} decoding="async" />}
             <div className="txt">
               <small>{b.kicker}</small>
               <h2>{b.title}</h2>
@@ -50,7 +54,7 @@ function Slider({ slides, scene, rgb }: { slides: MkSlide[]; scene: SceneKind | 
                 {b.second && <Act a={b.second} className="ec-btn ghost" tab={k === i ? 0 : -1} />}
               </div>
             </div>
-            <div className={`pic${b.photo ? "" : " ico"}`}>{b.photo ? <img src={IMG(b.photo)} alt="" loading={k === 0 ? "eager" : "lazy"} decoding="async" /> : <span><I strokeWidth={1.2} /></span>}</div>
+            {!b.bg && <div className={`pic${b.photo ? "" : " ico"}`}>{b.photo ? <img src={IMG(b.photo)} alt="" loading={k === 0 ? "eager" : "lazy"} decoding="async" /> : <span><I strokeWidth={1.2} /></span>}</div>}
           </div>
         );
       })}
@@ -89,14 +93,38 @@ export function MarketTop({ portal, title, sub, right, deptTitle = "Departments"
         <div className="ec-promos">
           {promos.map((p) => {
             const I = p.icon;
-            const body = <><small>{p.kicker}</small><b>{p.title}</b><span>{p.text} <ArrowRight size={14} /></span><I className="art" size={60} strokeWidth={1.3} /></>;
-            const cls = `ec-promo mk-promo${p.dark ? " dark" : ""}`;
+            const body = <>{p.bg && <img className="mk-bg" onError={hideBroken} src={ph(p.bg, 640)} alt="" loading="lazy" decoding="async" />}<small>{p.kicker}</small><b>{p.title}</b><span>{p.text} <ArrowRight size={14} /></span>{!p.bg && <I className="art" size={60} strokeWidth={1.3} />}</>;
+            const cls = `ec-promo mk-promo${p.dark ? " dark" : ""}${p.bg ? " has-bg" : ""}`;
+            if (p.onClick) return <button key={p.title} type="button" className={cls} onClick={p.onClick}>{body}</button>;
             return p.href.includes("#") ? <a key={p.title} href={p.href} className={cls}>{body}</a> : <Link key={p.title} href={p.href} className={cls}>{body}</Link>;
           })}
         </div>
       </div>
       <div className="ec-services mk-trust">
         <div className="ax-wrap"><ul>{trust.map(({ icon: I, t, d }) => <li key={t}><span className="ic"><I size={22} /></span><span><b>{t}</b><small>{d}</small></span></li>)}</ul></div>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Update 74: a row of photo tiles, the way Practo shows "consult by concern" and Amazon its departments: a
+ * photograph, a dark fade and the title on it. Styles: src/shop.css (.mk-tiles).
+ */
+export function PhotoTiles({ id, kicker, title, text, tiles, more }: { id?: string; kicker: string; title: string; text?: string; tiles: MkTile[]; more?: MkAction }) {
+  return (
+    <section className="ax-wrap mk-tiles" id={id} data-mk="tiles">
+      <div className="mk-tiles-h">
+        <div className="ax-ihead"><span>{kicker}</span><h2>{title}</h2>{text && <p>{text}</p>}</div>
+        {more && <Act a={more} className="mk-more" />}
+      </div>
+      <div className="mk-tiles-g">
+        {tiles.map((t) => {
+          const inner = <><img onError={hideBroken} src={ph(t.bg, 520, 360)} alt="" loading="lazy" decoding="async" /><span className="cap"><b>{t.title}</b>{t.sub && <small>{t.sub}</small>}</span><ArrowRight size={16} className="go" /></>;
+          if (t.onClick) return <button key={t.key ?? t.title} type="button" className="mk-tile" onClick={t.onClick} data-mk-tile={t.key}>{inner}</button>;
+          const href = t.href ?? "/";
+          return href.includes("#") || /^https?:/.test(href) ? <a key={t.key ?? t.title} href={href} className="mk-tile" data-mk-tile={t.key}>{inner}</a> : <Link key={t.key ?? t.title} href={href} className="mk-tile" data-mk-tile={t.key}>{inner}</Link>;
+        })}
       </div>
     </section>
   );

@@ -288,3 +288,10 @@ cancels from `/practice`. Reviews can only be written for `completed` appointmen
   Admins remove posts with `POST /api/find/admin/remove`.
 - Health records (`/records`) stay in the browser (IndexedDB); nothing is uploaded.
 - Medicines and lab tests are not offered: they need a licensed pharmacy and partner labs.
+
+## Update 74: real photographs on all five platforms
+
+- `src/config/photos.ts`: 29 free Unsplash photos (Unsplash licence), served from images.unsplash.com at the size each place needs (`ph(key, w, h)`). `hideBroken` hides a photo that cannot load, so the dark backdrop shows.
+- `MarketTop`: a slide with `bg` fills the whole banner with a photograph under a dark fade (slow zoom); promo tiles take `bg` too. New `PhotoTiles`: a row of photo tiles (six across, a swipe row on phones).
+- Photo tiles on: doctors home, store home, study home, the Knowledge Hub, hospitals and colleges. The Hub's five cards have a photo behind the product picture.
+- Stock photos are scenes only: never used as a listed doctor, a product, a review or a testimonial.

@@ -5,6 +5,7 @@
  */
 import { HeroScene } from "@/components/visual/HeroScene";
 import { CardArt } from "@/components/visual/CardArt";
+import { PhotoTiles } from "@/components/layout/MarketTop";
 import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import {
@@ -25,7 +26,7 @@ type HomeCat = Category & { pic?: string; from?: number };
 import { FREE_DELIVERY_FROM, mixBrands } from "@/lib/store/rules";
 import { BUSINESS } from "@/config/business";
 import { formatINR } from "@/lib/utils";
-import { cadusUrl, downloadsUrl } from "@/lib/host";
+import { cadusUrl, downloadsUrl, portalUrl } from "@/lib/host";
 import { getTodaysCase } from "@/data/clinicalCases";
 import { useReveal } from "@/components/home/PlatformHero";
 
@@ -377,6 +378,17 @@ export default function Home() {
           )}
         </div>
       </section>
+
+      <PhotoTiles kicker="Shop by need" title="Care at home, in the clinic and on the ward" text="Genuine brands, cash on delivery."
+        more={{ label: "All products", href: "/shop" }}
+        tiles={[
+          { title: "BP monitoring", sub: "Digital BP monitors", bg: "bpMonitor", href: "/category/bp-monitors" },
+          { title: "Home check-ups", sub: "Pulse oximeters", bg: "bpCheck", href: "/category/pulse-oximeters" },
+          { title: "Stethoscopes", sub: "Littmann and more", bg: "stethoscope", href: "/category/stethoscopes" },
+          { title: "For your clinic", sub: "Diagnostic sets", bg: "doctorDesk", href: "/category/diagnostic-instruments" },
+          { title: "For hospitals", sub: "Quotations for any quantity", bg: "wardBeds", href: portalUrl("hospitals") },
+          { title: "Medical books", sub: "Every course", bg: "studentBooks", href: "/books" },
+        ]} />
 
       {/* deals */}
       <section className="ec-sec" data-rv data-home="essentials">

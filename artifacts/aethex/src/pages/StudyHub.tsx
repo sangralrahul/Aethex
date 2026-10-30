@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { cadusUrl } from "@/lib/host";
 import { CardArt } from "@/components/visual/CardArt";
-import { MarketTop } from "@/components/layout/MarketTop";
+import { MarketTop, PhotoTiles } from "@/components/layout/MarketTop";
 import { khIcon } from "@/components/MedKnowledge/KhParts";
 import { TopLayer } from "@/components/shop/TopLayer";
 import { useSeo } from "@/hooks/use-seo";
@@ -459,14 +459,14 @@ export default function StudyHub() {
         all={{ label: "All subjects", href: HUB }}
         scene="molecules" rgb="167,139,250"
         slides={[
-          { kicker: "NEET-PG", title: "Practise by subject, with explanations", text: "A question bank in the NEET-PG pattern, with an explanation for every answer and your results by subject.", cta: { label: "Start practising", href: "/neet-pg" }, second: { label: "Take a mock test", href: "/mock-test" }, tone: "violet", photo: "test-books", icon: Brain },
-          { kicker: `Case of the day · ${todays.specialty}`, title: todays.title, text: `${todays.patient_info.age}-year-old ${String(todays.patient_info.gender).toLowerCase()}: ${todays.patient_info.chief_complaint}`, cta: { label: "Solve today's case", href: "/case-of-the-day" }, tone: "ink", photo: "stethoscope", icon: ClipboardList },
-          { kicker: "Medical Knowledge Hub", title: "Every subject, every condition", text: `${stats.subjects} subjects, ${stats.topics.toLocaleString("en-IN")} topics and ${stats.conditions.toLocaleString("en-IN")} conditions, with diagrams, questions and flashcards.`, cta: { label: "Open the Knowledge Hub", href: HUB }, tone: "navy", photo: "medical-book", icon: BookOpen },
-          { kicker: "Revise", title: "Flashcards with spaced repetition", text: "High-yield facts that come back just before you forget them.", cta: { label: "Open flashcards", href: "/flashcards" }, second: { label: "Study planner", href: "/study-planner" }, tone: "slate", photo: "neuro-kit", icon: Layers },
+          { kicker: "NEET-PG", title: "Practise by subject, with explanations", text: "A question bank in the NEET-PG pattern, with an explanation for every answer and your results by subject.", cta: { label: "Start practising", href: "/neet-pg" }, second: { label: "Take a mock test", href: "/mock-test" }, tone: "violet", bg: "studentBooks", icon: Brain },
+          { kicker: `Case of the day · ${todays.specialty}`, title: todays.title, text: `${todays.patient_info.age}-year-old ${String(todays.patient_info.gender).toLowerCase()}: ${todays.patient_info.chief_complaint}`, cta: { label: "Solve today's case", href: "/case-of-the-day" }, tone: "ink", bg: "consultTablet", icon: ClipboardList },
+          { kicker: "Medical Knowledge Hub", title: "Every subject, every condition", text: `${stats.subjects} subjects, ${stats.topics.toLocaleString("en-IN")} topics and ${stats.conditions.toLocaleString("en-IN")} conditions, with diagrams, questions and flashcards.`, cta: { label: "Open the Knowledge Hub", href: HUB }, tone: "navy", bg: "lectureHall", icon: BookOpen },
+          { kicker: "Revise", title: "Flashcards with spaced repetition", text: "High-yield facts that come back just before you forget them.", cta: { label: "Open flashcards", href: "/flashcards" }, second: { label: "Study planner", href: "/study-planner" }, tone: "slate", bg: "studentScrubs", icon: Layers },
         ]}
         promos={[
-          { kicker: "Mock test", title: "A timed paper in the exam pattern", text: "+4 / −1 marking", href: "/mock-test", icon: Timer },
-          { kicker: "CME Hub", title: "Refreshers for practising doctors", text: "Free to read", href: "/cme-hub", icon: GraduationCap, dark: true },
+          { kicker: "Mock test", title: "A timed paper in the exam pattern", text: "+4 / −1 marking", href: "/mock-test", icon: Timer, bg: "lectureRoom" },
+          { kicker: "CME Hub", title: "Refreshers for practising doctors", text: "Free to read", href: "/cme-hub", icon: GraduationCap, dark: true, bg: "doctorLaptop" },
         ]}
         trust={[
           { icon: BookOpen, t: `${stats.subjects} subjects`, d: "Pre-clinical to clinical" },
@@ -478,6 +478,17 @@ export default function StudyHub() {
       />
 
       {/* tools */}
+      <PhotoTiles kicker="Courses" title="Learn the way toppers prepare" text="Practise, revise and read: every course is free to start."
+        more={{ label: "Medical Knowledge Hub", href: HUB }}
+        tiles={[
+          { title: "NEET-PG question bank", sub: "By subject, with explanations", bg: "studentBooks", href: "/neet-pg" },
+          { title: "Mock tests", sub: "Timed, in the exam pattern", bg: "lectureRoom", href: "/mock-test" },
+          { title: "Knowledge Hub", sub: "Every subject and condition", bg: "lectureHall", href: HUB },
+          { title: "Clinical cases", sub: "Step by step", bg: "consultation", href: "/cases" },
+          { title: "Flashcards", sub: "Spaced revision", bg: "studentScrubs", href: "/flashcards" },
+          { title: "Lab and pathology", sub: "Pre- and para-clinical", bg: "microscopeWork", href: `${HUB}#subjects-section` },
+        ]} />
+
       <section className="ax-wrap ax-sth-sec">
         <div className="ax-sth-head"><div><p className="ax-eyebrow">On Aethex</p><h2>Your study tools</h2></div></div>
         <div className="ax-sth-tools">

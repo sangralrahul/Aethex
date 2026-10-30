@@ -9,6 +9,7 @@ import { Link, useSearch } from "wouter";
 import { ArrowRight, BookOpen, ChevronRight, ClipboardCheck, Layers, Network, Search, X } from "lucide-react";
 import { useSeo } from "@/hooks/use-seo";
 import { CardArt } from "@/components/visual/CardArt";
+import { PhotoTiles } from "@/components/layout/MarketTop";
 import { medicalSubjects } from "@/data/medicalSubjects";
 import { medicalDepartments } from "@/data/medicalDepartments";
 import { KhHero, KhIcon, KH_HUB, khIcon } from "@/components/MedKnowledge/KhParts";
@@ -46,6 +47,7 @@ export default function MedicalKnowledgeHub() {
     return out.slice(0, 8);
   }, [query]);
 
+  const toStage = (s: (typeof STAGES)[number]) => { setStage(s); document.getElementById("subjects-section")?.scrollIntoView({ behavior: "smooth", block: "start" }); };
   const subjects = stage === "All" ? medicalSubjects : medicalSubjects.filter((s) => s.category === stage);
 
   return (
@@ -70,6 +72,16 @@ export default function MedicalKnowledgeHub() {
           <div><dt>{stats.conditions.toLocaleString("en-IN")}</dt><dd>conditions</dd></div>
         </dl>
       </KhHero>
+
+      <PhotoTiles kicker="Start here" title="Study by stage" text="From the dissection hall to the ward."
+        tiles={[
+          { key: "pre", title: "Pre-clinical", sub: "Anatomy, physiology, biochemistry", bg: "lectureRoom", onClick: () => toStage("Pre-Clinical") },
+          { key: "para", title: "Para-clinical", sub: "Pathology, pharmacology, microbiology", bg: "microscopeLab", onClick: () => toStage("Para-Clinical") },
+          { key: "clin", title: "Clinical", sub: "Medicine, surgery, OBG, paediatrics", bg: "consultation", onClick: () => toStage("Clinical") },
+          { key: "dept", title: "Conditions", sub: "By clinical department", bg: "wardBeds", href: "#departments-section" },
+          { key: "mcq", title: "Exam questions", sub: "NEET-PG pattern", bg: "studentBooks", href: "/neet-pg" },
+          { key: "cards", title: "Flashcards", sub: "Quick revision", bg: "studentScrubs", href: "/flashcards" },
+        ]} />
 
       <section className="ax-wrap kh-sec" id="subjects-section">
         <div className="kh-sec-h">
