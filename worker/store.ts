@@ -27,7 +27,7 @@ import type {
 import { bookAsProduct, isBookId, itemHref } from "../artifacts/aethex/src/lib/store/bookdata";
 import {
   applyOverride, BANK_DAYS, BANK_LIMIT, BANK_MIN, BULK_STATUSES, cancellable, cleanSchedule, COD_LIMIT, everyText, formatDay, INDIAN_STATES, INSTITUTION_TYPES, MAX_ADDRESSES, normPhone, ONLINE_LIMIT,
-  ORDER_STATUSES, priceBulk, quoteLines, round2,
+  ORDER_STATUSES, priceBulk, quoteLines, round2, cleanBulkLines,
   STATUS_LABEL, scheduleText, summarize, validEmail, validGstin, validPincode,
 } from "../artifacts/aethex/src/lib/store/rules";
 import { applyCoupon, applyOffers, cleanCouponCode, couponLive, liveOfferKey, publicCoupon } from "../artifacts/aethex/src/lib/store/promo";
@@ -143,6 +143,11 @@ export const STORE_TABLES = [
     answer TEXT, status TEXT NOT NULL DEFAULT 'pending', created_at INTEGER NOT NULL, answered_at INTEGER)`,
   "CREATE INDEX IF NOT EXISTS store_questions_product ON store_questions(product_id, status)",
   "CREATE TABLE IF NOT EXISTS store_tax (category TEXT PRIMARY KEY, hsn TEXT NOT NULL, rate REAL NOT NULL, updated_at INTEGER NOT NULL)",
+  // update 78: an institution's saved bulk lists, to send again
+  `CREATE TABLE IF NOT EXISTS store_bulk_lists (
+    id TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT NOT NULL, segment TEXT NOT NULL, lines TEXT NOT NULL,
+    created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, sent_at INTEGER)`,
+  "CREATE INDEX IF NOT EXISTS store_bulk_lists_user ON store_bulk_lists(user_id, updated_at)",
 ];
 /** Columns added after a table was first made: added where missing (an existing column is left alone). */
 export const STORE_COLUMNS: [table: string, column: string, type: string][] = [
@@ -1984,6 +1989,7 @@ export async function handleStore(request: Request, env: StoreEnv, ctx?: Ctx): P
   const db = env as DBEnv;
   await ensureTables(db.DB);
   if (path === "questions" && method === "POST") return createQuestion(request, db);
+  if (path === "lists" || /^lists\/[a-z0-9]{6,30}\/(delete|sent)$/.test(path)) return handleLists(request, db, path, method);
 
   if (path === "razorpay/webhook" && method === "POST") return razorpayWebhook(request, db);
   if (path.startsWith("admin/") || path === "admin") return handleAdmin(request, db, path.replace(/^admin\/?/, ""), ctx);
@@ -2170,4 +2176,46 @@ function sellerGstin(env: StoreEnv): string {
 async function taxTable(db: DBEnv) {
   const { results } = await db.DB.prepare("SELECT category, hsn, rate FROM store_tax").all<{ category: string; hsn: string; rate: number }>();
   return { rates: Object.fromEntries(results.map((r) => [r.category, { hsn: r.hsn, rate: Number(r.rate) }])), sellerGstin: sellerGstin(db) };
+}
+
+/* ------------------------------------------------------------------ update 78: saved bulk lists */
+
+type ListRow = { id: string; user_id: string; name: string; segment: string; lines: string; created_at: number; updated_at: number; sent_at: number | null };
+const listOut = (r: ListRow) => ({ id: r.id, name: r.name, segment: r.segment as Segment, lines: cleanBulkLines(parse<unknown>(r.lines, [])), createdAt: r.created_at, updatedAt: r.updated_at, sentAt: r.sent_at });
+
+async function handleLists(request: Request, db: DBEnv, path: string, method: string): Promise<Response> {
+  const user = await currentUser(request, db).catch(() => null);
+  if (!user) return json({ error: "Sign in to keep lists in your account.", signIn: true }, 401);
+  const all = async () => (await db.DB.prepare("SELECT * FROM store_bulk_lists WHERE user_id = ? ORDER BY updated_at DESC LIMIT 50").bind(user.id).all<ListRow>()).results.map(listOut);
+  if (path === "lists" && method === "GET") return json({ lists: await all() });
+  if (path === "lists" && method === "POST") {
+    const b = await readJson(request, 65_536);
+    const name = str(b?.name, 80);
+    if (name.length < 2) return json({ error: "Give the list a name, like \"Monthly ICU consumables\".", field: "name" }, 400);
+    const segment = b?.segment === "college" ? "college" : "hospital";
+    const lines = cleanBulkLines(b?.lines);
+    if (!lines.length) return json({ error: "The list is empty." }, 400);
+    const now = Date.now();
+    const id = typeof b?.id === "string" && /^l[a-z0-9]{6,29}$/.test(b.id) ? b.id : "";
+    if (id) {
+      const cur = await db.DB.prepare("SELECT id FROM store_bulk_lists WHERE id = ? AND user_id = ?").bind(id, user.id).first<{ id: string }>();
+      if (!cur) return json({ error: "List not found." }, 404);
+      await db.DB.prepare("UPDATE store_bulk_lists SET name = ?, segment = ?, lines = ?, updated_at = ? WHERE id = ?").bind(name, segment, JSON.stringify(lines), now, id).run();
+      return json({ id, lists: await all() });
+    }
+    const n = await db.DB.prepare("SELECT COUNT(*) AS n FROM store_bulk_lists WHERE user_id = ?").bind(user.id).first<{ n: number }>();
+    if (Number(n?.n) >= 50) return json({ error: "You can keep up to 50 lists. Delete one you no longer need." }, 400);
+    const nid = `l${now.toString(36)}${Array.from(crypto.getRandomValues(new Uint8Array(4)), (x) => x.toString(36)).join("").slice(0, 6)}`;
+    await db.DB.prepare("INSERT INTO store_bulk_lists (id, user_id, name, segment, lines, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(nid, user.id, name, segment, JSON.stringify(lines), now, now).run();
+    return json({ id: nid, lists: await all() });
+  }
+  const m = /^lists\/([a-z0-9]{6,30})\/(delete|sent)$/.exec(path);
+  if (m && method === "POST") {
+    const cur = await db.DB.prepare("SELECT id FROM store_bulk_lists WHERE id = ? AND user_id = ?").bind(m[1], user.id).first<{ id: string }>();
+    if (!cur) return json({ error: "List not found." }, 404);
+    if (m[2] === "delete") await db.DB.prepare("DELETE FROM store_bulk_lists WHERE id = ?").bind(cur.id).run();
+    else await db.DB.prepare("UPDATE store_bulk_lists SET sent_at = ? WHERE id = ?").bind(Date.now(), cur.id).run();
+    return json({ lists: await all() });
+  }
+  return json({ error: "Not found" }, 404);
 }

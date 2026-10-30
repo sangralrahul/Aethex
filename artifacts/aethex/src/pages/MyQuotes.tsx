@@ -7,6 +7,7 @@
  * are under My orders. Data: GET /api/store/my-quotes (worker/store.ts).
  * Styles: src/shop.css (.ax-myq).
  */
+import { EstimateLink } from "@/components/store/BulkExtras";
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Building2, ChevronDown, ClipboardList, FileText, GraduationCap, Inbox, Loader2, Package, PackageCheck, RotateCcw } from "lucide-react";
@@ -134,6 +135,7 @@ export default function MyQuotes() {
                         <div><dt>Contact</dt><dd>{r.contactName}{r.designation ? `, ${r.designation}` : ""} · {r.phone} · {r.email}</dd></div>
                       </dl>
                       {r.items.length > 0 && <button type="button" className="ax-btn teal" onClick={() => again(r)}><RotateCcw size={16} /> Send this list again</button>}
+                      <EstimateLink segment={r.segment} request={r.id} />
                     </div>
                   )}
                 </li>

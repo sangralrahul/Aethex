@@ -906,3 +906,21 @@
 }
 .fd-page:has(.fd-cmpbar){padding-bottom:84px}
 @media (max-width:1440px){.fd-subnav a{padding:0 8px;font-size:13.8px;gap:6px}.fd-subnav a.brand{margin-right:4px}}
+
+/* update 78: My Aethex on the hub */
+.hb-my{position:relative;z-index:2;width:min(1100px,calc(100% - 40px));margin:0 auto 22px;padding:16px 18px;border-radius:16px;background:rgba(255,255,255,.92);border:1px solid #e5e7eb;box-shadow:0 10px 30px -22px rgba(15,23,42,.35);animation:hbUp .7s cubic-bezier(.2,.8,.2,1) .1s both}
+.hb-my .hd{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;margin-bottom:12px}
+.hb-my .hd b{font-size:16px;color:#0f172a}
+.hb-my .hd span{font-size:14px;color:#64748b}
+.hb-my .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.hb-my .c{display:flex;align-items:flex-start;gap:12px;padding:14px;border-radius:12px;border:1px solid #eef2f6;background:#fff;color:#0f172a;text-decoration:none;transition:transform .2s,box-shadow .2s,border-color .2s}
+.hb-my .c:hover{transform:translateY(-2px);box-shadow:0 14px 28px -20px rgba(15,23,42,.5)}
+.hb-my .c>svg{flex:none;margin-top:2px}
+.hb-my .c span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.hb-my .c small{font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#64748b}
+.hb-my .c b{font-size:15px}
+.hb-my .c em{display:flex;align-items:center;gap:4px;font-style:normal;font-size:13px;color:#475569}
+.hb-my .c.blue>svg{color:#1d4ed8}.hb-my .c.blue{border-color:#dbeafe}
+.hb-my .c.teal>svg{color:#0f766e}.hb-my .c.teal{border-color:#ccfbf1}
+.hb-my .c.cyan>svg{color:#0e7490}.hb-my .c.cyan{border-color:#cffafe}
+.hb-my .c.violet>svg{color:#6d28d9}.hb-my .c.violet{border-color:#ede9fe}

@@ -10,6 +10,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import { hideBroken, ph, type PhotoKey } from "@/config/photos";
 import { ArrowRight, Building2, CalendarCheck, ChevronRight, GraduationCap, Hospital, Search, ShieldCheck, ShoppingBag, Sparkles } from "lucide-react";
 import { Logo } from "@/components/layout/Navbar";
+import { MyAethex } from "@/components/home/MyAethex";
 import { useSeo } from "@/hooks/use-seo";
 import { cadusUrl, loginUrl, mainUrl, portalUrl, type Portal } from "@/lib/host";
 import { FREE_DELIVERY_FROM } from "@/lib/store/rules";
@@ -164,6 +165,8 @@ export default function Hub() {
       </section>
 
       <HubSearch />
+
+      <MyAethex />
 
       <section className="hb-cards" aria-label="Aethex platforms">
         {CARDS.map((c, i) => (

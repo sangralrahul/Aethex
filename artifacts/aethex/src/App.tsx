@@ -128,6 +128,7 @@ const LegalTerms = legal("terms"), LegalPrivacy = legal("privacy"), LegalDisclai
 const Invoice = lazyPage(() => import("@/pages/Invoice"));
 const CustomTest = lazyPage(() => import("@/pages/study/CustomTest"));
 const MyLibrary = lazyPage(() => import("@/pages/study/MyLibrary"));
+const BulkEstimate = lazyPage(() => import("@/pages/BulkEstimate"));
 const OrderTracking = lazyPage(() => import("@/pages/OrderTracking"));
 const Orders = lazyPage(() => import("@/pages/Orders"));
 const MyReviews = lazyPage(() => import("@/pages/MyReviews"));
@@ -458,6 +459,7 @@ function Router() {
 
                 {/* Orders */}
                 <Route path="/orders" component={Orders} />
+                <Route path="/bulk-estimate" component={BulkEstimate} />
                 <Route path="/orders/:id/invoice" component={Invoice} />
                 <Route path="/orders/track" component={OrderTracking} />
                 <Route path="/order/:id" component={OrderPlaced} />

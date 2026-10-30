@@ -319,3 +319,11 @@ cancels from `/practice`. Reviews can only be written for `completed` appointmen
 - **My library** (`/my-library`): Progress (Today card with goal ring and streak, daily goal setting, six-month heat-map ringing goal days, accuracy by subject and the weakest), Revision (retake up to 20 at a time; a right answer takes it out; clear mastered), Bookmarks and notes (questions, topics, conditions; filter, search including notes, edit notes, remove).
 - **Everywhere**: Today card on the Study home and NEET-PG; bookmark buttons on NEET-PG practice and topic quiz questions; Knowledge Hub topic and condition Save now also bookmarks into My library, with Add a note; Custom test and My library in the Study menu, footer and account menu.
 - Test: `shots/studyfeat.mjs`.
+
+## Update 78: Hospitals, Medical colleges and the hub
+
+- **Budget estimator** (`BudgetBox` in `src/components/store/BulkExtras.tsx`, `src/lib/store/bulkExtras.ts`): set a budget for the bulk list (kept per portal in this browser); a meter shows the estimate against it, how much is left or over, what costs most when over, and the estimate split by department. Each line shows its total.
+- **Saved lists** (`SavedLists`, table `store_bulk_lists`, `GET/POST /api/store/lists`, `POST /api/store/lists/:id/delete|sent`): save the list under a name; signed in it is kept in the account (up to 50), otherwise in this browser. Load (in place of the list), Add to list, or Send again (loads it and opens the quotation form); sending marks the saved list with the date it was last sent.
+- **Estimate PDF** (`/bulk-estimate`, `src/pages/BulkEstimate.tsx`): the current list, or a sent request from My quotations (`?request=`), as a printable purchase estimate by department with totals, budget, amount in words and the institution's name, saved as a PDF from the browser. It says it is an estimate at listed prices, not Aethex's quotation.
+- **My Aethex** on aethex.in (`src/components/home/MyAethex.tsx`): signed in, a welcome with the next appointment, orders on the way, open quotation requests and today's study (goal and streak), each linking to its platform. Nothing personal shows when signed out.
+- Test: `shots/bulkfeat.mjs`.

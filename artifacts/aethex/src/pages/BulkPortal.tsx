@@ -35,6 +35,9 @@ import { SEGMENT_PAGES, type BulkSection } from "@/config/institutions";
 import { KITS, type Kit, type KitIcon } from "@/config/kits";
 import { kitLines } from "@/lib/store/kits";
 import { formatINR } from "@/lib/utils";
+import { BudgetBox, EstimateLink, SavedLists } from "@/components/store/BulkExtras";
+import { markSent } from "@/lib/store/bulkExtras";
+import { useUserAuth } from "@/hooks/use-user-auth";
 
 const SHOW = 8;
 const tier = (p: ProductSummary) => Number(p.inStock) * 4 + Number(!!p.featured) * 2 + Number(!p.priceOnRequest);
@@ -77,6 +80,7 @@ export default function BulkPortal({ segment }: { segment: Segment }) {
   const active = depts.find((d) => d.sec.id === dept) ?? depts[0];
 
   const openQuote = () => { setDone(null); setQuote(true); };
+  const { isLoggedIn } = useUserAuth();
   const pick = (id: string) => {
     setQ(""); setDept(id);
     window.setTimeout(() => document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth", block: "start" }), 30);
@@ -213,7 +217,8 @@ export default function BulkPortal({ segment }: { segment: Segment }) {
         </div>
 
         <aside className="ax-bulk-side" id="list" aria-label="Your bulk list">
-          <ListPanel onQuote={openQuote} />
+          <ListPanel onQuote={openQuote} segment={segment} />
+          <SavedLists segment={segment} onQuote={openQuote} />
         </aside>
       </div>
 
@@ -265,7 +270,7 @@ export default function BulkPortal({ segment }: { segment: Segment }) {
         </div>
       )}
 
-      <QuoteDialog open={quote} segment={segment} done={done} onDone={(r) => { setDone(r); bulk.clear(); }} onClose={() => setQuote(false)} />
+      <QuoteDialog open={quote} segment={segment} done={done} onDone={(r) => { setDone(r); bulk.clear(); void markSent(isLoggedIn); }} onClose={() => setQuote(false)} />
     </div>
   );
 }
@@ -468,7 +473,7 @@ function BulkCard({ p, store, defaultQty }: { p: ProductSummary; store: StoreDat
 
 /* ------------------------------------------------------------------ the list */
 
-function ListPanel({ onQuote }: { onQuote: () => void }) {
+function ListPanel({ onQuote, segment }: { onQuote: () => void; segment: Segment }) {
   const { priced, lines, store } = usePricedBulk();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -487,6 +492,7 @@ function ListPanel({ onQuote }: { onQuote: () => void }) {
         <h2><ClipboardList size={18} /> Your bulk list</h2>
         <p>Add products with the quantities you need. When the list is ready, send it for a quotation.</p>
         <button type="button" className="ax-btn" onClick={onQuote}>Or describe what you need</button>
+        <BudgetBox segment={segment} />
       </div>
     );
   }
@@ -500,7 +506,7 @@ function ListPanel({ onQuote }: { onQuote: () => void }) {
             <div className="nm">
               <Link href={itemHref(i.productId, i.slug)}>{isBookId(i.productId) ? i.name : `${store?.brandName(i.brand) ?? ""} ${i.name}`}</Link>
               {i.variantLabel && <small>{i.variantLabel}</small>}
-              <small>{i.unitPrice === null ? "Price on request" : `${formatINR(i.unitPrice)} each`}</small>
+              <small>{i.unitPrice === null ? "Price on request" : `${formatINR(i.unitPrice)} each`}{i.unitPrice !== null && i.qty > 1 ? <> · <b data-bulk="line-total">{formatINR(i.unitPrice * i.qty)}</b></> : null}</small>
             </div>
             <LineQty item={i} />
             <button type="button" className="rm" onClick={() => bulk.remove(i.productId, i.variantId)} aria-label={`Remove ${i.name}`}><Trash2 size={15} /></button>
@@ -517,7 +523,9 @@ function ListPanel({ onQuote }: { onQuote: () => void }) {
         <p><span>{priced.units.toLocaleString("en-IN")} units</span>{priced.estTotal > 0 && <b>{formatINR(priced.estTotal)}</b>}</p>
         <small>{priced.estTotal > 0 ? "At store prices" : ""}{priced.unpriced ? `${priced.estTotal > 0 ? ", plus " : ""}${priced.unpriced} item${priced.unpriced === 1 ? "" : "s"} priced on request` : ""}. The quotation gives your price for these quantities.</small>
       </div>
+      <BudgetBox segment={segment} />
       <button type="button" className="ax-btn teal lg" onClick={onQuote}><ClipboardList size={17} /> Request a quote</button>
+      <EstimateLink segment={segment} className="ax-btn lg" />
       {direct.ok ? (
         <button type="button" className="ax-btn lg" onClick={orderNow}><ShoppingCart size={17} /> Order now · cash on delivery</button>
       ) : (
