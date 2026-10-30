@@ -9,6 +9,8 @@
 //   GET  /api/auth/google?return=<url>&from=<url>     Google sign-in (OAuth code flow)
 //   GET  /api/auth/google/callback
 //   GET  /api/auth/desktop?code=<code>&verifier=<verifier>   finishes a Google sign-in for the desktop app
+//   GET  /api/auth/google?desktop=<challenge>&loopback=<port>   AETHEX OS: the hand-off code goes back to
+//                                the app on this computer (http://127.0.0.1:<port>/auth/callback, ports 48261-48264)
 //   GET  /api/auth/me            the signed-in account, or 401
 //   POST /api/auth/logout        ?all=1 ends every session of the account
 //   GET|PUT|DELETE /api/profile  the Cadus profile of the signed-in account
@@ -213,7 +215,9 @@ export async function handleAuth(request: Request, env: AuthEnv): Promise<Respon
 
   if (path === "/api/auth/google" && request.method === "GET") {
     const fallback = `${url.origin}/`;
-    const from = safeReturn(url.searchParams.get("from"), url, fallback);
+    // AETHEX OS listens on one of these ports on the person's own computer for the hand-off.
+    const loop = DESKTOP_CHALLENGE.test(url.searchParams.get("desktop") || "") ? loopbackPort(url.searchParams.get("loopback")) : "";
+    const from = loop ? `http://127.0.0.1:${loop}/auth/callback` : safeReturn(url.searchParams.get("from"), url, fallback);
     if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) return Response.redirect(withParam(from, "auth_error", "google-not-set-up"), 302);
     if (!(await allow(db, `google-ip:${clientIp(request)}`, 60, 15 * 60_000))) return Response.redirect(withParam(from, "auth_error", "google-busy"), 302);
     const state = b64u(random(24));
@@ -222,7 +226,7 @@ export async function handleAuth(request: Request, env: AuthEnv): Promise<Respon
     // sign-in inside app windows) and sends the SHA-256 of a secret only it knows;
     // the browser then hands the sign-in back to the app (see /api/auth/desktop).
     const desktop = url.searchParams.get("desktop") || "";
-    const stored = DESKTOP_CHALLENGE.test(desktop) ? `${verifier}.${desktop}` : verifier;
+    const stored = DESKTOP_CHALLENGE.test(desktop) ? (loop ? `${verifier}.${desktop}.${loop}` : `${verifier}.${desktop}`) : verifier;
     await env.DB.prepare("INSERT INTO oauth_states (state, verifier, return_to, error_to, expires_at) VALUES (?, ?, ?, ?, ?)").bind(state, stored, safeReturn(url.searchParams.get("return"), url, fallback), from, Date.now() + 10 * 60_000).run();
     const g = new URL("https://accounts.google.com/o/oauth2/v2/auth");
     g.searchParams.set("client_id", env.GOOGLE_CLIENT_ID);
@@ -250,7 +254,7 @@ export async function handleAuth(request: Request, env: AuthEnv): Promise<Respon
     if (!row || row.expires_at < Date.now()) return redirect(`${url.origin}/?auth_error=google-expired`);
     const fail = (why: string) => redirect(withParam(row.error_to, "auth_error", why));
     if (!started || !same(started, state)) return fail("google-expired"); // not started in this browser
-    const [verifier, desktop] = row.verifier.split(".");
+    const [verifier, desktop, loop] = row.verifier.split(".");
     const code = url.searchParams.get("code");
     if (!code || !env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) return fail("google-cancelled");
     const tr = await fetch("https://oauth2.googleapis.com/token", {
@@ -284,6 +288,12 @@ export async function handleAuth(request: Request, env: AuthEnv): Promise<Respon
       await env.DB.prepare("INSERT INTO oauth_states (state, verifier, return_to, error_to, expires_at) VALUES (?, ?, ?, ?, ?)").bind(`desk:${await sha256(handoff)}`, desktop, user.id, row.return_to, Date.now() + 3 * 60_000).run();
       const h = new Headers({ "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'", "referrer-policy": "no-referrer" });
       h.append("set-cookie", clear);
+      const port = loopbackPort(loop ?? null);
+      if (port) {
+        // AETHEX OS: straight back to the app on this computer, which finishes with /api/auth/desktop.
+        h.set("location", `http://127.0.0.1:${port}/auth/callback?aethex_code=${handoff}`);
+        return new Response(null, { status: 302, headers: h });
+      }
       return new Response(desktopPage(`cadus://signed-in?code=${handoff}`), { status: 200, headers: h });
     }
     return redirect(row.return_to, [await startSession(db, url, user.id)]);
@@ -409,6 +419,9 @@ const signupCookie = (url: URL, token: string, maxAge: number) =>
 
 /** The SHA-256 (base64url) of the desktop app's one-time secret. */
 const DESKTOP_CHALLENGE = /^[A-Za-z0-9_-]{43}$/;
+
+/** The local ports AETHEX OS listens on for a Google sign-in, or "" for anything else. */
+const loopbackPort = (raw: string | null) => (raw && /^4826[1-4]$/.test(raw) ? raw : "");
 
 /** Shown in the browser after a Google sign-in started by the desktop app: opens Cadus. */
 const desktopPage = (appUrl: string) => `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Signed in · Cadus</title>
