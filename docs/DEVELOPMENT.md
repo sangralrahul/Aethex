@@ -255,6 +255,13 @@ strip with the page's search or actions, departments on the left, a rotating ban
 background, two promo tiles, and a strip of promises. It reuses the Store's `ec-*` styles; `.mk-<portal>` sets the
 colours. The Knowledge Hub reads `?q=` from the header search.
 
+Update 72: doctors register without an Aethex account. Signed out, `/list-your-practice` shows the full form with an
+email and mobile; it posts to `POST /api/find/register` (5 a day per connection; one practice per registration number
+and per email). The profile is saved `pending` with `user_id = 'reg:…'` and `contact_email` / `contact_phone`
+(migration 0008, also added on first use); the admin and the doctor are emailed. When someone signs in with that email
+(by a code or Google, so the email is proven), the profile becomes theirs. Booking and approval emails go to the
+account's email, or to `contact_email` until then.
+
 ## Aethex Doctors
 
 `worker/find.ts` (`/api/find/*`), tables in `migrations/0006_find.sql` (also created on first use). Doctors list

@@ -1960,3 +1960,12 @@ li.has-art .cart .glow{width:140px;height:140px;right:-40px;bottom:-60px}
 .mk .ec-slide p{color:rgba(255,255,255,.8)}
 .fd-page .mk + .fd-services{margin-top:0;padding-top:28px}
 .fd-docband{background:radial-gradient(600px 260px at 100% 0,rgba(56,189,248,.24),transparent 70%),linear-gradient(150deg,#071225,#0d2148 70%,#10275a)}
+/* update 72: doctor registration without an account */
+.fd-done{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:32px}
+.fd-done>svg{color:#0f8a5f}
+.fd-done h2{margin:0;font-size:22px}
+.fd-done p{margin:0;max-width:62ch;font-size:15px;line-height:1.6;color:#475467}
+.fd-done .row{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+.fd-note[data-find=no-account]{display:flex;align-items:flex-start;gap:8px;margin-bottom:16px}
+.fd-note[data-find=no-account] svg{flex-shrink:0;margin-top:2px}
+.fd-pform-foot .chk{display:flex;align-items:flex-start;gap:8px;max-width:520px}

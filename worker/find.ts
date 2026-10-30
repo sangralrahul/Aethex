@@ -52,6 +52,8 @@ export const FIND_TABLES = [
 /** Columns added after the first release (update 64), added to existing tables on first use. */
 export const FIND_COLUMNS: [string, string, string][] = [
   ["find_doctors", "education", "TEXT"], ["find_doctors", "awards", "TEXT"], ["find_doctors", "memberships", "TEXT"], ["find_doctors", "timeoff", "TEXT"],
+  // update 72: doctors can register without an Aethex account; we reach them on these until they sign in
+  ["find_doctors", "contact_email", "TEXT"], ["find_doctors", "contact_phone", "TEXT"],
   ["find_reviews", "recommend", "INTEGER"], ["find_reviews", "wait", "TEXT"], ["find_reviews", "visited", "TEXT"], ["find_reviews", "reply", "TEXT"],
 ];
 let ready: Promise<void> | null = null;
@@ -81,6 +83,7 @@ type DoctorRow = {
   fee: number; video: number; video_fee: number | null; languages: string | null; about: string | null; services: string | null; hours: string;
   admin_note: string | null; created_at: number; updated_at: number;
   education?: string | null; awards?: string | null; memberships?: string | null; timeoff?: string | null;
+  contact_email?: string | null; contact_phone?: string | null;
 };
 type ApptRow = {
   id: string; doctor_id: string; user_id: string; patient_name: string; patient_phone: string; patient_email: string | null; patient_age: number | null;
@@ -188,6 +191,12 @@ function readExtras(b: Record<string, unknown>) {
   }).filter((e) => e.degree && e.college);
   const lines = (v: unknown, n: number) => (Array.isArray(v) ? v : String(v ?? "").split("\n")).map((x) => str(x, 120)).filter(Boolean).slice(0, n).join("\n");
   return { education: edu.length ? JSON.stringify(edu) : null, awards: lines(b.awards, 8) || null, memberships: lines(b.memberships, 8) || null };
+}
+
+/** Where to email a doctor: their account's email, or the one they registered with (update 72). */
+async function doctorEmail(db: DBEnv, d: DoctorRow): Promise<{ email: string } | null> {
+  const u = await db.DB.prepare("SELECT email FROM users WHERE id = ?").bind(d.user_id).first<{ email: string }>();
+  return u?.email ? u : d.contact_email ? { email: d.contact_email } : null;
 }
 
 async function ratings(env: DBEnv, ids: string[]) {
@@ -413,9 +422,41 @@ export async function handleFind(request: Request, env: FindEnv): Promise<Respon
     return json({ ok: true });
   }
 
+  /* update 72: a doctor registers with a form, without an Aethex account. The profile waits for the usual check;
+     when the doctor later signs in with the same email (a code, no password), it becomes theirs to manage. */
+  if (path === "/register" && method === "POST") {
+    if (!(await allow(db, `find-reg-ip:${clientIp(request)}`, 5, 86400_000))) return json({ error: "Too many registrations from this connection today. Try again tomorrow." }, 429);
+    const b = await body(request);
+    const email = normEmail(b.email), phone = String(b.phone ?? "").replace(/\D/g, "").slice(-10);
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json({ error: "Enter your email address: we send your approval there.", field: "email" }, 400);
+    if (!/^[6-9]\d{9}$/.test(phone)) return json({ error: "Enter your 10-digit mobile number.", field: "phone" }, 400);
+    if (b.agree !== true) return json({ error: "Confirm that the details are yours and correct.", field: "agree" }, 400);
+    const p = readProfile(b);
+    if ("error" in p) return json(p, 400);
+    const signedIn = await currentUser(request, env);
+    const dupe = await db.DB.prepare("SELECT d.id FROM find_doctors d LEFT JOIN users u ON u.id = d.user_id WHERE (LOWER(d.reg_no) = LOWER(?) AND d.reg_council = ?) OR d.contact_email = ? OR u.email = ? LIMIT 1").bind(p.reg_no, p.reg_council, email, email).first<{ id: string }>();
+    if (dupe) return json({ error: "A practice with this registration number or email is already registered. Sign in with that email to see or change it.", exists: true }, 409);
+    if (signedIn && await db.DB.prepare("SELECT id FROM find_doctors WHERE user_id = ?").bind(signedIn.id).first()) return json({ error: "Your account already has a practice. Change it in Your profile.", exists: true }, 409);
+    const now = Date.now();
+    const owner = signedIn && normEmail(signedIn.email) === email ? signedIn.id : `reg:${id("r")}`;
+    const slug = `${slugify(`dr-${p.name.replace(/^dr\.?\s+/i, "")}-${p.specialty.split(" ")[0]}-${p.city}`)}-${Math.random().toString(36).slice(2, 6)}`;
+    const x = readExtras(b);
+    await db.DB.prepare(`INSERT INTO find_doctors (id, user_id, slug, status, name, gender, specialty, qualifications, reg_no, reg_council, experience, clinic, address, locality, city, pincode, fee, video, video_fee, languages, about, services, hours, education, awards, memberships, contact_email, contact_phone, created_at, updated_at) VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .bind(id("d"), owner, slug, p.name, p.gender, p.specialty, p.qualifications, p.reg_no, p.reg_council, p.experience, p.clinic, p.address, p.locality, p.city, p.pincode, p.fee, p.video, p.video_fee, p.languages, p.about, p.services, p.hours, x.education, x.awards, x.memberships, email, phone, now, now).run();
+    for (const to of adminEmails(env).slice(0, 3)) await sendEmail(env, to, `New doctor to check: ${p.name}`, apptEmail("A doctor registered", [["Name", p.name], ["Specialty", p.specialty], ["Registration", `${p.reg_no} (${p.reg_council})`], ["City", p.city], ["Email", email], ["Mobile", phone]], "Check the registration number on the NMC register, then approve it at doctors.aethex.in/admin/doctors.")).catch(() => false);
+    const emailed = await sendEmail(env, email, "We've received your Aethex Doctors registration", apptEmail("Thank you for registering", [["Doctor", p.name], ["Specialty", p.specialty], ["Registration", `${p.reg_no} (${p.reg_council})`], ["Clinic", `${p.clinic}, ${p.city}`]], "We check your registration number on the National Medical Commission's register, usually within two working days, and email you when your profile is live. To change your details or confirm bookings, sign in at doctors.aethex.in/practice with this email: we'll send you a sign-in code, no password needed.")).catch(() => false);
+    return json({ ok: true, slug, emailed: !!emailed, linked: !owner.startsWith("reg:") });
+  }
+
   /* everything below needs an account */
   const user = await currentUser(request, env);
   const signIn = () => json({ error: "Sign in to continue.", signIn: true }, 401);
+  // A doctor who registered without an account gets their profile the first time they sign in with that email.
+  if (user?.email) {
+    const mail = normEmail(user.email);
+    const has = await db.DB.prepare("SELECT id FROM find_doctors WHERE user_id = ?").bind(user.id).first();
+    if (!has) await db.DB.prepare("UPDATE find_doctors SET user_id = ? WHERE id = (SELECT id FROM find_doctors WHERE user_id LIKE 'reg:%' AND contact_email = ? ORDER BY created_at LIMIT 1)").bind(user.id, mail).run();
+  }
 
   /* the doctor's own profile */
   if (path === "/me") {
@@ -486,7 +527,7 @@ export async function handleFind(request: Request, env: FindEnv): Promise<Respon
     const when = nice(date, time);
     const where = mode === "video" ? "Video consultation" : `${d.clinic}, ${d.address}, ${d.city}`;
     if (email) await sendEmail(env, email, `Appointment booked: ${d.name}, ${when}`, apptEmail("Your appointment is booked", [["Doctor", `${d.name}, ${d.specialty}`], ["When", when], ["Where", where], ["Patient", name]], "The doctor will confirm it. You can see or cancel it in My appointments on doctors.aethex.in.")).catch(() => false);
-    const owner = await db.DB.prepare("SELECT email FROM users WHERE id = ?").bind(d.user_id).first<{ email: string }>();
+    const owner = await doctorEmail(db, d);
     if (owner?.email) await sendEmail(env, owner.email, `New appointment: ${name}, ${when}`, apptEmail("A patient booked an appointment", [["Patient", `${name}${age != null ? `, ${age} y` : ""}`], ["Mobile", phone], ["When", when], ["Type", mode === "video" ? "Video" : "In clinic"], ["Reason", longStr(b.reason, 400) || "Not given"]], "Confirm it in your practice dashboard at doctors.aethex.in/practice.")).catch(() => false);
     const a = await db.DB.prepare("SELECT * FROM find_appointments WHERE id = ?").bind(aid).first<ApptRow>();
     return json({ appointment: apptOut(a!, { slug: d.slug, name: d.name, specialty: d.specialty, clinic: d.clinic, address: d.address, city: d.city }) });
@@ -539,7 +580,7 @@ export async function handleFind(request: Request, env: FindEnv): Promise<Respon
       if (/unique|constraint/i.test(String((e as Error)?.message ?? e))) return json({ error: "Someone just booked that time. Please choose another.", taken: true }, 409);
       throw e;
     }
-    const owner = await db.DB.prepare("SELECT email FROM users WHERE id = ?").bind(d.user_id).first<{ email: string }>();
+    const owner = await doctorEmail(db, d);
     if (owner?.email) await sendEmail(env, owner.email, `Moved: ${a.patient_name}, now ${nice(date, time)}`, apptEmail("A patient moved their appointment", [["Patient", a.patient_name], ["Was", nice(a.date, a.time)], ["Now", nice(date, time)]], "Confirm it again in your practice dashboard at doctors.aethex.in/practice.")).catch(() => false);
     return json({ ok: true });
   }
@@ -646,20 +687,20 @@ export async function handleFind(request: Request, env: FindEnv): Promise<Respon
     if (!admins.includes(normEmail(user.email))) return json({ error: "This account can't approve doctors." }, 403);
     if (path === "/admin/doctors" && method === "GET") {
       const status = ["pending", "live", "paused", "rejected"].includes(String(url.searchParams.get("status"))) ? String(url.searchParams.get("status")) : "pending";
-      const { results } = await db.DB.prepare("SELECT d.*, u.email AS email FROM find_doctors d LEFT JOIN users u ON u.id = d.user_id WHERE d.status = ? ORDER BY d.updated_at DESC LIMIT 200").bind(status).all<DoctorRow & { email: string }>();
+      const { results } = await db.DB.prepare("SELECT d.*, COALESCE(u.email, d.contact_email) AS email FROM find_doctors d LEFT JOIN users u ON u.id = d.user_id WHERE d.status = ? ORDER BY d.updated_at DESC LIMIT 200").bind(status).all<DoctorRow & { email: string }>();
       const { results: counts } = await db.DB.prepare("SELECT status, COUNT(*) AS n FROM find_doctors GROUP BY status").all<{ status: string; n: number }>();
-      return json({ doctors: results.map((d) => ({ ...ownDoctor(d), email: d.email })), counts: Object.fromEntries(counts.map((c) => [c.status, Number(c.n)])) });
+      return json({ doctors: results.map((d) => ({ ...ownDoctor(d), email: d.email, phone: d.contact_phone ?? null, account: !d.user_id.startsWith("reg:") })), counts: Object.fromEntries(counts.map((c) => [c.status, Number(c.n)])) });
     }
     if (method === "POST") {
       const did = path.split("/").pop()!;
       const b = await body(request);
       const status = ["live", "rejected", "pending", "paused"].includes(String(b.status)) ? String(b.status) : null;
       if (!status) return json({ error: "Choose approve or reject." }, 400);
-      const d = await db.DB.prepare("SELECT d.*, u.email AS email FROM find_doctors d LEFT JOIN users u ON u.id = d.user_id WHERE d.id = ?").bind(did).first<DoctorRow & { email: string }>();
+      const d = await db.DB.prepare("SELECT d.*, COALESCE(u.email, d.contact_email) AS email FROM find_doctors d LEFT JOIN users u ON u.id = d.user_id WHERE d.id = ?").bind(did).first<DoctorRow & { email: string }>();
       if (!d) return json({ error: "Doctor not found." }, 404);
       await db.DB.prepare("UPDATE find_doctors SET status = ?, admin_note = ?, updated_at = ? WHERE id = ?").bind(status, longStr(b.note, 400) || null, Date.now(), d.id).run();
       if (d.email && (status === "live" || status === "rejected")) {
-        await sendEmail(env, d.email, status === "live" ? "Your practice is now listed on Aethex Doctors" : "About your Aethex Doctors listing", apptEmail(status === "live" ? "You're listed" : "We couldn't list your practice yet", [["Doctor", d.name], ["Specialty", d.specialty], ...(longStr(b.note, 400) ? [["Note", longStr(b.note, 400)] as [string, string]] : [])], status === "live" ? "Patients can now find you and book appointments. Manage them at doctors.aethex.in/practice." : "Update your details at doctors.aethex.in/list-your-practice and we'll check them again.")).catch(() => false);
+        await sendEmail(env, d.email, status === "live" ? "Your practice is now listed on Aethex Doctors" : "About your Aethex Doctors listing", apptEmail(status === "live" ? "You're listed" : "We couldn't list your practice yet", [["Doctor", d.name], ["Specialty", d.specialty], ...(longStr(b.note, 400) ? [["Note", longStr(b.note, 400)] as [string, string]] : [])], status === "live" ? (d.user_id.startsWith("reg:") ? "Patients can now find you and book appointments. To confirm them, open doctors.aethex.in/practice and sign in with this email: we'll email you a sign-in code, no password needed." : "Patients can now find you and book appointments. Manage them at doctors.aethex.in/practice.") : "Update your details at doctors.aethex.in/list-your-practice and we'll check them again.")).catch(() => false);
       }
       return json({ ok: true });
     }

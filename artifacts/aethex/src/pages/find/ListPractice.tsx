@@ -1,11 +1,15 @@
-/** /list-your-practice: a doctor creates or edits their Aethex Doctors profile. It goes live after an admin check. */
+/**
+ * /list-your-practice: a doctor creates or edits their Aethex Doctors profile. It goes live after an admin check.
+ * Update 72: a doctor who isn't signed in registers with the same form and their email and mobile, without an Aethex
+ * account (POST /api/find/register). Signing in later with that email (a code, no password) lets them manage it.
+ */
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { BadgeCheck, CheckCircle2, Clock, GraduationCap, Plus, ShieldCheck, Trash2, UserPlus } from "lucide-react";
+import { BadgeCheck, CheckCircle2, Clock, GraduationCap, Mail, Plus, ShieldCheck, Trash2, UserPlus } from "lucide-react";
 import { useSeo } from "@/hooks/use-seo";
 import { DAY_NAMES, SPECIALTIES, findApi, signInHere, useMyProfile, type FindError, type Hours, type OwnDoctor } from "@/lib/find";
-import { FindNav, SignInCard } from "./FindParts";
+import { FindNav } from "./FindParts";
 
 const COUNCILS = ["National Medical Commission", "Andhra Pradesh Medical Council", "Assam Medical Council", "Bihar Medical Council", "Chhattisgarh Medical Council", "Delhi Medical Council", "Goa Medical Council", "Gujarat Medical Council", "Haryana Medical Council", "Himachal Pradesh Medical Council", "Jammu & Kashmir Medical Council", "Jharkhand Medical Council", "Karnataka Medical Council", "Travancore Cochin Medical Council (Kerala)", "Madhya Pradesh Medical Council", "Maharashtra Medical Council", "Odisha Council of Medical Registration", "Punjab Medical Council", "Rajasthan Medical Council", "Tamil Nadu Medical Council", "Telangana State Medical Council", "Uttar Pradesh Medical Council", "Uttarakhand Medical Council", "West Bengal Medical Council", "Dental Council of India / State Dental Council", "Other"];
 
@@ -14,18 +18,21 @@ type Form = {
   clinic: string; address: string; locality: string; city: string; pincode: string; fee: string; video: boolean; videoFee: string;
   languages: string; about: string; services: string; hours: Hours;
   education: { degree: string; college: string; year: string }[]; awards: string; memberships: string;
+  email: string; phone: string; agree: boolean;
 };
 const EMPTY: Form = {
   name: "", gender: "", specialty: "", qualifications: "", regNo: "", regCouncil: "", experience: "", clinic: "", address: "", locality: "", city: "", pincode: "",
   fee: "", video: false, videoFee: "", languages: "English, Hindi", about: "", services: "",
   hours: { days: [1, 2, 3, 4, 5, 6], sessions: [{ start: "10:00", end: "13:00" }, { start: "17:00", end: "20:00" }], slot: 15 },
   education: [{ degree: "MBBS", college: "", year: "" }], awards: "", memberships: "",
+  email: "", phone: "", agree: false,
 };
 const fromDoctor = (d: OwnDoctor): Form => ({
   name: d.name, gender: d.gender ?? "", specialty: d.specialty, qualifications: d.qualifications, regNo: d.regNo, regCouncil: d.regCouncil, experience: String(d.experience),
   clinic: d.clinic, address: d.address, locality: d.locality ?? "", city: d.city, pincode: d.pincode, fee: String(d.fee), video: d.video, videoFee: d.videoFee != null ? String(d.videoFee) : "",
   languages: d.languages.join(", "), about: d.about ?? "", services: d.services.join(", "), hours: d.hours ?? EMPTY.hours,
   education: d.education?.length ? d.education : EMPTY.education, awards: (d.awards ?? []).join("\n"), memberships: (d.memberships ?? []).join("\n"),
+  email: "", phone: "", agree: true,
 });
 export const STATUS_TEXT: Record<OwnDoctor["status"], [string, string]> = {
   pending: ["Waiting for our check", "We're checking your registration number. Your profile goes live once it's approved; we'll email you."],
@@ -40,22 +47,30 @@ export default function ListPractice() {
   const { data, isLoading, error } = useMyProfile();
   const [f, setF] = useState<Form>(EMPTY);
   const [busy, setBusy] = useState(false), [err, setErr] = useState(""), [saved, setSaved] = useState(false);
+  const [done, setDone] = useState<{ emailed: boolean; email: string } | null>(null);
   useEffect(() => { if (data?.doctor) setF(fromDoctor(data.doctor)); else if (data?.name) setF((x) => ({ ...x, name: x.name || data.name })); }, [data]);
   const set = <K extends keyof Form>(k: K, v: Form[K]) => { setF((x) => ({ ...x, [k]: v })); setSaved(false); };
   const setH = (h: Partial<Hours>) => set("hours", { ...f.hours, ...h });
 
+  const signedOut = (error as FindError | null)?.status === 401;
   const save = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true); setErr("");
+    const payload = { ...f, experience: Number(f.experience || 0), fee: f.fee === "" ? null : Number(f.fee), videoFee: f.videoFee === "" ? undefined : Number(f.videoFee) };
     try {
-      await findApi<{ doctor: OwnDoctor }>("/me", { ...f, experience: Number(f.experience || 0), fee: f.fee === "" ? null : Number(f.fee), videoFee: f.videoFee === "" ? undefined : Number(f.videoFee) });
+      if (signedOut) {
+        const r = await findApi<{ ok: boolean; emailed: boolean }>("/register", payload);
+        setDone({ emailed: r.emailed, email: f.email.trim() });
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+      await findApi<{ doctor: OwnDoctor }>("/me", payload);
       await qc.invalidateQueries({ queryKey: ["find"] });
       setSaved(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (x) { setErr((x as FindError).message); } finally { setBusy(false); }
   };
 
-  const signedOut = (error as FindError | null)?.status === 401;
   const doc = data?.doctor;
 
   return (
@@ -63,12 +78,20 @@ export default function ListPractice() {
       <FindNav />
       <div className="ax-wrap fd-narrow">
         <header className="fd-pagehead">
-          <h1><UserPlus size={26} /> {doc ? "Your Aethex Doctors profile" : "List your practice. Free."}</h1>
+          <h1><UserPlus size={26} /> {doc ? "Your Aethex Doctors profile" : "Register your practice. Free."}</h1>
           <p>Add your clinic, fees and consulting hours. Patients book your free slots and you confirm them from your practice dashboard.</p>
         </header>
         {isLoading ? <div className="fd-card sk" style={{ height: 300 }} />
-          : signedOut ? <SignInCard title="Sign in to list your practice" text="Your profile is tied to your Aethex account, so only you can change it." href={signInHere()} />
-          : error ? <div className="fd-empty"><b>Couldn't open your profile</b><p>{(error as Error).message}</p></div>
+          : done ? (
+            <div className="fd-card fd-done" data-find="registered">
+              <CheckCircle2 size={34} />
+              <h2>Thank you, we've received your registration</h2>
+              <p>We'll check your registration number on the National Medical Commission's register, usually within two working days, and email <b>{done.email}</b> when your profile is live.{done.emailed ? " A confirmation is on its way to your inbox." : ""}</p>
+              <p>You don't need an Aethex account. To change your details or confirm bookings later, open the practice dashboard and sign in with this email: we'll send you a sign-in code.</p>
+              <div className="row"><Link href="/practice" className="fd-btn">Practice dashboard</Link><Link href="/" className="fd-btn ghost">Aethex Doctors home</Link></div>
+            </div>
+          )
+          : error && !signedOut ? <div className="fd-empty"><b>Couldn't open your profile</b><p>{(error as Error).message}</p></div>
           : (
           <>
             {doc && (
@@ -79,7 +102,19 @@ export default function ListPractice() {
               </div>
             )}
             {saved && <div className="fd-note ok" data-find="saved"><CheckCircle2 size={16} /> Saved. {doc?.status === "pending" ? "We'll check your registration and email you when you're live." : ""}</div>}
-            <form className="fd-pform" onSubmit={save}>
+            {signedOut && (
+              <div className="fd-note" data-find="no-account"><Mail size={16} /> <span>No Aethex account needed: fill in the form and we'll email you once your registration is checked. Already registered? <a href={signInHere()}>Sign in with your email</a> to change your details.</span></div>
+            )}
+            <form className="fd-pform" onSubmit={save} data-find={signedOut ? "register-form" : "profile-form"}>
+              {signedOut && (
+                <fieldset data-find="contact"><legend><Mail size={16} /> How we reach you</legend>
+                  <p className="tiny">We email your approval here and use it to recognise you when you sign in later. It isn't shown on your profile.</p>
+                  <div className="two">
+                    <label>Email<input required type="email" autoComplete="email" value={f.email} onChange={(e) => set("email", e.target.value)} placeholder="you@example.com" /></label>
+                    <label>Mobile number<input required inputMode="tel" autoComplete="tel" maxLength={14} value={f.phone} onChange={(e) => set("phone", e.target.value.replace(/[^\d+ ]/g, ""))} placeholder="10-digit mobile" /></label>
+                  </div>
+                </fieldset>
+              )}
               <fieldset><legend>About you</legend>
                 <div className="two">
                   <label>Full name<input required value={f.name} onChange={(e) => set("name", e.target.value)} placeholder="Dr Asha Verma" /></label>
@@ -154,8 +189,10 @@ export default function ListPractice() {
               </fieldset>
               {err && <p className="fd-err" role="alert">{err}</p>}
               <div className="fd-pform-foot">
-                <p className="tiny"><BadgeCheck size={14} /> By listing, you confirm the details are yours and correct.</p>
-                <button type="submit" className="fd-btn lg" disabled={busy}>{busy ? "Saving…" : doc ? "Save changes" : "Submit for approval"}</button>
+                {signedOut
+                  ? <label className="chk tiny"><input type="checkbox" required checked={f.agree} onChange={(e) => set("agree", e.target.checked)} /> I confirm these details are mine and correct, and agree to the <a href="/terms-of-service" target="_blank" rel="noreferrer">terms</a>.</label>
+                  : <p className="tiny"><BadgeCheck size={14} /> By listing, you confirm the details are yours and correct.</p>}
+                <button type="submit" className="fd-btn lg" disabled={busy}>{busy ? "Saving…" : doc ? "Save changes" : signedOut ? "Register my practice" : "Submit for approval"}</button>
               </div>
             </form>
           </>

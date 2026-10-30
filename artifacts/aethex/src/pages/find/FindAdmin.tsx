@@ -8,7 +8,7 @@ import { displayName, findApi, hoursText, signInHere, type FindError, type OwnDo
 import { formatINR } from "@/lib/utils";
 import { SignInCard } from "./FindParts";
 
-type Row = OwnDoctor & { email: string };
+type Row = OwnDoctor & { email: string; phone?: string | null; account?: boolean };
 const TABS = ["pending", "live", "paused", "rejected"] as const;
 
 export default function FindAdmin() {
@@ -37,7 +37,7 @@ export default function FindAdmin() {
             {isLoading ? <div className="fd-card sk" style={{ height: 200 }} /> : !data?.doctors.length ? <p className="fd-none">Nothing here.</p> : data.doctors.map((d) => (
               <article key={d.id} className="fd-adm" data-admin-doctor={d.slug}>
                 <div className="txt">
-                  <b>{displayName(d.name)}</b> <span className="mu">· {d.email}</span>
+                  <b>{displayName(d.name)}</b> <span className="mu">· {d.email}{d.phone ? ` · ${d.phone}` : ""}{d.account === false ? " · registered without an account" : ""}</span>
                   <span>{d.specialty} · {d.qualifications} · {d.experience} years</span>
                   <span className="reg"><BadgeCheck size={14} /> {d.regNo} · {d.regCouncil}</span>
                   <span className="mu">{d.clinic}, {d.address}{d.locality ? `, ${d.locality}` : ""}, {d.city} {d.pincode}</span>
