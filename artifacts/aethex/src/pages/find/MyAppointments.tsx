@@ -1,6 +1,7 @@
 /** /appointments: the patient's bookings, with cancel and (after a completed visit) a review. */
 import { MyWaitlists } from "./DoctorTools2";
 import { QueueStatus, ShareRecords } from "./DoctorTools3";
+import { VitalsShare } from "./DoctorTools4";
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
@@ -95,6 +96,7 @@ export default function MyAppointments() {
         {["booked", "confirmed"].includes(a.status) && a.date >= today && <button type="button" className="fd-btn sm ghost" onClick={() => setMoving(moving === a.id ? "" : a.id)}><CalendarClock size={14} /> Reschedule</button>}
         {["booked", "confirmed"].includes(a.status) && a.date >= today && <button type="button" className="fd-btn sm danger" onClick={() => void cancel(a)}><X size={14} /> Cancel</button>}
         <ShareRecords a={a} />
+        <VitalsShare a={a} />
         {moving === a.id && <Reschedule a={a} onDone={() => { setMoving(""); refresh(); }} />}
         {a.status === "completed" && !a.reviewed && <Review a={a} onDone={refresh} />}
         {a.status === "completed" && a.reviewed && <span className="mu">Thanks for your review</span>}

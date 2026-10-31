@@ -1,6 +1,7 @@
 /** /practice: the doctor's dashboard: today's and upcoming appointments, confirm, complete, video links. */
 import { PracticeAnalytics } from "./DoctorTools2";
 import { ClinicQueue, LeaveDays, ReplyBox, SharedFiles } from "./DoctorTools3";
+import { StaffPanel, VitalsForDoctor, useStaffInvite } from "./DoctorTools4";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
@@ -63,6 +64,7 @@ export default function Practice() {
   const [busy, setBusy] = useState(""), [err, setErr] = useState("");
   const [links, setLinks] = useState<Record<string, string>>({});
   const [rxFor, setRxFor] = useState(""), [replies, setReplies] = useState<Record<string, string>>({});
+  const staffMsg = useStaffInvite(() => void qc.invalidateQueries({ queryKey: ["find"] }));
 
   const lists = useMemo(() => {
     const a = data?.appointments ?? [], today = data?.today ?? "";
@@ -95,6 +97,7 @@ export default function Practice() {
   if (fe || !data) return <div className="fd-page"><FindNav /><div className="ax-wrap fd-narrow"><div className="fd-empty"><b>Couldn't open the dashboard</b><p>{fe?.message}</p></div></div></div>;
 
   const d = data.doctor, rows = lists[tab];
+  const owner = data.role !== "reception";
   const week = data.appointments.filter((x) => x.status !== "cancelled" && x.date >= data.today && x.date <= addDays(data.today, 6)).length;
 
   return (
@@ -108,11 +111,15 @@ export default function Practice() {
           </div>
           <div className="acts">
             <Link href={`/doctor/${d.slug}`} className="fd-btn ghost"><Eye size={15} /> View profile</Link>
+            {owner && <>
             <Link href="/list-your-practice" className="fd-btn ghost"><Pencil size={15} /> Edit profile</Link>
             {d.status === "live" && <button type="button" className="fd-btn ghost" disabled={busy === "status"} onClick={() => void pause("paused")}><Pause size={15} /> Pause bookings</button>}
             {d.status === "paused" && <button type="button" className="fd-btn" disabled={busy === "status"} onClick={() => void pause("live")}><Play size={15} /> Take bookings again</button>}
+            </>}
           </div>
         </header>
+        {staffMsg && <p className="fd-note" role="status" data-find="staff-msg">{staffMsg}</p>}
+        {!owner && <p className="fd-staff-banner" data-find="staff-banner">You're managing the front desk for {displayName(d.name)}: today's queue and bookings. Prescriptions, records and reviews stay with the doctor.</p>}
         <div className={`fd-status ${d.status}`}><b>{STATUS_TEXT[d.status][0]}</b><span>{STATUS_TEXT[d.status][1]}</span>{d.adminNote && <em>Note from Aethex: {d.adminNote}</em>}</div>
         <div className="fd-stats">
           <div><CalendarCheck size={20} /><b>{lists.today.length}</b><small>Today</small></div>
@@ -149,16 +156,17 @@ export default function Practice() {
                 {["booked", "confirmed"].includes(a.status) && a.date <= data.today && <button type="button" className="fd-btn sm ghost" disabled={busy === a.id} onClick={() => void act(a.id, { status: "completed" })}><CheckCheck size={14} /> Completed</button>}
                 {["booked", "confirmed"].includes(a.status) && a.date <= data.today && <button type="button" className="fd-btn sm ghost" disabled={busy === a.id} onClick={() => void act(a.id, { status: "no-show" })}><UserX size={14} /> No-show</button>}
                 {["booked", "confirmed"].includes(a.status) && <button type="button" className="fd-btn sm danger" disabled={busy === a.id} onClick={() => { if (window.confirm(`Cancel ${a.patient.name}'s appointment?`)) void act(a.id, { status: "cancelled", note: "Cancelled by the doctor" }); }}><X size={14} /> Cancel</button>}
-                {a.status !== "cancelled" && a.date <= data.today && <button type="button" className="fd-btn sm ghost" onClick={() => setRxFor(rxFor === a.id ? "" : a.id)} data-rx={a.id}><FileText size={14} /> {a.prescription ? "Edit prescription" : "Write prescription"}</button>}
-                {a.prescription && <Link href={`/prescription/${a.prescription}`} className="fd-btn sm ghost"><Printer size={14} /> View</Link>}
+                {owner && a.status !== "cancelled" && a.date <= data.today && <button type="button" className="fd-btn sm ghost" onClick={() => setRxFor(rxFor === a.id ? "" : a.id)} data-rx={a.id}><FileText size={14} /> {a.prescription ? "Edit prescription" : "Write prescription"}</button>}
+                {owner && a.prescription && <Link href={`/prescription/${a.prescription}`} className="fd-btn sm ghost"><Printer size={14} /> View</Link>}
               </div>
               <SharedFiles id={a.id} count={a.files ?? 0} />
+              {a.vitals && <VitalsForDoctor id={a.id} />}
               {rxFor === a.id && <RxEditor id={a.id} onDone={() => { setRxFor(""); void qc.invalidateQueries({ queryKey: ["find", "practice"] }); }} />}
             </article>
           ))}
         </div>
 
-        <div className="fd-dash-grid">
+        {owner && <div className="fd-dash-grid">
           <LeaveDays off={d.timeOff} note={d.timeOffNote ?? null} onSaved={() => void qc.invalidateQueries({ queryKey: ["find"] })} />
           <section className="fd-box" data-find="open-questions">
             <h2><MessageCircleQuestionMark size={18} /> Questions for {d.specialty}s</h2>
@@ -170,10 +178,11 @@ export default function Practice() {
             {data.articles.length ? <ul className="fd-mini-list">{data.articles.map((x) => <li key={x.slug}><Link href={`/articles/${x.slug}`}>{x.title}</Link><Link href={`/practice/write?edit=${x.slug}`} className="fd-link">Edit</Link></li>)}</ul> : <p className="mu">Share what you tell patients every day.</p>}
             {d.status === "live" ? <Link href="/practice/write" className="fd-btn sm"><PenLine size={14} /> Write an article</Link> : <p className="tiny">You can publish once your profile is approved.</p>}
           </section>
-        </div>
+        </div>}
 
-        <PracticeAnalytics />
-        <section className="fd-box" data-find="practice-reviews">
+        {owner && <StaffPanel />}
+        {owner && <PracticeAnalytics />}
+        {owner && <section className="fd-box" data-find="practice-reviews">
           <h2><Star size={18} /> Patient stories</h2>
           {!data.reviews.length ? <p className="mu">Patients can share a story after you mark their visit completed.</p> : data.reviews.map((r) => (
             <div key={r.id} className="fd-review">
@@ -182,7 +191,7 @@ export default function Practice() {
               <ReplyBox r={r} onSaved={() => void qc.invalidateQueries({ queryKey: ["find"] })} />
             </div>
           ))}
-        </section>
+        </section>}
       </div>
     </div>
   );

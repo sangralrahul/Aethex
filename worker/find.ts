@@ -60,6 +60,14 @@ export const FIND_TABLES = [
   `CREATE TABLE IF NOT EXISTS find_review_reports (
     id TEXT PRIMARY KEY, review_id TEXT NOT NULL, user_id TEXT NOT NULL, reason TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open', created_at INTEGER NOT NULL)`,
   "CREATE UNIQUE INDEX IF NOT EXISTS find_review_reports_one ON find_review_reports(review_id, user_id)",
+  // update 88: front-desk staff, and vitals patients log and share for a visit
+  `CREATE TABLE IF NOT EXISTS find_staff (doctor_id TEXT NOT NULL, email TEXT NOT NULL, user_id TEXT, role TEXT NOT NULL DEFAULT 'reception', status TEXT NOT NULL DEFAULT 'invited',
+    token TEXT NOT NULL, invited_at INTEGER NOT NULL, joined_at INTEGER, PRIMARY KEY (doctor_id, email))`,
+  "CREATE INDEX IF NOT EXISTS find_staff_user ON find_staff(user_id)",
+  `CREATE TABLE IF NOT EXISTS find_vitals (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, family_id TEXT, kind TEXT NOT NULL, v1 REAL NOT NULL, v2 REAL, context TEXT, note TEXT,
+    at INTEGER NOT NULL, created_at INTEGER NOT NULL)`,
+  "CREATE INDEX IF NOT EXISTS find_vitals_user ON find_vitals(user_id, family_id, at)",
+  "CREATE TABLE IF NOT EXISTS find_vital_shares (appointment_id TEXT PRIMARY KEY, user_id TEXT NOT NULL, family_id TEXT, days INTEGER NOT NULL, created_at INTEGER NOT NULL)",
   "CREATE INDEX IF NOT EXISTS find_doctors_search ON find_doctors(status, city, specialty)",
   "CREATE INDEX IF NOT EXISTS find_questions_list ON find_questions(specialty, created_at)",
   "CREATE INDEX IF NOT EXISTS find_answers_q ON find_answers(question_id, created_at)",
@@ -843,15 +851,15 @@ export async function handleFind(request: Request, env: FindEnv): Promise<Respon
   /* the clinic queue (update 83): the doctor or the front desk marks who arrived, who is in, who is done */
   if (path === "/practice/queue" && method === "GET") {
     if (!user) return signIn();
-    const mine = await db.DB.prepare("SELECT * FROM find_doctors WHERE user_id = ?").bind(user.id).first<DoctorRow>();
-    if (!mine) return json({ error: "List your practice first.", noProfile: true }, 404);
-    return json(await queueOf(db, mine, istNow().date));
+    const pr = await practiceOf(db, user.id);
+    if (!pr) return json({ error: "List your practice first.", noProfile: true }, 404);
+    return json(await queueOf(db, pr.doctor, istNow().date));
   }
   const qStep = /^\/practice\/queue\/([a-z0-9]{6,40})$/.exec(path);
   if (qStep && method === "POST") {
     if (!user) return signIn();
-    const a = await db.DB.prepare("SELECT a.* FROM find_appointments a JOIN find_doctors d ON d.id = a.doctor_id WHERE a.id = ? AND d.user_id = ?").bind(qStep[1], user.id).first<ApptRow>();
-    if (!a) return json({ error: "Appointment not found." }, 404);
+    const a = await db.DB.prepare("SELECT a.* FROM find_appointments a WHERE a.id = ?").bind(qStep[1]).first<ApptRow>();
+    if (!a || !(await canManage(db, user.id, a.doctor_id))) return json({ error: "Appointment not found." }, 404);
     if (a.date !== istNow().date) return json({ error: "The queue is for today's appointments." }, 400);
     const step = String((await body(request)).step), now = Date.now();
     if (step === "arrived") await db.DB.prepare("UPDATE find_appointments SET arrived_at = COALESCE(arrived_at, ?), status = CASE WHEN status = 'booked' THEN 'confirmed' ELSE status END, updated_at = ? WHERE id = ?").bind(now, now, a.id).run();
@@ -927,27 +935,117 @@ export async function handleFind(request: Request, env: FindEnv): Promise<Respon
     return new Response(bin, { headers: { "content-type": f.type, "content-disposition": `inline; filename="${f.name.replace(/[^\w.\- ]/g, "_")}"`, "cache-control": "no-store, private", "x-content-type-options": "nosniff", "content-security-policy": "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox" } });
   }
 
+  /* update 88: front-desk staff a doctor lets into the practice (queue, bookings; not prescriptions or records) */
+  if (path === "/practice/staff" && method === "GET") {
+    if (!user) return signIn();
+    const mine = await db.DB.prepare("SELECT * FROM find_doctors WHERE user_id = ?").bind(user.id).first<DoctorRow>();
+    if (!mine) return json({ error: "Only the doctor manages staff." }, 403);
+    return json({ staff: await staffList(db, mine.id) });
+  }
+  const staffAct = /^\/practice\/staff\/(invite|remove|accept)$/.exec(path);
+  if (staffAct && method === "POST") {
+    if (!user) return signIn();
+    const b = await body(request);
+    if (staffAct[1] === "accept") {
+      const s = await db.DB.prepare("SELECT s.*, d.name AS d_name FROM find_staff s JOIN find_doctors d ON d.id = s.doctor_id WHERE s.token = ?").bind(str(b.token, 64)).first<StaffRow & { d_name: string }>();
+      if (!s) return json({ error: "This invitation isn't valid any more. Ask the doctor for a new one." }, 404);
+      if (s.email !== normEmail(user.email)) return json({ error: `This invitation is for ${s.email}. Sign in with that email to accept it.` }, 403);
+      await db.DB.prepare("UPDATE find_staff SET user_id = ?, status = 'active', joined_at = ? WHERE doctor_id = ? AND email = ?").bind(user.id, Date.now(), s.doctor_id, s.email).run();
+      return json({ ok: true, doctor: s.d_name });
+    }
+    const mine = await db.DB.prepare("SELECT * FROM find_doctors WHERE user_id = ?").bind(user.id).first<DoctorRow>();
+    if (!mine) return json({ error: "Only the doctor manages staff." }, 403);
+    const email = normEmail(b.email);
+    if (!email) return json({ error: "Enter their email.", field: "email" }, 400);
+    if (staffAct[1] === "remove") {
+      await db.DB.prepare("DELETE FROM find_staff WHERE doctor_id = ? AND email = ?").bind(mine.id, email).run();
+      return json({ staff: await staffList(db, mine.id) });
+    }
+    if (email === normEmail(user.email)) return json({ error: "That's you." }, 400);
+    if (!(await allow(db, `find-staff:${mine.id}`, 20, 86400_000))) return json({ error: "That's a lot of invitations for one day." }, 429);
+    const n = await db.DB.prepare("SELECT COUNT(*) AS n FROM find_staff WHERE doctor_id = ?").bind(mine.id).first<{ n: number }>();
+    if (Number(n?.n) >= 5) return json({ error: "Up to 5 front-desk accounts." }, 400);
+    const token = Array.from(crypto.getRandomValues(new Uint8Array(24)), (x) => x.toString(16).padStart(2, "0")).join("");
+    await db.DB.prepare("INSERT INTO find_staff (doctor_id, email, role, status, token, invited_at) VALUES (?, ?, 'reception', 'invited', ?, ?) ON CONFLICT(doctor_id, email) DO UPDATE SET token = excluded.token, invited_at = excluded.invited_at").bind(mine.id, email, token, Date.now()).run();
+    const emailed = await sendEmail(env, email, `${mine.name} added you to their front desk on Aethex Doctors`, shell(`<h2 style="margin:0 0 10px;font-size:20px;">Help run ${escapeHtml(mine.clinic)} on Aethex</h2>
+<p style="margin:0 0 12px;font-size:14px;line-height:1.6;">${escapeHtml(mine.name)} gave you front-desk access: today's queue and the bookings (confirm, cancel, mark arrived). Prescriptions and patients' records stay with the doctor.</p>
+<p style="margin:0;"><a href="${SITE}/practice?staff=${token}" style="display:inline-block;padding:11px 18px;border-radius:8px;background:#1d4ed8;color:#fff;font-weight:600;text-decoration:none;">Accept</a></p>
+<p style="margin:12px 0 0;font-size:12px;color:#718096;">Sign in with this email address (${escapeHtml(email)}).</p>`)).catch(() => false);
+    return json({ staff: await staffList(db, mine.id), emailed });
+  }
+
+  /* update 88: vitals the patient logs (for themselves or a family member), and shares with the doctor for a visit */
+  if (path === "/vitals" && (method === "GET" || method === "POST")) {
+    if (!user) return signIn();
+    if (method === "GET") {
+      const person = str(url.searchParams.get("person"), 40);
+      if (person && person !== "me" && !(await db.DB.prepare("SELECT id FROM find_family WHERE id = ? AND user_id = ?").bind(person, user.id).first())) return json({ error: "That family member isn't on your account." }, 404);
+      return json({ readings: await vitalsOf(db, user.id, person && person !== "me" ? person : null, 0) });
+    }
+    if (!(await allow(db, `find-vitals:${user.id}`, 200, 86400_000))) return json({ error: "That's a lot of readings for one day." }, 429);
+    const b = await body(request);
+    const person = str(b.person, 40);
+    const fam = person && person !== "me" ? person : null;
+    if (fam && !(await db.DB.prepare("SELECT id FROM find_family WHERE id = ? AND user_id = ?").bind(fam, user.id).first())) return json({ error: "That family member isn't on your account." }, 400);
+    const v = readVital(b);
+    if ("error" in v) return json(v, 400);
+    const vid = id("v");
+    await db.DB.prepare("INSERT INTO find_vitals (id, user_id, family_id, kind, v1, v2, context, note, at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(vid, user.id, fam, v.kind, v.v1, v.v2, v.context, v.note, v.at, Date.now()).run();
+    return json({ readings: await vitalsOf(db, user.id, fam, 0) }, 201);
+  }
+  const vDel = /^\/vitals\/(v[a-z0-9]{6,40})\/delete$/.exec(path);
+  if (vDel && method === "POST") {
+    if (!user) return signIn();
+    const r = await db.DB.prepare("SELECT family_id FROM find_vitals WHERE id = ? AND user_id = ?").bind(vDel[1], user.id).first<{ family_id: string | null }>();
+    if (!r) return json({ error: "Reading not found." }, 404);
+    await db.DB.prepare("DELETE FROM find_vitals WHERE id = ?").bind(vDel[1]).run();
+    return json({ readings: await vitalsOf(db, user.id, r.family_id, 0) });
+  }
+  const vShare = /^\/appointments\/([a-z0-9]{6,40})\/vitals$/.exec(path);
+  if (vShare) {
+    if (!user) return signIn();
+    const a = await db.DB.prepare("SELECT a.*, d.user_id AS doctor_user FROM find_appointments a JOIN find_doctors d ON d.id = a.doctor_id WHERE a.id = ?").bind(vShare[1]).first<ApptRow & { doctor_user: string }>();
+    if (!a || (a.user_id !== user.id && a.doctor_user !== user.id)) return json({ error: "Appointment not found." }, 404);
+    const share = await db.DB.prepare("SELECT * FROM find_vital_shares WHERE appointment_id = ?").bind(a.id).first<{ days: number; created_at: number }>();
+    if (method === "GET") {
+      if (a.doctor_user === user.id && a.user_id !== user.id && !share) return json({ shared: false, readings: [] });
+      const until = Date.parse(`${a.date}T23:59:59+05:30`);
+      const days = share?.days ?? 90;
+      const readings = (await vitalsOf(db, a.user_id, a.family_id ?? null, Math.max(0, Math.min(until, Date.now() + 86400_000) - days * 86400_000))).filter((r) => r.at <= until);
+      return json({ shared: !!share, days, readings });
+    }
+    if (method !== "POST" || a.user_id !== user.id) return json({ error: "Only the patient can share their vitals." }, 403);
+    const b = await body(request);
+    if (b.share === false) await db.DB.prepare("DELETE FROM find_vital_shares WHERE appointment_id = ?").bind(a.id).run();
+    else {
+      const days = [30, 90, 180].includes(Number(b.days)) ? Number(b.days) : 90;
+      await db.DB.prepare("INSERT INTO find_vital_shares (appointment_id, user_id, family_id, days, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(appointment_id) DO UPDATE SET days = excluded.days").bind(a.id, user.id, a.family_id ?? null, days, Date.now()).run();
+    }
+    return json({ ok: true, shared: b.share !== false });
+  }
+
   /* the doctor's practice dashboard */
   if (path === "/practice/appointments" && method === "GET") {
     if (!user) return signIn();
-    const mine = await db.DB.prepare("SELECT * FROM find_doctors WHERE user_id = ?").bind(user.id).first<DoctorRow>();
-    if (!mine) return json({ error: "List your practice first.", noProfile: true }, 404);
+    const pr = await practiceOf(db, user.id);
+    if (!pr) return json({ error: "List your practice first.", noProfile: true }, 404);
+    const mine = pr.doctor, staff = pr.role === "reception";
     const from = /^\d{4}-\d{2}-\d{2}$/.test(String(url.searchParams.get("from"))) ? String(url.searchParams.get("from")) : addDays(istNow().date, -30);
-    const { results } = await db.DB.prepare("SELECT a.*, (SELECT p.id FROM find_prescriptions p WHERE p.appointment_id = a.id) AS rx, (SELECT COUNT(*) FROM find_shared f WHERE f.appointment_id = a.id) AS files FROM find_appointments a WHERE a.doctor_id = ? AND a.date >= ? ORDER BY a.date ASC, a.time ASC LIMIT 500").bind(mine.id, from).all<ApptRow & { rx: string | null; files: number }>();
+    const { results } = await db.DB.prepare("SELECT a.*, (SELECT p.id FROM find_prescriptions p WHERE p.appointment_id = a.id) AS rx, (SELECT COUNT(*) FROM find_shared f WHERE f.appointment_id = a.id) AS files, (SELECT COUNT(*) FROM find_vital_shares v WHERE v.appointment_id = a.id) AS vitals FROM find_appointments a WHERE a.doctor_id = ? AND a.date >= ? ORDER BY a.date ASC, a.time ASC LIMIT 500").bind(mine.id, from).all<ApptRow & { rx: string | null; files: number; vitals: number }>();
     const r = await ratings(db, [mine.id]);
     const { results: reviews } = await db.DB.prepare("SELECT id, rating, text, name, created_at, recommend, wait, reply, reply_at, hidden FROM find_reviews WHERE doctor_id = ? ORDER BY created_at DESC LIMIT 100").bind(mine.id).all<Record<string, string | number | null>>();
     const { results: open } = await db.DB.prepare("SELECT q.id, q.title, q.created_at FROM find_questions q WHERE q.specialty = ? AND NOT EXISTS (SELECT 1 FROM find_answers a WHERE a.question_id = q.id AND a.doctor_id = ?) ORDER BY q.created_at DESC LIMIT 10").bind(mine.specialty, mine.id).all<{ id: string; title: string; created_at: number }>();
     const { results: arts } = await db.DB.prepare("SELECT slug, title, created_at FROM find_articles WHERE doctor_id = ? ORDER BY created_at DESC LIMIT 20").bind(mine.id).all<{ slug: string; title: string; created_at: number }>();
     const patients = await db.DB.prepare("SELECT COUNT(DISTINCT user_id) AS n FROM find_appointments WHERE doctor_id = ? AND status = 'completed'").bind(mine.id).first<{ n: number }>();
-    return json({ doctor: ownDoctor(mine), rating: r.get(mine.id) ?? null, today: istNow().date, appointments: results.map((a) => ({ ...apptOut(a), prescription: a.rx, files: Number(a.files) })),
-      reviews: reviews.map((x) => ({ id: x.id, rating: x.rating, text: x.text, name: String(x.name).split(" ")[0], at: x.created_at, recommend: x.recommend == null ? null : !!x.recommend, wait: x.wait, reply: x.reply, replyAt: x.reply_at, hidden: !!x.hidden })),
-      openQuestions: open.map((q) => ({ id: q.id, title: q.title, at: q.created_at })), articles: arts.map((a) => ({ slug: a.slug, title: a.title, at: a.created_at })), patients: Number(patients?.n ?? 0) });
+    return json({ doctor: ownDoctor(mine), rating: r.get(mine.id) ?? null, today: istNow().date, role: pr.role, appointments: results.map((a) => ({ ...apptOut(a), prescription: staff ? (a.rx ? "yes" : null) : a.rx, files: staff ? 0 : Number(a.files), vitals: !staff && Number(a.vitals) > 0 })),
+      reviews: (staff ? [] : reviews).map((x) => ({ id: x.id, rating: x.rating, text: x.text, name: String(x.name).split(" ")[0], at: x.created_at, recommend: x.recommend == null ? null : !!x.recommend, wait: x.wait, reply: x.reply, replyAt: x.reply_at, hidden: !!x.hidden })),
+      openQuestions: (staff ? [] : open).map((q) => ({ id: q.id, title: q.title, at: q.created_at })), articles: (staff ? [] : arts).map((a) => ({ slug: a.slug, title: a.title, at: a.created_at })), patients: Number(patients?.n ?? 0) });
   }
   const upd = /^\/practice\/appointments\/([a-z0-9]{6,40})$/.exec(path);
   if (upd && method === "POST") {
     if (!user) return signIn();
     const a = await db.DB.prepare("SELECT a.*, d.user_id AS doctor_user, d.name AS d_name FROM find_appointments a JOIN find_doctors d ON d.id = a.doctor_id WHERE a.id = ?").bind(upd[1]).first<ApptRow & { doctor_user: string; d_name: string }>();
-    if (!a || a.doctor_user !== user.id) return json({ error: "Appointment not found." }, 404);
+    if (!a || !(await canManage(db, user.id, a.doctor_id))) return json({ error: "Appointment not found." }, 404);
     const b = await body(request);
     const status = ["confirmed", "completed", "no-show", "cancelled"].includes(String(b.status)) ? String(b.status) : a.status;
     const link = typeof b.link === "string" ? (/^https:\/\/[^\s<>"]{4,300}$/.test(b.link.trim()) ? b.link.trim() : b.link.trim() === "" ? null : undefined) : a.link;
@@ -1146,4 +1244,45 @@ async function queueOf(db: DBEnv, d: DoctorRow, date: string) {
   const last = list.filter((x) => x.startedAt).sort((x, y) => y.startedAt! - x.startedAt!)[0];
   const lateMin = last && last.state === "in" ? Math.max(0, ist(last.startedAt!) - mins(last.time)) : 0;
   return { date, list, avgMin, lateMin, started: list.some((x) => x.startedAt), counts: { waiting: list.filter((x) => x.state === "waiting").length, arrived: list.filter((x) => x.state === "arrived").length, done: list.filter((x) => x.state === "done").length } };
+}
+
+/* ------------------------------------------------------------------ update 88: front-desk staff, vitals */
+
+type StaffRow = { doctor_id: string; email: string; user_id: string | null; role: string; status: string; token: string; invited_at: number; joined_at: number | null };
+async function staffList(db: DBEnv, doctorId: string) {
+  const { results } = await db.DB.prepare("SELECT s.*, u.name AS name FROM find_staff s LEFT JOIN users u ON u.id = s.user_id WHERE s.doctor_id = ? ORDER BY s.invited_at").bind(doctorId).all<StaffRow & { name: string | null }>();
+  return results.map((s) => ({ email: s.email, name: s.name, status: s.status, role: s.role, invitedAt: s.invited_at, joinedAt: s.joined_at }));
+}
+/** The practice this account runs: its own (the doctor), or one it is front-desk staff for. */
+async function practiceOf(db: DBEnv, userId: string): Promise<{ doctor: DoctorRow; role: "owner" | "reception" } | null> {
+  const own = await db.DB.prepare("SELECT * FROM find_doctors WHERE user_id = ?").bind(userId).first<DoctorRow>();
+  if (own) return { doctor: own, role: "owner" };
+  const d = await db.DB.prepare("SELECT d.* FROM find_staff s JOIN find_doctors d ON d.id = s.doctor_id WHERE s.user_id = ? AND s.status = 'active' ORDER BY s.joined_at LIMIT 1").bind(userId).first<DoctorRow>();
+  return d ? { doctor: d, role: "reception" } : null;
+}
+async function canManage(db: DBEnv, userId: string, doctorId: string) {
+  const p = await practiceOf(db, userId);
+  return !!p && p.doctor.id === doctorId;
+}
+
+export const VITAL_KINDS = ["bp", "sugar", "weight", "spo2", "pulse", "temp"] as const;
+const SUGAR_CTX = ["fasting", "after-meal", "random", "bedtime"];
+type VitalRow = { id: string; kind: string; v1: number; v2: number | null; context: string | null; note: string | null; at: number };
+async function vitalsOf(db: DBEnv, userId: string, familyId: string | null, since: number) {
+  const { results } = await db.DB.prepare(`SELECT id, kind, v1, v2, context, note, at FROM find_vitals WHERE user_id = ? AND ${familyId ? "family_id = ?" : "family_id IS NULL"} AND at >= ? ORDER BY at DESC LIMIT 600`).bind(...(familyId ? [userId, familyId, since] : [userId, since])).all<VitalRow>();
+  return results.map((r) => ({ id: r.id, kind: r.kind, v1: r.v1, v2: r.v2, context: r.context, note: r.note, at: r.at }));
+}
+function readVital(b: Record<string, unknown>): { error: string } | { kind: string; v1: number; v2: number | null; context: string | null; note: string | null; at: number } {
+  const kind = String(b.kind);
+  if (!(VITAL_KINDS as readonly string[]).includes(kind)) return { error: "Choose what you measured." };
+  const n = (v: unknown) => { const x = Number(v); return Number.isFinite(x) ? Math.round(x * 10) / 10 : NaN; };
+  const v1 = n(b.v1), v2 = b.v2 === undefined || b.v2 === null || b.v2 === "" ? null : n(b.v2);
+  const range: Record<string, [number, number, string]> = { bp: [50, 260, "Systolic (the top number) is usually between 50 and 260."], sugar: [20, 700, "Enter blood sugar in mg/dL, between 20 and 700."], weight: [1, 350, "Enter weight in kg."], spo2: [50, 100, "SpO2 is a percentage up to 100."], pulse: [20, 250, "Enter the pulse in beats a minute."], temp: [90, 110, "Enter the temperature in °F, between 90 and 110."] };
+  const [lo, hi, msg] = range[kind]!;
+  if (!(v1 >= lo && v1 <= hi)) return { error: msg };
+  if (kind === "bp" && !(v2 !== null && v2 >= 30 && v2 <= 160 && v2 < v1)) return { error: "Enter the diastolic (bottom) number too, lower than the top one." };
+  const at = Number(b.at) || Date.now();
+  if (at > Date.now() + 5 * 60_000 || at < Date.now() - 3 * 365 * 86400_000) return { error: "Check the date and time of the reading." };
+  const context = kind === "sugar" && SUGAR_CTX.includes(String(b.context)) ? String(b.context) : null;
+  return { kind, v1, v2: kind === "bp" ? v2 : null, context, note: longStr(b.note, 200) || null, at };
 }

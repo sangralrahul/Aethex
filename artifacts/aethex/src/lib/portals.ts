@@ -10,7 +10,7 @@ type Site = Exclude<Portal, "cadus">;
 /** Which portal a path belongs to (null: shared, it stays where it is). First match wins. */
 const MAP: [RegExp, Site][] = [
   [/^\/admin\/doctors(\/|$)/, "doctors"],
-  [/^\/(find|doctors?|clinics?|ask|articles|appointments|practice|list-your-practice|records|prescription|telemedicine-directory|which-doctor|saved-doctors|family)(\/|$)/, "doctors"],
+  [/^\/(find|doctors?|clinics?|ask|articles|appointments|practice|list-your-practice|records|prescription|telemedicine-directory|which-doctor|saved-doctors|family|vitals)(\/|$)/, "doctors"],
   [/^\/(store|shop|products|category|brand|brands|books|cart|wishlist|compare|checkout|orders?|alerts|shipping-policy|returns-policy|cancellation-policy|grievance|my-reviews|seller|offers|reorder|gift)(\/|$)/, "store"],
   [/^\/(admin)(\/(store|reviews|sellers))?$/, "store"],
   [/^\/(study-hub|neet-pg|mock-test|flashcards|case-of-the-day|cme-hub|cme-certificate|tools|calculator|drug-reference|drug-interaction-checker|drug-alerts|study-planner|live-classes|learning-path|quiz-builder|progress-tracker|leaderboard|webinars|video-cases|cases|diagnosis|answer-eval|mentorship|news|patient-education|ai-scribe|my-consults|community|custom-test|my-library|study-groups|sectional-tests|study-moderation)(\/|$)/, "study"],

@@ -37,6 +37,8 @@ export interface Appointment {
   followUp?: string | null;
   /** update 83: records the patient shared for the visit (practice view) */
   files?: number;
+  /** update 88: the patient shared vitals for this visit (practice view) */
+  vitals?: boolean;
 }
 
 /** The specialties a doctor can list under (the same list as worker/find.ts). */
@@ -108,7 +110,7 @@ export const useFamily = (enabled = true) => useQuery({ enabled, queryKey: ["fin
 /** update 75: live doctors by profile name (saved and compared doctors) */
 export const useDoctorsBySlugs = (slugs: string[]) => useQuery({ enabled: slugs.length > 0, queryKey: ["find", "slugs", slugs.join(",")], queryFn: () => findApi<{ doctors: Doctor[] }>(`/doctors?${new URLSearchParams({ slugs: slugs.join(",") })}`), staleTime: 60_000, retry: 1 });
 export const useMyAppointments = () => useQuery({ queryKey: ["find", "mine"], queryFn: () => findApi<{ appointments: Appointment[] }>("/appointments"), retry: false });
-export const usePractice = () => useQuery({ queryKey: ["find", "practice"], queryFn: () => findApi<{ doctor: OwnDoctor; rating: { avg: number; count: number } | null; today: string; appointments: Appointment[]; reviews: Review[]; openQuestions: { id: string; title: string; at: number }[]; articles: { slug: string; title: string; at: number }[]; patients: number }>("/practice/appointments"), retry: false });
+export const usePractice = () => useQuery({ queryKey: ["find", "practice"], queryFn: () => findApi<{ doctor: OwnDoctor; rating: { avg: number; count: number } | null; today: string; appointments: Appointment[]; reviews: Review[]; openQuestions: { id: string; title: string; at: number }[]; articles: { slug: string; title: string; at: number }[]; patients: number; role?: "owner" | "reception" }>("/practice/appointments"), retry: false });
 
 /* ------------------------------------------------------------------ slots */
 

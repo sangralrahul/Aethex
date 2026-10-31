@@ -64,6 +64,7 @@ export const WORKSPACE: Record<Site, WsGroup[]> = {
     { title: "Mine", items: [
       { href: "/appointments", label: "My appointments", icon: CalendarCheck, tab: true, mine: true },
       { href: "/records", label: "Health records", icon: FileHeart, tab: true, mine: true },
+      { href: "/vitals", label: "Vitals", icon: Activity, mine: true },
       { href: "/saved-doctors", label: "Saved doctors", icon: Heart, mine: true },
       { href: "/family", label: "Family", icon: Users, mine: true },
     ] },

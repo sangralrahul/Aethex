@@ -1120,3 +1120,38 @@
 .hb-prefs .err{color:#b42318}
 .hb-prefs .fine{display:flex;gap:6px;align-items:flex-start;font-size:13px;color:#64748b;margin-top:14px}
 .hb-prefs .fine svg{flex:none;margin-top:2px}
+
+/* Update 88: vitals and front-desk staff (pages/find/DoctorTools4.tsx) */
+.fd-vt-form{display:grid;gap:12px}
+.fd-vt-form .kinds{display:flex;flex-wrap:wrap;gap:6px}
+.fd-vt-form .kinds button{padding:7px 12px;border-radius:999px;border:1px solid #d0d5dd;background:#fff;font:inherit;font-size:13.5px;font-weight:600;color:#344054;cursor:pointer}
+.fd-vt-form .kinds button.on{border-color:#1d4ed8;background:#eff4ff;color:#1d4ed8}
+.fd-vt-form .row{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.fd-vt-form label{display:grid;gap:4px;font-size:12.5px;color:#475467;flex:0 1 150px;min-width:0}
+.fd-vt-form label.grow{flex:1 1 200px}
+.fd-vt-form label em{font-style:normal;color:#98a2b3}
+.fd-vt-form input,.fd-vt-form select{height:38px;padding:0 10px;border:1px solid #d0d5dd;border-radius:8px;font:inherit;font-size:14px;min-width:0;width:100%}
+.fd-vt-latest{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;margin:14px 0}
+.fd-vt-card{display:grid;gap:2px;text-align:left;padding:12px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;font:inherit;cursor:pointer}
+.fd-vt-card.on{box-shadow:0 0 0 2px #1d4ed8}
+.fd-vt-card small{color:#667085;font-size:12px;font-weight:600}
+.fd-vt-card b{font-size:20px}
+.fd-vt-card b i{font-style:normal;font-size:12px;color:#667085;font-weight:500}
+.fd-vt-card span{font-size:12.5px;font-weight:600}
+.fd-vt-card em{font-style:normal;font-size:11.5px;color:#98a2b3}
+.fd-vt-card.ok span,.fd-vt-tag.ok{color:#047857}.fd-vt-card.watch span,.fd-vt-tag.watch{color:#b45309}.fd-vt-card.high span,.fd-vt-tag.high{color:#b91c1c}.fd-vt-card.low span,.fd-vt-tag.low{color:#1d4ed8}
+.fd-vt-card.high{border-color:#fecaca}.fd-vt-card.low{border-color:#bfdbfe}
+.fd-vt-chart{width:100%;height:auto;max-height:180px}
+.fd-vt-chart .ax{font-size:10px;fill:#98a2b3}
+.fd-vt-table{width:100%;border-collapse:collapse;font-size:13.5px;margin:10px 0;display:block;overflow-x:auto}
+.fd-vt-table th,.fd-vt-table td{padding:8px;border-bottom:1px solid #eef0f4;text-align:left;white-space:nowrap}
+.fd-vt-table small{color:#667085}
+.fd-vt-tag{font-size:12px;font-weight:600}
+.fd-vt-share{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:13px;cursor:pointer}
+.fd-vt-share span{display:inline-flex;align-items:center;gap:4px}
+.fd-vt-share select{height:30px;border:1px solid #d0d5dd;border-radius:7px;font-size:12.5px}
+.fd-vt-doc .body{margin-top:8px;padding:10px;border:1px solid #eef0f4;border-radius:10px;background:#fcfcfd;max-width:620px}
+.fd-vt-doc .k{margin-top:8px}
+.fd-vt-doc .k small{color:#667085}
+.fd-staff-banner{margin:8px 0;padding:10px 14px;border-radius:10px;background:#eff4ff;color:#1e3a8a;font-size:14px}
+.fd-note{margin:8px 0;padding:10px 14px;border-radius:10px;background:#ecfdf5;color:#065f46;font-size:14px}

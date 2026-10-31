@@ -130,6 +130,7 @@ const legal = (kind: "terms" | "privacy" | "disclaimer" | "about") => () => <Cad
 const LegalTerms = legal("terms"), LegalPrivacy = legal("privacy"), LegalDisclaimer = legal("disclaimer"), LegalAbout = legal("about");
 const Invoice = lazyPage(() => import("@/pages/Invoice"));
 const CustomTest = lazyPage(() => import("@/pages/study/CustomTest"));
+const VitalsPage = lazyPage(() => import("@/pages/find/DoctorTools4"));
 const StudyGroups = lazyPage(() => import("@/components/study/StudyBits3").then((m) => ({ default: m.StudyGroups })));
 const Sectional = lazyPage(() => import("@/components/study/StudyBits3").then((m) => ({ default: m.Sectional })));
 const LibraryPrint = lazyPage(() => import("@/components/study/StudyBits3").then((m) => ({ default: m.LibraryPrint })));
@@ -444,6 +445,7 @@ function Router() {
                 <Route path="/list-your-practice" component={ListPractice} />
                 <Route path="/practice" component={Practice} />
                 <Route path="/appointments" component={MyAppointments} />
+                <Route path="/vitals" component={VitalsPage} />
                 <Route path="/admin/doctors" component={FindAdmin} />
                 <Route path="/clinics" component={ClinicsPage} />
                 <Route path="/clinic/:key" component={ClinicPage} />
