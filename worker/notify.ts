@@ -4,6 +4,7 @@
 // for doctors new bookings. Read state is one "seen up to" time per account. Routes: GET /api/notifications,
 // POST /api/notifications/seen. A table that doesn't exist yet is simply skipped.
 import { currentUser, normEmail, type AuthEnv, type D1Like } from "./auth";
+import { EMAIL_KINDS, readPrefs, savePrefs } from "./prefs";
 
 type DB = AuthEnv & { DB: D1Like };
 export interface Note { id: string; at: number; platform: "doctors" | "store" | "study" | "hospitals" | "medicalcolleges"; title: string; text: string; href: string }
@@ -75,6 +76,14 @@ export async function handleNotifications(request: Request, env: AuthEnv & { DB?
   if (!user) return json({ error: "Sign in to see notifications.", signIn: true }, 401);
   await ensure(db.DB);
   const path = new URL(request.url).pathname;
+  // update 86: email preferences (worker/prefs.ts)
+  if (path.endsWith("/prefs")) {
+    if (request.method === "GET") return json({ prefs: await readPrefs(db.DB, user.id), kinds: EMAIL_KINDS, email: user.email });
+    if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
+    let b: unknown = null;
+    try { b = await request.json(); } catch { /* below */ }
+    return json({ prefs: await savePrefs(db.DB, user.id, (b as { prefs?: unknown } | null)?.prefs ?? b) });
+  }
   if (path.endsWith("/seen") && request.method === "POST") {
     await db.DB.prepare("INSERT INTO notif_seen (user_id, seen_at) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET seen_at = excluded.seen_at").bind(user.id, Date.now()).run();
     return json({ ok: true });

@@ -37,6 +37,7 @@ import {
 } from "./razorpay";
 import { BUSINESS, SITE_URL, launchGaps } from "../artifacts/aethex/src/config/business";
 import { allow, clientIp, currentUser, escapeHtml, normEmail, sendEmail, sha256, shell, type AuthEnv, type D1Like } from "./auth";
+import { emailOk, withPrefsLink } from "./prefs";
 
 export interface StoreEnv extends AuthEnv, RazorpayEnv {
   ADMIN_EMAILS?: string;
@@ -175,6 +176,13 @@ export const STORE_TABLES = [
   `CREATE TABLE IF NOT EXISTS store_rx (
     id TEXT PRIMARY KEY, order_id TEXT NOT NULL, name TEXT NOT NULL, type TEXT NOT NULL, size INTEGER NOT NULL, data TEXT NOT NULL, created_at INTEGER NOT NULL)`,
   "CREATE INDEX IF NOT EXISTS store_rx_order ON store_rx(order_id)",
+  // update 86: teams (an institution's people share lists, approvals, quotations, purchase orders, spend and equipment)
+  `CREATE TABLE IF NOT EXISTS store_teams (id TEXT PRIMARY KEY, name TEXT NOT NULL, segment TEXT NOT NULL, owner_id TEXT NOT NULL, created_at INTEGER NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS store_team_members (team_id TEXT NOT NULL, email TEXT NOT NULL, user_id TEXT, role TEXT NOT NULL DEFAULT 'member', status TEXT NOT NULL DEFAULT 'invited',
+    token TEXT NOT NULL, invited_by TEXT, invited_at INTEGER NOT NULL, joined_at INTEGER, PRIMARY KEY (team_id, email))`,
+  "CREATE INDEX IF NOT EXISTS store_team_members_user ON store_team_members(user_id)",
+  "CREATE UNIQUE INDEX IF NOT EXISTS store_team_members_token ON store_team_members(token)",
+  "CREATE TABLE IF NOT EXISTS store_spend_budget (owner TEXT NOT NULL, fy INTEGER NOT NULL, amount REAL NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (owner, fy))",
 ];
 /** Columns added after a table was first made: added where missing (an existing column is left alone). */
 export const STORE_COLUMNS: [table: string, column: string, type: string][] = [
@@ -195,6 +203,8 @@ export const STORE_COLUMNS: [table: string, column: string, type: string][] = [
   ["store_orders", "bank_ref", "TEXT"],
   // update 84: store credit used on the order; a prescription's check (pending, approved, rejected) and the note on it
   ["store_orders", "credit", "REAL"], ["store_orders", "rx_status", "TEXT"], ["store_orders", "rx_note", "TEXT"],
+  // update 86: a purchase order made from a quotation request
+  ["store_bulk_requests", "po", "TEXT"],
 ];
 /** Indexes on those added columns (made once the columns are there). */
 const STORE_INDEXES = [
@@ -1804,6 +1814,7 @@ async function processAlerts(db: DBEnv, productId?: number, maxEmails = 15): Pro
       line = `${escapeHtml(name)} is now ${money(cur.price)}, down from ${money(a.price_at)} when you asked us to watch it${p.offer ? ` (${escapeHtml(p.offer.title)}, ${p.offer.percent}% off)` : ""}.`;
     }
     if (!subject) continue;
+    if (!(await emailOk(db.DB, { email: a.email }, "alerts"))) { await db.DB.prepare("UPDATE store_alerts SET notified_at = ? WHERE id = ?").bind(Date.now(), a.id).run(); continue; }
     const ok = await sendEmail(db, a.email, subject, shell(`<h2 style="margin:0 0 8px;font-size:20px;">${escapeHtml(subject)}</h2>
 <p style="color:#4A5568;margin:0 0 6px;line-height:1.55;">${line}</p>${button(`${SITE_URL}${itemHref(p.id, p.slug)}`, "View it on Aethex")}
 <p style="color:#718096;font-size:12px;margin-top:22px;line-height:1.5;">You asked us to email you about this item, and this is the only email for this alert. Didn't ask for it, or want no more? <a href="${SITE_URL}/alerts/stop?token=${encodeURIComponent(a.token)}">Stop all Aethex alerts to this address</a>.</p>`)).catch(() => false);
@@ -2099,6 +2110,10 @@ export async function handleStore(request: Request, env: StoreEnv, ctx?: Ctx): P
   if (path === "approvals" || /^approvals\/[A-Za-z0-9_-]{20,64}(\/(decision|comment))?$/.test(path)) return handleApprovals(request, db, path, method);
   if (path === "equipment" || /^equipment\/e[a-z0-9]{6,30}\/(delete|done)$/.test(path)) return handleEquipment(request, db, path, method);
   if (path === "reminders" || /^reminders\/r[a-z0-9]{6,30}\/delete$/.test(path)) return handleReminders(request, db, path, method);
+  // update 86: teams, spend and purchase orders
+  if (path === "team" || /^team\/(accept|invite|leave|rename|members\/(remove|role))$/.test(path)) return handleTeam(request, db, path, method);
+  if (path === "spend" || path === "spend/budget") return handleSpend(request, db, path, method);
+  if (/^my-quotes\/[A-Z0-9-]{6,24}(\/po)?$/.test(path)) return handlePo(request, db, path, method);
   if (path === "lists" || /^lists\/[a-z0-9]{6,30}\/(delete|sent)$/.test(path)) return handleLists(request, db, path, method);
 
   if (path === "razorpay/webhook" && method === "POST") return razorpayWebhook(request, db);
@@ -2128,8 +2143,10 @@ export async function handleStore(request: Request, env: StoreEnv, ctx?: Ctx): P
     if (!user) return json({ error: `Sign in to see ${what}.`, signIn: true }, 401);
     const email = normEmail(user.email);
     if (path === "my-quotes") {
-      const { results } = await db.DB.prepare("SELECT * FROM store_bulk_requests WHERE user_id = ? OR email = ? ORDER BY created_at DESC LIMIT 100").bind(user.id, email).all<BulkRow>();
-      return json({ requests: results.map((r) => ({ ...toBulk(r), updatedAt: r.updated_at })) });
+      // update 86: the whole team's requests, with the purchase order made from each
+      const team = await teamIds(db, user.id), emails = Array.from(new Set([email, ...(await teamEmails(db, team))]));
+      const { results } = await db.DB.prepare(`SELECT * FROM store_bulk_requests WHERE user_id IN (${ph(team.length)}) OR email IN (${ph(emails.length)}) ORDER BY created_at DESC LIMIT 100`).bind(...team, ...emails).all<BulkRow & { po?: string | null }>();
+      return json({ requests: results.map((r) => { const po = parse<{ number?: string } | null>(r.po ?? null, null); return { ...toBulk(r), updatedAt: r.updated_at, ...(po?.number ? { po: po.number } : {}) }; }) });
     }
     if (path === "orders") {
       const { results } = await db.DB.prepare("SELECT * FROM store_orders WHERE user_id = ? OR email = ? ORDER BY created_at DESC LIMIT 100").bind(user.id, email).all<OrderRow>();
@@ -2307,7 +2324,8 @@ const listOut = (r: ListRow) => ({ id: r.id, name: r.name, segment: r.segment as
 async function handleLists(request: Request, db: DBEnv, path: string, method: string): Promise<Response> {
   const user = await currentUser(request, db).catch(() => null);
   if (!user) return json({ error: "Sign in to keep lists in your account.", signIn: true }, 401);
-  const all = async () => (await db.DB.prepare("SELECT * FROM store_bulk_lists WHERE user_id = ? ORDER BY updated_at DESC LIMIT 50").bind(user.id).all<ListRow>()).results.map(listOut);
+  const team = await teamIds(db, user.id);
+  const all = async () => (await db.DB.prepare(`SELECT * FROM store_bulk_lists WHERE user_id IN (${ph(team.length)}) ORDER BY updated_at DESC LIMIT 50`).bind(...team).all<ListRow>()).results.map(listOut);
   if (path === "lists" && method === "GET") return json({ lists: await all() });
   if (path === "lists" && method === "POST") {
     const b = await readJson(request, 65_536);
@@ -2319,7 +2337,7 @@ async function handleLists(request: Request, db: DBEnv, path: string, method: st
     const now = Date.now();
     const id = typeof b?.id === "string" && /^l[a-z0-9]{6,29}$/.test(b.id) ? b.id : "";
     if (id) {
-      const cur = await db.DB.prepare("SELECT id FROM store_bulk_lists WHERE id = ? AND user_id = ?").bind(id, user.id).first<{ id: string }>();
+      const cur = await db.DB.prepare(`SELECT id FROM store_bulk_lists WHERE id = ? AND user_id IN (${ph(team.length)})`).bind(id, ...team).first<{ id: string }>();
       if (!cur) return json({ error: "List not found." }, 404);
       await db.DB.prepare("UPDATE store_bulk_lists SET name = ?, segment = ?, lines = ?, updated_at = ? WHERE id = ?").bind(name, segment, JSON.stringify(lines), now, id).run();
       return json({ id, lists: await all() });
@@ -2332,7 +2350,7 @@ async function handleLists(request: Request, db: DBEnv, path: string, method: st
   }
   const m = /^lists\/([a-z0-9]{6,30})\/(delete|sent)$/.exec(path);
   if (m && method === "POST") {
-    const cur = await db.DB.prepare("SELECT id FROM store_bulk_lists WHERE id = ? AND user_id = ?").bind(m[1], user.id).first<{ id: string }>();
+    const cur = await db.DB.prepare(`SELECT id FROM store_bulk_lists WHERE id = ? AND user_id IN (${ph(team.length)})`).bind(m[1], ...team).first<{ id: string }>();
     if (!cur) return json({ error: "List not found." }, 404);
     if (m[2] === "delete") await db.DB.prepare("DELETE FROM store_bulk_lists WHERE id = ?").bind(cur.id).run();
     else await db.DB.prepare("UPDATE store_bulk_lists SET sent_at = ? WHERE id = ?").bind(Date.now(), cur.id).run();
@@ -2441,10 +2459,11 @@ export async function runReorderReminders(env: StoreEnv): Promise<{ sent: number
     const v = r.variant_id ? (p.variants ?? []).find((x) => x.id === r.variant_id) : undefined;
     const price = v?.price ?? p.price;
     const link = `${SITE_URL}/reorder?p=${p.id}${r.variant_id ? `&v=${encodeURIComponent(r.variant_id)}` : ""}&q=${r.qty}`;
-    const ok = await sendEmail(db, r.email, `Time to reorder: ${name}`, shell(`<h2 style="margin:0 0 10px;font-size:19px;">Running low?</h2>
+    if (!(await emailOk(db.DB, { userId: r.user_id }, "reorder"))) continue;
+    const ok = await sendEmail(db, r.email, `Time to reorder: ${name}`, withPrefsLink(shell(`<h2 style="margin:0 0 10px;font-size:19px;">Running low?</h2>
 <p style="margin:0 0 12px;font-size:14px;line-height:1.6;">You asked us to remind you every ${r.every_days} days about <b>${escapeHtml(name)}</b>${v ? ` (${escapeHtml(v.label)})` : ""}${price ? `, now ${money(price)}` : ""}${p.inStock ? "" : ". It's out of stock right now; we'll still keep your reminder"}.</p>
 <p style="margin:0 0 12px;"><a href="${link}" style="display:inline-block;padding:11px 18px;border-radius:8px;background:#0f766e;color:#fff;font-weight:600;text-decoration:none;">Reorder ${r.qty > 1 ? `${r.qty} ` : ""}in one click</a></p>
-<p style="margin:0;font-size:12.5px;color:#667085;">Change or stop reminders in My orders on aethex.in.</p>`)).catch(() => false);
+<p style="margin:0;font-size:12.5px;color:#667085;">Change or stop reminders in My orders on aethex.in.</p>`))).catch(() => false);
     if (ok) sent++;
   }
   return { sent };
@@ -2503,7 +2522,8 @@ async function handleApprovals(request: Request, db: DBEnv, path: string, method
   const user = await currentUser(request, db).catch(() => null);
   if (!user) return json({ error: "Sign in to send a list for approval.", signIn: true }, 401);
   if (method === "GET") {
-    const { results } = await db.DB.prepare("SELECT * FROM store_approvals WHERE user_id = ? ORDER BY updated_at DESC LIMIT 50").bind(user.id).all<ApprovalRow>();
+    const team = await teamIds(db, user.id);
+    const { results } = await db.DB.prepare(`SELECT * FROM store_approvals WHERE user_id IN (${ph(team.length)}) ORDER BY updated_at DESC LIMIT 50`).bind(...team).all<ApprovalRow>();
     return json({ approvals: results.map((r) => approvalOut(r, find, true)) });
   }
   if (method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -2562,7 +2582,8 @@ function cleanEquipment(b: Record<string, any>): Omit<Equipment, "id" | "created
 async function handleEquipment(request: Request, db: DBEnv, path: string, method: string): Promise<Response> {
   const user = await currentUser(request, db).catch(() => null);
   if (!user) return json({ error: "Sign in to keep an equipment register.", signIn: true }, 401);
-  const list = async () => (await db.DB.prepare("SELECT * FROM store_equipment WHERE user_id = ? ORDER BY updated_at DESC LIMIT 500").bind(user.id).all<EqRow>()).results.map(eqOut);
+  const team = await teamIds(db, user.id);
+  const list = async () => (await db.DB.prepare(`SELECT * FROM store_equipment WHERE user_id IN (${ph(team.length)}) ORDER BY updated_at DESC LIMIT 500`).bind(...team).all<EqRow>()).results.map(eqOut);
   const save = async (id: string, e: Exclude<ReturnType<typeof cleanEquipment>, { error: string }>, created: number) => {
     const ns = nextDue(e.lastService, e.purchased, e.serviceMonths), nc = nextDue(e.lastCalibration, e.purchased, e.calibrationMonths);
     await db.DB.prepare("INSERT INTO store_equipment (id, user_id, data, next_service, next_calibration, warranty_until, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data, next_service = excluded.next_service, next_calibration = excluded.next_calibration, warranty_until = excluded.warranty_until, updated_at = excluded.updated_at")
@@ -2574,7 +2595,7 @@ async function handleEquipment(request: Request, db: DBEnv, path: string, method
     const e = cleanEquipment(b ?? {});
     if ("error" in e) return json(e, 400);
     if (b?.id) {
-      const cur = await db.DB.prepare("SELECT * FROM store_equipment WHERE id = ? AND user_id = ?").bind(str(b.id, 40), user.id).first<EqRow>();
+      const cur = await db.DB.prepare(`SELECT * FROM store_equipment WHERE id = ? AND user_id IN (${ph(team.length)})`).bind(str(b.id, 40), ...team).first<EqRow>();
       if (!cur) return json({ error: "Not found." }, 404);
       await save(cur.id, e, cur.created_at);
     } else {
@@ -2586,7 +2607,7 @@ async function handleEquipment(request: Request, db: DBEnv, path: string, method
   }
   const m = /^equipment\/(e[a-z0-9]{6,30})\/(delete|done)$/.exec(path);
   if (m && method === "POST") {
-    const cur = await db.DB.prepare("SELECT * FROM store_equipment WHERE id = ? AND user_id = ?").bind(m[1], user.id).first<EqRow>();
+    const cur = await db.DB.prepare(`SELECT * FROM store_equipment WHERE id = ? AND user_id IN (${ph(team.length)})`).bind(m[1], ...team).first<EqRow>();
     if (!cur) return json({ error: "Not found." }, 404);
     if (m[2] === "delete") { await db.DB.prepare("DELETE FROM store_equipment WHERE id = ?").bind(cur.id).run(); return json({ equipment: await list() }); }
     const b = await readJson(request);
@@ -2623,11 +2644,12 @@ export async function runEquipmentReminders(env: StoreEnv): Promise<{ sent: numb
     byUser.set(r.user_id, u);
   }
   let sent = 0;
-  for (const u of byUser.values()) {
+  for (const [uid, u] of byUser.entries()) {
     for (const m of u.marks) await db.DB.prepare("UPDATE store_equipment SET reminded = ? WHERE id = ?").bind(m.mark, m.id).run();
-    const ok = await sendEmail(db, u.email, `Equipment due: ${u.lines.length} item${u.lines.length === 1 ? "" : "s"}`, shell(`<h2 style="margin:0 0 10px;font-size:19px;">Equipment service and calibration</h2>
+    if (!(await emailOk(db.DB, { userId: uid }, "equipment"))) continue;
+    const ok = await sendEmail(db, u.email, `Equipment due: ${u.lines.length} item${u.lines.length === 1 ? "" : "s"}`, withPrefsLink(shell(`<h2 style="margin:0 0 10px;font-size:19px;">Equipment service and calibration</h2>
 <ul style="margin:0 0 12px;padding-left:18px;font-size:14px;line-height:1.7;">${u.lines.join("")}</ul>
-<p style="margin:0;font-size:14px;"><a href="https://hospitals.aethex.in/equipment">Open your equipment register</a> to mark them done.</p>`)).catch(() => false);
+<p style="margin:0;font-size:14px;"><a href="https://hospitals.aethex.in/equipment">Open your equipment register</a> to mark them done.</p>`))).catch(() => false);
     if (ok) sent++;
   }
   return { sent };
@@ -2816,4 +2838,182 @@ async function handleAdmin84(request: Request, env: DBEnv, path: string, method:
     return json({ order: { ...toOrder(fresh), userId: fresh.user_id, adminNote: fresh.admin_note || "", updatedAt: fresh.updated_at, paymentId: fresh.payment_id || "" }, emailed });
   }
   return null;
+}
+
+/* ------------------------------------------------------------------ update 86: teams, spend, purchase orders */
+
+const ph = (n: number) => Array.from({ length: n }, () => "?").join(",");
+type TeamRow = { id: string; name: string; segment: string; owner_id: string; created_at: number };
+type MemberRow = { team_id: string; email: string; user_id: string | null; role: string; status: string; token: string; invited_by: string | null; invited_at: number; joined_at: number | null; name?: string | null };
+/** The team an account is in (active member), or null. */
+async function teamOf(db: DBEnv, userId: string): Promise<(TeamRow & { role: string }) | null> {
+  return db.DB.prepare("SELECT t.*, m.role AS role FROM store_team_members m JOIN store_teams t ON t.id = m.team_id WHERE m.user_id = ? AND m.status = 'active' LIMIT 1").bind(userId).first<TeamRow & { role: string }>();
+}
+/** Whose lists, approvals, quotations and equipment this account sees: its team's members, or just itself. */
+export async function teamIds(db: DBEnv, userId: string): Promise<string[]> {
+  const { results } = await db.DB.prepare("SELECT m2.user_id FROM store_team_members m1 JOIN store_team_members m2 ON m2.team_id = m1.team_id AND m2.status = 'active' AND m2.user_id IS NOT NULL WHERE m1.user_id = ? AND m1.status = 'active'").bind(userId).all<{ user_id: string }>();
+  const ids = results.map((r) => r.user_id);
+  return ids.includes(userId) ? ids : [userId];
+}
+async function teamEmails(db: DBEnv, ids: string[]): Promise<string[]> {
+  const { results } = await db.DB.prepare(`SELECT email FROM users WHERE id IN (${ph(ids.length)})`).bind(...ids).all<{ email: string }>();
+  return results.map((r) => normEmail(r.email)).filter(Boolean);
+}
+async function teamView(db: DBEnv, t: TeamRow & { role: string }, me: { id: string }) {
+  const { results } = await db.DB.prepare("SELECT m.*, u.name AS name FROM store_team_members m LEFT JOIN users u ON u.id = m.user_id WHERE m.team_id = ? ORDER BY m.status, m.invited_at").bind(t.id).all<MemberRow>();
+  return { team: { id: t.id, name: t.name, segment: t.segment, createdAt: t.created_at, role: t.role, owner: t.owner_id === me.id },
+    members: results.map((m) => ({ email: m.email, name: m.name ?? null, role: m.role, status: m.status, you: m.user_id === me.id, owner: m.user_id === t.owner_id, invitedAt: m.invited_at, joinedAt: m.joined_at })) };
+}
+
+async function handleTeam(request: Request, db: DBEnv, path: string, method: string): Promise<Response> {
+  const user = await currentUser(request, db).catch(() => null);
+  if (!user) return json({ error: "Sign in to set up a team.", signIn: true }, 401);
+  const email = normEmail(user.email);
+  const b = method === "POST" ? (await readJson(request)) ?? {} : {};
+  const t = await teamOf(db, user.id);
+  if (path === "team" && method === "GET") {
+    const { results: inv } = await db.DB.prepare("SELECT m.token, m.role, m.invited_at, t.name, t.segment FROM store_team_members m JOIN store_teams t ON t.id = m.team_id WHERE m.email = ? AND m.status = 'invited'").bind(email).all<{ token: string; role: string; invited_at: number; name: string; segment: string }>();
+    return json({ ...(t ? await teamView(db, t, user) : { team: null, members: [] }), invites: inv.map((i) => ({ token: i.token, team: i.name, segment: i.segment, role: i.role, at: i.invited_at })) });
+  }
+  if (path === "team" && method === "POST") {
+    if (t) return json({ error: "You're already in a team. Leave it first to make a new one." }, 409);
+    const name = str(b.name, 80), segment = b.segment === "college" ? "college" : "hospital";
+    if (name.length < 2) return json({ error: "Name the team: the hospital, college or department.", field: "name" }, 400);
+    const id = nid("t"), now = Date.now();
+    await db.DB.prepare("INSERT INTO store_teams (id, name, segment, owner_id, created_at) VALUES (?, ?, ?, ?, ?)").bind(id, name, segment, user.id, now).run();
+    await db.DB.prepare("DELETE FROM store_team_members WHERE email = ? AND status = 'invited'").bind(email).run();
+    await db.DB.prepare("INSERT INTO store_team_members (team_id, email, user_id, role, status, token, invited_at, joined_at) VALUES (?, ?, ?, 'admin', 'active', ?, ?, ?)").bind(id, email, user.id, newToken(), now, now).run();
+    return json(await teamView(db, (await teamOf(db, user.id))!, user), 201);
+  }
+  if (path === "team/accept" && method === "POST") {
+    const inv = await db.DB.prepare("SELECT * FROM store_team_members WHERE token = ? AND status = 'invited'").bind(str(b.token, 64)).first<MemberRow>();
+    if (!inv) return json({ error: "This invitation isn't valid any more. Ask for a new one." }, 404);
+    if (inv.email !== email) return json({ error: `This invitation is for ${inv.email}. Sign in with that email to accept it.` }, 403);
+    if (t) return json({ error: "You're already in a team. Leave it first." }, 409);
+    await db.DB.prepare("UPDATE store_team_members SET user_id = ?, status = 'active', joined_at = ? WHERE team_id = ? AND email = ?").bind(user.id, Date.now(), inv.team_id, email).run();
+    return json(await teamView(db, (await teamOf(db, user.id))!, user));
+  }
+  if (!t) return json({ error: "You're not in a team." }, 404);
+  const admin = t.role === "admin";
+  if (path === "team/invite" && method === "POST") {
+    if (!admin) return json({ error: "Only team admins can invite." }, 403);
+    if (!(await allow(db, `store:team-invite:${t.id}`, 30, 86400_000))) return json({ error: "That's a lot of invitations for one day." }, 429);
+    const to = normEmail(b.email), role = b.role === "admin" ? "admin" : "member";
+    if (!to) return json({ error: "Enter their email.", field: "email" }, 400);
+    const n = await db.DB.prepare("SELECT COUNT(*) AS n FROM store_team_members WHERE team_id = ?").bind(t.id).first<{ n: number }>();
+    if (Number(n?.n) >= TEAM_MAX) return json({ error: `A team can have up to ${TEAM_MAX} people.` }, 400);
+    const cur = await db.DB.prepare("SELECT status FROM store_team_members WHERE team_id = ? AND email = ?").bind(t.id, to).first<{ status: string }>();
+    if (cur?.status === "active") return json({ error: "They're in the team already." }, 409);
+    const token = newToken();
+    await db.DB.prepare("INSERT INTO store_team_members (team_id, email, role, status, token, invited_by, invited_at) VALUES (?, ?, ?, 'invited', ?, ?, ?) ON CONFLICT(team_id, email) DO UPDATE SET role = excluded.role, token = excluded.token, invited_at = excluded.invited_at").bind(t.id, to, role, token, user.id, Date.now()).run();
+    const link = `${portalOrigin(t.segment as Segment)}/team?invite=${token}`;
+    const emailed = await sendEmail(db, to, `${str(user.name, 60) || email} invited you to ${t.name} on Aethex`, shell(`<h2 style="margin:0 0 10px;font-size:20px;">Join ${escapeHtml(t.name)} on Aethex</h2>
+<p style="margin:0 0 12px;font-size:14px;line-height:1.6;">${escapeHtml(str(user.name, 60) || email)} added you as ${role === "admin" ? "an admin" : "a member"}. The team shares its purchase lists, approvals, quotation requests, purchase orders, spend and equipment register.</p>${button(link, "Accept the invitation")}
+<p style="margin:14px 0 0;font-size:12px;color:#718096;">Sign in with this email address (${escapeHtml(to)}) to accept.</p>`)).catch(() => false);
+    return json({ ...(await teamView(db, t, user)), emailed });
+  }
+  const mm = /^team\/members\/(remove|role)$/.exec(path);
+  if (mm && method === "POST") {
+    if (!admin) return json({ error: "Only team admins can change members." }, 403);
+    const who = normEmail(b.email);
+    const m = await db.DB.prepare("SELECT * FROM store_team_members WHERE team_id = ? AND email = ?").bind(t.id, who).first<MemberRow>();
+    if (!m) return json({ error: "Not in this team." }, 404);
+    if (m.user_id === t.owner_id) return json({ error: "The person who made the team stays an admin." }, 400);
+    if (mm[1] === "remove") await db.DB.prepare("DELETE FROM store_team_members WHERE team_id = ? AND email = ?").bind(t.id, who).run();
+    else await db.DB.prepare("UPDATE store_team_members SET role = ? WHERE team_id = ? AND email = ?").bind(b.role === "admin" ? "admin" : "member", t.id, who).run();
+    return json(await teamView(db, t, user));
+  }
+  if (path === "team/leave" && method === "POST") {
+    await db.DB.prepare("DELETE FROM store_team_members WHERE team_id = ? AND user_id = ?").bind(t.id, user.id).run();
+    const next = await db.DB.prepare("SELECT user_id FROM store_team_members WHERE team_id = ? AND status = 'active' ORDER BY role = 'admin' DESC, joined_at LIMIT 1").bind(t.id).first<{ user_id: string }>();
+    if (!next) { await db.DB.prepare("DELETE FROM store_team_members WHERE team_id = ?").bind(t.id).run(); await db.DB.prepare("DELETE FROM store_teams WHERE id = ?").bind(t.id).run(); }
+    else if (t.owner_id === user.id) { await db.DB.prepare("UPDATE store_teams SET owner_id = ? WHERE id = ?").bind(next.user_id, t.id).run(); await db.DB.prepare("UPDATE store_team_members SET role = 'admin' WHERE team_id = ? AND user_id = ?").bind(t.id, next.user_id).run(); }
+    return json({ ok: true });
+  }
+  if (path === "team/rename" && method === "POST") {
+    if (!admin) return json({ error: "Only team admins can rename it." }, 403);
+    const name = str(b.name, 80);
+    if (name.length < 2) return json({ error: "Name the team.", field: "name" }, 400);
+    await db.DB.prepare("UPDATE store_teams SET name = ? WHERE id = ?").bind(name, t.id).run();
+    return json(await teamView(db, { ...t, name }, user));
+  }
+  return json({ error: "Not found" }, 404);
+}
+const TEAM_MAX = 25;
+
+/** India's financial year (April to March) that a time falls in, as its starting year. */
+const fyOf = (at: number) => { const d = new Date(at + 330 * 60000); return d.getUTCMonth() >= 3 ? d.getUTCFullYear() : d.getUTCFullYear() - 1; };
+const fyRange = (fy: number) => ({ start: Date.UTC(fy, 3, 1) - 330 * 60000, end: Date.UTC(fy + 1, 3, 1) - 330 * 60000 });
+
+async function handleSpend(request: Request, db: DBEnv, path: string, method: string): Promise<Response> {
+  const user = await currentUser(request, db).catch(() => null);
+  if (!user) return json({ error: "Sign in to see your spend.", signIn: true }, 401);
+  const t = await teamOf(db, user.id);
+  const owner = t ? `team:${t.id}` : `user:${user.id}`;
+  if (path === "spend/budget" && method === "POST") {
+    if (t && t.role !== "admin") return json({ error: "Only team admins set the budget." }, 403);
+    const b = await readJson(request);
+    const fy = Math.round(Number(b?.fy)), amount = b?.amount === null || b?.amount === "" ? null : Math.round(Number(b?.amount));
+    if (!Number.isFinite(fy) || fy < 2020 || fy > 2100) return json({ error: "Choose the financial year." }, 400);
+    if (amount !== null && (!Number.isFinite(amount) || amount < 1 || amount > 1e11)) return json({ error: "Enter the budget in rupees.", field: "amount" }, 400);
+    if (amount === null) await db.DB.prepare("DELETE FROM store_spend_budget WHERE owner = ? AND fy = ?").bind(owner, fy).run();
+    else await db.DB.prepare("INSERT INTO store_spend_budget (owner, fy, amount, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(owner, fy) DO UPDATE SET amount = excluded.amount, updated_at = excluded.updated_at").bind(owner, fy, amount, Date.now()).run();
+    return json({ ok: true, budget: amount });
+  }
+  if (path !== "spend" || method !== "GET") return json({ error: "Not found" }, 404);
+  const asked = Number(new URL(request.url).searchParams.get("fy"));
+  const fy = Number.isFinite(asked) && asked >= 2020 && asked <= 2100 ? asked : fyOf(Date.now());
+  const { start, end } = fyRange(fy);
+  const ids = await teamIds(db, user.id), emails = await teamEmails(db, ids);
+  const { results: orders } = await db.DB.prepare(`SELECT o.*, u.name AS uname FROM store_orders o LEFT JOIN users u ON u.id = o.user_id WHERE (o.user_id IN (${ph(ids.length)}) OR o.email IN (${ph(emails.length || 1)})) AND o.status NOT IN ('cancelled', 'pending') AND o.created_at >= ? AND o.created_at < ? ORDER BY o.created_at`).bind(...ids, ...(emails.length ? emails : [""]), start, end).all<OrderRow & { uname: string | null }>();
+  const { results: reqs } = await db.DB.prepare(`SELECT * FROM store_bulk_requests WHERE (user_id IN (${ph(ids.length)}) OR email IN (${ph(emails.length || 1)})) AND status = 'ordered' AND created_at >= ? AND created_at < ? ORDER BY created_at`).bind(...ids, ...(emails.length ? emails : [""]), start, end).all<BulkRow & { po?: string | null }>();
+  const budget = await db.DB.prepare("SELECT amount FROM store_spend_budget WHERE owner = ? AND fy = ?").bind(owner, fy).first<{ amount: number }>();
+  return json({
+    fy, start, end, team: t ? { name: t.name, segment: t.segment, role: t.role } : null, budget: budget?.amount ?? null, canSetBudget: !t || t.role === "admin",
+    orders: orders.map((r) => { const o = toOrder(r); return { id: o.id, at: o.createdAt, status: o.status, by: r.uname ?? null, total: round2(o.total + (o.credit ?? 0)), lines: o.lines.map((l) => ({ productId: l.productId, name: l.name, qty: l.qty, lineTotal: l.lineTotal })) }; }),
+    quotations: reqs.map((r) => { const q = toBulk(r); const po = parse<{ items?: { productId: number; qty: number; unitPrice: number | null; name?: string }[]; number?: string } | null>(r.po ?? null, null);
+      const items = po?.items?.length ? po.items.map((i) => ({ productId: i.productId, name: i.name ?? "", qty: i.qty, lineTotal: round2((i.unitPrice ?? 0) * i.qty) })) : q.items.map((i) => ({ productId: i.productId, name: i.name, qty: i.qty, lineTotal: round2((i.unitPrice ?? 0) * i.qty) }));
+      return { id: q.id, at: q.createdAt, institution: q.institution, po: po?.number ?? null, priced: !!po?.items?.length, total: round2(items.reduce((s, i) => s + i.lineTotal, 0)), lines: items }; }),
+  });
+}
+
+/* purchase orders: from a quotation request that's quoted or ordered */
+type PoItem = { productId: number; variantId?: string | null; name: string; qty: number; unitPrice: number | null };
+type Po = { number: string; at: number; updatedAt: number; items: PoItem[]; terms: string; deliverTo: string; notes: string; deliverBy: string; by: string };
+async function handlePo(request: Request, db: DBEnv, path: string, method: string): Promise<Response> {
+  const m = /^my-quotes\/([A-Z0-9-]{6,24})(?:\/(po))?$/.exec(path);
+  if (!m) return json({ error: "Not found" }, 404);
+  const user = await currentUser(request, db).catch(() => null);
+  if (!user) return json({ error: "Sign in to open your quotation requests.", signIn: true }, 401);
+  const ids = await teamIds(db, user.id), emails = await teamEmails(db, ids);
+  const r = await db.DB.prepare(`SELECT * FROM store_bulk_requests WHERE id = ? AND (user_id IN (${ph(ids.length)}) OR email IN (${ph(emails.length || 1)}))`).bind(m[1], ...ids, ...(emails.length ? emails : [""])).first<BulkRow & { po?: string | null }>();
+  if (!r) return json({ error: "Quotation request not found." }, 404);
+  const po = parse<Po | null>(r.po ?? null, null);
+  const t = await teamOf(db, user.id);
+  if (method === "GET" && !m[2]) return json({ request: { ...toBulk(r), updatedAt: r.updated_at }, po, buyerTeam: t?.name ?? null });
+  if (method !== "POST" || !m[2]) return json({ error: "Method not allowed" }, 405);
+  if (!["quoted", "ordered"].includes(r.status)) return json({ error: "A purchase order is made once Aethex has sent the quotation." }, 409);
+  const b = await readJson(request, 65_536);
+  const req = toBulk(r);
+  const items: PoItem[] = [];
+  for (const it of req.items) {
+    const x = (Array.isArray(b?.items) ? b.items : []).find((y: Record<string, unknown>) => Number(y?.productId) === it.productId && String(y?.variantId ?? "") === String(it.variantId ?? ""));
+    const qty = Math.max(0, Math.min(100000, Math.round(Number(x?.qty ?? it.qty))));
+    const price = x?.unitPrice === null || x?.unitPrice === "" || x?.unitPrice === undefined ? it.unitPrice ?? null : Number(x.unitPrice);
+    if (price !== null && (!Number.isFinite(price) || price < 0 || price > 1e8)) return json({ error: `Check the price of ${it.name}.` }, 400);
+    if (qty > 0) items.push({ productId: it.productId, variantId: it.variantId ?? null, name: it.name + (it.variantLabel ? ` (${it.variantLabel})` : ""), qty, unitPrice: price === null ? null : round2(price) });
+  }
+  if (!items.length) return json({ error: "A purchase order needs at least one item." }, 400);
+  let number = po?.number ?? "";
+  if (!number) {
+    const fy = fyOf(Date.now());
+    const scope = await teamIds(db, user.id);
+    const n = await db.DB.prepare(`SELECT COUNT(*) AS n FROM store_bulk_requests WHERE po IS NOT NULL AND json_extract(po, '$.number') LIKE ? AND (user_id IN (${ph(scope.length)}) OR email IN (${ph(emails.length || 1)}))`).bind(`PO/${fy}-${String(fy + 1).slice(2)}/%`, ...scope, ...(emails.length ? emails : [""])).first<{ n: number }>();
+    number = `PO/${fy}-${String(fy + 1).slice(2)}/${String(Number(n?.n ?? 0) + 1).padStart(3, "0")}`;
+  }
+  const deliverBy = /^\d{4}-\d{2}-\d{2}$/.test(String(b?.deliverBy ?? "")) ? String(b!.deliverBy) : req.needBy ?? "";
+  const next: Po = { number, at: po?.at ?? Date.now(), updatedAt: Date.now(), items, terms: longStr(b?.terms, 600), deliverTo: longStr(b?.deliverTo, 400), notes: longStr(b?.notes, 600), deliverBy, by: str(user.name, 60) || normEmail(user.email) };
+  await db.DB.prepare("UPDATE store_bulk_requests SET po = ? WHERE id = ?").bind(JSON.stringify(next), r.id).run();
+  if (!po) await sendEmail(db, storeInbox(db), `Purchase order ${number} for quotation ${r.id}`, shell(`<p style="margin:0;font-size:14px;"><b>${escapeHtml(r.institution)}</b> made purchase order <b>${escapeHtml(number)}</b> for quotation request ${r.id}: ${items.length} items, ${money(items.reduce((s, i) => s + (i.unitPrice ?? 0) * i.qty, 0))}.</p>${button(`${SITE_URL}/admin`, "Open the store admin")}`)).catch(() => false);
+  return json({ po: next });
 }

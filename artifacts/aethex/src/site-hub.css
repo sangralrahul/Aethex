@@ -1098,3 +1098,25 @@
 .fd-leave .fd-replyform input{flex:1 1 180px;min-width:0}
 .fd-leave-form label{flex:1 1 130px;min-width:0}
 .fd-leave-form input{width:100%;min-width:0}
+
+/* Update 86: email preferences (components/home/EmailPrefs.tsx) and the bell's link to them */
+.hb-bell .prefs{display:block;padding:10px 14px;border-top:1px solid #f1f5f9;font-size:13px;color:#0f766e;text-decoration:none;text-align:center}
+.hb-top nav .hb-bell a.prefs{display:block;height:auto;padding:10px 14px;font-size:13px}
+.hb-prefs-page{min-height:100vh;padding:40px 16px}
+.hb-prefs{max-width:620px;margin:0 auto;padding:24px;border-radius:18px;background:#fff;border:1px solid #e5e7eb;box-shadow:0 20px 50px -30px rgba(15,23,42,.35)}
+.hb-prefs .back{font-size:13px;color:#64748b;text-decoration:none}
+.hb-prefs h1{display:flex;align-items:center;gap:10px;margin:8px 0 6px;font-size:26px}
+.hb-prefs .sub{color:#475569;margin:0 0 14px}
+.hb-prefs ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.hb-prefs li{padding:12px 14px;border:1px solid #eef2f6;border-radius:12px}
+.hb-prefs .sw{display:flex;align-items:center;gap:12px;cursor:pointer;font-size:14.5px}
+.hb-prefs .sw input{position:absolute;opacity:0;width:1px;height:1px}
+.hb-prefs .track{flex:none;position:relative;width:42px;height:24px;border-radius:999px;background:#cbd5e1;transition:background .15s}
+.hb-prefs .track i{position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .15s}
+.hb-prefs input:checked+.track{background:#0d9488}
+.hb-prefs input:checked+.track i{transform:translateX(18px)}
+.hb-prefs input:focus-visible+.track{outline:2px solid #0d9488;outline-offset:2px}
+.hb-prefs .ok{display:flex;align-items:center;gap:6px;color:#047857}
+.hb-prefs .err{color:#b42318}
+.hb-prefs .fine{display:flex;gap:6px;align-items:flex-start;font-size:13px;color:#64748b;margin-top:14px}
+.hb-prefs .fine svg{flex:none;margin-top:2px}

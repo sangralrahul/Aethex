@@ -136,6 +136,7 @@ export default function MyQuotes() {
                       </dl>
                       {r.items.length > 0 && <button type="button" className="ax-btn teal" onClick={() => again(r)}><RotateCcw size={16} /> Send this list again</button>}
                       <EstimateLink segment={r.segment} request={r.id} />
+                      {(r.status === "quoted" || r.status === "ordered") && <Link href={`/purchase-order/${r.id}`} className="ax-btn" data-bulk="po-link"><FileText size={16} /> {(r as { po?: string }).po ? `Purchase order ${(r as { po?: string }).po}` : "Make a purchase order"}</Link>}
                     </div>
                   )}
                 </li>

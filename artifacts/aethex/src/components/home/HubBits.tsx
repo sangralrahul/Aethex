@@ -68,6 +68,7 @@ export function NotificationBell() {
               <small>{PLATFORM[n.platform] ?? n.platform} · {ago(n.at)}</small><b>{n.title}</b><span>{n.text}</span>
             </a></li>
           ))}</ul> : <p className="none">Nothing yet. Bookings, orders, quotations and approvals will show here.</p>}
+          <a className="prefs" href="/email-preferences" data-home="prefs-link">Email preferences</a>
         </div>
       )}
     </div>

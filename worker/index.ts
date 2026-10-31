@@ -121,7 +121,7 @@ export default {
 
     // Aethex Doctors: doctors listing their practice, search and bookings (worker/find.ts).
     // aethex.in's notifications (worker/notify.ts, update 82)
-    if (url.pathname === "/api/notifications" || url.pathname === "/api/notifications/seen") {
+    if (url.pathname === "/api/notifications" || url.pathname === "/api/notifications/seen" || url.pathname === "/api/notifications/prefs") {
       const origin = request.headers.get("origin");
       if (request.method !== "GET" && (!origin || !ALLOWED_ORIGIN.test(origin))) return json({ error: "Origin not allowed" }, 403);
       try { return await handleNotifications(request, env); } catch (e) { console.error(`${url.pathname} failed`, e); return json({ items: [], unread: 0 }); }

@@ -152,6 +152,7 @@ export default function Invoice() {
             <div><dt>Items</dt><dd>₹{money(order.subtotal)}</dd></div>
             {!!order.discount && <div><dt>Coupon{order.coupon ? ` ${order.coupon}` : ""}</dt><dd>− ₹{money(order.discount)}</dd></div>}
             <div><dt>Delivery</dt><dd>{order.delivery ? `₹${money(order.delivery)}` : "Free"}</dd></div>
+            {!!order.credit && <div><dt>Store credit</dt><dd>− ₹{money(order.credit)}</dd></div>}
             {inv.isTax && <><div><dt>Taxable value</dt><dd>₹{money(inv.taxable)}</dd></div><div><dt>{inv.intra ? "CGST + SGST" : "IGST"}</dt><dd>₹{money(inv.gst)}</dd></div></>}
             <div className="grand"><dt>Total</dt><dd>₹{money(order.total)}</dd></div>
             {order.refund && <div><dt>Refunded</dt><dd>₹{money(order.refund.amount)}</dd></div>}

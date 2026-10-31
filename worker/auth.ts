@@ -1,3 +1,4 @@
+import { emailOk, withPrefsLink } from "./prefs";
 // Aethex accounts, entirely on Cloudflare: D1 holds the accounts, sessions,
 // Cadus profiles and store carts; the Worker signs people in.
 //
@@ -534,7 +535,9 @@ export async function runScheduled(env: AuthEnv): Promise<{ sent: number; scanne
   for (const c of results) {
     let items: { name: string; quantity: number; price: number }[] = [];
     try { items = JSON.parse(c.items); } catch { /* empty */ }
-    const ok = await sendEmail(env, c.email, `You left ${c.item_count} item${c.item_count === 1 ? "" : "s"} in your Aethex cart`, cartEmail(c.item_count, c.total, items));
+    // update 86: not to someone who switched cart reminders off (marked, so it isn't looked at again)
+    if (!(await emailOk(env.DB, { userId: c.user_id }, "cart"))) { await env.DB.prepare("UPDATE carts SET notified_at = ? WHERE user_id = ?").bind(now, c.user_id).run(); continue; }
+    const ok = await sendEmail(env, c.email, `You left ${c.item_count} item${c.item_count === 1 ? "" : "s"} in your Aethex cart`, withPrefsLink(cartEmail(c.item_count, c.total, items)));
     if (ok) { await env.DB.prepare("UPDATE carts SET notified_at = ?, last_reminded_at = ? WHERE user_id = ?").bind(now, now, c.user_id).run(); sent++; }
   }
   return { sent, scanned: results.length };

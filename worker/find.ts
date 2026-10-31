@@ -5,6 +5,7 @@
 //
 // Tables are created on first use (also in migrations/0006_find.sql). Every route is under /api/find/.
 import { allow, clientIp, currentUser, escapeHtml, normEmail, sendEmail, shell, type AuthEnv, type D1Like } from "./auth";
+import { emailOk, withPrefsLink } from "./prefs";
 
 export interface FindEnv extends AuthEnv { ADMIN_EMAILS?: string }
 type DBEnv = FindEnv & { DB: D1Like };
@@ -1006,7 +1007,8 @@ export async function runFindReminders(env: FindEnv): Promise<{ sent: number }> 
     await db.DB.prepare("UPDATE find_appointments SET reminded = ? WHERE id = ? AND reminded IS NULL").bind(Date.now(), a.id).run();
     const when = nice(a.date, a.time);
     const where = a.mode === "video" ? "Video consultation" : `${a.d_clinic}, ${a.d_address}, ${a.d_city}`;
-    const ok = await sendEmail(env, a.patient_email!, `Reminder: ${a.d_name} tomorrow, ${when}`, apptEmail("Your appointment is tomorrow", [["Doctor", `${a.d_name}, ${a.d_specialty}`], ["When", when], ["Where", where], ["Patient", a.patient_name], ["Status", a.status === "confirmed" ? "Confirmed by the doctor" : "Waiting for the doctor to confirm"]], a.mode === "video" ? "The video link appears in My appointments on doctors.aethex.in once the doctor confirms. Can't make it? Cancel or reschedule there." : "Please arrive 10 minutes early. Can't make it? Cancel or reschedule in My appointments on doctors.aethex.in.")).catch(() => false);
+    if (!(await emailOk(db.DB, { userId: a.user_id }, "appointments"))) continue;
+    const ok = await sendEmail(env, a.patient_email!, `Reminder: ${a.d_name} tomorrow, ${when}`, withPrefsLink(apptEmail("Your appointment is tomorrow", [["Doctor", `${a.d_name}, ${a.d_specialty}`], ["When", when], ["Where", where], ["Patient", a.patient_name], ["Status", a.status === "confirmed" ? "Confirmed by the doctor" : "Waiting for the doctor to confirm"]], a.mode === "video" ? "The video link appears in My appointments on doctors.aethex.in once the doctor confirms. Can't make it? Cancel or reschedule there." : "Please arrive 10 minutes early. Can't make it? Cancel or reschedule in My appointments on doctors.aethex.in."))).catch(() => false);
     if (ok) sent++;
   }
   return { sent };
@@ -1067,7 +1069,8 @@ export async function runFollowUps(env: FindEnv): Promise<{ sent: number }> {
     await db.DB.prepare("UPDATE find_prescriptions SET followup_reminded = ? WHERE id = ?").bind(Date.now(), r.id).run();
     const booked = await db.DB.prepare("SELECT COUNT(*) AS n FROM find_appointments WHERE doctor_id = ? AND user_id = ? AND status IN ('booked', 'confirmed') AND date >= ?").bind(r.doctor_id, r.user_id, now.date).first<{ n: number }>();
     if (Number(booked?.n)) continue;
-    if (await sendEmail(env, r.patient_email!, `Reminder: follow-up with ${r.name}`, followEmail({ slug: r.slug!, name: r.name! }, r.follow_up!, r.patient_name!)).catch(() => false)) sent++;
+    if (!(await emailOk(db.DB, { userId: r.user_id }, "appointments"))) continue;
+    if (await sendEmail(env, r.patient_email!, `Reminder: follow-up with ${r.name}`, withPrefsLink(followEmail({ slug: r.slug!, name: r.name! }, r.follow_up!, r.patient_name!))).catch(() => false)) sent++;
   }
   return { sent };
 }

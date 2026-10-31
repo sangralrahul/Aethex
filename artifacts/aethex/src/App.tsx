@@ -137,6 +137,10 @@ const ApprovePage = lazyPage(() => import("@/components/store/BulkExtras2").then
 const ApprovalsList = lazyPage(() => import("@/components/store/BulkExtras2").then((m) => ({ default: m.ApprovalsList })));
 const EquipmentPage = lazyPage(() => import("@/components/store/BulkExtras2").then((m) => ({ default: m.EquipmentPage })));
 const OffersPage = lazyPage(() => import("@/pages/Offers"));
+const TeamPage = lazyPage(() => import("@/components/store/BulkExtras3").then((m) => ({ default: m.TeamPage })));
+const SpendPage = lazyPage(() => import("@/components/store/BulkExtras3").then((m) => ({ default: m.SpendPage })));
+const PurchaseOrderPage = lazyPage(() => import("@/components/store/BulkExtras3").then((m) => ({ default: m.PurchaseOrderPage })));
+const EmailPrefs = lazyPage(() => import("@/components/home/EmailPrefs"));
 const GiftPage = lazyPage(() => import("@/components/store/StoreExtras3").then((m) => ({ default: m.GiftPage })));
 const ReorderPage = lazyPage(() => import("@/pages/Reorder"));
 const OrderTracking = lazyPage(() => import("@/pages/OrderTracking"));
@@ -473,6 +477,10 @@ function Router() {
                 <Route path="/approve/:token" component={ApprovePage} />
                 <Route path="/approvals" component={ApprovalsList} />
                 <Route path="/equipment" component={EquipmentPage} />
+                <Route path="/team" component={TeamPage} />
+                <Route path="/spend" component={SpendPage} />
+                <Route path="/purchase-order/:id" component={PurchaseOrderPage} />
+                <Route path="/email-preferences" component={EmailPrefs} />
                 <Route path="/offers" component={OffersPage} />
                 <Route path="/gift/:token" component={GiftPage} />
                 <Route path="/reorder" component={ReorderPage} />
