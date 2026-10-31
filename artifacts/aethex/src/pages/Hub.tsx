@@ -5,15 +5,16 @@
  * Cadus is inside every portal (and on the header button). Styles: src/site-hub.css (hb-*).
  * Update 73: one search across doctors, products and study topics, and in each card direct links to the platform's
  * most common tasks, the button in the platform's colour and its address; compact cards on phones.
+ * Update 91: a marketplace front page above the cards (components/home/HubTop.tsx).
  */
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { hideBroken, ph, type PhotoKey } from "@/config/photos";
-import { ArrowRight, Building2, CalendarCheck, ChevronRight, GraduationCap, Hospital, Search, ShieldCheck, ShoppingBag, Sparkles } from "lucide-react";
-import { Logo } from "@/components/layout/Navbar";
+import { ArrowRight, Building2, CalendarCheck, ChevronRight, GraduationCap, Hospital, ShieldCheck, ShoppingBag } from "lucide-react";
 import { MyAethex } from "@/components/home/MyAethex";
-import { ContinueStrip, NotificationBell } from "@/components/home/HubBits";
+import { ContinueStrip } from "@/components/home/HubBits";
+import { Banners, DoctorsAndHospitals, HubHeader, LatestBooks, LatestProducts, TodayInStudy } from "@/components/home/HubTop";
 import { useSeo } from "@/hooks/use-seo";
-import { cadusUrl, loginUrl, mainUrl, portalUrl, type Portal } from "@/lib/host";
+import { mainUrl, portalUrl, type Portal } from "@/lib/host";
 import { FREE_DELIVERY_FROM } from "@/lib/store/rules";
 import { formatINR } from "@/lib/utils";
 
@@ -114,32 +115,6 @@ const CARDS: { id: Portal; tone: string; icon: ReactNode; photo: string; bg: Pho
     quick: [{ label: "Request a quotation", path: "/#list" }, { label: "Skills lab trainers", path: "/#simulation" }, { label: "Anatomy models", path: "/#anatomy" }, { label: "Textbooks", path: "/books" }], cta: "Equip your college" },
 ];
 
-/** One search for everything: doctors, products or study topics. */
-const SEARCH: { id: "doctors" | "store" | "study"; label: string; placeholder: string; to: (q: string) => string }[] = [
-  { id: "doctors", label: "Doctors", placeholder: "Search doctors, specialties or clinics", to: (q) => portalUrl("doctors", `/doctors?q=${encodeURIComponent(q)}`) },
-  { id: "store", label: "Products", placeholder: "Search BP monitors, stethoscopes, books…", to: (q) => portalUrl("store", `/shop?search=${encodeURIComponent(q)}`) },
-  { id: "study", label: "Study topics", placeholder: "Search a topic or condition", to: (q) => portalUrl("study", `/study-hub/medical-knowledge-hub?q=${encodeURIComponent(q)}`) },
-];
-
-function HubSearch() {
-  const [tab, setTab] = useState<(typeof SEARCH)[number]["id"]>("doctors");
-  const [q, setQ] = useState("");
-  const cur = SEARCH.find((x) => x.id === tab)!;
-  const go = (e: FormEvent) => { e.preventDefault(); const t = q.trim(); window.location.href = t ? cur.to(t) : portalUrl(tab); };
-  return (
-    <form className="hb-search" onSubmit={go} role="search" data-home="search">
-      <div className="tabs" role="tablist" aria-label="Search in">
-        {SEARCH.map((x) => <button key={x.id} type="button" role="tab" aria-selected={tab === x.id} className={tab === x.id ? "on" : ""} onClick={() => setTab(x.id)}>{x.label}</button>)}
-      </div>
-      <div className="box">
-        <Search size={19} aria-hidden="true" />
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={cur.placeholder} aria-label={cur.placeholder} />
-        <button type="submit">Search</button>
-      </div>
-    </form>
-  );
-}
-
 export default function Hub() {
   useSeo({
     title: "Aethex: find doctors, medical supplies, study and Cadus clinical AI, in one place",
@@ -151,27 +126,16 @@ export default function Hub() {
     <div className="hb" data-home="hub">
       <div className="hb-bg" aria-hidden="true"><i /><i /><i /><Network /><svg className="pulse" viewBox="0 0 1600 120" preserveAspectRatio="none"><path d="M0 60 H520 L540 20 L560 100 L580 60 H1040 L1060 30 L1080 90 L1100 60 H1600" fill="none" stroke="currentColor" strokeWidth="2" /></svg></div>
 
-      <header className="hb-top">
-        <Logo />
-        <nav aria-label="Account">
-          <NotificationBell />
-          <a href={loginUrl("/")}>Sign in</a>
-          <a href={cadusUrl("/")} className="p" data-home="cta-cadus"><Sparkles size={15} /> Try Cadus free</a>
-        </nav>
-      </header>
-
-      <section className="hb-intro" data-home="platform">
-        <span className="hb-badge">One account · Five platforms</span>
-        <h1>Everything medical, in one place.</h1>
-        <p>Choose the platform you need. Cadus, the clinical assistant, is inside every one.</p>
-      </section>
-
-      <HubSearch />
-
-      <MyAethex />
-
-      <ContinueStrip />
-
+      {/* update 91: a marketplace front page: platforms, one search, categories, banners, then the latest */}
+      <HubHeader />
+      <div className="hx-main" id="for-you">
+        <Banners />
+        <div className="hx-wrap hx-mine"><MyAethex /><ContinueStrip /></div>
+        <LatestProducts />
+        <TodayInStudy />
+        <LatestBooks />
+        <DoctorsAndHospitals />
+        <section className="hx-wrap hx-plat-hd" data-home="platform"><h2>All Aethex platforms</h2><p>Choose the platform you need. Cadus, the clinical assistant, is inside every one.</p></section>
       <section className="hb-cards" aria-label="Aethex platforms">
         {CARDS.map((c, i) => (
           <article key={c.id} className={`hb-card ${c.tone}`} data-portal={c.id} style={{ animationDelay: `${0.12 + i * 0.09}s` }}>
@@ -189,6 +153,7 @@ export default function Hub() {
           </article>
         ))}
       </section>
+      </div>
 
       <footer className="hb-foot">
         <span><ShieldCheck size={14} /> © {year} Clavix Technologies Private Limited · Made in India for medical professionals</span>

@@ -419,3 +419,10 @@ cancels from `/practice`. Reviews can only be written for `completed` appointmen
 - **Consumables stock register** (`/stock`, `StockPage`; tables `store_stock`, `store_stock_moves`; `GET/POST /api/store/stock`, `POST /stock/:id/move|delete`; `runStockAlerts` in the hourly job): items with unit, quantity in hand, reorder level and quantity, optional catalogue product; log received / used / counted with history; low items flagged, emailed once until restocked (email preference "stock"), and Reorder puts them in the bulk list. Shared with the team.
 - Fix: `components/store/Dialog.tsx` no longer moves the focus back to the first field when the page re-renders while you type in another field.
 - Sidebar: Question of the day, Topic mastery, Department indents and Consumables stock. Tests: `shots/feat90.mjs`.
+
+## Update 91: aethex.in as a marketplace front page
+
+- **Top** (`components/home/HubTop.tsx`, styles `.hx-*` in `src/site-hub.css`): a sticky header with platform pills (Aethex, Doctors, Store, Study, Hospitals, Colleges, Cadus), one big search (products, doctors or study topics), Login (signed in: your name, with orders, appointments, library, quotations, email preferences, sign out), More, notifications and Cart, and a row of category icons.
+- **Banners**: five sliding highlights (Aethex, Store, Doctors, Study's question of the day, Hospitals and colleges), auto-advancing, paused on hover, with arrows and dots.
+- **Below**: the latest in the store (recently added, in stock, live prices and sales), the latest medical books (newest editions), Today in Study (the question of the day, case of the day, mock test, topic map, flashcards, and the latest articles by doctors when there are any), doctors by specialty and hospital and college buying, then the five platform cards, My Aethex and Continue as before.
+- Tests: `shots/hub91.mjs`; `shots/hubsearch.mjs` now picks the search scope from the list.
