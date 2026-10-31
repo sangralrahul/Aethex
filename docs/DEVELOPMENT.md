@@ -446,3 +446,9 @@ cancels from `/practice`. Reviews can only be written for `completed` appointmen
 - Smaller text and spacing throughout the front page (14px base, 13px cards, 17–19px section titles, 18–22px banner titles), content width 1360px.
 - A slimmer top: 34px platform strip, 40px search, smaller Login, More and Cart, and the categories as one row of small line icons with labels (no tiles).
 - Shorter banners (200px). A discount under 1% no longer shows as "0% off".
+
+## Update 95: aethex.in, the top as a dashboard
+
+- One banner at a time (full width of its column), with the headline and three short points as chips instead of a paragraph; arrows on hover, dots inside the banner.
+- Beside it (`SidePanels`): your account (sign in, or your name) with My orders, Appointments, My library and Quotations, and a Cadus panel. Stacked under the banner on tablets and phones.
+- The product and book rows no longer show a scrollbar.

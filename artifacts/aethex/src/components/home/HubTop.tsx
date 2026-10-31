@@ -9,7 +9,7 @@ import { lazy, Suspense, useEffect, useRef, useState, type FormEvent, type React
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity, Droplet, HeartPulse, LayoutGrid, Microscope, MoreHorizontal, Thermometer, UserRound,
-  ArrowRight, BookOpen, Building2, CalendarCheck, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Grid3x3, GraduationCap, Hospital, LogOut,
+  ArrowRight, Check, BookOpen, Building2, CalendarCheck, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Grid3x3, GraduationCap, Hospital, LogOut,
   Mail, Newspaper, Package, Search, ShoppingCart, Sparkles, Stethoscope, Timer, User, Video,
 } from "lucide-react";
 import { Logo } from "@/components/layout/Navbar";
@@ -159,14 +159,36 @@ export function HubHeader() {
 }
 
 /* ---------------------------------------------------------------- banners */
-type Slide = { id: string; tone: string; tag: string; title: ReactNode; sub: string; cta: string; href: string; imgs: string[] };
+type Slide = { id: string; tone: string; tag: string; title: ReactNode; points: string[]; cta: string; href: string; imgs: string[] };
 const SLIDES: Slide[] = [
-  { id: "aethex", tone: "navy", tag: "One account · Five platforms", title: "Everything medical, in one place.", sub: "Doctors, a medical store, study, and supplies for hospitals and colleges. Cadus is inside every one.", cta: "Try Cadus free", href: cadusUrl("/"), imgs: ["stethoscope", "test-books", "ecg"] },
-  { id: "store", tone: "teal", tag: "Aethex Store", title: "Genuine medical devices, at your door", sub: `Verified brands, cash on delivery, free delivery from ${formatINR(FREE_DELIVERY_FROM)}.`, cta: "Shop now", href: portalUrl("store"), imgs: ["bp-monitor", "oximeter", "glucometer"] },
-  { id: "doctors", tone: "blue", tag: "Aethex Doctors", title: "Book checked doctors near you", sub: "Clinic visits and video consultations, with reminders and your records in one place.", cta: "Find a doctor", href: D("/doctors"), imgs: ["otoscope", "thermometer", "stethoscope"] },
-  { id: "study", tone: "violet", tag: "Aethex Study", title: "Today's NEET-PG question is up", sub: "Answer it, see how everyone did, then mock tests, flashcards and your topic map.", cta: "Answer it", href: ST("/question-of-the-day"), imgs: ["test-books", "medical-book", "neuro-kit"] },
-  { id: "hospitals", tone: "cyan", tag: "Hospitals and colleges", title: "One list. One quotation.", sub: "Beds, ICU, skills labs and consumables, with approvals, indents and a stock register.", cta: "Get a quotation", href: portalUrl("hospitals", "/#list"), imgs: ["ecg", "surgical-set", "laryngoscope"] },
+  { id: "aethex", tone: "navy", tag: "One account · Five platforms", title: "Everything medical, in one place.", points: ["Book doctors", "Shop medical devices", "Prepare for NEET-PG"], cta: "Try Cadus free", href: cadusUrl("/"), imgs: ["stethoscope"] },
+  { id: "store", tone: "teal", tag: "Aethex Store", title: "Genuine medical devices, at your door", points: ["Verified brands", "Cash on delivery", `Free delivery from ${formatINR(FREE_DELIVERY_FROM)}`], cta: "Shop now", href: portalUrl("store"), imgs: ["bp-monitor"] },
+  { id: "doctors", tone: "blue", tag: "Aethex Doctors", title: "Book checked doctors near you", points: ["Checked registrations", "Clinic or video visit", "Reminders and records"], cta: "Find a doctor", href: D("/doctors"), imgs: ["otoscope"] },
+  { id: "study", tone: "violet", tag: "Aethex Study", title: "Today's NEET-PG question is up", points: ["Same question for everyone", "Explanation and discussion", "Mock tests and topic map"], cta: "Answer it", href: ST("/question-of-the-day"), imgs: ["test-books"] },
+  { id: "hospitals", tone: "cyan", tag: "Hospitals and colleges", title: "One list. One quotation.", points: ["Bulk quotations", "Approvals and indents", "Stock register"], cta: "Get a quotation", href: portalUrl("hospitals", "/#list"), imgs: ["ecg"] },
 ];
+/** Beside the banners: your account's shortcuts, and Cadus. */
+function SidePanels() {
+  const { isLoggedIn, user } = useUserAuth();
+  const first = (user?.name || "").replace(/^dr\.?\s+/i, "").split(" ")[0];
+  const links: [string, string, ReactNode][] = [["My orders", S("/orders"), <Package size={18} />], ["Appointments", D("/appointments"), <CalendarCheck size={18} />], ["My library", ST("/my-library"), <BookOpen size={18} />], ["Quotations", portalUrl("hospitals", "/account/quotations"), <ClipboardList size={18} />]];
+  return (
+    <aside className="hx-side" data-home="side">
+      <div className="pan acct">
+        <div className="ph"><span className="av"><User size={18} /></span><span><small>{isLoggedIn ? "Welcome back" : "Welcome to Aethex"}</small><b>{isLoggedIn && first ? first : "Your account"}</b></span>
+          {!isLoggedIn && <a href={loginUrl("/")} className="in">Sign in</a>}</div>
+        <ul>{links.map(([l, h, i]) => <li key={l}><a href={h}>{i}<span>{l}</span></a></li>)}</ul>
+      </div>
+      <a className="pan cad" href={cadusUrl("/")}>
+        <small><Sparkles size={13} /> Cadus · Clinical AI</small>
+        <b>Ask a clinical question</b>
+        <ul className="pts"><li><Check size={13} strokeWidth={2.6} />Inside every platform</li><li><Check size={13} strokeWidth={2.6} />Free to start</li></ul>
+        <span className="cta">Open Cadus <ArrowRight size={14} /></span>
+      </a>
+    </aside>
+  );
+}
+
 export function Banners() {
   const ref = useRef<HTMLDivElement>(null);
   const [at, setAt] = useState(0), [hold, setHold] = useState(false);
@@ -178,7 +200,7 @@ export function Banners() {
   };
   useEffect(() => {
     const el = ref.current; if (!el) return;
-    const onScroll = () => { const w = (el.children[0] as HTMLElement | undefined)?.offsetWidth ?? 1; setAt(Math.min(SLIDES.length - 1, Math.round(el.scrollLeft / (w + 16)))); };
+    const onScroll = () => { const w = (el.children[0] as HTMLElement | undefined)?.offsetWidth ?? 1; setAt(Math.min(SLIDES.length - 1, Math.round(el.scrollLeft / w))); };
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
   }, []);
@@ -188,14 +210,15 @@ export function Banners() {
     return () => window.clearTimeout(t);
   }, [at, hold]);
   return (
-    <section className="hx-wrap hx-ban" aria-roledescription="carousel" aria-label="Highlights" data-home="banners" onMouseEnter={() => setHold(true)} onMouseLeave={() => setHold(false)} onFocus={() => setHold(true)}>
+    <section className="hx-wrap hx-hero" aria-label="Highlights">
+    <div className="hx-ban" aria-roledescription="carousel" data-home="banners" onMouseEnter={() => setHold(true)} onMouseLeave={() => setHold(false)} onFocus={() => setHold(true)}>
       <div className="track" ref={ref}>
         {SLIDES.map((s, i) => (
           <a key={s.id} href={s.href} className={`slide ${s.tone}`} aria-roledescription="slide" aria-label={`${i + 1} of ${SLIDES.length}`} data-slide={s.id}>
             <span className="txt">
               <small>{s.tag}</small>
               {i === 0 ? <h1>{s.title}</h1> : <b className="t">{s.title}</b>}
-              <span className="sub">{s.sub}</span>
+              <ul className="pts">{s.points.map((x) => <li key={x}><Check size={13} strokeWidth={2.6} />{x}</li>)}</ul>
               <span className="cta">{s.cta} <ArrowRight size={15} /></span>
             </span>
             <span className="pic" aria-hidden="true"><img src={IMG(s.imgs[0]!)} alt="" loading={i < 2 ? "eager" : "lazy"} decoding="async" /></span>
@@ -205,6 +228,8 @@ export function Banners() {
       <button type="button" className="nav prev" onClick={() => go(at - 1)} aria-label="Previous"><ChevronLeft size={20} /></button>
       <button type="button" className="nav next" onClick={() => go(at + 1)} aria-label="Next"><ChevronRight size={20} /></button>
       <div className="dots" role="tablist" aria-label="Choose a highlight">{SLIDES.map((s, i) => <button key={s.id} type="button" role="tab" aria-selected={i === at} aria-label={`Highlight ${i + 1}`} className={i === at ? "on" : ""} onClick={() => go(i)} />)}</div>
+    </div>
+    <SidePanels />
     </section>
   );
 }

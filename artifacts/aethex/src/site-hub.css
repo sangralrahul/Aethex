@@ -1504,3 +1504,51 @@
 @media (max-width:1280px){.hx-cats{justify-content:flex-start}.hx-cats a{padding:9px 8px 8px}}
 .hx-wrap{max-width:1360px}
 .hx-cats a{padding:9px 5px 8px}
+
+/* ------------------------------------------------------------------ update 95: the hero as a dashboard: one banner at a time beside two panels */
+.hx-hero{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:stretch}
+.hx-hero .hx-ban{position:relative;min-width:0;display:flex;flex-direction:column}
+.hx-ban .track{gap:0;flex:1}
+.hx-ban .slide{flex:0 0 100%;min-height:236px}
+.hx-ban .txt{max-width:60%;padding:26px 30px;gap:9px}
+.hx-ban .pts{list-style:none;margin:2px 0 6px;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.hx-ban .pts li{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;border-radius:999px;background:rgba(255,255,255,.12);box-shadow:inset 0 0 0 1px rgba(255,255,255,.16);font-size:12px;font-weight:500;color:#f1f5ff;white-space:nowrap}
+.hx-ban .pts svg{color:#7dd3fc}
+.hx-ban .pic{width:26%;max-width:200px;right:32px}
+.hx-ban .nav.prev{left:12px}.hx-ban .nav.next{right:12px}
+.hx-ban .nav{opacity:0;transition:opacity .15s}
+.hx-ban:hover .nav,.hx-ban .nav:focus-visible{opacity:1}
+.hx-ban .dots{position:absolute;left:30px;bottom:14px;margin:0;justify-content:flex-start;z-index:2}
+.hx-ban .dots button{background:rgba(255,255,255,.4)}
+.hx-ban .dots button.on{background:#fff}
+.hx-ban .cta{margin-top:4px}
+.hx-ban .txt{padding-bottom:40px}
+.hx-side{display:grid;grid-template-rows:auto 1fr;gap:12px;min-width:0}
+.hx-side .pan{border:1px solid #e3e7f1;border-radius:10px;background:#fff;padding:14px;text-decoration:none;color:#111827}
+.hx-side .acct .ph{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.hx-side .av{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:linear-gradient(145deg,#eef2ff,#e0f2fe);color:#3b4cc0;flex-shrink:0}
+.hx-side .ph>span:nth-child(2){flex:1;min-width:0;display:flex;flex-direction:column}
+.hx-side .ph small{font-size:11.5px;color:#6b7280}
+.hx-side .ph b{font-size:14.5px}
+.hx-side .in{height:30px;display:inline-flex;align-items:center;padding:0 12px;border-radius:6px;background:linear-gradient(135deg,#1f2a5a,#3b4cc0);color:#fff;font-size:12.5px;font-weight:600;text-decoration:none}
+.hx-side .acct ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.hx-side .acct a{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:10px;border:1px solid #eef0f6;border-radius:8px;color:#1f2a5a;font-size:12.5px;font-weight:500;text-decoration:none;background:#fafbff}
+.hx-side .acct a svg{color:#3b4cc0}
+.hx-side .acct a:hover{border-color:#c7d0ee;background:#fff}
+.hx-side .cad{display:flex;flex-direction:column;gap:7px;color:#fff;border:0;background:linear-gradient(135deg,#0f1638 0%,#1f2a5a 55%,#0f4c5c 100%);position:relative;overflow:hidden}
+.hx-side .cad::after{content:"";position:absolute;right:-40px;top:-40px;width:140px;height:140px;border-radius:50%;background:radial-gradient(circle,rgba(125,211,252,.28),transparent 70%)}
+.hx-side .cad small{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#a5b4fc}
+.hx-side .cad b{font-size:16px}
+.hx-side .cad .pts{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:12.5px;color:#cbd5f5}
+.hx-side .cad .pts li{display:flex;align-items:center;gap:6px}.hx-side .cad .pts svg{color:#7dd3fc}
+.hx-side .cad .cta{margin-top:auto;align-self:flex-start;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:6px;background:#fff;color:#0f172a;font-size:12.5px;font-weight:600}
+.hx-row .rail{scrollbar-width:none}.hx-row .rail::-webkit-scrollbar{display:none}
+@media (max-width:1100px){.hx-hero{grid-template-columns:1fr}.hx-side{grid-template-columns:1fr 1fr;grid-template-rows:none}}
+@media (max-width:640px){.hx-side{grid-template-columns:1fr}.hx-ban .slide{flex-basis:100%}.hx-ban .txt{max-width:100%;padding:20px 20px 46px}.hx-ban .pic{display:none}.hx-ban .dots{left:20px}}
+.hx-ban .slide{align-items:center}
+.hx-ban .txt{justify-content:center;align-self:stretch;padding:30px 34px 48px;gap:12px}
+.hx-ban h1,.hx-ban .t{font-size:clamp(22px,2.3vw,32px);line-height:1.12;max-width:16ch}
+.hx-ban .cta{height:38px;padding:0 16px;font-size:13.5px}
+.hx-ban .pic{width:30%;max-width:230px;right:40px}
+.hx-side .acct a{padding:9px 10px}
+.hx-side a.in,.hx-side a.in:hover{color:#fff;background:linear-gradient(135deg,#1f2a5a,#3b4cc0);border:0}
