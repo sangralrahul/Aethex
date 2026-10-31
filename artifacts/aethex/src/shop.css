@@ -2716,9 +2716,9 @@ button.ec-promo{width:100%}
 .ax-spend-months>div{display:grid;grid-template-rows:1fr auto;height:100%;gap:4px;text-align:center}
 .ax-spend-months .col{display:flex;flex-direction:column-reverse;justify-content:flex-start;height:100%;border-radius:6px 6px 0 0;overflow:hidden;background:#f8fafc}
 .ax-spend-months i{display:block;width:100%}
-.ax-spend-months i.o,.key.o{background:#0d9488}.ax-spend-months i.q,.key.q{background:#6366f1}
+.ax-spend-months i.o,.ax-key.o{background:#0d9488}.ax-spend-months i.q,.ax-key.q{background:#6366f1}
 .ax-spend-months small{font-size:11px;color:#64748b}
-.key{display:inline-block;width:10px;height:10px;border-radius:3px;margin:0 4px 0 10px;vertical-align:middle}
+.ax-key{display:inline-block;width:10px;height:10px;border-radius:3px;margin:0 4px 0 10px;vertical-align:middle}
 .ax-spend-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:16px}
 .ax-spend-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .ax-spend-list li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center;font-size:14px}

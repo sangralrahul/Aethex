@@ -1,0 +1,131 @@
+/*
+ * Update 87: the portal workspace (components/layout/Workspace.tsx) and the compact quick start on each portal home
+ * (components/layout/QuickStart.tsx), plus a denser layout for pages inside the workspace: smaller banners, tiles and
+ * section spacing, so more fits on one screen. Loaded last.
+ */
+:root{--ws-w:232px;--ws-wc:64px;--ws-top:72px}
+body.ax-ws-on .mk-catbar{display:none}
+.ax-ws{display:grid;grid-template-columns:var(--ws-w) minmax(0,1fr);align-items:start;background:#f6f7f9}
+.ax-ws.collapsed{grid-template-columns:var(--ws-wc) minmax(0,1fr)}
+.ax-ws-main{min-width:0;background:#fff}
+.ax-ws-side{position:sticky;top:var(--ws-top);height:calc(100vh - var(--ws-top));overflow-y:auto;overscroll-behavior:contain;border-right:1px solid #e9ecf1;background:#fbfbfc;scrollbar-width:thin}
+.ax-ws-nav{display:flex;flex-direction:column;gap:2px;padding:12px 10px 14px}
+.ax-ws-find{display:flex;align-items:center;gap:7px;height:36px;margin:0 2px 8px;padding:0 10px;border:1px solid #e3e7ed;border-radius:9px;background:#fff;color:#8a94a6}
+.ax-ws-find input{flex:1;min-width:0;border:0;outline:0;background:none;font:inherit;font-size:13.5px;color:#0f172a}
+.ax-ws-find:focus-within{border-color:#94a3b8;box-shadow:0 0 0 3px rgba(148,163,184,.2)}
+.ax-ws-group{display:flex;flex-direction:column;gap:1px;padding:6px 0;border-top:1px solid #eef0f4}
+.ax-ws-group:first-of-type{border-top:0}
+.ax-ws-group small{padding:4px 10px 4px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#98a2b3}
+.ax-ws-item{display:flex;align-items:center;gap:10px;min-height:34px;padding:6px 10px;border-radius:8px;color:#344054;font-size:13.5px;font-weight:500;text-decoration:none;line-height:1.25;transition:background .12s,color .12s}
+.ax-ws-item svg{flex:none;color:#667085}
+.ax-ws-item:hover{background:#eef1f5;color:#0f172a}
+.ax-ws-item.on{background:#e8f0fe;color:#1d4ed8;font-weight:650}
+.ax-ws-item.on svg{color:currentColor}
+.ax-ws.store .ax-ws-item.on{background:#e6f4f1;color:#0f766e}
+.ax-ws.study .ax-ws-item.on{background:#f1ebff;color:#6d28d9}
+.ax-ws.hospitals .ax-ws-item.on,.ax-ws.medicalcolleges .ax-ws-item.on{background:#e3f2f7;color:#0e6b8c}
+.ax-ws-item.other{font-size:13px;color:#475467}
+.ax-ws-item .dot{flex:none;width:9px;height:9px;margin:0 4px;border-radius:50%;background:#94a3b8}
+.dot.doctors{background:#2563eb}.dot.store{background:#0f766e}.dot.study{background:#7c3aed}.dot.hospitals{background:#0e7490}.dot.medicalcolleges{background:#b45309}
+.ax-ws-none{padding:8px 10px;color:#98a2b3;font-size:13px}
+.ax-ws-collapse{display:flex;align-items:center;gap:8px;margin-top:6px;padding:8px 10px;border:0;border-radius:8px;background:none;color:#667085;font:inherit;font-size:13px;cursor:pointer}
+.ax-ws-collapse:hover{background:#eef1f5}
+.ax-ws.collapsed .ax-ws-nav{padding:10px 8px}
+.ax-ws.collapsed .ax-ws-item{justify-content:center;padding:8px 0}
+.ax-ws.collapsed .ax-ws-item span{display:none}
+.ax-ws.collapsed .ax-ws-collapse{justify-content:center}
+.ax-ws-tabs,.ax-ws-drawer{display:none}
+
+/* quick start */
+.ax-qs{display:grid;gap:12px}
+.ax-qs-top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 18px}
+.ax-qs-top .h{margin:0;font-size:clamp(20px,2.2vw,24px);font-weight:750;letter-spacing:-.015em;color:#0f172a}
+.ax-qs-top p{margin:2px 0 0;font-size:14px;color:#475467}
+.ax-qs-acts{display:flex;flex-wrap:wrap;gap:8px}
+.ax-qs-btn{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 14px;border-radius:9px;border:1px solid #d0d5dd;background:#fff;color:#1d2939;font-size:14px;font-weight:600;text-decoration:none;white-space:nowrap}
+.ax-qs-btn:hover{border-color:#98a2b3}
+.ax-qs-btn.p{border-color:#1d4ed8;background:#1d4ed8;color:#fff}
+.ax-qs.store .ax-qs-btn.p{border-color:#0f766e;background:#0f766e}
+.ax-qs.study .ax-qs-btn.p{border-color:#6d28d9;background:#6d28d9}
+.ax-qs.hospitals .ax-qs-btn.p,.ax-qs.medicalcolleges .ax-qs-btn.p{border-color:#0e7490;background:#0e7490}
+.ax-qs-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}
+.ax-qs-stat{display:grid;gap:1px;padding:10px 12px;border:1px solid #e9ecf1;border-radius:11px;background:#fff;text-decoration:none;color:#0f172a;transition:border-color .12s,box-shadow .12s}
+.ax-qs-stat:hover{border-color:#c7cfda;box-shadow:0 4px 14px -10px rgba(15,23,42,.35)}
+.ax-qs-stat small{font-size:12px;color:#667085;font-weight:600}
+.ax-qs-stat b{font-size:18px;font-weight:750;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ax-qs-stat span{font-size:12px;color:#667085;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ax-qs-in{margin:0;font-size:13.5px;color:#475467}
+.ax-qs-all{display:none}
+
+/* denser pages inside the workspace */
+@media (min-width:1024px){.ax-ws-main .ax-wrap{width:min(1240px,calc(100% - 2*clamp(16px,2.4vw,28px)))}}
+.ax-ws-home .mk-strip{padding-top:6px;padding-bottom:10px;align-items:center}
+.ax-ws-home .mk-title h1{font-size:clamp(18px,1.8vw,22px);margin:0}
+.ax-ws-home .mk-title p{display:none}
+.ax-ws-home .ec-hero-grid{grid-template-columns:220px minmax(0,1fr);gap:12px}
+.ax-ws-home .ec-promos{display:none}
+.ax-ws-home .ec-ban{min-height:260px}
+.ax-ws-home .ec-slide{padding:26px 34px}
+.ax-ws-home .ec-slide h2,.ax-ws-home .ec-slide .txt b{font-size:clamp(20px,2.2vw,28px)}
+.ax-ws-home .ec-depts a,.ax-ws-home .ec-depts button{min-height:30px;font-size:13px}
+.ax-ws-home .mk-trust{padding:8px 0}
+.ax-ws-home .mk-tiles{padding-top:20px}
+.ax-ws-home .mk-tiles-g{grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+.ax-ws-home .mk-tile{aspect-ratio:1/1;border-radius:12px}
+.ax-ws-home .ax-ihead h2,.ax-ws-home .ec-sec h2,.ax-ws-home .fd-sec h2{font-size:clamp(18px,1.8vw,22px)}
+.ax-ws-home .ec-sec,.ax-ws-home .fd-sec,.ax-ws-home .ax-h-sec{padding-top:22px;padding-bottom:22px}
+.ax-ws-home .ec-hero{padding-top:8px}
+.ax-ws-main .ax-phero,.ax-ws-main .ax-page-hero,.ax-ws-main [data-page-hero]{padding-top:20px;padding-bottom:20px}
+
+@media (max-width:1180px){.ax-ws-home .ec-hero-grid{grid-template-columns:minmax(0,1fr)}.ax-ws-home .ec-depts{display:none}}
+@media (max-width:1023px){
+  .ax-ws,.ax-ws.collapsed{display:block;background:#fff}
+  .ax-ws-side{display:none}
+  .ax-ws-tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));position:fixed;left:0;right:0;bottom:0;z-index:60;height:62px;padding-bottom:env(safe-area-inset-bottom);background:rgba(255,255,255,.97);border-top:1px solid #e5e7eb;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+  .ax-ws-tabs a,.ax-ws-tabs button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;padding:0 2px;border:0;background:none;color:#667085;font:inherit;font-size:11px;font-weight:600;text-decoration:none;cursor:pointer}
+  .ax-ws-tabs span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ax-ws-tabs .on{color:#1d4ed8}
+  .ax-ws.store .ax-ws-tabs .on{color:#0f766e}.ax-ws.study .ax-ws-tabs .on{color:#6d28d9}.ax-ws.hospitals .ax-ws-tabs .on,.ax-ws.medicalcolleges .ax-ws-tabs .on{color:#0e7490}
+  body.ax-ws-on{padding-bottom:62px}
+  body.ax-ws-on .ax-co-bar{bottom:62px}
+  .ax-ws-drawer{display:block;position:fixed;inset:0;z-index:80;background:rgba(15,23,42,.45)}
+  .ax-ws-drawer .pane{position:absolute;left:0;top:0;bottom:0;width:min(320px,86vw);overflow-y:auto;background:#fff;box-shadow:12px 0 40px -20px rgba(0,0,0,.4);animation:wsIn .2s ease-out}
+  .ax-ws-drawer .hd{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 6px}
+  .ax-ws-drawer .hd button{display:grid;place-items:center;width:36px;height:36px;border:0;border-radius:8px;background:#f2f4f7;cursor:pointer}
+  .ax-qs-all{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px}
+  .ax-qs-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:70px;padding:8px 4px;border:1px solid #eef0f4;border-radius:11px;background:#fafbfc;color:#344054;font-size:11.5px;font-weight:600;text-align:center;text-decoration:none;line-height:1.2}
+  .ax-qs-tile svg{color:#667085}
+}
+@media (max-width:560px){.ax-qs-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.ax-qs-acts{width:100%}.ax-qs-btn{flex:1 1 auto;justify-content:center;padding:0 10px}.ax-ws-home .ec-ban{min-height:220px}}
+@keyframes wsIn{from{transform:translateX(-16px);opacity:.6}to{transform:none;opacity:1}}
+@media print{.ax-ws,.ax-ws.collapsed{display:block}.ax-ws-side,.ax-ws-tabs{display:none!important}body.ax-ws-on{padding-bottom:0}}
+/* round 2: tighter home top */
+.ax-ws .fd-subnav{display:none}
+.ax-ws-main .ax-qs{padding-top:18px;padding-bottom:4px}
+.ax-ws-home .ec-hero-grid{align-items:start}
+.ax-ws-home .ec-depts{max-height:300px;overflow-y:auto;padding:8px}
+.ax-ws-home .ec-ban{min-height:300px;height:300px}
+.ax-ws-home .ec-services{padding-top:10px}
+.ax-ws-home .ec-services li{padding:8px 10px;gap:8px}
+.ax-ws-home .ec-services li small{display:none}
+.ax-ws-home .ec-services li .ic{width:34px;height:34px}
+@media (max-width:1023px){.ax-ws-home .ec-ban{height:auto;min-height:220px}.ax-ws-home .ec-services ul{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* compact page headers inside the workspace */
+.ax-ws-main .ax-ph-in{padding-top:12px!important;padding-bottom:16px!important}
+.ax-ws-main .ax-ph h1{font-size:clamp(22px,2.3vw,28px)!important;line-height:1.15;margin:2px 0 4px}
+.ax-ws-main .ax-ph-sub{font-size:14px!important;margin:0!important;max-width:70ch}
+.ax-ws-main .ax-ph-icon{width:40px!important;height:40px!important;border-radius:10px}
+.ax-ws-main .ax-ph-icon svg{width:20px;height:20px}
+.ax-ws-main .ax-ph-tag{font-size:12px}
+.ax-ws-main .ax-ph-crumbs{margin-bottom:4px;font-size:12.5px}
+.ax-ws-main .ax-sh{padding-top:0}
+.ax-ws-main .ax-sh .ax-wrap{padding-top:12px;padding-bottom:12px}
+.ax-ws-main .ax-sh h1{font-size:clamp(22px,2.3vw,28px)!important;margin:2px 0}
+.ax-ws-main .ax-sh-sub{font-size:14px}
+.ax-ws-main .fd-pagehead h1{font-size:clamp(22px,2.3vw,28px)}
+/* a page's own bottom action bar (add to cart, filters, compare…) takes the place of the workspace bar on phones */
+@media (max-width:1023px){
+  body:has(.ax-pdp-bar,.ax-mbar,.ax-sth-cbar,.ax-bulk-bar,.fd-cmpbar) .ax-ws-tabs{display:none}
+  body.ax-ws-on:has(.ax-pdp-bar,.ax-mbar,.ax-sth-cbar,.ax-bulk-bar,.fd-cmpbar){padding-bottom:0}
+  body.ax-ws-on .ax-cmp-tray{bottom:80px}
+}

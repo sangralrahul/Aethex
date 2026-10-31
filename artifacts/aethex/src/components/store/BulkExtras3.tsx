@@ -157,7 +157,7 @@ export function SpendPage() {
             {calc.total === 0 ? <div className="ax-empty"><h2>Nothing yet this year</h2><p>Orders and quotations marked ordered appear here.</p></div> : <>
               <section className="ax-spend-card"><h2>By month</h2>
                 <div className="ax-spend-months" data-bulk="spend-months">{calc.months.map((m, i) => <div key={i} title={`${MONTHS[i]}: ${formatINR(m.orders + m.quotes)}`}><span className="col"><i className="q" style={{ height: `${(m.quotes / max) * 100}%` }} /><i className="o" style={{ height: `${(m.orders / max) * 100}%` }} /></span><small>{MONTHS[i]}</small></div>)}</div>
-                <p className="fine"><i className="key o" /> Orders <i className="key q" /> Quotations marked ordered{data.quotations.some((q) => !q.priced) ? " (at listed prices until a purchase order has the quoted prices)" : ""}</p>
+                <p className="fine"><i className="ax-key o" /> Orders <i className="ax-key q" /> Quotations marked ordered{data.quotations.some((q) => !q.priced) ? " (at listed prices until a purchase order has the quoted prices)" : ""}</p>
               </section>
               <div className="ax-spend-grid">
                 <section className="ax-spend-card"><div className="hd"><h2>By department</h2>{!data.team && <select value={seg} onChange={(e) => setSeg(e.target.value as Segment)} aria-label="Departments for"><option value="hospital">Hospital</option><option value="college">College</option></select>}</div>

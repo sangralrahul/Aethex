@@ -89,6 +89,9 @@ import NotFound from "@/pages/not-found";
 
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { PortalWorkspace } from "@/components/layout/Workspace";
+import { QuickStart } from "@/components/layout/QuickStart";
+import { sitePortal } from "@/lib/portals";
 
 const Home = lazyPage(() => import("@/pages/Home"));
 const Hub = lazyPage(() => import("@/pages/Hub"));
@@ -397,11 +400,15 @@ function Router() {
 
             <div className={`ax-site ax-portal-${portal}`}>
               <Navbar />
-              <main>
-                <Suspense fallback={<PageLoading />}>
-                  {page}
-                </Suspense>
-              </main>
+              {/* update 87: the portal's workspace sidebar, and a compact quick start above its home page */}
+              <PortalWorkspace portal={portal as Exclude<typeof portal, "cadus" | null>}>
+                <main className="ax-ws-home">
+                  <QuickStart portal={portal as Exclude<typeof portal, "cadus" | null>} />
+                  <Suspense fallback={<PageLoading />}>
+                    {page}
+                  </Suspense>
+                </main>
+              </PortalWorkspace>
               <Footer />
             </div>
           );
@@ -424,6 +431,7 @@ function Router() {
         {() => (
           <div className="ax-site ax-inner">
             <Navbar inner />
+            <MaybeWorkspace>
             <main className="relative z-[1]">
               <Suspense fallback={<PageLoading />}>
               <Switch>
@@ -612,12 +620,19 @@ function Router() {
               </Switch>
               </Suspense>
             </main>
+            </MaybeWorkspace>
             <Footer />
           </div>
         )}
       </Route>
     </Switch>
   );
+}
+
+/** Update 87: inner pages on a portal subdomain sit in that portal's workspace (sidebar); elsewhere, as they are. */
+function MaybeWorkspace({ children }: { children: ReactNode }) {
+  const portal = sitePortal();
+  return portal ? <PortalWorkspace portal={portal}>{children}</PortalWorkspace> : <>{children}</>;
 }
 
 /** Update 65: on the aethex.in domain every page opens on its own portal's subdomain (aethex.in shows only the front door). */

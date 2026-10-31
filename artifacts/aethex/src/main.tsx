@@ -8,6 +8,7 @@ import "./buy.css";
 import "./site-apple.css";
 import "./site-ec.css";
 import "./site-hub.css";
+import "./site-ws.css";
 import { installAiBridge } from "@/lib/ai-bridge";
 import { bootAccount } from "@/lib/account";
 
