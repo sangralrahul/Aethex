@@ -1441,3 +1441,66 @@
 .hx-ban .dots button.on{background:linear-gradient(90deg,#3b4cc0,#0e7490)}
 .hx-main .all{background:linear-gradient(135deg,#1f2a5a,#3b4cc0)}
 @media (max-width:640px){.hx-cats .pic{width:40px;height:40px}}
+
+/* ------------------------------------------------------------------ update 94: compact type and a slimmer, more formal top */
+.hb{font-size:14px}
+.hx-wrap{max-width:1320px}
+.hx-strip .hx-wrap{height:34px}
+.hx-pills a{margin:5px 1px;padding:0 10px;font-size:12.5px;border-radius:5px}
+.hx-pills a:first-child{padding-left:10px;margin-left:-10px}
+.hx-strip .hx-note,.hx-help{font-size:12px}
+.hx-bar{padding:10px 0;gap:20px}
+.hx-bar .ax-logo img,.hx-bar .ax-logo svg{max-height:30px}
+.hx-search{height:40px;border-radius:8px;padding:0 3px 0 12px}
+.hx-search input{font-size:14px}
+.hx-search>svg{width:17px;height:17px}
+.hx-search select{height:30px;font-size:13px}
+.hx-search button{height:34px;padding:0 16px;font-size:13.5px;border-radius:6px}
+.hx-act{height:36px;padding:0 10px;font-size:13.5px;gap:6px}
+.hx-act svg{width:17px;height:17px}
+.hx-drop{min-width:210px}
+.hx-drop a,.hx-drop button{font-size:13.5px;padding:8px 10px}
+/* categories: one slim row of icon + label */
+.hx-cats{gap:2px;justify-content:space-between;padding:0;border-top:1px solid #eceff7}
+.hx-cats a{flex:0 0 auto;flex-direction:row;gap:7px;padding:10px 8px 9px;font-size:13px;font-weight:500;color:#475069}
+.hx-cats .pic{width:auto;height:auto;border-radius:0;background:none!important;box-shadow:none!important;color:#5b6b99;transform:none!important}
+.hx-cats a:hover .pic,.hx-cats a.on .pic{color:#3b4cc0}
+.hx-cats a.on{color:#1f2a5a;font-weight:600}
+.hx-cats a.on::after{left:8px;right:8px;height:2px}
+.hx-cats .lb{max-width:none}
+/* page */
+.hx-main{gap:28px;padding:18px 0 40px}
+.hx-ban .slide{min-height:200px;border-radius:10px}
+.hx-ban .track{border-radius:10px;gap:12px}
+.hx-ban .txt{padding:22px 24px;gap:6px}
+.hx-ban small{font-size:11px}
+.hx-ban h1,.hx-ban .t{font-size:clamp(18px,1.6vw,22px)}
+.hx-ban .sub{font-size:13px}
+.hx-ban .cta{height:34px;padding:0 13px;font-size:13px}
+.hx-ban .pic{width:30%;max-width:170px;right:20px}
+.hx-ban .nav{width:34px;height:34px}
+.hx-main h2{font-size:clamp(17px,1.35vw,19px)}
+.hx-main .hd p{font-size:12.5px}
+.hx-row .ar button{width:30px;height:30px}
+.hx-main .all{width:30px;height:30px}
+.hx-card{flex-basis:172px;padding:8px 8px 10px;gap:4px}
+.hx-card .nm{font-size:13px}
+.hx-card .pr{font-size:12px}.hx-card .pr b{font-size:14.5px}
+.hx-card .by{font-size:12px}
+.hx-study .tile{padding:13px;min-height:96px}
+.hx-study .tile b{font-size:14px}.hx-study .tile small{font-size:12px}
+.hx-study .arts b{font-size:13.5px}.hx-study .arts span{font-size:12.5px}
+.hx-dh .specs a{padding:11px 12px;font-size:13px}
+.hx-dh .inst a{padding:14px 16px}.hx-dh .inst b{font-size:14.5px}.hx-dh .inst small{font-size:12.5px}
+.hx-foot .top{padding:44px 0 32px}
+.hx-foot .brand p,.hx-foot ul a{font-size:13px}
+.hx-foot h3{font-size:11.5px}
+.hx-foot .bot{font-size:12.5px}
+@media (max-width:1100px){.hx-cats{justify-content:flex-start}}
+@media (max-width:640px){.hx-ban .slide{min-height:190px}.hx-ban .txt{padding:18px 18px 64px}.hx-ban .pic{width:26%}.hx-card{flex-basis:142px}}
+.hx-pills a:first-child{margin-left:0}
+.hx-cats{gap:0}
+.hx-cats a{padding:9px 6px 8px;gap:6px;font-size:12.5px}
+@media (max-width:1280px){.hx-cats{justify-content:flex-start}.hx-cats a{padding:9px 8px 8px}}
+.hx-wrap{max-width:1360px}
+.hx-cats a{padding:9px 5px 8px}

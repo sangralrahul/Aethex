@@ -82,19 +82,19 @@ const MI = ({ href, icon, children }: { href: string; icon: ReactNode; children:
 
 /* ---------------------------------------------------------------- categories */
 const CATS: { label: string; href: string; icon: ReactNode; on?: boolean }[] = [
-  { label: "For you", href: "#for-you", icon: <LayoutGrid size={22} strokeWidth={1.7} />, on: true },
-  { label: "Doctors", href: D("/doctors"), icon: <UserRound size={22} strokeWidth={1.7} /> },
-  { label: "Video consult", href: D("/doctors?video=1"), icon: <Video size={22} strokeWidth={1.7} /> },
-  { label: "BP monitors", href: S("/category/bp-monitors"), icon: <HeartPulse size={22} strokeWidth={1.7} /> },
-  { label: "Stethoscopes", href: S("/category/stethoscopes"), icon: <Stethoscope size={22} strokeWidth={1.7} /> },
-  { label: "Oximeters", href: S("/category/pulse-oximeters"), icon: <Activity size={22} strokeWidth={1.7} /> },
-  { label: "Diabetes care", href: S("/category/diabetes-care"), icon: <Droplet size={22} strokeWidth={1.7} /> },
-  { label: "Thermometers", href: S("/category/thermometers"), icon: <Thermometer size={22} strokeWidth={1.7} /> },
-  { label: "Diagnostics", href: S("/category/diagnostic-instruments"), icon: <Microscope size={22} strokeWidth={1.7} /> },
-  { label: "Books", href: S("/books"), icon: <BookOpen size={22} strokeWidth={1.7} /> },
-  { label: "NEET-PG", href: ST("/neet-pg"), icon: <GraduationCap size={22} strokeWidth={1.7} /> },
-  { label: "Hospitals", href: portalUrl("hospitals"), icon: <Hospital size={22} strokeWidth={1.7} /> },
-  { label: "Colleges", href: portalUrl("medicalcolleges"), icon: <Building2 size={22} strokeWidth={1.7} /> },
+  { label: "For you", href: "#for-you", icon: <LayoutGrid size={16} strokeWidth={1.8} />, on: true },
+  { label: "Doctors", href: D("/doctors"), icon: <UserRound size={16} strokeWidth={1.8} /> },
+  { label: "Video consult", href: D("/doctors?video=1"), icon: <Video size={16} strokeWidth={1.8} /> },
+  { label: "BP monitors", href: S("/category/bp-monitors"), icon: <HeartPulse size={16} strokeWidth={1.8} /> },
+  { label: "Stethoscopes", href: S("/category/stethoscopes"), icon: <Stethoscope size={16} strokeWidth={1.8} /> },
+  { label: "Oximeters", href: S("/category/pulse-oximeters"), icon: <Activity size={16} strokeWidth={1.8} /> },
+  { label: "Diabetes care", href: S("/category/diabetes-care"), icon: <Droplet size={16} strokeWidth={1.8} /> },
+  { label: "Thermometers", href: S("/category/thermometers"), icon: <Thermometer size={16} strokeWidth={1.8} /> },
+  { label: "Diagnostics", href: S("/category/diagnostic-instruments"), icon: <Microscope size={16} strokeWidth={1.8} /> },
+  { label: "Books", href: S("/books"), icon: <BookOpen size={16} strokeWidth={1.8} /> },
+  { label: "NEET-PG", href: ST("/neet-pg"), icon: <GraduationCap size={16} strokeWidth={1.8} /> },
+  { label: "Hospitals", href: portalUrl("hospitals"), icon: <Hospital size={16} strokeWidth={1.8} /> },
+  { label: "Colleges", href: portalUrl("medicalcolleges"), icon: <Building2 size={16} strokeWidth={1.8} /> },
 ];
 
 export function HubHeader() {
@@ -227,7 +227,7 @@ function Row({ title, sub, more, children, id }: { title: string; sub?: string; 
     </section>
   );
 }
-const price = (p: number | null | undefined, mrp: number | null | undefined) => p == null ? <b className="por">Price on request</b> : <><b>{formatINR(p)}</b>{mrp && mrp > p && <><s>{formatINR(mrp)}</s><em>{Math.round(((mrp - p) / mrp) * 100)}% off</em></>}</>;
+const price = (p: number | null | undefined, mrp: number | null | undefined) => p == null ? <b className="por">Price on request</b> : <><b>{formatINR(p)}</b>{mrp && mrp > p && <><s>{formatINR(mrp)}</s>{Math.round(((mrp - p) / mrp) * 100) >= 1 && <em>{Math.round(((mrp - p) / mrp) * 100)}% off</em>}</>}</>;
 const Skel = () => <>{Array.from({ length: 6 }, (_, i) => <span key={i} className="hx-card sk" aria-hidden="true" />)}</>;
 
 export function LatestProducts() {

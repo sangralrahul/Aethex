@@ -440,3 +440,9 @@ cancels from `/practice`. Reviews can only be written for `completed` appointmen
 - The platform strip in a navy-to-teal gradient with soft highlighted links; the header on a faint blue-white wash; the search with a brand-blue gradient button and focus ring; Login, More and Cart in brand blue.
 - Category icons in soft tinted tiles that lift on hover; the current one filled with the brand gradient and underlined.
 - Banners in deep colour gradients with a soft light in one corner; dots and arrows in the brand gradient. CSS only (`src/site-hub.css`).
+
+## Update 94: aethex.in, compact type and a slimmer top
+
+- Smaller text and spacing throughout the front page (14px base, 13px cards, 17–19px section titles, 18–22px banner titles), content width 1360px.
+- A slimmer top: 34px platform strip, 40px search, smaller Login, More and Cart, and the categories as one row of small line icons with labels (no tiles).
+- Shorter banners (200px). A discount under 1% no longer shows as "0% off".
