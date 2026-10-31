@@ -88,9 +88,9 @@ export default function PatientEducation() {
             <Sparkles className="w-4.5 h-4.5" style={{ color: "#7C3AED" }} />
             <h2 className="font-bold text-sm" style={{ color: "#7C3AED" }}>Generate Custom Patient Instructions</h2>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <input type="text" placeholder={`e.g. "Post-op instructions for knee replacement in ${lang}"`} value={aiPrompt} onChange={e => setAiPrompt(e.target.value)}
-              className="flex-1 px-4 py-2.5 rounded-xl text-sm outline-none" style={{ background: "#FFFFFF", border: "1px solid rgba(60,60,67,0.15)", color: "#1C1C1E" }} />
+              className="flex-1 min-w-0 px-4 py-2.5 rounded-xl text-sm outline-none" style={{ background: "#FFFFFF", border: "1px solid rgba(60,60,67,0.15)", color: "#1C1C1E", flexBasis: 200 }} />
             <button onClick={handleGenerate} disabled={!aiPrompt || generating} className="px-4 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-50 flex items-center gap-1.5" style={{ background: "#7C3AED", color: "#FFFFFF" }}>
               {generating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Generate
             </button>

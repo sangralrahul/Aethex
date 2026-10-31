@@ -476,3 +476,17 @@ cancels from `/practice`. Reviews can only be written for `completed` appointmen
 ## Update 99: platform logos
 
 - `components/home/PlatformLogos.tsx`: one family of logo marks for the platform tabs on aethex.in: the Aethex and Cadus brand marks on white, and for the others a rounded square in the platform's colour (gradient with a soft top light) with a white symbol: Doctors a map pin with a medical cross, Store a bag with a cross, Study an open book with a heartbeat, Hospitals a hospital block with a cross over the door, Colleges a college front with columns.
+
+## Update 100: Sell on Aethex
+
+- **Seller applications** (`/sell` on store.aethex.in, `SellPage` and `AdminSellerApps` in `src/components/store/StoreExtras5.tsx`; table `store_seller_apps`; `GET/POST /api/store/seller-apply`, admin `GET /admin/seller-apps`, `POST /admin/seller-apps/:id`): what sellers get, how it works, and an application (business, contact, kind of seller, optional GSTIN checked, place, categories, products, brands, a genuineness confirmation). The store inbox and the applicant are emailed; one open application per email; a signed-in applicant sees its status. No bank details or documents are collected at this stage. The store admin's new "Sellers" tab lists applications by status with a note, and approve or reject (emailing the applicant).
+- Links: "Become a Seller" in the aethex.in header, "Sell on Aethex" in its More menu and footer, the store's sidebar and footer. The old `/seller/register` and `/seller/login` (whose server routes never existed) open `/sell`; the seller dashboard pages stay in the code for after approval.
+- Tests: `shots/sell100.mjs`.
+
+## Update 101: launch check
+
+- Full check before launch: all feature and regression suites (95), and a crawl of every route on every subdomain at desktop and phone width, signed out and signed in, following every internal link found (789 pages): no broken links or error pages.
+- **Sample content removed from public view**: jobs, community, live classes, webinars, video cases, drug alerts, personal analytics and institution analytics showed invented people, sessions, posts, recalls or data. They now show an honest "Coming soon" page (`components/ComingSoon.tsx`) with a working notify-me (`POST /api/store/interest`, table `store_interest`), are not indexed and are out of the menus; the original pages stay in the code. `/hospital-directory` (sample ratings) opens the real `/institutions`. Enterprise: the "Trusted by" list of colleges and the placeholder phone number are removed, and its enquiry form now reaches the team (it used to be discarded).
+- **Search engines**: each subdomain serves its own robots.txt and sitemap.xml (`siteSitemap` in `worker/seo.ts`) with only its own public pages at its own address (aethex.in's sitemap used to list every page at aethex.in addresses that redirect).
+- Fixes: case of the day had two H1s; sideways scroll on phones on patient education, institution analytics and some product pages; a test made weekday-independent.
+- Tests: `shots/launch101.mjs`, `shots/seo101.mjs`, `shots/crawl.mjs`.

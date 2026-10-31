@@ -9,7 +9,7 @@ import {
   Activity, BadgePercent, Beaker, Bed, BookMarked, BookOpen, Boxes, Brain, Building2, CalendarCheck, CalendarDays, ClipboardList, Compass, FileHeart, FileText,
   FlaskConical, GraduationCap, Heart, HeartPulse, Home, Layers, LayoutDashboard, Library, ListChecks, MessageCircleQuestion, Newspaper, Package, PenLine,
   PiggyBank, Pill, Puzzle, RotateCcw, Scale, Search, ShieldCheck, ShoppingBag, ShoppingCart, Siren, Star, Stethoscope, Syringe, Target, Timer, Trophy,
-  Truck, UserPlus, Users, Wrench, Calculator, Headset, ClipboardCheck, ClipboardPen, PackageCheck, Sparkles, Grid3x3,
+  Truck, UserPlus, Users, Wrench, Calculator, Headset, ClipboardCheck, Store, ClipboardPen, PackageCheck, Sparkles, Grid3x3,
 } from "lucide-react";
 import type { Portal } from "@/lib/host";
 
@@ -96,6 +96,7 @@ export const WORKSPACE: Record<Site, WsGroup[]> = {
       { href: "/shipping-policy", label: "Shipping", icon: Truck },
       { href: "/returns-policy", label: "Returns and replacements", icon: RotateCcw },
       { href: "/contact", label: "Contact us", icon: Headset },
+      { href: "/sell", label: "Sell on Aethex", icon: Store },
     ] },
   ],
   study: [

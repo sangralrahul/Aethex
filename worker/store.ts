@@ -200,6 +200,10 @@ export const STORE_TABLES = [
   "CREATE INDEX IF NOT EXISTS store_stock_user ON store_stock(user_id)",
   "CREATE TABLE IF NOT EXISTS store_stock_moves (id TEXT PRIMARY KEY, stock_id TEXT NOT NULL, kind TEXT NOT NULL, qty REAL NOT NULL, after REAL NOT NULL, note TEXT, by_name TEXT, at INTEGER NOT NULL)",
   "CREATE INDEX IF NOT EXISTS store_stock_moves_s ON store_stock_moves(stock_id, at)",
+  // update 100: applications to sell on Aethex
+  "CREATE TABLE IF NOT EXISTS store_interest (topic TEXT NOT NULL, email TEXT NOT NULL, details TEXT, at INTEGER NOT NULL, PRIMARY KEY (topic, email))",
+  "CREATE TABLE IF NOT EXISTS store_seller_apps (id TEXT PRIMARY KEY, user_id TEXT, email TEXT NOT NULL, data TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'new', note TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)",
+  "CREATE INDEX IF NOT EXISTS store_seller_apps_email ON store_seller_apps(email)",
   "CREATE TABLE IF NOT EXISTS store_spend_budget (owner TEXT NOT NULL, fy INTEGER NOT NULL, amount REAL NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (owner, fy))",
 ];
 /** Columns added after a table was first made: added where missing (an existing column is left alone). */
@@ -601,6 +605,7 @@ async function handleAdmin(request: Request, env: DBEnv, path: string, ctx?: Ctx
   if (path === "me") return json({ ok: true, email: who });
   { const r84 = await handleAdmin84(request, env, path, method, who); if (r84) return r84; }
   { const r89 = await handleAdminTickets(request, env, path, method, who); if (r89) return r89; }
+  { const r100 = await handleAdminSellers(request, env, path, method); if (r100) return r100; }
 
   if (path === "summary" && method === "GET") {
     const dayStart = Date.now() - 86400_000;
@@ -2127,6 +2132,8 @@ export async function handleStore(request: Request, env: StoreEnv, ctx?: Ctx): P
   if (path === "questions" && method === "POST") return createQuestion(request, db);
   { const r84 = await handleStore84(request, db, path, method); if (r84) return r84; }
   { const r89 = await handleTickets(request, db, path, method); if (r89) return r89; }
+  { const r100 = await handleSellerApply(request, db, path, method); if (r100) return r100; }
+  { const r101 = await handleInterest(request, db, path, method); if (r101) return r101; }
   const ph89 = /^products\/(\d{1,7})\/price-history$/.exec(path);
   if (ph89 && method === "GET") return json(await priceHistory(db, Number(ph89[1])), 200, { "cache-control": "public, max-age=600" });
   if (path === "approvals" || /^approvals\/[A-Za-z0-9_-]{20,64}(\/(decision|comment))?$/.test(path)) return handleApprovals(request, db, path, method);
@@ -3319,4 +3326,96 @@ ${button(`${site}/stock`, "Open the stock register")}`))).catch(() => false);
     if (ok) sent++;
   }
   return { sent };
+}
+
+/* ------------------------------------------------------------------ update 100: sell on Aethex (seller applications) */
+
+export const SELLER_KINDS = ["Manufacturer or brand owner", "Authorised distributor", "Wholesaler", "Retailer or pharmacy", "Publisher (books)"];
+export const SELLER_STATUSES = ["new", "contacted", "approved", "rejected"] as const;
+type SellerAppRow = { id: string; user_id: string | null; email: string; data: string; status: string; note: string | null; created_at: number; updated_at: number };
+const sellerOut = (r: SellerAppRow, admin = false) => ({ id: r.id, email: r.email, status: r.status, note: r.note, createdAt: r.created_at, updatedAt: r.updated_at, ...parse<Record<string, unknown>>(r.data, {}), ...(admin ? {} : {}) });
+const SELLER_STATUS_TEXT: Record<string, string> = { new: "Received", contacted: "We're in touch", approved: "Approved", rejected: "Not approved" };
+
+async function handleSellerApply(request: Request, db: DBEnv, path: string, method: string): Promise<Response | null> {
+  if (path !== "seller-apply") return null;
+  const user = await currentUser(request, db).catch(() => null);
+  if (method === "GET") {
+    if (!user) return json({ applications: [] });
+    const { results } = await db.DB.prepare("SELECT * FROM store_seller_apps WHERE user_id = ? OR email = ? ORDER BY created_at DESC LIMIT 10").bind(user.id, normEmail(user.email)).all<SellerAppRow>();
+    return json({ applications: results.map((r) => ({ ...sellerOut(r), statusText: SELLER_STATUS_TEXT[r.status] ?? r.status })) });
+  }
+  if (method !== "POST") return json({ error: "Method not allowed" }, 405);
+  const b = (await readJson(request)) ?? {};
+  const field = (f: string, error: string) => json({ error, field: f }, 400);
+  const business = str(b.business, 100), contact = str(b.contact, 80), email = normEmail(b.email), phone = normPhone(b.phone);
+  const gstin = str(b.gstin, 15).toUpperCase(), city = str(b.city, 60), state = str(b.state, 60), pincode = str(b.pincode, 6);
+  const kind = SELLER_KINDS.includes(String(b.kind)) ? String(b.kind) : "";
+  const cats = Array.isArray(b.categories) ? b.categories.map((c: unknown) => String(c)).filter((c: string) => catalog.categories.some((x) => x.slug === c) || c === "books" || c === "other").slice(0, 25) : [];
+  const products = longStr(b.products, 1000), brands = str(b.brands, 200), website = str(b.website, 200), count = str(b.count, 20);
+  if (business.length < 2) return field("business", "Enter your business name.");
+  if (contact.length < 2) return field("contact", "Enter your name.");
+  if (!validEmail(email)) return field("email", "Enter a valid email.");
+  if (!phone) return field("phone", "Enter a 10-digit mobile number.");
+  if (!kind) return field("kind", "Choose what kind of seller you are.");
+  if (gstin && !validGstin(gstin)) return field("gstin", "That GSTIN doesn't look right (15 characters, like 27ABCDE1234F1Z5).");
+  if (!city) return field("city", "Enter your city.");
+  if (!INDIAN_STATES.includes(state)) return field("state", "Choose your state.");
+  if (!validPincode(pincode)) return field("pincode", "Enter a 6-digit PIN code.");
+  if (!cats.length) return field("categories", "Choose at least one category.");
+  if (products.length < 10) return field("products", "Tell us a little about what you sell.");
+  if (website && !/^https?:\/\/[^\s]+\.[^\s]+$/i.test(website)) return field("website", "Enter the full address, like https://example.com");
+  if (b.genuine !== true) return field("genuine", "Please confirm the products are genuine and you may sell them.");
+  if (!(await allow(db, `store:seller:${clientIp(request)}`, 5, 86400_000))) return json({ error: "Too many applications today. Please try again tomorrow." }, 429);
+  const open = await db.DB.prepare("SELECT id FROM store_seller_apps WHERE email = ? AND status IN ('new', 'contacted')").bind(email).first<{ id: string }>();
+  if (open) return json({ error: "You already have an application with us. We'll be in touch at this email.", id: open.id }, 409);
+  const id = nid("v"), now = Date.now();
+  const data = { business, contact, phone, kind, gstin: gstin || null, city, state, pincode, categories: cats, products, brands: brands || null, website: website || null, count: count || null };
+  await db.DB.prepare("INSERT INTO store_seller_apps (id, user_id, email, data, status, created_at, updated_at) VALUES (?, ?, ?, ?, 'new', ?, ?)").bind(id, user?.id ?? null, email, JSON.stringify(data), now, now).run();
+  const rows = [["Business", business], ["Contact", `${contact}, ${phone}, ${email}`], ["Type", kind], ["GSTIN", gstin || "–"], ["Place", `${city}, ${state} ${pincode}`], ["Categories", cats.join(", ")], ["Brands", brands || "–"], ["Products", count || "–"], ["Website", website || "–"]];
+  await sendEmail(db, storeInbox(db), `Seller application: ${business}`, shell(`<h2 style="margin:0 0 10px;font-size:19px;">A new seller application</h2><table style="font-size:14px;border-collapse:collapse;">${rows.map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#64748b;">${k}</td><td style="padding:4px 0;">${escapeHtml(v)}</td></tr>`).join("")}</table><p style="margin:12px 0 0;font-size:14px;white-space:pre-wrap;">${escapeHtml(products)}</p>${button(`${STORE_SITE}/admin`, "Open in the store admin")}`)).catch(() => false);
+  await sendEmail(db, email, "We've received your application to sell on Aethex", shell(`<h2 style="margin:0 0 10px;font-size:19px;">Thank you, ${escapeHtml(contact)}</h2><p style="margin:0 0 10px;font-size:14px;line-height:1.6;">We've received the application for <b>${escapeHtml(business)}</b>. Our team will review it and get in touch at this email or on ${escapeHtml(phone)}, usually within a few working days, with the next steps and terms.</p><p style="margin:0;font-size:13px;color:#64748b;">Reference: ${id}</p>`)).catch(() => false);
+  return json({ ok: true, id }, 201);
+}
+
+async function handleAdminSellers(request: Request, env: DBEnv, path: string, method: string): Promise<Response | null> {
+  if (path === "seller-apps" && method === "GET") {
+    const st = str(new URL(request.url).searchParams.get("status"), 12);
+    const ok = (SELLER_STATUSES as readonly string[]).includes(st);
+    const { results } = await env.DB.prepare(`SELECT * FROM store_seller_apps${ok ? " WHERE status = ?" : ""} ORDER BY created_at DESC LIMIT 300`).bind(...(ok ? [st] : [])).all<SellerAppRow>();
+    const counts = await env.DB.prepare("SELECT status, COUNT(*) AS n FROM store_seller_apps GROUP BY status").all<{ status: string; n: number }>();
+    return json({ applications: results.map((r) => sellerOut(r, true)), counts: Object.fromEntries(counts.results.map((c) => [c.status, Number(c.n)])) });
+  }
+  const m = /^seller-apps\/(v[a-z0-9]{6,30})$/.exec(path);
+  if (!m || method !== "POST") return null;
+  const r = await env.DB.prepare("SELECT * FROM store_seller_apps WHERE id = ?").bind(m[1]).first<SellerAppRow>();
+  if (!r) return json({ error: "Application not found." }, 404);
+  const b = (await readJson(request)) ?? {};
+  const status = (SELLER_STATUSES as readonly string[]).includes(String(b.status)) ? String(b.status) : r.status;
+  const note = longStr(b.note, 1000) || null;
+  await env.DB.prepare("UPDATE store_seller_apps SET status = ?, note = ?, updated_at = ? WHERE id = ?").bind(status, note, Date.now(), r.id).run();
+  let emailed = false;
+  if (b.notify === true && status !== r.status && (status === "approved" || status === "rejected")) {
+    const d = parse<{ business?: string; contact?: string }>(r.data, {});
+    emailed = await sendEmail(env, r.email, status === "approved" ? `Welcome to Aethex: ${d.business ?? "your application"} is approved` : `Your application to sell on Aethex`, shell(status === "approved"
+      ? `<h2 style="margin:0 0 10px;font-size:19px;">You're approved to sell on Aethex</h2><p style="margin:0 0 10px;font-size:14px;line-height:1.6;">Hello ${escapeHtml(d.contact ?? "")}, the application for <b>${escapeHtml(d.business ?? "")}</b> is approved. Our team will contact you to set up your products, prices and payouts.</p>${note ? `<blockquote style="margin:0;padding:10px 14px;border-left:3px solid #0d9488;background:#f8fafc;font-size:14px;white-space:pre-wrap;">${escapeHtml(note)}</blockquote>` : ""}`
+      : `<h2 style="margin:0 0 10px;font-size:19px;">About your application</h2><p style="margin:0 0 10px;font-size:14px;line-height:1.6;">Hello ${escapeHtml(d.contact ?? "")}, thank you for applying to sell on Aethex. We can't take <b>${escapeHtml(d.business ?? "")}</b> on at the moment.</p>${note ? `<blockquote style="margin:0;padding:10px 14px;border-left:3px solid #94a3b8;background:#f8fafc;font-size:14px;white-space:pre-wrap;">${escapeHtml(note)}</blockquote>` : ""}`)).catch(() => false);
+  }
+  return json({ ok: true, emailed });
+}
+
+/* ------------------------------------------------------------------ update 101: "notify me" for sections not open yet, and enterprise enquiries */
+const INTEREST_TOPICS = ["jobs", "community", "live-classes", "webinars", "video-cases", "drug-alerts", "analytics", "institution-analytics", "enterprise"];
+async function handleInterest(request: Request, db: DBEnv, path: string, method: string): Promise<Response | null> {
+  if (path !== "interest" || method !== "POST") return null;
+  const b = (await readJson(request)) ?? {};
+  const topic = INTEREST_TOPICS.includes(String(b.topic)) ? String(b.topic) : "";
+  const email = normEmail(b.email);
+  if (!topic) return json({ error: "Unknown section." }, 400);
+  if (!validEmail(email)) return json({ error: "Enter a valid email.", field: "email" }, 400);
+  if (!(await allow(db, `store:interest:${clientIp(request)}`, 20, 86400_000))) return json({ error: "Too many requests today." }, 429);
+  const d = b.details && typeof b.details === "object" ? b.details as Record<string, unknown> : {};
+  const details = topic === "enterprise" ? { name: str(d.name, 80), college: str(d.college, 120), phone: str(d.phone, 20), seats: str(d.seats, 10), message: longStr(d.message, 1500) } : null;
+  await db.DB.prepare("INSERT INTO store_interest (topic, email, details, at) VALUES (?, ?, ?, ?) ON CONFLICT(topic, email) DO UPDATE SET details = excluded.details, at = excluded.at").bind(topic, email, details ? JSON.stringify(details) : null, Date.now()).run();
+  if (details) await sendEmail(db, storeInbox(db), `Enterprise enquiry: ${details.college || email}`, shell(`<h2 style="margin:0 0 10px;font-size:19px;">An enterprise enquiry</h2><p style="margin:0;font-size:14px;line-height:1.7;">${escapeHtml(details.name)} (${escapeHtml(email)}, ${escapeHtml(details.phone)})<br>${escapeHtml(details.college)} · ${escapeHtml(details.seats || "?")} seats</p><p style="margin:10px 0 0;font-size:14px;white-space:pre-wrap;">${escapeHtml(details.message)}</p>`)).catch(() => false);
+  return json({ ok: true });
 }

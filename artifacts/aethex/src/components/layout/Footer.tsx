@@ -94,7 +94,6 @@ export function Footer() {
           <span>© {new Date().getFullYear()} {BUSINESS.legalName}. Made in India for medical professionals.{BUSINESS.gstin ? ` GSTIN ${BUSINESS.gstin}.` : ""}</span>
           <nav>
             <Link href="/blog">Blog</Link>
-            <Link href="/jobs">Jobs</Link>
             <Link href="/privacy-policy">Privacy</Link>
             <Link href="/terms-of-service">Terms</Link>
             <Link href="/medical-disclaimer">Medical disclaimer</Link>

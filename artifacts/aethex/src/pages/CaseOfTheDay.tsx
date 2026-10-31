@@ -176,7 +176,7 @@ export default function CaseOfTheDay() {
                 Clinical Case
               </span>
             </div>
-            <h1 className="text-xl font-display font-bold mb-3" style={{ color: "#1C1C1E" }}>{caseData.title}</h1>
+            <h2 className="text-xl font-display font-bold mb-3" style={{ color: "#1C1C1E" }}>{caseData.title}</h2>
 
             {/* Patient Info Strip */}
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">

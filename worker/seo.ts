@@ -21,7 +21,50 @@ export function hostRobots(host: string): Response | null {
   if (h === "downloads.aethex.in") return text("User-agent: *\nAllow: /\nDisallow: /cadus/\n", "text/plain");
   // Sign-in pages have nothing to index.
   if (h === "auth.aethex.in" || h === "login.aethex.in") return text("User-agent: *\nDisallow: /\n", "text/plain");
+  // update 101: the portals and aethex.in each point to their own sitemap
+  const portal = h.replace(/\.aethex\.in$/, "");
+  if (h === "aethex.in" || SITE_PORTALS.includes(portal as Portal)) return text(`User-agent: *\nAllow: /\n${PRIVATE.map((x) => `Disallow: ${x}`).join("\n")}\n\nSitemap: https://${h}/sitemap.xml\n`, "text/plain");
   return null;
+}
+
+/* ------------------------------------------------------------------ update 101: a sitemap per portal */
+const PRIVATE = ["/jobs", "/community", "/live-classes", "/webinars", "/video-cases", "/drug-alerts", "/analytics", "/institution-analytics", "/hospital-directory", "/admin", "/admin/", "/seller/", "/account", "/orders", "/order/", "/wishlist", "/cart", "/checkout", "/api/", "/practice", "/appointments", "/my-library", "/approve/", "/indents", "/stock", "/team", "/spend", "/equipment", "/approvals", "/vitals"];
+const SITE_PORTALS: Portal[] = ["store", "study", "doctors", "hospitals", "medicalcolleges"];
+// which portal a path belongs to (kept in step with src/lib/portals.ts MAP)
+const MAP: [RegExp, Portal][] = [
+  [/^\/(find|doctors?|clinics?|ask|articles|appointments|practice|list-your-practice|records|prescription|telemedicine-directory|which-doctor|saved-doctors|family|vitals)(\/|$)/, "doctors"],
+  [/^\/(store|shop|products|category|brand|brands|books|cart|wishlist|compare|checkout|orders?|alerts|shipping-policy|returns-policy|cancellation-policy|grievance|my-reviews|seller|sell|offers|reorder|gift)(\/|$)/, "store"],
+  [/^\/(study-hub|neet-pg|mock-test|flashcards|case-of-the-day|cme-hub|cme-certificate|tools|calculator|drug-reference|drug-interaction-checker|drug-alerts|study-planner|live-classes|learning-path|quiz-builder|progress-tracker|leaderboard|webinars|video-cases|cases|diagnosis|answer-eval|mentorship|news|patient-education|ai-scribe|my-consults|community|custom-test|my-library|study-groups|sectional-tests|study-moderation|question-of-the-day)(\/|$)/, "study"],
+  [/^\/(hospitals|institutions|hospital-directory|institution-analytics|enterprise)(\/|$)/, "hospitals"],
+  [/^\/(medical-colleges|colleges)(\/|$)/, "medicalcolleges"],
+];
+const HOME: Partial<Record<Portal, string>> = { store: "/store", doctors: "/find", hospitals: "/hospitals", medicalcolleges: "/medical-colleges", study: "/study-hub" };
+// public pages added after the sitemap file was made
+const EXTRA: Partial<Record<Portal, string[]>> = {
+  store: ["/sell", "/offers", "/books"],
+  study: ["/neet-pg", "/mock-test", "/question-of-the-day", "/sectional-tests", "/custom-test", "/flashcards", "/case-of-the-day", "/study-hub/medical-knowledge-hub", "/drug-reference", "/drug-interaction-checker", "/calculator", "/tools", "/cme-hub", "/study-groups", "/leaderboard"],
+  hospitals: ["/institutions"],
+  doctors: ["/doctors", "/ask", "/articles", "/which-doctor", "/clinics", "/list-your-practice"],
+};
+const portalOfPath = (path: string): Portal | null => { for (const [re, p] of MAP) if (re.test(path)) return p; return null; };
+/** aethex.in and each portal: the pages of the shared sitemap file that belong there, at their own address. */
+export async function siteSitemap(host: string, assets: { fetch: (r: Request) => Promise<Response> }): Promise<Response | null> {
+  const h = host.replace(/^www\./, "");
+  const here = h === "aethex.in" ? null : (h.replace(/\.aethex\.in$/, "") as Portal);
+  if (here !== null && !SITE_PORTALS.includes(here)) return null;
+  const res = await assets.fetch(new Request("https://aethex.in/sitemap.xml"));
+  if (!res.ok) return null;
+  const xml = await res.text();
+  const seen = new Set<string>(), out: string[] = [];
+  const add = (path: string, rest = "") => { if (seen.has(path) || PRIVATE.some((x) => path === x || path.startsWith(x.endsWith("/") ? x : `${x}/`))) return; seen.add(path); out.push(`  <url>\n    <loc>https://${h}${path}</loc>${rest}\n  </url>`); };
+  for (const m of xml.matchAll(/<url>\s*<loc>https:\/\/aethex\.in([^<]*)<\/loc>([\s\S]*?)<\/url>/g)) {
+    const path = m[1] || "/", rest = (m[2] ?? "").replace(/\s+$/, "").replace(/^\s*/, "\n    ").replace(/\n\s*/g, "\n    ");
+    const p = portalOfPath(path);
+    if (p !== here) continue;
+    add(here && HOME[here] === path ? "/" : path, rest);
+  }
+  if (here) { add("/"); for (const x of EXTRA[here] ?? []) add(x); }
+  return text(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${out.join("\n")}\n</urlset>\n`, "application/xml");
 }
 
 export function hostSitemap(host: string): Response | null {

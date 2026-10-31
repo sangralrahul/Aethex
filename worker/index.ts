@@ -27,7 +27,7 @@ import { handleStore, logPrices, runEquipmentReminders, runStockAlerts, runReord
 import { handleTranscribe, type AiBinding } from "./transcribe";
 import { handleVoice, voiceEnabled, type VoiceEnv } from "./voice";
 import { guestGate, requireAccount } from "./guest";
-import { cadusHome, hostRobots, hostSitemap, portalHome, portalOf } from "./seo";
+import { cadusHome, hostRobots, hostSitemap, portalHome, portalOf, siteSitemap } from "./seo";
 import { handleStudy } from "./study";
 import { handleNotifications } from "./notify";
 import { cleanSharedRecords, handleFind, type FindEnv, runFindReminders, runFollowUps } from "./find";
@@ -85,7 +85,7 @@ export default {
     // Search engines: each subdomain gets its own robots.txt and sitemap; Cadus's home page gets its own
     // title, description and preview tags in the HTML itself (not only after the app's JavaScript runs).
     if (url.pathname === "/robots.txt") { const r = hostRobots(url.hostname); if (r) return r; }
-    if (url.pathname === "/sitemap.xml") { const r = hostSitemap(url.hostname); if (r) return r; }
+    if (url.pathname === "/sitemap.xml") { const r = hostSitemap(url.hostname) ?? await siteSitemap(url.hostname, env.ASSETS).catch(() => null); if (r) return r; }
     if (url.pathname === "/" && request.method === "GET" && /^(?:www\.)?cadus\.aethex\.in$/.test(url.hostname)) {
       return cadusHome(await env.ASSETS.fetch(new Request(new URL("/", url), request)));
     }

@@ -78,7 +78,6 @@ const SECTIONS: Section[] = [
       { href: "/flashcards", label: "Flashcards", hint: "Spaced revision", icon: Layers },
       { href: "/case-of-the-day", label: "Case of the day", hint: "One clinical case daily", icon: ClipboardList },
       { href: "/cme-hub", label: "CME Hub", hint: "Clinical refresher modules", icon: Star },
-      { href: "/live-classes", label: "Live classes", hint: "Sessions with faculty", icon: MessageSquare },
     ],
   },
   {
@@ -97,8 +96,6 @@ const SECTIONS: Section[] = [
     items: [
       { href: "/blog", label: "Blog", hint: "Guides and updates", icon: Newspaper },
       { href: "/news", label: "Medical news", hint: "What's new in medicine", icon: Newspaper },
-      { href: "/jobs", label: "Jobs", hint: "Medical roles in India", icon: Briefcase },
-      { href: "/community", label: "Community", hint: "Discuss with peers", icon: MessageSquare },
       { href: "__downloads", label: "Cadus for desktop", hint: "Windows and Linux", icon: Download, external: true },
       { href: "https://hms.aethex.in", label: "Hospital management app", hint: "AETHEX HMS for hospitals", icon: Hospital, external: true },
       { href: "/contact", label: "Contact us", hint: "Help and support", icon: Mail },

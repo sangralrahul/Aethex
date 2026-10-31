@@ -74,7 +74,7 @@ export default function InstitutionAnalytics() {
               <h1 className="text-3xl font-bold">Institution Analytics</h1>
               <p style={{ color: "rgba(255,255,255,0.5)" }}>AIIMS Delhi · Batch 2023-24 · {STUDENTS.length} students</p>
             </div>
-            <div className="ml-auto flex gap-2">
+            <div className="ml-auto flex flex-wrap gap-2">
               <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium" style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)" }}>
                 <Download size={14} /> Export CSV
               </button>
@@ -175,7 +175,7 @@ export default function InstitutionAnalytics() {
         <div className="rounded-2xl overflow-hidden" style={{ background: "#161B2E", border: "1px solid rgba(255,255,255,0.08)" }}>
           <div className="flex items-center gap-3 p-5 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
             <div className="font-semibold">Per-Student Activity</div>
-            <div className="ml-auto flex gap-2">
+            <div className="ml-auto flex flex-wrap gap-2">
               {(["all", "active", "at-risk", "inactive"] as const).map(f => (
                 <button key={f} onClick={() => setFilter(f)}
                   className="px-3 py-1 rounded-full text-xs font-medium transition-all capitalize"

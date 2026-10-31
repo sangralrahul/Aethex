@@ -31,9 +31,9 @@ function BlogForm({ initial, onSave, onCancel, saving }: BlogFormProps) {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-bold text-xl text-slate-900">{initial ? "Edit Post" : "New Blog Post"}</h3>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button onClick={() => setPreview(!preview)}
             className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold border border-slate-200 rounded-xl text-slate-600 hover:text-primary hover:border-primary transition-all">
             {preview ? <><EyeOff className="w-4 h-4" /> Edit</> : <><Eye className="w-4 h-4" /> Preview</>}

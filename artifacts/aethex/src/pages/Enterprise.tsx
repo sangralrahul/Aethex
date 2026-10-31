@@ -16,13 +16,22 @@ const PLANS = [
   { name: "Enterprise", seats: "1,000+", price: "Custom", unit: "pricing", badge: null, features: ["Everything in Professional", "Fully custom branding", "API integration", "SLA guarantee", "On-site training", "Quarterly review calls"] },
 ];
 
-const COLLEGES = ["AIIMS Delhi", "JIPMER Puducherry", "CMC Vellore", "PGI Chandigarh", "KEM Mumbai", "Grant Medical College", "St. John's Medical College", "Bangalore Medical College"];
 
 export default function Enterprise() {
   const [form, setForm] = useState({ name: "", college: "", email: "", phone: "", seats: "", message: "" });
   const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); setSubmitted(true); };
+  const [sending, setSending] = useState(false), [err, setErr] = useState("");
+  // update 101: the enquiry now reaches the team (it used to be thrown away)
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault(); setErr(""); setSending(true);
+    try {
+      const r = await fetch("/api/store/interest", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify({ topic: "enterprise", email: form.email, details: form }) });
+      const d = await r.json().catch(() => null);
+      if (!r.ok) { setErr(d?.error ?? "Couldn't send. Please email support@aethex.in."); return; }
+      setSubmitted(true);
+    } catch { setErr("You seem to be offline. Please try again."); } finally { setSending(false); }
+  };
 
   return (
     <div className="min-h-screen" style={{ background: "#F2F2F7" }}>
@@ -102,14 +111,7 @@ export default function Enterprise() {
             <h2 className="text-2xl font-black mb-3" style={{ color: "#1C1C1E" }}>Get a Custom Quote</h2>
             <p className="text-sm mb-5" style={{ color: "#636366" }}>Fill in the form and our institutional sales team will get back to you within 1 business day with a customised proposal.</p>
             <div className="space-y-3 text-sm" style={{ color: "#636366" }}>
-              <div className="flex items-center gap-2"><Mail className="w-4 h-4" style={{ color: "#007AFF" }} /> enterprise@aethex.in</div>
-              <div className="flex items-center gap-2"><Phone className="w-4 h-4" style={{ color: "#007AFF" }} /> +91 98765 43210</div>
-            </div>
-            <div className="mt-6">
-              <p className="text-xs font-semibold mb-3" style={{ color: "#AEAEB2" }}>TRUSTED BY LEADING INSTITUTIONS</p>
-              <div className="flex flex-wrap gap-2">
-                {COLLEGES.map(c => <span key={c} className="text-xs px-2.5 py-1 rounded-full" style={{ background: "#FFFFFF", border: "1px solid rgba(60,60,67,0.12)", color: "#636366" }}>{c}</span>)}
-              </div>
+              <div className="flex items-center gap-2"><Mail className="w-4 h-4" style={{ color: "#007AFF" }} /> <a href="mailto:support@aethex.in">support@aethex.in</a></div>
             </div>
           </div>
 
@@ -119,7 +121,7 @@ export default function Enterprise() {
                 { key: "name", label: "Your Name", placeholder: "Dr. Rajesh Kumar", type: "text" },
                 { key: "college", label: "Institution Name", placeholder: "ABC Medical College", type: "text" },
                 { key: "email", label: "Email", placeholder: "principal@abcmc.edu.in", type: "email" },
-                { key: "phone", label: "Phone", placeholder: "+91 98765 43210", type: "tel" },
+                { key: "phone", label: "Phone", placeholder: "10-digit mobile", type: "tel" },
                 { key: "seats", label: "Number of Seats", placeholder: "e.g. 200", type: "number" },
               ].map(field => (
                 <div key={field.key}>
@@ -133,8 +135,9 @@ export default function Enterprise() {
                 <textarea rows={3} placeholder="Tell us about your requirements..." value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
                   className="w-full px-4 py-2.5 rounded-xl text-sm outline-none resize-none" style={{ background: "#FFFFFF", border: "1px solid rgba(60,60,67,0.15)", color: "#1C1C1E" }} />
               </div>
-              <button type="submit" className="w-full py-3.5 rounded-2xl font-bold text-sm" style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)", color: "#FFFFFF" }}>
-                Submit Enquiry
+              {err && <p className="text-sm" role="alert" style={{ color: "#B91C1C" }}>{err}</p>}
+              <button type="submit" disabled={sending} className="w-full py-3.5 rounded-2xl font-bold text-sm" style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)", color: "#FFFFFF", opacity: sending ? 0.7 : 1 }}>
+                {sending ? "Sending…" : "Submit Enquiry"}
               </button>
             </form>
           ) : (

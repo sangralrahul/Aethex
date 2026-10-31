@@ -28,6 +28,7 @@ import { loginUrl } from "@/lib/host";
 import { formatINR } from "@/lib/utils";
 import { CreditAdmin, printGiftSlip } from "@/components/store/StoreExtras3";
 import { AdminTickets } from "@/components/store/StoreExtras4";
+import { AdminSellerApps } from "@/components/store/StoreExtras5";
 
 type AdminOrder = Order & { adminNote: string; updatedAt: number; userId: string | null; paymentId?: string };
 type AdminBulk = BulkRequest & { adminNote: string; updatedAt: number };
@@ -37,7 +38,7 @@ type Summary = {
   catalog: { products: number; priceOnRequest: number; noOrigin: number; hidden: number; outOfStock: number };
   setup: { email: boolean; storeEmail: string; admins: number; gaps: string[]; onlinePayments?: boolean; razorpayMode?: string; webhook?: boolean; webhookUrl?: string; bankTransfer?: boolean; whatsapp?: boolean };
 };
-type Tab = "overview" | "orders" | "requests" | "bulk" | "products" | "promos" | "reviews" | "questions" | "tax" | "replacements" | "credit" | "help";
+type Tab = "overview" | "orders" | "requests" | "bulk" | "products" | "promos" | "reviews" | "questions" | "tax" | "replacements" | "credit" | "help" | "sellers";
 
 const admin = <T,>(path: string, init?: { method?: string; json?: unknown }) => storeFetch<T>(`/admin/${path}`, init);
 
@@ -78,7 +79,7 @@ export default function StoreAdmin() {
         <div className="ax-wrap">
           <b><Store size={18} /> Store admin</b>
           <nav role="tablist">
-            {([["overview", "Overview", ClipboardList], ["orders", "Orders", Package], ["requests", "Requests", Inbox], ["bulk", "Bulk", Building2], ["products", "Products", Store], ["promos", "Offers", BadgePercent], ["reviews", "Reviews", Star], ["questions", "Questions", MessageCircleQuestion], ["replacements", "Replacements", RotateCcw], ["help", "Help requests", Headset], ["credit", "Store credit", Wallet], ["tax", "Tax", Percent]] as const).map(([k, label, I]) => (
+            {([["overview", "Overview", ClipboardList], ["orders", "Orders", Package], ["requests", "Requests", Inbox], ["bulk", "Bulk", Building2], ["products", "Products", Store], ["promos", "Offers", BadgePercent], ["reviews", "Reviews", Star], ["questions", "Questions", MessageCircleQuestion], ["replacements", "Replacements", RotateCcw], ["help", "Help requests", Headset], ["sellers", "Sellers", Store], ["credit", "Store credit", Wallet], ["tax", "Tax", Percent]] as const).map(([k, label, I]) => (
               <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}><I size={15} /> {label}</button>
             ))}
           </nav>
@@ -98,6 +99,7 @@ export default function StoreAdmin() {
         {tab === "replacements" && <Replacements />}
         {tab === "credit" && <CreditAdmin admin={admin} />}
         {tab === "help" && <AdminTickets admin={admin} />}
+        {tab === "sellers" && <AdminSellerApps admin={admin} />}
       </div>
     </div>
   );

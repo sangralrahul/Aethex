@@ -8,7 +8,7 @@
 import { lazy, Suspense, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Activity, CircleUserRound, MoreVertical, Droplet, HeartPulse, LayoutGrid, Microscope, ShoppingBag, Thermometer, Truck, UserRound,
+  Activity, CircleUserRound, Store, MoreVertical, Droplet, HeartPulse, LayoutGrid, Microscope, ShoppingBag, Thermometer, Truck, UserRound,
   ArrowRight, Check, BookOpen, Building2, CalendarCheck, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Grid3x3, GraduationCap, Hospital, LogOut,
   Mail, Newspaper, Package, Search, ShoppingCart, Sparkles, Stethoscope, Timer, User, Video,
 } from "lucide-react";
@@ -137,6 +137,7 @@ export function HubHeader() {
               </Menu>
             )}
             <Menu id="more" label="More" icon={<MoreVertical size={20} strokeWidth={1.6} className="only-sm" />}>
+              <MI href={S("/sell")} icon={<Store size={16} />}>Sell on Aethex</MI>
               <MI href={D("/list-your-practice")} icon={<Stethoscope size={16} />}>List your practice</MI>
               <MI href={portalUrl("hospitals", "/#list")} icon={<Hospital size={16} />}>Bulk quotation</MI>
               <MI href={portalUrl("hospitals", "/institutions")} icon={<Building2 size={16} />}>Hospitals directory</MI>
@@ -144,6 +145,7 @@ export function HubHeader() {
               <MI href={mainUrl("/contact")} icon={<Mail size={16} />}>24x7 help</MI>
             </Menu>
             <NotificationBell />
+            <a className="fk-act fk-sell" href={S("/sell")} data-home="sell"><Store size={21} strokeWidth={1.6} /><span>Become a Seller</span></a>
             <a className="fk-act" href={S("/cart")} data-home="cart"><ShoppingCart size={22} strokeWidth={1.6} /><span>Cart</span></a>
           </nav>
         </div>
@@ -359,7 +361,7 @@ export function DoctorsAndHospitals() {
 /* ---------------------------------------------------------------- footer */
 const FOOT: { title: string; links: [string, string][] }[] = [
   { title: "Patients", links: [["Find a doctor", D("/doctors")], ["Video consultation", D("/doctors?video=1")], ["Ask a doctor, free", D("/ask")], ["Health articles", D("/articles")], ["My appointments", D("/appointments")], ["Vitals tracker", D("/vitals")]] },
-  { title: "Store", links: [["Shop all products", S("/shop")], ["BP monitors", S("/category/bp-monitors")], ["Stethoscopes", S("/category/stethoscopes")], ["Medical books", S("/books")], ["Offers", S("/offers")], ["Track an order", S("/orders/track")]] },
+  { title: "Store", links: [["Shop all products", S("/shop")], ["BP monitors", S("/category/bp-monitors")], ["Stethoscopes", S("/category/stethoscopes")], ["Medical books", S("/books")], ["Offers", S("/offers")], ["Sell on Aethex", S("/sell")], ["Track an order", S("/orders/track")]] },
   { title: "Study", links: [["NEET-PG questions", ST("/neet-pg")], ["Question of the day", ST("/question-of-the-day")], ["Mock tests", ST("/mock-test")], ["Knowledge Hub", ST("/study-hub/medical-knowledge-hub")], ["Case of the day", ST("/case-of-the-day")], ["Flashcards", ST("/flashcards")]] },
   { title: "Institutions", links: [["For hospitals", portalUrl("hospitals")], ["For medical colleges", portalUrl("medicalcolleges")], ["Request a quotation", portalUrl("hospitals", "/#list")], ["Hospitals directory", portalUrl("hospitals", "/institutions")], ["List your practice", D("/list-your-practice")], ["Cadus, clinical AI", cadusUrl("/")]] },
   { title: "Help", links: [["Contact us", mainUrl("/contact")], ["Shipping", S("/shipping-policy")], ["Returns and replacements", S("/returns-policy")], ["Cancellations", S("/cancellation-policy")], ["Grievances", S("/grievance")], ["Email preferences", mainUrl("/email-preferences")]] },

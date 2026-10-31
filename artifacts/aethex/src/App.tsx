@@ -146,6 +146,8 @@ const SpendPage = lazyPage(() => import("@/components/store/BulkExtras3").then((
 const IndentsPage = lazyPage(() => import("@/components/store/BulkExtras4").then((m) => ({ default: m.IndentsPage })));
 const StockPage = lazyPage(() => import("@/components/store/BulkExtras4").then((m) => ({ default: m.StockPage })));
 const QotdPage = lazyPage(() => import("@/components/study/Qotd"));
+const ComingSoonPage = lazyPage(() => import("@/components/ComingSoon").then((m) => ({ default: m.ComingSoon })));
+const SellPage = lazyPage(() => import("@/components/store/StoreExtras5").then((m) => ({ default: m.SellPage })));
 const PurchaseOrderPage = lazyPage(() => import("@/components/store/BulkExtras3").then((m) => ({ default: m.PurchaseOrderPage })));
 const EmailPrefs = lazyPage(() => import("@/components/home/EmailPrefs"));
 const GiftPage = lazyPage(() => import("@/components/store/StoreExtras3").then((m) => ({ default: m.GiftPage })));
@@ -361,16 +363,17 @@ function Router() {
       <Route path="/signup" component={Signup} />
       <Route path="/onboarding" component={Onboarding} />
 
-      <Route path="/seller/register" component={SellerRegister} />
-      <Route path="/seller/login">{() => <SellerLogin onLogin={handleSellerLogin} />}</Route>
+      {/* update 100: selling starts with an application on store.aethex.in/sell; seller accounts are set up after approval */}
+      <Route path="/seller/register">{() => <Redirect to="/sell" />}</Route>
+      <Route path="/seller/login">{() => (sellerSession ? <Redirect to="/seller/dashboard" /> : <Redirect to="/sell" />)}</Route>
 
       {/* Seller Dashboard pages (no Navbar/Footer) */}
-      <Route path="/seller/dashboard">{() => sellerSession ? <SellerDashboard {...sellerProps} /> : <SellerLogin onLogin={handleSellerLogin} />}</Route>
-      <Route path="/seller/products">{() => sellerSession ? <SellerProducts {...sellerProps} /> : <SellerLogin onLogin={handleSellerLogin} />}</Route>
-      <Route path="/seller/orders">{() => sellerSession ? <SellerOrders {...sellerProps} /> : <SellerLogin onLogin={handleSellerLogin} />}</Route>
-      <Route path="/seller/payouts">{() => sellerSession ? <SellerPayouts {...sellerProps} /> : <SellerLogin onLogin={handleSellerLogin} />}</Route>
-      <Route path="/seller/analytics">{() => sellerSession ? <SellerAnalytics {...sellerProps} /> : <SellerLogin onLogin={handleSellerLogin} />}</Route>
-      <Route path="/seller/settings">{() => sellerSession ? <SellerSettings {...sellerProps} /> : <SellerLogin onLogin={handleSellerLogin} />}</Route>
+      <Route path="/seller/dashboard">{() => sellerSession ? <SellerDashboard {...sellerProps} /> : <Redirect to="/sell" />}</Route>
+      <Route path="/seller/products">{() => sellerSession ? <SellerProducts {...sellerProps} /> : <Redirect to="/sell" />}</Route>
+      <Route path="/seller/orders">{() => sellerSession ? <SellerOrders {...sellerProps} /> : <Redirect to="/sell" />}</Route>
+      <Route path="/seller/payouts">{() => sellerSession ? <SellerPayouts {...sellerProps} /> : <Redirect to="/sell" />}</Route>
+      <Route path="/seller/analytics">{() => sellerSession ? <SellerAnalytics {...sellerProps} /> : <Redirect to="/sell" />}</Route>
+      <Route path="/seller/settings">{() => sellerSession ? <SellerSettings {...sellerProps} /> : <Redirect to="/sell" />}</Route>
 
       {/* HOME — with full Navbar */}
       <Route path="/">
@@ -493,6 +496,7 @@ function Router() {
                 <Route path="/team" component={TeamPage} />
                 <Route path="/spend" component={SpendPage} />
                 <Route path="/indents" component={IndentsPage} />
+                <Route path="/sell" component={SellPage} />
                 <Route path="/stock" component={StockPage} />
                 <Route path="/purchase-order/:id" component={PurchaseOrderPage} />
                 <Route path="/email-preferences" component={EmailPrefs} />
@@ -591,21 +595,23 @@ function Router() {
 
                 {/* New feature pages */}
                 <Route path="/calculator" component={CalculatorPage} />
-                <Route path="/jobs" component={Jobs} />
-                <Route path="/community" component={Community} />
+                {/* update 101: sections that had only sample content show "Coming soon" (the pages stay in the code) */}
+                <Route path="/jobs">{() => <ComingSoonPage topic="jobs" />}</Route>
+                <Route path="/community">{() => <ComingSoonPage topic="community" />}</Route>
                 <Route path="/cases" component={ClinicalCases} />
 
                 {/* Phase 3 pages */}
                 <Route path="/study-planner" component={StudyPlanner} />
                 <Route path="/mock-test" component={MockTest} />
-                <Route path="/live-classes" component={LiveClasses} />
-                <Route path="/hospital-directory" component={HospitalDirectory} />
-                <Route path="/drug-alerts" component={DrugAlerts} />
+                <Route path="/live-classes">{() => <ComingSoonPage topic="live-classes" />}</Route>
+                {/* update 101: the old directory had sample ratings; the real one is /institutions */}
+                <Route path="/hospital-directory">{() => <Redirect to="/institutions" />}</Route>
+                <Route path="/drug-alerts">{() => <ComingSoonPage topic="drug-alerts" />}</Route>
                 <Route path="/patient-education" component={PatientEducation} />
                 <Route path="/telemedicine-directory" component={TelemedicineDirectory} />
                 <Route path="/cme-certificate" component={CmeCertificate} />
                 <Route path="/ai-scribe" component={AiScribe} />
-                <Route path="/analytics" component={Analytics} />
+                <Route path="/analytics">{() => <ComingSoonPage topic="analytics" />}</Route>
                 <Route path="/app" component={AppWaitlist} />
                 <Route path="/enterprise" component={Enterprise} />
 
@@ -613,11 +619,11 @@ function Router() {
                 <Route path="/answer-eval" component={AiAnswerEval} />
                 <Route path="/learning-path" component={LearningPath} />
                 <Route path="/flashcards" component={SmartFlashcards} />
-                <Route path="/video-cases" component={VideoCases} />
-                <Route path="/webinars" component={Webinars} />
+                <Route path="/video-cases">{() => <ComingSoonPage topic="video-cases" />}</Route>
+                <Route path="/webinars">{() => <ComingSoonPage topic="webinars" />}</Route>
                 <Route path="/mentorship" component={Mentorship} />
                 <Route path="/leaderboard" component={Leaderboard} />
-                <Route path="/institution-analytics" component={InstitutionAnalytics} />
+                <Route path="/institution-analytics">{() => <ComingSoonPage topic="institution-analytics" />}</Route>
                 <Route path="/quiz-builder" component={QuizBuilder} />
 
                 {/* Monetization & Growth */}

@@ -11,7 +11,7 @@ type Site = Exclude<Portal, "cadus">;
 const MAP: [RegExp, Site][] = [
   [/^\/admin\/doctors(\/|$)/, "doctors"],
   [/^\/(find|doctors?|clinics?|ask|articles|appointments|practice|list-your-practice|records|prescription|telemedicine-directory|which-doctor|saved-doctors|family|vitals)(\/|$)/, "doctors"],
-  [/^\/(store|shop|products|category|brand|brands|books|cart|wishlist|compare|checkout|orders?|alerts|shipping-policy|returns-policy|cancellation-policy|grievance|my-reviews|seller|offers|reorder|gift)(\/|$)/, "store"],
+  [/^\/(store|shop|products|category|brand|brands|books|cart|wishlist|compare|checkout|orders?|alerts|shipping-policy|returns-policy|cancellation-policy|grievance|my-reviews|seller|sell|offers|reorder|gift)(\/|$)/, "store"],
   [/^\/(admin)(\/(store|reviews|sellers))?$/, "store"],
   [/^\/(study-hub|neet-pg|mock-test|flashcards|case-of-the-day|cme-hub|cme-certificate|tools|calculator|drug-reference|drug-interaction-checker|drug-alerts|study-planner|live-classes|learning-path|quiz-builder|progress-tracker|leaderboard|webinars|video-cases|cases|diagnosis|answer-eval|mentorship|news|patient-education|ai-scribe|my-consults|community|custom-test|my-library|study-groups|sectional-tests|study-moderation|question-of-the-day)(\/|$)/, "study"],
   [/^\/(hospitals|institutions|hospital-directory|institution-analytics|enterprise)(\/|$)/, "hospitals"],
@@ -94,7 +94,7 @@ export const PORTALS: Record<Site, PortalConfig> = {
     footer: [
       { title: "Shop", links: [{ href: "/shop", label: "All products" }, { href: "/category/bp-monitors", label: "BP monitors" }, { href: "/category/stethoscopes", label: "Stethoscopes" }, { href: "/category/diagnostic-instruments", label: "Diagnostic instruments" }, { href: "/category/diabetes-care", label: "Diabetes care" }, { href: "/books", label: "Medical books" }, { href: "/brands", label: "All brands" }] },
       { title: "Orders", links: [{ href: "/orders/track", label: "Track an order" }, { href: "/orders", label: "My orders" }, { href: "/offers", label: "Offers and coupons" }, { href: "/cart", label: "Cart" }, { href: "/wishlist", label: "Wishlist" }, { href: "/compare", label: "Compare" }] },
-      { title: "Help", links: [{ href: "/shipping-policy", label: "Shipping & delivery" }, { href: "/returns-policy", label: "Returns & replacement" }, { href: "/grievance", label: "Grievances" }, ...HELP] },
+      { title: "Help", links: [{ href: "/sell", label: "Sell on Aethex" }, { href: "/shipping-policy", label: "Shipping & delivery" }, { href: "/returns-policy", label: "Returns & replacement" }, { href: "/grievance", label: "Grievances" }, ...HELP] },
     ],
   },
   doctors: {
