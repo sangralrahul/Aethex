@@ -452,3 +452,10 @@ cancels from `/practice`. Reviews can only be written for `completed` appointmen
 - One banner at a time (full width of its column), with the headline and three short points as chips instead of a paragraph; arrows on hover, dots inside the banner.
 - Beside it (`SidePanels`): your account (sign in, or your name) with My orders, Appointments, My library and Quotations, and a Cadus panel. Stacked under the banner on tablets and phones.
 - The product and book rows no longer show a scrollbar.
+
+## Update 96: aethex.in laid out like a top marketplace
+
+- Header (`fk-*`): an app switcher of platform tabs (Aethex highlighted, then Doctors, Store, Study, Hospitals, Colleges, Cadus, each with its icon), delivery terms on the right; a full-width search with Login, More and Cart beside it (the Login menu opens on hover with a Login button, sign up and shortcuts); categories as large line icons over their names with the current one underlined.
+- Banners: a peeking carousel of five offers (colour, a short headline, a highlighted line, a product photo in a circle), side arrows, dots.
+- "Health essentials for every home": BP monitors, oximeters, thermometers and nebulizers with their live lowest price ("From ₹…") from the catalogue.
+- The account and Cadus side panels of update 95 are folded into the Login menu and the Cadus tab. Menus now stay open when clicked right after hovering.

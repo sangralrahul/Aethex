@@ -8,7 +8,7 @@
 import { lazy, Suspense, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Activity, Droplet, HeartPulse, LayoutGrid, Microscope, MoreHorizontal, Thermometer, UserRound,
+  Activity, CircleUserRound, MoreVertical, Droplet, HeartPulse, LayoutGrid, Microscope, ShoppingBag, Thermometer, Truck, UserRound,
   ArrowRight, Check, BookOpen, Building2, CalendarCheck, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Grid3x3, GraduationCap, Hospital, LogOut,
   Mail, Newspaper, Package, Search, ShoppingCart, Sparkles, Stethoscope, Timer, User, Video,
 } from "lucide-react";
@@ -26,22 +26,25 @@ const QotdCard = lazy(() => import("@/components/study/Qotd").then((m) => ({ def
 const IMG = (n: string) => `${import.meta.env.BASE_URL}product-images/${n}.jpg`;
 const S = (p: string) => portalUrl("store", p), D = (p: string) => portalUrl("doctors", p), ST = (p: string) => portalUrl("study", p);
 
-/* ---------------------------------------------------------------- platform pills */
-const PILLS: { id: Portal | "aethex" | "cadus"; label: string; href: string }[] = [
-  { id: "aethex", label: "Aethex", href: "/" },
-  { id: "doctors", label: "Doctors", href: portalUrl("doctors") },
-  { id: "store", label: "Store", href: portalUrl("store") },
-  { id: "study", label: "Study", href: portalUrl("study") },
-  { id: "hospitals", label: "Hospitals", href: portalUrl("hospitals") },
-  { id: "medicalcolleges", label: "Medical colleges", href: portalUrl("medicalcolleges") },
-  { id: "cadus", label: "Cadus", href: cadusUrl("/") },
+/* ---------------------------------------------------------------- platform switcher (update 96: like a marketplace's app switcher) */
+const PILLS: { id: Portal | "aethex" | "cadus"; label: string; href: string; icon: ReactNode; tone: string }[] = [
+  { id: "aethex", label: "Aethex", href: "/", icon: <AethexMark />, tone: "a" },
+  { id: "doctors", label: "Doctors", href: portalUrl("doctors"), icon: <Stethoscope size={18} strokeWidth={2} />, tone: "d" },
+  { id: "store", label: "Store", href: portalUrl("store"), icon: <ShoppingBag size={18} strokeWidth={2} />, tone: "s" },
+  { id: "study", label: "Study", href: portalUrl("study"), icon: <GraduationCap size={18} strokeWidth={2} />, tone: "y" },
+  { id: "hospitals", label: "Hospitals", href: portalUrl("hospitals"), icon: <Hospital size={18} strokeWidth={2} />, tone: "h" },
+  { id: "medicalcolleges", label: "Colleges", href: portalUrl("medicalcolleges"), icon: <Building2 size={18} strokeWidth={2} />, tone: "c" },
+  { id: "cadus", label: "Cadus", href: cadusUrl("/"), icon: <Sparkles size={18} strokeWidth={2} />, tone: "x" },
 ];
+function AethexMark() {
+  return <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 3 21h4.2L12 10.6 16.8 21H21L12 2.5Z" fill="currentColor" /><path d="M8.6 16.2h6.8" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" /></svg>;
+}
 
 /* ---------------------------------------------------------------- search */
 const SCOPES = [
   { id: "store", label: "Products", placeholder: "Search for products, brands and books", to: (q: string) => S(`/shop?search=${encodeURIComponent(q)}`) },
-  { id: "doctors", label: "Doctors", placeholder: "Search doctors, specialties or clinics", to: (q: string) => D(`/doctors?q=${encodeURIComponent(q)}`) },
-  { id: "study", label: "Study topics", placeholder: "Search a topic or condition", to: (q: string) => ST(`/study-hub/medical-knowledge-hub?q=${encodeURIComponent(q)}`) },
+  { id: "doctors", label: "Doctors", placeholder: "Search for doctors, specialties and clinics", to: (q: string) => D(`/doctors?q=${encodeURIComponent(q)}`) },
+  { id: "study", label: "Study topics", placeholder: "Search for a topic or condition", to: (q: string) => ST(`/study-hub/medical-knowledge-hub?q=${encodeURIComponent(q)}`) },
 ] as const;
 function BigSearch() {
   const [scope, setScope] = useState<(typeof SCOPES)[number]["id"]>("store");
@@ -49,13 +52,12 @@ function BigSearch() {
   const cur = SCOPES.find((x) => x.id === scope)!;
   const go = (e: FormEvent) => { e.preventDefault(); const t = q.trim(); window.location.href = t ? cur.to(t) : portalUrl(scope); };
   return (
-    <form className="hx-search" onSubmit={go} role="search" data-home="search">
-      <Search size={20} aria-hidden="true" />
+    <form className="fk-search" onSubmit={go} role="search" data-home="search">
+      <button type="submit" aria-label="Search"><Search size={20} /></button>
       <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={cur.placeholder} aria-label={cur.placeholder} />
       <select value={scope} onChange={(e) => setScope(e.target.value as typeof scope)} aria-label="Search in" data-home="search-scope">
         {SCOPES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
       </select>
-      <button type="submit" aria-label="Search">Search</button>
     </form>
   );
 }
@@ -64,6 +66,7 @@ function BigSearch() {
 function Menu({ label, icon, children, id }: { label: ReactNode; icon?: ReactNode; children: ReactNode; id: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const hovered = useRef(false); // a click right after the hover opened it keeps it open
   useEffect(() => {
     if (!open) return;
     const off = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
@@ -72,8 +75,8 @@ function Menu({ label, icon, children, id }: { label: ReactNode; icon?: ReactNod
     return () => { document.removeEventListener("mousedown", off); document.removeEventListener("keydown", esc); };
   }, [open]);
   return (
-    <div className={`hx-menu${open ? " open" : ""}`} ref={ref} onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)} data-home={`menu-${id}`}>
-      <button type="button" className="hx-act" aria-expanded={open} aria-haspopup="menu" onClick={() => setOpen(!open)}>{icon}<span>{label}</span><ChevronDown size={15} className="chev" /></button>
+    <div className={`hx-menu${open ? " open" : ""}`} ref={ref} onMouseEnter={() => { hovered.current = true; setOpen(true); }} onMouseLeave={() => { hovered.current = false; setOpen(false); }} data-home={`menu-${id}`}>
+      <button type="button" className="fk-act" aria-expanded={open} aria-haspopup="menu" onClick={() => { if (hovered.current && open) { hovered.current = false; return; } setOpen(!open); }}>{icon}<span>{label}</span><ChevronDown size={16} className="chev" /></button>
       {open && <div className="hx-drop" role="menu">{children}</div>}
     </div>
   );
@@ -81,43 +84,40 @@ function Menu({ label, icon, children, id }: { label: ReactNode; icon?: ReactNod
 const MI = ({ href, icon, children }: { href: string; icon: ReactNode; children: ReactNode }) => <a role="menuitem" href={href}>{icon}{children}</a>;
 
 /* ---------------------------------------------------------------- categories */
+const ic = (I: typeof Stethoscope) => <I size={30} strokeWidth={1.4} />;
 const CATS: { label: string; href: string; icon: ReactNode; on?: boolean }[] = [
-  { label: "For you", href: "#for-you", icon: <LayoutGrid size={16} strokeWidth={1.8} />, on: true },
-  { label: "Doctors", href: D("/doctors"), icon: <UserRound size={16} strokeWidth={1.8} /> },
-  { label: "Video consult", href: D("/doctors?video=1"), icon: <Video size={16} strokeWidth={1.8} /> },
-  { label: "BP monitors", href: S("/category/bp-monitors"), icon: <HeartPulse size={16} strokeWidth={1.8} /> },
-  { label: "Stethoscopes", href: S("/category/stethoscopes"), icon: <Stethoscope size={16} strokeWidth={1.8} /> },
-  { label: "Oximeters", href: S("/category/pulse-oximeters"), icon: <Activity size={16} strokeWidth={1.8} /> },
-  { label: "Diabetes care", href: S("/category/diabetes-care"), icon: <Droplet size={16} strokeWidth={1.8} /> },
-  { label: "Thermometers", href: S("/category/thermometers"), icon: <Thermometer size={16} strokeWidth={1.8} /> },
-  { label: "Diagnostics", href: S("/category/diagnostic-instruments"), icon: <Microscope size={16} strokeWidth={1.8} /> },
-  { label: "Books", href: S("/books"), icon: <BookOpen size={16} strokeWidth={1.8} /> },
-  { label: "NEET-PG", href: ST("/neet-pg"), icon: <GraduationCap size={16} strokeWidth={1.8} /> },
-  { label: "Hospitals", href: portalUrl("hospitals"), icon: <Hospital size={16} strokeWidth={1.8} /> },
-  { label: "Colleges", href: portalUrl("medicalcolleges"), icon: <Building2 size={16} strokeWidth={1.8} /> },
+  { label: "For You", href: "#for-you", icon: ic(LayoutGrid), on: true },
+  { label: "Doctors", href: D("/doctors"), icon: ic(UserRound) },
+  { label: "Video consult", href: D("/doctors?video=1"), icon: ic(Video) },
+  { label: "BP monitors", href: S("/category/bp-monitors"), icon: ic(HeartPulse) },
+  { label: "Stethoscopes", href: S("/category/stethoscopes"), icon: ic(Stethoscope) },
+  { label: "Oximeters", href: S("/category/pulse-oximeters"), icon: ic(Activity) },
+  { label: "Diabetes care", href: S("/category/diabetes-care"), icon: ic(Droplet) },
+  { label: "Thermometers", href: S("/category/thermometers"), icon: ic(Thermometer) },
+  { label: "Diagnostics", href: S("/category/diagnostic-instruments"), icon: ic(Microscope) },
+  { label: "Books", href: S("/books"), icon: ic(BookOpen) },
+  { label: "NEET-PG", href: ST("/neet-pg"), icon: ic(GraduationCap) },
+  { label: "Hospitals", href: portalUrl("hospitals"), icon: ic(Hospital) },
+  { label: "Colleges", href: portalUrl("medicalcolleges"), icon: ic(Building2) },
 ];
 
 export function HubHeader() {
   const { isLoggedIn, user, logout } = useUserAuth();
   const first = (user?.name || "").replace(/^dr\.?\s+/i, "").split(" ")[0] || "Account";
   return (
-    <header className="hx-head" data-home="header">
-      <div className="hx-strip">
-        <div className="hx-wrap">
-          <nav className="hx-pills" aria-label="Aethex platforms" data-home="pills">
-            {PILLS.map((p) => <a key={p.id} href={p.href} className={p.id === "aethex" ? "on" : ""} aria-current={p.id === "aethex" ? "page" : undefined} data-pill={p.id} {...(p.id === "cadus" ? { "data-home": "cta-cadus" } : {})}>{p.label}</a>)}
-          </nav>
-          <span className="hx-note">Cash on delivery · Free delivery from {formatINR(FREE_DELIVERY_FROM)}</span>
-          <a className="hx-help" href={mainUrl("/contact")}>Help</a>
-        </div>
-      </div>
+    <header className="fk-head" data-home="header">
       <div className="hx-wrap">
-        <div className="hx-bar">
-          <Logo />
+        <div className="fk-r1">
+          <nav className="fk-tabs" aria-label="Aethex platforms" data-home="pills">
+            {PILLS.map((p) => <a key={p.id} href={p.href} className={`fk-tab t-${p.tone}${p.id === "aethex" ? " on" : ""}`} aria-current={p.id === "aethex" ? "page" : undefined} data-pill={p.id} {...(p.id === "cadus" ? { "data-home": "cta-cadus" } : {})}><span className="i">{p.icon}</span><span className="l">{p.label}</span></a>)}
+          </nav>
+          <span className="fk-loc"><Truck size={18} /><span>Cash on delivery</span><b>Free delivery from {formatINR(FREE_DELIVERY_FROM)}</b></span>
+        </div>
+        <div className="fk-r2">
           <BigSearch />
-          <nav className="hx-acts" aria-label="Account">
+          <nav className="fk-acts" aria-label="Account">
             {isLoggedIn ? (
-              <Menu id="account" label={first} icon={<User size={19} />}>
+              <Menu id="account" label={first} icon={<CircleUserRound size={22} strokeWidth={1.6} />}>
                 <MI href={mainUrl("/account")} icon={<User size={16} />}>My account</MI>
                 <MI href={S("/orders")} icon={<Package size={16} />}>My orders</MI>
                 <MI href={D("/appointments")} icon={<CalendarCheck size={16} />}>My appointments</MI>
@@ -127,68 +127,43 @@ export function HubHeader() {
                 <button type="button" role="menuitem" onClick={() => logout()}><LogOut size={16} />Sign out</button>
               </Menu>
             ) : (
-              <Menu id="account" label="Login" icon={<User size={19} />}>
+              <Menu id="account" label="Login" icon={<CircleUserRound size={22} strokeWidth={1.6} />}>
                 <a className="hx-login" href={loginUrl("/")} data-home="login">Login</a>
-                <p className="hx-new">New to Aethex? <a href={loginUrl("/signup")}>Sign up</a></p>
-                <MI href={S("/orders/track")} icon={<Package size={16} />}>Track an order</MI>
+                <p className="hx-new">New customer? <a href={loginUrl("/signup")}>Sign up</a></p>
+                <MI href={S("/orders")} icon={<Package size={16} />}>Orders</MI>
+                <MI href={S("/orders/track")} icon={<Truck size={16} />}>Track an order</MI>
                 <MI href={D("/appointments")} icon={<CalendarCheck size={16} />}>My appointments</MI>
+                <MI href={ST("/my-library")} icon={<BookOpen size={16} />}>My library</MI>
               </Menu>
             )}
-            <Menu id="more" label="More" icon={<MoreHorizontal size={19} />}>
+            <Menu id="more" label="More" icon={<MoreVertical size={20} strokeWidth={1.6} className="only-sm" />}>
               <MI href={D("/list-your-practice")} icon={<Stethoscope size={16} />}>List your practice</MI>
               <MI href={portalUrl("hospitals", "/#list")} icon={<Hospital size={16} />}>Bulk quotation</MI>
               <MI href={portalUrl("hospitals", "/institutions")} icon={<Building2 size={16} />}>Hospitals directory</MI>
               <MI href={cadusUrl("/")} icon={<Sparkles size={16} />}>Cadus, clinical AI</MI>
-              <MI href={mainUrl("/contact")} icon={<Mail size={16} />}>Contact us</MI>
+              <MI href={mainUrl("/contact")} icon={<Mail size={16} />}>24x7 help</MI>
             </Menu>
             <NotificationBell />
-            <a className="hx-act" href={S("/cart")} data-home="cart"><ShoppingCart size={19} /><span>Cart</span></a>
+            <a className="fk-act" href={S("/cart")} data-home="cart"><ShoppingCart size={22} strokeWidth={1.6} /><span>Cart</span></a>
           </nav>
         </div>
-        <nav className="hx-cats" aria-label="Browse" data-home="cats">
-          {CATS.map((c) => (
-            <a key={c.label} href={c.href} className={c.on ? "on" : ""}>
-              <span className="pic">{c.icon}</span>
-              <span className="lb">{c.label}</span>
-            </a>
-          ))}
+        <nav className="fk-cats" aria-label="Browse" data-home="cats">
+          {CATS.map((c) => <a key={c.label} href={c.href} className={c.on ? "on" : ""}><span className="pic">{c.icon}</span><span className="lb">{c.label}</span></a>)}
         </nav>
       </div>
     </header>
   );
 }
 
-/* ---------------------------------------------------------------- banners */
-type Slide = { id: string; tone: string; tag: string; title: ReactNode; points: string[]; cta: string; href: string; imgs: string[] };
+/* ---------------------------------------------------------------- banners (peeking carousel) */
+type Slide = { id: string; tone: string; tag: string; title: ReactNode; big: string; line: string; cta: string; href: string; img: string };
 const SLIDES: Slide[] = [
-  { id: "aethex", tone: "navy", tag: "One account · Five platforms", title: "Everything medical, in one place.", points: ["Book doctors", "Shop medical devices", "Prepare for NEET-PG"], cta: "Try Cadus free", href: cadusUrl("/"), imgs: ["stethoscope"] },
-  { id: "store", tone: "teal", tag: "Aethex Store", title: "Genuine medical devices, at your door", points: ["Verified brands", "Cash on delivery", `Free delivery from ${formatINR(FREE_DELIVERY_FROM)}`], cta: "Shop now", href: portalUrl("store"), imgs: ["bp-monitor"] },
-  { id: "doctors", tone: "blue", tag: "Aethex Doctors", title: "Book checked doctors near you", points: ["Checked registrations", "Clinic or video visit", "Reminders and records"], cta: "Find a doctor", href: D("/doctors"), imgs: ["otoscope"] },
-  { id: "study", tone: "violet", tag: "Aethex Study", title: "Today's NEET-PG question is up", points: ["Same question for everyone", "Explanation and discussion", "Mock tests and topic map"], cta: "Answer it", href: ST("/question-of-the-day"), imgs: ["test-books"] },
-  { id: "hospitals", tone: "cyan", tag: "Hospitals and colleges", title: "One list. One quotation.", points: ["Bulk quotations", "Approvals and indents", "Stock register"], cta: "Get a quotation", href: portalUrl("hospitals", "/#list"), imgs: ["ecg"] },
+  { id: "aethex", tone: "b1", tag: "Aethex", title: "Everything medical, in one place.", big: "Doctors · Store · Study", line: "One account for all of it", cta: "Try Cadus free", href: cadusUrl("/"), img: "stethoscope" },
+  { id: "store", tone: "b2", tag: "Aethex Store", title: "Genuine medical devices", big: `Free delivery from ${formatINR(FREE_DELIVERY_FROM)}`, line: "Verified brands · Cash on delivery", cta: "Shop now", href: portalUrl("store"), img: "bp-monitor" },
+  { id: "doctors", tone: "b3", tag: "Aethex Doctors", title: "Book checked doctors", big: "Clinic or video visit", line: "Reminders and records in one place", cta: "Find a doctor", href: D("/doctors"), img: "otoscope" },
+  { id: "study", tone: "b4", tag: "Aethex Study", title: "Today's NEET-PG question", big: "Answer in one tap", line: "See how everyone did, then discuss", cta: "Answer it", href: ST("/question-of-the-day"), img: "test-books" },
+  { id: "hospitals", tone: "b5", tag: "Hospitals and colleges", title: "One list. One quotation.", big: "Beds, ICU, skills labs", line: "Approvals, indents and stock register", cta: "Get a quotation", href: portalUrl("hospitals", "/#list"), img: "ecg" },
 ];
-/** Beside the banners: your account's shortcuts, and Cadus. */
-function SidePanels() {
-  const { isLoggedIn, user } = useUserAuth();
-  const first = (user?.name || "").replace(/^dr\.?\s+/i, "").split(" ")[0];
-  const links: [string, string, ReactNode][] = [["My orders", S("/orders"), <Package size={18} />], ["Appointments", D("/appointments"), <CalendarCheck size={18} />], ["My library", ST("/my-library"), <BookOpen size={18} />], ["Quotations", portalUrl("hospitals", "/account/quotations"), <ClipboardList size={18} />]];
-  return (
-    <aside className="hx-side" data-home="side">
-      <div className="pan acct">
-        <div className="ph"><span className="av"><User size={18} /></span><span><small>{isLoggedIn ? "Welcome back" : "Welcome to Aethex"}</small><b>{isLoggedIn && first ? first : "Your account"}</b></span>
-          {!isLoggedIn && <a href={loginUrl("/")} className="in">Sign in</a>}</div>
-        <ul>{links.map(([l, h, i]) => <li key={l}><a href={h}>{i}<span>{l}</span></a></li>)}</ul>
-      </div>
-      <a className="pan cad" href={cadusUrl("/")}>
-        <small><Sparkles size={13} /> Cadus · Clinical AI</small>
-        <b>Ask a clinical question</b>
-        <ul className="pts"><li><Check size={13} strokeWidth={2.6} />Inside every platform</li><li><Check size={13} strokeWidth={2.6} />Free to start</li></ul>
-        <span className="cta">Open Cadus <ArrowRight size={14} /></span>
-      </a>
-    </aside>
-  );
-}
-
 export function Banners() {
   const ref = useRef<HTMLDivElement>(null);
   const [at, setAt] = useState(0), [hold, setHold] = useState(false);
@@ -196,40 +171,61 @@ export function Banners() {
     const el = ref.current; if (!el) return;
     const n = (i + SLIDES.length) % SLIDES.length;
     const card = el.children[n] as HTMLElement | undefined;
-    if (card) el.scrollTo({ left: card.offsetLeft - el.offsetLeft, behavior: "smooth" });
+    if (card) el.scrollTo({ left: card.offsetLeft - el.offsetLeft - (n ? 40 : 0), behavior: "smooth" });
+    setAt(n);
   };
   useEffect(() => {
-    const el = ref.current; if (!el) return;
-    const onScroll = () => { const w = (el.children[0] as HTMLElement | undefined)?.offsetWidth ?? 1; setAt(Math.min(SLIDES.length - 1, Math.round(el.scrollLeft / w))); };
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
-  }, []);
-  useEffect(() => {
     if (hold || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-    const t = window.setTimeout(() => go(at + 1 >= SLIDES.length ? 0 : at + 1), 5000);
+    const t = window.setTimeout(() => go(at + 1), 5000);
     return () => window.clearTimeout(t);
   }, [at, hold]);
   return (
-    <section className="hx-wrap hx-hero" aria-label="Highlights">
-    <div className="hx-ban" aria-roledescription="carousel" data-home="banners" onMouseEnter={() => setHold(true)} onMouseLeave={() => setHold(false)} onFocus={() => setHold(true)}>
+    <section className="fk-ban" aria-roledescription="carousel" aria-label="Highlights" data-home="banners" onMouseEnter={() => setHold(true)} onMouseLeave={() => setHold(false)} onFocus={() => setHold(true)}>
       <div className="track" ref={ref}>
         {SLIDES.map((s, i) => (
           <a key={s.id} href={s.href} className={`slide ${s.tone}`} aria-roledescription="slide" aria-label={`${i + 1} of ${SLIDES.length}`} data-slide={s.id}>
             <span className="txt">
               <small>{s.tag}</small>
               {i === 0 ? <h1>{s.title}</h1> : <b className="t">{s.title}</b>}
-              <ul className="pts">{s.points.map((x) => <li key={x}><Check size={13} strokeWidth={2.6} />{x}</li>)}</ul>
-              <span className="cta">{s.cta} <ArrowRight size={15} /></span>
+              <span className="big">{s.big}</span>
+              <span className="line">{s.line}</span>
+              <span className="cta">{s.cta}</span>
             </span>
-            <span className="pic" aria-hidden="true"><img src={IMG(s.imgs[0]!)} alt="" loading={i < 2 ? "eager" : "lazy"} decoding="async" /></span>
+            <span className="pic" aria-hidden="true"><img src={IMG(s.img)} alt="" loading={i < 3 ? "eager" : "lazy"} decoding="async" /></span>
           </a>
         ))}
       </div>
-      <button type="button" className="nav prev" onClick={() => go(at - 1)} aria-label="Previous"><ChevronLeft size={20} /></button>
-      <button type="button" className="nav next" onClick={() => go(at + 1)} aria-label="Next"><ChevronRight size={20} /></button>
+      <button type="button" className="nav prev" onClick={() => go(at - 1)} aria-label="Previous"><ChevronLeft size={22} /></button>
+      <button type="button" className="nav next" onClick={() => go(at + 1)} aria-label="Next"><ChevronRight size={22} /></button>
       <div className="dots" role="tablist" aria-label="Choose a highlight">{SLIDES.map((s, i) => <button key={s.id} type="button" role="tab" aria-selected={i === at} aria-label={`Highlight ${i + 1}`} className={i === at ? "on" : ""} onClick={() => go(i)} />)}</div>
-    </div>
-    <SidePanels />
+    </section>
+  );
+}
+
+/* ---------------------------------------------------------------- "Health essentials for every home": the lowest price in each category, live */
+const ESSENTIALS: [string, string][] = [["bp-monitors", "BP monitors"], ["pulse-oximeters", "Pulse oximeters"], ["thermometers", "Thermometers"], ["nebulizers", "Nebulizers"], ["diabetes-care", "Diabetes care"], ["stethoscopes", "Stethoscopes"], ["weighing-scales", "Weighing scales"], ["orthopaedic-supports", "Orthopaedic supports"]];
+export function Essentials() {
+  const { data } = useStore();
+  if (!data) return null;
+  const tiles = ESSENTIALS.map(([slug, label]) => {
+    const list = data.products.filter((p) => p.category === slug && p.inStock && !p.priceOnRequest && p.price != null && p.image).sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
+    return list.length ? { slug, label, from: list[0]!.price!, image: (list.find((p) => p.featured) ?? list[Math.floor(list.length / 2)] ?? list[0])!.image } : null;
+  }).filter((x): x is NonNullable<typeof x> => !!x).slice(0, 4);
+  if (tiles.length < 4) return null;
+  return (
+    <section className="hx-wrap fk-band" data-home="essentials-band" aria-label="Health essentials for every home">
+      <div className="in">
+        <div className="hd"><h2>Health essentials for every home</h2><a href={S("/shop")} className="all" aria-label="Shop all"><ArrowRight size={18} /></a></div>
+        <div className="tiles">
+          {tiles.map((t) => (
+            <a key={t.slug} href={S(`/category/${t.slug}`)} data-cat={t.slug}>
+              <span className="im"><ProductImage src={t.image} alt="" width={360} /></span>
+              <span className="nm">{t.label}</span>
+              <b>From {formatINR(t.from)}</b>
+            </a>
+          ))}
+        </div>
+      </div>
     </section>
   );
 }

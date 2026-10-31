@@ -6,7 +6,7 @@
  */
 import { MyAethex } from "@/components/home/MyAethex";
 import { ContinueStrip } from "@/components/home/HubBits";
-import { Banners, DoctorsAndHospitals, HubFooter, HubHeader, LatestBooks, LatestProducts, TodayInStudy } from "@/components/home/HubTop";
+import { Banners, DoctorsAndHospitals, Essentials, HubFooter, HubHeader, LatestBooks, LatestProducts, TodayInStudy } from "@/components/home/HubTop";
 import { useSeo } from "@/hooks/use-seo";
 
 export default function Hub() {
@@ -20,6 +20,7 @@ export default function Hub() {
       <HubHeader />
       <div className="hx-main" id="for-you">
         <Banners />
+        <Essentials />
         <div className="hx-wrap hx-mine"><MyAethex /><ContinueStrip /></div>
         <LatestProducts />
         <TodayInStudy />
