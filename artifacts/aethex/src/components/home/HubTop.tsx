@@ -8,6 +8,7 @@
 import { lazy, Suspense, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
+  Activity, Droplet, HeartPulse, LayoutGrid, Microscope, MoreHorizontal, Thermometer, UserRound,
   ArrowRight, BookOpen, Building2, CalendarCheck, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Grid3x3, GraduationCap, Hospital, LogOut,
   Mail, Newspaper, Package, Search, ShoppingCart, Sparkles, Stethoscope, Timer, User, Video,
 } from "lucide-react";
@@ -26,14 +27,14 @@ const IMG = (n: string) => `${import.meta.env.BASE_URL}product-images/${n}.jpg`;
 const S = (p: string) => portalUrl("store", p), D = (p: string) => portalUrl("doctors", p), ST = (p: string) => portalUrl("study", p);
 
 /* ---------------------------------------------------------------- platform pills */
-const PILLS: { id: Portal | "aethex" | "cadus"; label: string; icon: ReactNode; href: string; tone: string }[] = [
-  { id: "aethex", label: "Aethex", icon: <Sparkles size={17} />, href: "/", tone: "on" },
-  { id: "doctors", label: "Doctors", icon: <CalendarCheck size={17} />, href: portalUrl("doctors"), tone: "blue" },
-  { id: "store", label: "Store", icon: <ShoppingCart size={17} />, href: portalUrl("store"), tone: "teal" },
-  { id: "study", label: "Study", icon: <GraduationCap size={17} />, href: portalUrl("study"), tone: "violet" },
-  { id: "hospitals", label: "Hospitals", icon: <Hospital size={17} />, href: portalUrl("hospitals"), tone: "cyan" },
-  { id: "medicalcolleges", label: "Colleges", icon: <Building2 size={17} />, href: portalUrl("medicalcolleges"), tone: "amber" },
-  { id: "cadus", label: "Cadus", icon: <Sparkles size={17} />, href: cadusUrl("/"), tone: "ink" },
+const PILLS: { id: Portal | "aethex" | "cadus"; label: string; href: string }[] = [
+  { id: "aethex", label: "Aethex", href: "/" },
+  { id: "doctors", label: "Doctors", href: portalUrl("doctors") },
+  { id: "store", label: "Store", href: portalUrl("store") },
+  { id: "study", label: "Study", href: portalUrl("study") },
+  { id: "hospitals", label: "Hospitals", href: portalUrl("hospitals") },
+  { id: "medicalcolleges", label: "Medical colleges", href: portalUrl("medicalcolleges") },
+  { id: "cadus", label: "Cadus", href: cadusUrl("/") },
 ];
 
 /* ---------------------------------------------------------------- search */
@@ -80,20 +81,20 @@ function Menu({ label, icon, children, id }: { label: ReactNode; icon?: ReactNod
 const MI = ({ href, icon, children }: { href: string; icon: ReactNode; children: ReactNode }) => <a role="menuitem" href={href}>{icon}{children}</a>;
 
 /* ---------------------------------------------------------------- categories */
-const CATS: { label: string; href: string; img?: string; icon?: ReactNode; on?: boolean }[] = [
-  { label: "For you", href: "#for-you", icon: <Sparkles size={24} />, on: true },
-  { label: "Doctors", href: D("/doctors"), icon: <Stethoscope size={24} /> },
-  { label: "Video consult", href: D("/doctors?video=1"), icon: <Video size={24} /> },
-  { label: "BP monitors", href: S("/category/bp-monitors"), img: "bp-monitor" },
-  { label: "Stethoscopes", href: S("/category/stethoscopes"), img: "stethoscope" },
-  { label: "Oximeters", href: S("/category/pulse-oximeters"), img: "oximeter" },
-  { label: "Diabetes care", href: S("/category/diabetes-care"), img: "glucometer" },
-  { label: "Nebulizers", href: S("/category/nebulizers"), img: "nebulizer" },
-  { label: "Diagnostics", href: S("/category/diagnostic-instruments"), img: "otoscope" },
-  { label: "Books", href: S("/books"), img: "medical-book" },
-  { label: "NEET-PG", href: ST("/neet-pg"), img: "test-books" },
-  { label: "Hospitals", href: portalUrl("hospitals"), img: "ecg" },
-  { label: "Colleges", href: portalUrl("medicalcolleges"), img: "surgical-set" },
+const CATS: { label: string; href: string; icon: ReactNode; on?: boolean }[] = [
+  { label: "For you", href: "#for-you", icon: <LayoutGrid size={22} strokeWidth={1.7} />, on: true },
+  { label: "Doctors", href: D("/doctors"), icon: <UserRound size={22} strokeWidth={1.7} /> },
+  { label: "Video consult", href: D("/doctors?video=1"), icon: <Video size={22} strokeWidth={1.7} /> },
+  { label: "BP monitors", href: S("/category/bp-monitors"), icon: <HeartPulse size={22} strokeWidth={1.7} /> },
+  { label: "Stethoscopes", href: S("/category/stethoscopes"), icon: <Stethoscope size={22} strokeWidth={1.7} /> },
+  { label: "Oximeters", href: S("/category/pulse-oximeters"), icon: <Activity size={22} strokeWidth={1.7} /> },
+  { label: "Diabetes care", href: S("/category/diabetes-care"), icon: <Droplet size={22} strokeWidth={1.7} /> },
+  { label: "Thermometers", href: S("/category/thermometers"), icon: <Thermometer size={22} strokeWidth={1.7} /> },
+  { label: "Diagnostics", href: S("/category/diagnostic-instruments"), icon: <Microscope size={22} strokeWidth={1.7} /> },
+  { label: "Books", href: S("/books"), icon: <BookOpen size={22} strokeWidth={1.7} /> },
+  { label: "NEET-PG", href: ST("/neet-pg"), icon: <GraduationCap size={22} strokeWidth={1.7} /> },
+  { label: "Hospitals", href: portalUrl("hospitals"), icon: <Hospital size={22} strokeWidth={1.7} /> },
+  { label: "Colleges", href: portalUrl("medicalcolleges"), icon: <Building2 size={22} strokeWidth={1.7} /> },
 ];
 
 export function HubHeader() {
@@ -101,11 +102,16 @@ export function HubHeader() {
   const first = (user?.name || "").replace(/^dr\.?\s+/i, "").split(" ")[0] || "Account";
   return (
     <header className="hx-head" data-home="header">
-      <div className="hx-wrap">
-        <div className="hx-pills" role="navigation" aria-label="Aethex platforms" data-home="pills">
-          {PILLS.map((p) => <a key={p.id} href={p.href} className={`hx-pill ${p.tone}`} aria-current={p.id === "aethex" ? "page" : undefined} data-pill={p.id} {...(p.id === "cadus" ? { "data-home": "cta-cadus" } : {})}><span className="i">{p.icon}</span>{p.label}</a>)}
-          <span className="hx-note"><Package size={15} /> Cash on delivery · free delivery from {formatINR(FREE_DELIVERY_FROM)}</span>
+      <div className="hx-strip">
+        <div className="hx-wrap">
+          <nav className="hx-pills" aria-label="Aethex platforms" data-home="pills">
+            {PILLS.map((p) => <a key={p.id} href={p.href} className={p.id === "aethex" ? "on" : ""} aria-current={p.id === "aethex" ? "page" : undefined} data-pill={p.id} {...(p.id === "cadus" ? { "data-home": "cta-cadus" } : {})}>{p.label}</a>)}
+          </nav>
+          <span className="hx-note">Cash on delivery · Free delivery from {formatINR(FREE_DELIVERY_FROM)}</span>
+          <a className="hx-help" href={mainUrl("/contact")}>Help</a>
         </div>
+      </div>
+      <div className="hx-wrap">
         <div className="hx-bar">
           <Logo />
           <BigSearch />
@@ -128,7 +134,7 @@ export function HubHeader() {
                 <MI href={D("/appointments")} icon={<CalendarCheck size={16} />}>My appointments</MI>
               </Menu>
             )}
-            <Menu id="more" label="More">
+            <Menu id="more" label="More" icon={<MoreHorizontal size={19} />}>
               <MI href={D("/list-your-practice")} icon={<Stethoscope size={16} />}>List your practice</MI>
               <MI href={portalUrl("hospitals", "/#list")} icon={<Hospital size={16} />}>Bulk quotation</MI>
               <MI href={portalUrl("hospitals", "/institutions")} icon={<Building2 size={16} />}>Hospitals directory</MI>
@@ -142,7 +148,7 @@ export function HubHeader() {
         <nav className="hx-cats" aria-label="Browse" data-home="cats">
           {CATS.map((c) => (
             <a key={c.label} href={c.href} className={c.on ? "on" : ""}>
-              <span className="pic">{c.img ? <img src={IMG(c.img)} alt="" loading="lazy" decoding="async" /> : c.icon}</span>
+              <span className="pic">{c.icon}</span>
               <span className="lb">{c.label}</span>
             </a>
           ))}
@@ -192,7 +198,7 @@ export function Banners() {
               <span className="sub">{s.sub}</span>
               <span className="cta">{s.cta} <ArrowRight size={15} /></span>
             </span>
-            <span className="pics" aria-hidden="true">{s.imgs.map((n, j) => <img key={n} src={IMG(n)} alt="" loading={i < 2 ? "eager" : "lazy"} decoding="async" style={{ ["--j" as string]: j }} />)}</span>
+            <span className="pic" aria-hidden="true"><img src={IMG(s.imgs[0]!)} alt="" loading={i < 2 ? "eager" : "lazy"} decoding="async" /></span>
           </a>
         ))}
       </div>
@@ -295,18 +301,53 @@ export function TodayInStudy() {
   );
 }
 
-const SPEC_ICON = ["stethoscope", "thermometer", "paed-stethoscope", "foetal-doppler", "dermatoscope", "forceps", "knee-brace", "otoscope", "ophthalmoscope", "ecg", "neuro-kit", "reflex-hammer"];
 export function DoctorsAndHospitals() {
   return (
     <section className="hx-wrap hx-dh" data-home="doctors-hospitals" aria-label="Doctors and hospitals">
       <div className="hd"><div><h2>Find a doctor by specialty</h2><p>Checked registrations, clinic visits and video consults</p></div><a href={D("/doctors")} className="all" aria-label="All doctors"><ArrowRight size={18} /></a></div>
-      <ul className="specs">{SPECIALTIES.slice(0, 12).map((s, i) => (
-        <li key={s}><a href={D(`/doctors?specialty=${encodeURIComponent(s)}`)} data-spec={s}><span className="pic"><img src={IMG(SPEC_ICON[i] ?? "stethoscope")} alt="" loading="lazy" /></span><span>{s}</span></a></li>
+      <ul className="specs">{SPECIALTIES.slice(0, 12).map((s) => (
+        <li key={s}><a href={D(`/doctors?specialty=${encodeURIComponent(s)}`)} data-spec={s}><span>{s}</span><ChevronRight size={15} className="go" /></a></li>
       ))}</ul>
       <div className="inst">
         <a href={portalUrl("hospitals")} className="cyan"><Hospital size={26} /><span><b>For hospitals and clinics</b><small>Beds, ICU, emergency and consumables. Send one list, get one quotation, with approvals, indents and a stock register.</small></span><ArrowRight size={18} /></a>
         <a href={portalUrl("medicalcolleges")} className="amber"><Building2 size={26} /><span><b>For medical colleges</b><small>Skills labs, anatomy models, lab equipment and textbooks for every department.</small></span><ArrowRight size={18} /></a>
       </div>
     </section>
+  );
+}
+
+/* ---------------------------------------------------------------- footer */
+const FOOT: { title: string; links: [string, string][] }[] = [
+  { title: "Patients", links: [["Find a doctor", D("/doctors")], ["Video consultation", D("/doctors?video=1")], ["Ask a doctor, free", D("/ask")], ["Health articles", D("/articles")], ["My appointments", D("/appointments")], ["Vitals tracker", D("/vitals")]] },
+  { title: "Store", links: [["Shop all products", S("/shop")], ["BP monitors", S("/category/bp-monitors")], ["Stethoscopes", S("/category/stethoscopes")], ["Medical books", S("/books")], ["Offers", S("/offers")], ["Track an order", S("/orders/track")]] },
+  { title: "Study", links: [["NEET-PG questions", ST("/neet-pg")], ["Question of the day", ST("/question-of-the-day")], ["Mock tests", ST("/mock-test")], ["Knowledge Hub", ST("/study-hub/medical-knowledge-hub")], ["Case of the day", ST("/case-of-the-day")], ["Flashcards", ST("/flashcards")]] },
+  { title: "Institutions", links: [["For hospitals", portalUrl("hospitals")], ["For medical colleges", portalUrl("medicalcolleges")], ["Request a quotation", portalUrl("hospitals", "/#list")], ["Hospitals directory", portalUrl("hospitals", "/institutions")], ["List your practice", D("/list-your-practice")], ["Cadus, clinical AI", cadusUrl("/")]] },
+  { title: "Help", links: [["Contact us", mainUrl("/contact")], ["Shipping", S("/shipping-policy")], ["Returns and replacements", S("/returns-policy")], ["Cancellations", S("/cancellation-policy")], ["Grievances", S("/grievance")], ["Email preferences", mainUrl("/email-preferences")]] },
+];
+export function HubFooter() {
+  const year = new Date().getFullYear();
+  return (
+    <footer className="hx-foot" data-home="footer">
+      <div className="hx-wrap">
+        <div className="top">
+          <div className="brand">
+            <Logo />
+            <p>Doctors, a medical store, exam preparation and supplies for hospitals and medical colleges, with one account. Built in India for patients and medical professionals.</p>
+            <a href="mailto:support@aethex.in" className="mail"><Mail size={15} /> support@aethex.in</a>
+          </div>
+          {FOOT.map((c) => (
+            <nav key={c.title} aria-label={c.title}>
+              <h3>{c.title}</h3>
+              <ul>{c.links.map(([l, h]) => <li key={l}><a href={h}>{l}</a></li>)}</ul>
+            </nav>
+          ))}
+        </div>
+        <div className="bot">
+          <span>© {year} Clavix Technologies Private Limited</span>
+          <nav aria-label="Legal"><a href={mainUrl("/privacy-policy")}>Privacy</a><a href={mainUrl("/terms-of-service")}>Terms</a><a href={mainUrl("/medical-disclaimer")}>Medical disclaimer</a><a href={mainUrl("/contact")}>Contact</a></nav>
+        </div>
+      </div>
+      <div className="hx-word" aria-hidden="true">aethex</div>
+    </footer>
   );
 }

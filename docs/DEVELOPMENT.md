@@ -426,3 +426,11 @@ cancels from `/practice`. Reviews can only be written for `completed` appointmen
 - **Banners**: five sliding highlights (Aethex, Store, Doctors, Study's question of the day, Hospitals and colleges), auto-advancing, paused on hover, with arrows and dots.
 - **Below**: the latest in the store (recently added, in stock, live prices and sales), the latest medical books (newest editions), Today in Study (the question of the day, case of the day, mock test, topic map, flashcards, and the latest articles by doctors when there are any), doctors by specialty and hospital and college buying, then the five platform cards, My Aethex and Continue as before.
 - Tests: `shots/hub91.mjs`; `shots/hubsearch.mjs` now picks the search scope from the list.
+
+## Update 92: aethex.in, a quieter front page and a full footer
+
+- Header: a slim dark strip with the platforms as plain links (Aethex, Doctors, Store, Study, Hospitals, Medical colleges, Cadus), a neutral search and actions, and the categories as one set of line icons (no product photos or coloured tiles).
+- Banners in flat colours with one product photo each; neutral cards, study tiles and specialty links.
+- The five platform cards at the bottom are gone: every platform is in the header, and their shortcuts are in the menus and the footer.
+- Footer (`HubFooter`): Patients, Store, Study, Institutions and Help columns, support email, legal links, and a large "aethex" wordmark under it.
+- Tests: `shots/hub91.mjs`, `shots/findtest.mjs` and `shots/hubsearch.mjs` updated.
