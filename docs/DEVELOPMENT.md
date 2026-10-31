@@ -434,3 +434,9 @@ cancels from `/practice`. Reviews can only be written for `completed` appointmen
 - The five platform cards at the bottom are gone: every platform is in the header, and their shortcuts are in the menus and the footer.
 - Footer (`HubFooter`): Patients, Store, Study, Institutions and Help columns, support email, legal links, and a large "aethex" wordmark under it.
 - Tests: `shots/hub91.mjs`, `shots/findtest.mjs` and `shots/hubsearch.mjs` updated.
+
+## Update 93: aethex.in, a colour-graded top
+
+- The platform strip in a navy-to-teal gradient with soft highlighted links; the header on a faint blue-white wash; the search with a brand-blue gradient button and focus ring; Login, More and Cart in brand blue.
+- Category icons in soft tinted tiles that lift on hover; the current one filled with the brand gradient and underlined.
+- Banners in deep colour gradients with a soft light in one corner; dots and arrows in the brand gradient. CSS only (`src/site-hub.css`).
