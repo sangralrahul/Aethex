@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/layout/Navbar";
 import { NotificationBell } from "@/components/home/HubBits";
+import { PlatformLogo, type PlatformId } from "@/components/home/PlatformLogos";
 import { ProductImage } from "@/components/store/ProductImage";
 import { useUserAuth } from "@/hooks/use-user-auth";
 import { cadusUrl, loginUrl, mainUrl, portalUrl, type Portal } from "@/lib/host";
@@ -28,18 +29,15 @@ const IMG = (n: string) => `${import.meta.env.BASE_URL}product-images/${n}.jpg`;
 const S = (p: string) => portalUrl("store", p), D = (p: string) => portalUrl("doctors", p), ST = (p: string) => portalUrl("study", p);
 
 /* ---------------------------------------------------------------- platform switcher (update 96: like a marketplace's app switcher) */
-const PILLS: { id: Portal | "aethex" | "cadus"; label: string; href: string; icon: ReactNode; tone: string }[] = [
-  { id: "aethex", label: "Aethex", href: "/", icon: <AethexMark />, tone: "a" },
-  { id: "doctors", label: "Doctors", href: portalUrl("doctors"), icon: <Stethoscope size={18} strokeWidth={2} />, tone: "d" },
-  { id: "store", label: "Store", href: portalUrl("store"), icon: <ShoppingBag size={18} strokeWidth={2} />, tone: "s" },
-  { id: "study", label: "Study", href: portalUrl("study"), icon: <GraduationCap size={18} strokeWidth={2} />, tone: "y" },
-  { id: "hospitals", label: "Hospitals", href: portalUrl("hospitals"), icon: <Hospital size={18} strokeWidth={2} />, tone: "h" },
-  { id: "medicalcolleges", label: "Colleges", href: portalUrl("medicalcolleges"), icon: <Building2 size={18} strokeWidth={2} />, tone: "c" },
-  { id: "cadus", label: "Cadus", href: cadusUrl("/"), icon: <Sparkles size={18} strokeWidth={2} />, tone: "x" },
+const PILLS: { id: PlatformId; label: string; href: string; tone: string }[] = [
+  { id: "aethex", label: "Aethex", href: "/", tone: "a" },
+  { id: "doctors", label: "Doctors", href: portalUrl("doctors"), tone: "d" },
+  { id: "store", label: "Store", href: portalUrl("store"), tone: "s" },
+  { id: "study", label: "Study", href: portalUrl("study"), tone: "y" },
+  { id: "hospitals", label: "Hospitals", href: portalUrl("hospitals"), tone: "h" },
+  { id: "medicalcolleges", label: "Colleges", href: portalUrl("medicalcolleges"), tone: "c" },
+  { id: "cadus", label: "Cadus", href: cadusUrl("/"), tone: "x" },
 ];
-function AethexMark() {
-  return <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 3 21h4.2L12 10.6 16.8 21H21L12 2.5Z" fill="currentColor" /><path d="M8.6 16.2h6.8" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" /></svg>;
-}
 
 /* ---------------------------------------------------------------- search */
 const SCOPES = [
@@ -110,7 +108,7 @@ export function HubHeader() {
       <div className="hx-wrap">
         <div className="fk-r1">
           <nav className="fk-tabs" aria-label="Aethex platforms" data-home="pills">
-            {PILLS.map((p) => <a key={p.id} href={p.href} className={`fk-tab t-${p.tone}${p.id === "aethex" ? " on" : ""}`} aria-current={p.id === "aethex" ? "page" : undefined} data-pill={p.id} {...(p.id === "cadus" ? { "data-home": "cta-cadus" } : {})}><span className="i">{p.icon}</span><span className="l">{p.label}</span></a>)}
+            {PILLS.map((p) => <a key={p.id} href={p.href} className={`fk-tab t-${p.tone}${p.id === "aethex" ? " on" : ""}`} aria-current={p.id === "aethex" ? "page" : undefined} data-pill={p.id} {...(p.id === "cadus" ? { "data-home": "cta-cadus" } : {})}><span className="i"><PlatformLogo id={p.id} size={30} /></span><span className="l">{p.label}</span></a>)}
           </nav>
           <span className="fk-loc"><Truck size={18} /><span>Cash on delivery</span><b>Free delivery from {formatINR(FREE_DELIVERY_FROM)}</b></span>
         </div>

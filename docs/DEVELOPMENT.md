@@ -472,3 +472,7 @@ cancels from `/practice`. Reviews can only be written for `completed` appointmen
 - Platform tabs: upright (not italic) semibold labels, slimmer tabs with a hairline border, smaller icon tiles; the header with a soft shadow; a slimmer search and actions; smaller category icons.
 - Banners: 268px tall, a calmer wash, small uppercase tag, 28px title with one highlight line, the product reel smaller and tucked into the right; quieter heartbeat line and arrows.
 - Live numbers as one bar with dividers instead of five boxes.
+
+## Update 99: platform logos
+
+- `components/home/PlatformLogos.tsx`: one family of logo marks for the platform tabs on aethex.in: the Aethex and Cadus brand marks on white, and for the others a rounded square in the platform's colour (gradient with a soft top light) with a white symbol: Doctors a map pin with a medical cross, Store a bag with a cross, Study an open book with a heartbeat, Hospitals a hospital block with a cross over the door, Colleges a college front with columns.
