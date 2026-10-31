@@ -9,6 +9,7 @@ import { Loader2, MapPin, Truck } from "lucide-react";
 import { dayText, deliveryWindow, lookupPin, savedPin, savePin, type PinPlace } from "@/lib/store/delivery";
 import { COD_LIMIT, validPincode } from "@/lib/store/rules";
 import { formatINR } from "@/lib/utils";
+import { etaBasis, etaWindow, useEta } from "@/components/store/StoreExtras3";
 
 export function DeliveryCheck({ price }: { price?: number | null }) {
   const [pin, setPin] = useState("");
@@ -32,7 +33,8 @@ export function DeliveryCheck({ price }: { price?: number | null }) {
   };
   useEffect(() => { const p = savedPin(); if (p) { setPin(p); check(p); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const w = deliveryWindow();
+  const { data: eta } = useEta(place?.pincode ?? "");
+  const w = eta ? etaWindow(eta) : deliveryWindow();
   return (
     <div className="ax-dlv">
       <form onSubmit={(e) => { e.preventDefault(); check(pin.trim()); }} noValidate>
@@ -46,7 +48,7 @@ export function DeliveryCheck({ price }: { price?: number | null }) {
       {place && (
         <p className="ok">
           <Truck size={16} />
-          <span><b>{place.district}, {place.state} {place.pincode}</b>Usually arrives between {dayText(w.from)} and {dayText(w.to)} if you order today{price == null || price <= COD_LIMIT ? " · cash on delivery available" : ` · cash on delivery is for orders up to ${formatINR(COD_LIMIT)}`}</span>
+          <span><b>{place.district}, {place.state} {place.pincode}</b>Usually arrives between {dayText(w.from)} and {dayText(w.to)} if you order today{price == null || price <= COD_LIMIT ? " · cash on delivery available" : ` · cash on delivery is for orders up to ${formatINR(COD_LIMIT)}`}{eta?.basis === "orders" && <small className="basis" data-store="eta-basis">{etaBasis(eta)}</small>}</span>
         </p>
       )}
       {place === null && <p className="bad">We couldn't find PIN code {pin}. Check the number, or write it at checkout and we'll confirm delivery.</p>}

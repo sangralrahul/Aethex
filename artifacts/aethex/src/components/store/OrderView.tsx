@@ -10,6 +10,7 @@
  * Styles: src/buy.css (.ax-ov).
  */
 import { ReportProblem, WhatsAppOrder } from "@/components/store/StoreExtras2";
+import { ArrivingBy, GiftShare, RxStatus } from "@/components/store/StoreExtras3";
 import { useState } from "react";
 import { Link } from "wouter";
 import {
@@ -36,7 +37,7 @@ const day = (ms: number) => new Date(ms).toLocaleDateString("en-IN", { day: "num
 
 /** "Cash on delivery", "Paid online on 21 Oct 2026", "Refunded", "Online payment due". */
 export function paymentText(o: CustomerOrder): string {
-  if (o.payment === "cod") return "Cash on delivery";
+  if (o.payment === "cod") return o.total <= 0 && o.credit ? "Paid with store credit" : "Cash on delivery";
   if (o.payment === "bank") {
     if (o.paymentStatus === "paid") return `Paid by bank transfer${o.paidAt ? ` on ${day(o.paidAt)}` : ""}`;
     return o.status === "cancelled" ? "Not paid" : "Bank transfer due";
@@ -58,7 +59,7 @@ export function OrderView({ order, token, phone, onChange, compact = false }: {
   const [reviewing, setReviewing] = useState<ReviewTarget | null>(null);
   const cancelled = order.status === "cancelled";
   const due = order.status === "pending";
-  const paid = order.payment !== "cod" && (order.paymentStatus === "paid" || order.paymentStatus === "refunded");
+  const paid = (order.payment !== "cod" && (order.paymentStatus === "paid" || order.paymentStatus === "refunded")) || (order.total <= 0 && !!order.credit);
   const bankDue = due && order.payment === "bank";
   const reached = STEPS.findIndex((s) => s.key === order.status);
   const at = (k: string) => [...order.history].reverse().find((h) => h.status === k)?.at;
@@ -168,6 +169,8 @@ export function OrderView({ order, token, phone, onChange, compact = false }: {
         </ol>
       )}
 
+      {!cancelled && <RxStatus order={order} token={token} onChange={(o) => onChange?.({ ...order, ...o })} />}
+      {!cancelled && <ArrivingBy order={order} />}
       {order.tracking && (order.tracking.courier || order.tracking.number) && !cancelled && (
         <p className="ax-ov-track"><Truck size={16} /> <span>{order.tracking.courier}{order.tracking.number ? <> · Tracking number <b>{order.tracking.number}</b></> : null}</span>
           {order.tracking.url && <a href={order.tracking.url} target="_blank" rel="noopener noreferrer">Track with the courier <ExternalLink size={13} /></a>}</p>
@@ -204,6 +207,7 @@ export function OrderView({ order, token, phone, onChange, compact = false }: {
               <div><dt>Items</dt><dd>{formatINR(order.subtotal)}</dd></div>
               {!!order.discount && <div className="good"><dt>Coupon{order.coupon ? ` ${order.coupon}` : ""}</dt><dd>− {formatINR(order.discount)}</dd></div>}
               <div><dt>Delivery</dt><dd>{order.delivery ? formatINR(order.delivery) : "Free"}</dd></div>
+              {!!order.credit && <div className="good"><dt>Store credit</dt><dd>− {formatINR(order.credit)}</dd></div>}
               <div className="total"><dt>{cancelled ? "Total" : paid ? (order.payment === "bank" ? "Paid by bank transfer" : "Paid online") : bankDue ? "To pay by bank transfer" : due ? "To pay now" : "To pay on delivery"}</dt><dd>{formatINR(order.total)}</dd></div>
               {order.refund && <div className="good"><dt>Refunded</dt><dd>{formatINR(order.refund.amount)}</dd></div>}
             </dl>
@@ -211,6 +215,7 @@ export function OrderView({ order, token, phone, onChange, compact = false }: {
               <p><MapPin size={15} /> <span><b>{a.name}</b>{a.line1 ? <><br />{a.line1}{a.line2 ? `, ${a.line2}` : ""}{a.landmark ? `, near ${a.landmark}` : ""}</> : null}<br />{a.city}, {a.state} {a.pincode}<br />{a.phone}</span></p>
               <p>{order.refund ? <RotateCcw size={15} /> : order.payment === "online" ? <CreditCard size={15} /> : order.payment === "bank" ? <Building2 size={15} /> : <Banknote size={15} />} <span>{paymentText(order)}</span></p>
               {order.gift && <p className="gift"><Gift size={15} /> <span><b>Gift</b>{order.gift.message ? <><br />&ldquo;{order.gift.message}&rdquo;</> : null}{order.gift.from ? <><br />From {order.gift.from}</> : null}</span></p>}
+              {!compact && <GiftShare order={order} />}
               {order.business && <p><Briefcase size={15} /> <span><b>{order.business.name}</b>{order.business.gstin ? <><br />GSTIN {order.business.gstin}</> : null}</span></p>}
             </div>
           </div>

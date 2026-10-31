@@ -4,6 +4,7 @@
  * Styles: src/shop.css (.ax-orders, .ax-ov).
  */
 import { RemindersPanel } from "@/components/store/StoreExtras2";
+import { CreditPanel } from "@/components/store/StoreExtras3";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { ChevronDown, Loader2, Package, PackageSearch } from "lucide-react";
@@ -61,6 +62,7 @@ export default function Orders() {
           <p className="ax-orders-note">Showing orders placed in this browser. <a href={loginUrl("/", { next: "/orders" })}>Sign in</a> to see orders from your account on any device.</p>
         )}
         {note && <p className="ax-form-err">{note}</p>}
+        <CreditPanel />
         <RemindersPanel />
         {orders === null ? (
           <div className="ax-orders-loading"><Loader2 size={22} className="spin" /> Loading your orders…</div>

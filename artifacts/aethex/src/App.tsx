@@ -133,6 +133,7 @@ const ApprovePage = lazyPage(() => import("@/components/store/BulkExtras2").then
 const ApprovalsList = lazyPage(() => import("@/components/store/BulkExtras2").then((m) => ({ default: m.ApprovalsList })));
 const EquipmentPage = lazyPage(() => import("@/components/store/BulkExtras2").then((m) => ({ default: m.EquipmentPage })));
 const OffersPage = lazyPage(() => import("@/pages/Offers"));
+const GiftPage = lazyPage(() => import("@/components/store/StoreExtras3").then((m) => ({ default: m.GiftPage })));
 const ReorderPage = lazyPage(() => import("@/pages/Reorder"));
 const OrderTracking = lazyPage(() => import("@/pages/OrderTracking"));
 const Orders = lazyPage(() => import("@/pages/Orders"));
@@ -469,6 +470,7 @@ function Router() {
                 <Route path="/approvals" component={ApprovalsList} />
                 <Route path="/equipment" component={EquipmentPage} />
                 <Route path="/offers" component={OffersPage} />
+                <Route path="/gift/:token" component={GiftPage} />
                 <Route path="/reorder" component={ReorderPage} />
                 <Route path="/orders/:id/invoice" component={Invoice} />
                 <Route path="/orders/track" component={OrderTracking} />

@@ -11,6 +11,7 @@ import { Banknote, Building2, Check, Clock, Copy, CreditCard, Gift, Hash, Loader
 import { OrderView } from "@/components/store/OrderView";
 import { BuySteps } from "@/components/shop/BuyKit";
 import { dayText, deliveryWindow } from "@/lib/store/delivery";
+import { etaWindow, useEta } from "@/components/store/StoreExtras3";
 import { useSeo } from "@/hooks/use-seo";
 import { getOrder, tokenFor, type CustomerOrder } from "@/lib/store/api";
 import { BUSINESS } from "@/config/business";
@@ -25,6 +26,7 @@ export default function OrderPlaced() {
     try { const s = sessionStorage.getItem(`aethex:placed:${id}`); return s ? JSON.parse(s) : null; } catch { return null; }
   });
   const [state, setState] = useState<"loading" | "ok" | "missing">(order ? "ok" : "loading");
+  const { data: eta } = useEta(order?.address.pincode ?? "");
 
   useEffect(() => {
     let live = true;
@@ -58,7 +60,7 @@ export default function OrderPlaced() {
   const paidOnline = order.payment === "online" && order.paymentStatus === "paid";
   const paidBank = order.payment === "bank" && order.paymentStatus === "paid";
   const bankDue = due && order.payment === "bank";
-  const w = deliveryWindow(new Date(order.createdAt));
+  const w = eta ? etaWindow(eta) : deliveryWindow(new Date(order.createdAt));
 
   return (
     <div className="ax-cart-page ax-done-page">

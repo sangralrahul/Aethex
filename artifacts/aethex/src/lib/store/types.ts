@@ -47,6 +47,8 @@ export interface Product {
   inTheBox?: string;
   warranty?: string;
   manufacturer?: string;
+  /** update 84: sold only against a prescription (set by the store) */
+  rx?: boolean;
   countryOfOrigin?: string;
   optionName?: string;
   variants?: Variant[];
@@ -90,6 +92,8 @@ export interface ProductSummary {
   optionName?: string;
   variants?: Pick<Variant, "id" | "label" | "price" | "mrp" | "inStock">[];
   model?: string;
+  /** update 84: needs a prescription */
+  rx?: boolean;
 }
 
 export interface Brand {
@@ -187,6 +191,8 @@ export interface Override {
   inStock?: boolean;
   hidden?: boolean;
   countryOfOrigin?: string;
+  /** update 84: sold only against a doctor's prescription, uploaded at checkout and checked before it ships */
+  rx?: boolean;
   variants?: Record<string, { price?: number | null; mrp?: number | null; inStock?: boolean }>;
 }
 
@@ -267,7 +273,11 @@ export interface Order {
   tracking?: { courier?: string; number?: string; url?: string };
   notes?: string;
   /** A gift: the message that goes in with it, and who it's from. */
-  gift?: { message?: string; from?: string };
+  gift?: { message?: string; from?: string; toEmail?: string; token?: string };
+  /** update 84: store credit taken off the total */
+  credit?: number;
+  /** update 84: the prescription for items that need one, and its check */
+  rx?: { status: "pending" | "approved" | "rejected"; note?: string };
   /** Bought for a clinic or business: its name, and its GSTIN for the invoice (when the store has a GSTIN). */
   business?: { name: string; gstin?: string };
 }

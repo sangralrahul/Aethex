@@ -35,6 +35,7 @@ import { readPayFor } from "@/lib/store/share";
 import { cart } from "@/lib/store/cart";
 import { coupon, usePricedCart } from "@/lib/store/coupon";
 import { dayText, deliveryWindow, lookupPin, savePin, savedPin } from "@/lib/store/delivery";
+import { CreditToggle, RxUpload, etaWindow, useCredit, useEta, type RxFile } from "@/components/store/StoreExtras3";
 import { payWithRazorpay } from "@/lib/store/razorpay";
 import { BANK_DAYS, BANK_LIMIT, BANK_MIN, COD_LIMIT, INDIAN_STATES, ONLINE_LIMIT, normPhone, validEmail, validGstin, validPincode } from "@/lib/store/rules";
 import type { Address, PaymentMethod, SavedAddress } from "@/lib/store/types";
@@ -112,7 +113,10 @@ export default function Checkout() {
   const picked = kept.find((k) => addrKey(k.address) === addrKey(addr));
   // A gift (message and who it's from), and buying for a clinic or business.
   const [isGift, setIsGift] = useState(false);
-  const [gift, setGift] = useState({ message: "", from: "" });
+  const [gift, setGift] = useState({ message: "", from: "", toEmail: "" });
+  // update 84: store credit off the total, and a prescription for items that need one
+  const [useCreditOn, setUseCreditOn] = useState(true);
+  const [rxFile, setRxFile] = useState<RxFile>(null);
   const [isBiz, setIsBiz] = useState(false);
   const [biz, setBiz] = useState({ name: "", gstin: "" });
   const [place, setPlace] = useState("");
@@ -124,6 +128,11 @@ export default function Checkout() {
   const priced = usePricedCart(phone);
   const { quote: t, store, isLoading, lines } = priced;
   const linesKey = useMemo(() => lines.map((l) => `${l.productId}:${l.variantId ?? ""}:${l.qty}`).join("|"), [lines]);
+  const creditQ = useCredit();
+  const creditUse = useCreditOn && user && creditQ.data ? Math.min(creditQ.data.balance, t.total) : 0;
+  const due = Math.max(0, Math.round((t.total - creditUse) * 100) / 100);
+  const rxItems = lines.filter((l) => store?.byId.get(l.productId)?.rx).map((l) => store!.byId.get(l.productId)!.name);
+  const { data: eta } = useEta(/^[1-9]\d{5}$/.test(addr.pincode.trim()) ? addr.pincode.trim() : "");
 
   useEffect(() => {
     setAddr((a) => ({ ...a, name: a.name || user?.name || "", email: a.email || user?.email || "", phone: a.phone || user?.phone || "" }));
@@ -174,12 +183,12 @@ export default function Checkout() {
     setStep("review");
   };
 
-  const onlineOpen = !!config?.onlinePayments && t.total <= (config?.onlineLimit ?? ONLINE_LIMIT);
-  const codOpen = t.total <= COD_LIMIT;
+  const onlineOpen = !!config?.onlinePayments && due <= (config?.onlineLimit ?? ONLINE_LIMIT);
+  const codOpen = due <= COD_LIMIT;
   const bankMin = config?.bankMin ?? BANK_MIN, bankMax = config?.bankLimit ?? BANK_LIMIT, bankDays = config?.bankDays ?? BANK_DAYS;
   const bankShown = !!config?.bankTransfer;
-  const bankOpen = bankShown && t.total >= bankMin && t.total <= bankMax;
-  const method: PaymentMethod | null = pay === "online" && onlineOpen ? "online" : pay === "bank" && bankOpen ? "bank"
+  const bankOpen = bankShown && due >= bankMin && due <= bankMax;
+  const method: PaymentMethod | null = due <= 0 && t.total > 0 ? "cod" : pay === "online" && onlineOpen ? "online" : pay === "bank" && bankOpen ? "bank"
     : codOpen ? "cod" : onlineOpen ? "online" : bankOpen ? "bank" : null;
   const choose = (m: PaymentMethod) => { setPay(m); try { localStorage.setItem(PAY_KEY, m); } catch { /* fine */ } };
 
@@ -221,13 +230,14 @@ export default function Checkout() {
     };
     const notes = note.trim();
     const code = priced.applied && priced.code ? priced.code : "";
-    const giftBody = isGift ? { ...(gift.message.trim() ? { message: gift.message.trim() } : {}), ...(gift.from.trim() ? { from: gift.from.trim() } : {}) } : undefined;
+    const giftBody = isGift ? { ...(gift.message.trim() ? { message: gift.message.trim() } : {}), ...(gift.from.trim() ? { from: gift.from.trim() } : {}), ...(gift.toEmail.trim() ? { toEmail: gift.toEmail.trim() } : {}) } : undefined;
+    if (rxItems.length && !rxFile) { setErr(`Upload the prescription for ${rxItems.join(", ")}.`); setPlacing(false); return; }
     const gstin = biz.gstin.replace(/\s+/g, "").toUpperCase();
     if (isBiz && biz.name.trim().length < 2) { setErr("Add the clinic or business name, or untick buying for a business."); setPlacing(false); return; }
     if (isBiz && gstin && !validGstin(gstin)) { setErr("Check the GSTIN: it's 15 letters and digits, like 27ABCDE1234F1Z5."); setPlacing(false); return; }
     const bizBody = isBiz ? { name: biz.name.trim(), ...(gstin ? { gstin } : {}) } : undefined;
     // What makes this order: an unpaid order or an unanswered try for anything else was a different order.
-    const sig = JSON.stringify([linesKey, address, notes, code, t.total, giftBody ?? null, bizBody ?? null]);
+    const sig = JSON.stringify([linesKey, address, notes, code, t.total, giftBody ?? null, bizBody ?? null, creditUse, rxFile?.name ?? null]);
     try {
       const prev = pending.current;
       // A bank transfer is a new order too: the unpaid online one is dropped.
@@ -271,6 +281,7 @@ export default function Checkout() {
         lines: lines.map((l) => ({ productId: l.productId, variantId: l.variantId, qty: l.qty })), address, notes: notes || undefined, expectTotal: t.total,
         payment: method, ...(code ? { coupon: code } : {}),
         ...(giftBody ? { gift: giftBody } : {}), ...(bizBody ? { business: bizBody } : {}),
+        ...(creditUse > 0 ? { useCredit: true } : {}), ...(rxItems.length && rxFile ? { rx: rxFile } : {}),
         // Kept in the account: a new address when ticked, or the kept one used (it moves to the top).
         ...(user && (picked || keepIt) ? { saveAddress: true, ...(!picked && keepLabel ? { addressLabel: keepLabel } : {}) } : {}),
       };
@@ -306,7 +317,7 @@ export default function Checkout() {
   };
 
   const online = !!config?.onlinePayments;
-  const w = deliveryWindow();
+  const w = eta ? etaWindow(eta) : deliveryWindow();
 
   if (!isLoading && t.count === 0) {
     return (
@@ -329,7 +340,7 @@ export default function Checkout() {
 
   const button = !method
     ? `Orders over ${formatINR(COD_LIMIT)} can't be paid in cash`
-    : method === "online" ? `Pay ${formatINR(t.total)} securely` : method === "bank" ? `Place order · pay ${formatINR(t.total)} by bank transfer` : `Place order · ${formatINR(t.total)} cash on delivery`;
+    : due <= 0 && creditUse > 0 ? "Place order · paid with store credit" : method === "online" ? `Pay ${formatINR(due)} securely` : method === "bank" ? `Place order · pay ${formatINR(due)} by bank transfer` : `Place order · ${formatINR(due)} cash on delivery`;
   const reviewing = step === "review";
   const payLabel = reviewing && method === "online" ? "To pay now" : reviewing && method === "bank" ? "To pay by bank transfer" : reviewing ? "To pay on delivery" : "Total";
   const masked = normPhone(addr.phone).replace(/^(\d{2})\d{4}/, "$1••••");
@@ -456,14 +467,14 @@ export default function Checkout() {
                     <label className={`opt cod${method === "cod" ? " on" : ""}${codOpen ? "" : " off"}`}>
                       <input type="radio" name="pay" checked={method === "cod"} disabled={!codOpen} onChange={() => choose("cod")} />
                       <span className="ic"><Banknote size={20} /></span>
-                      <span className="tx"><b>Cash on delivery</b><small>{codOpen ? `Pay ${formatINR(t.total)} in cash when your order arrives` : `Cash on delivery is for orders up to ${formatINR(COD_LIMIT)}`}</small></span>
+                      <span className="tx"><b>Cash on delivery</b><small>{codOpen ? `Pay ${formatINR(due)} in cash when your order arrives` : `Cash on delivery is for orders up to ${formatINR(COD_LIMIT)}`}</small></span>
                       <span className="dot" aria-hidden="true" />
                     </label>
                     {bankShown && (
                       <label className={`opt bank${method === "bank" ? " on" : ""}${bankOpen ? "" : " off"}`}>
                         <input type="radio" name="pay" checked={method === "bank"} disabled={!bankOpen} onChange={() => choose("bank")} />
                         <span className="ic"><Building2 size={20} /></span>
-                        <span className="tx"><b>Bank transfer</b><small>{bankOpen ? "NEFT, RTGS or IMPS from your bank or your institution's: good for large orders" : t.total < bankMin ? `Bank transfer is for orders from ${formatINR(bankMin)}` : `Bank transfer is for orders up to ${formatINR(bankMax)}`}</small></span>
+                        <span className="tx"><b>Bank transfer</b><small>{bankOpen ? "NEFT, RTGS or IMPS from your bank or your institution's: good for large orders" : due < bankMin ? `Bank transfer is for orders from ${formatINR(bankMin)}` : `Bank transfer is for orders up to ${formatINR(bankMax)}`}</small></span>
                         <span className="dot" aria-hidden="true" />
                       </label>
                     )}
@@ -473,8 +484,8 @@ export default function Checkout() {
                       {method === "online"
                         ? <><ShieldCheck size={16} /> <span>You pay in Razorpay&apos;s secure window. We never see or keep your card or UPI details.</span></>
                         : method === "bank"
-                          ? <><Building2 size={16} /> <span>Next you&apos;ll see our account details (they&apos;re emailed too). Send {formatINR(t.total)} within {bankDays} days with your order number as the reference: we confirm the order once it arrives.</span></>
-                          : <><Banknote size={16} /> <span>{isGift ? `Whoever receives it pays ${formatINR(t.total)} in cash at the door, so let them know. For a surprise, pay online or by bank transfer.` : `Keep ${formatINR(t.total)} ready when it arrives.`}{masked ? ` We may call ${masked} to confirm the order.` : ""}</span></>}
+                          ? <><Building2 size={16} /> <span>Next you&apos;ll see our account details (they&apos;re emailed too). Send {formatINR(due)} within {bankDays} days with your order number as the reference: we confirm the order once it arrives.</span></>
+                          : <><Banknote size={16} /> <span>{isGift ? `Whoever receives it pays ${formatINR(due)} in cash at the door, so let them know. For a surprise, pay online or by bank transfer.` : `Keep ${formatINR(due)} ready when it arrives.`}{masked ? ` We may call ${masked} to confirm the order.` : ""}</span></>}
                     </p>
                   )}
                 </div>
@@ -499,7 +510,9 @@ export default function Checkout() {
                       </li>
                     ))}
                   </ul>
+                  {rxItems.length > 0 && <RxUpload value={rxFile} onChange={setRxFile} items={rxItems} />}
                   <div className="ax-co-extras">
+                    {user && <CreditToggle total={t.total} on={useCreditOn} setOn={setUseCreditOn} />}
                     <label className={`ax-extra${isGift ? " on" : ""}`}>
                       <input type="checkbox" checked={isGift} onChange={(e) => setIsGift(e.target.checked)} />
                       <span className="ic"><Gift size={18} /></span>
@@ -509,6 +522,7 @@ export default function Checkout() {
                       <div className="ax-extra-body ax-form">
                         <label className="f wide"><span>Gift message <em>(optional)</em></span><textarea value={gift.message} onChange={(e) => setGift((g) => ({ ...g, message: e.target.value }))} rows={2} maxLength={300} placeholder="Congratulations on your first posting!" /></label>
                         <label className="f"><span>From <em>(optional)</em></span><input value={gift.from} onChange={(e) => setGift((g) => ({ ...g, from: e.target.value }))} maxLength={60} placeholder="Your name" /></label>
+                        <label className="f"><span>Recipient&apos;s email <em>(optional)</em></span><input type="email" value={gift.toEmail} onChange={(e) => setGift((g) => ({ ...g, toEmail: e.target.value }))} maxLength={120} placeholder="We'll tell them when it ships, without prices" data-store="gift-email" /></label>
                         <p className="hint">{method === "cod" ? "With cash on delivery, the person receiving it pays at the door." : "It's paid for, so there's nothing for them to pay."}</p>
                       </div>
                     )}
@@ -549,11 +563,11 @@ export default function Checkout() {
 
           <aside className={`ax-co-aside${sumOpen ? " open" : ""}`}>
             <button type="button" className="ax-co-sumtoggle" onClick={() => setSumOpen((o) => !o)} aria-expanded={sumOpen}>
-              <ShoppingBag size={17} /><span>{sumOpen ? "Hide" : "Show"} order summary</span><ChevronDown size={16} className="ch" /><b><Roll value={t.total} /></b>
+              <ShoppingBag size={17} /><span>{sumOpen ? "Hide" : "Show"} order summary</span><ChevronDown size={16} className="ch" /><b><Roll value={due} /></b>
             </button>
             <div className="ax-co-sumbody">
               <div>
-                <OrderSummary quote={t} items={t.lines} brandName={store?.brandName} payLabel={payLabel} coupon={<CouponBox priced={priced} phone={phone} />} />
+                <OrderSummary quote={creditUse ? { ...t, total: due } : t} credit={creditUse} items={t.lines} brandName={store?.brandName} payLabel={payLabel} coupon={<CouponBox priced={priced} phone={phone} />} />
                 <TrustList online={online} />
               </div>
             </div>
@@ -563,12 +577,12 @@ export default function Checkout() {
       <CheckoutFoot />
 
       <div className="ax-co-bar">
-        <div className="amt"><small>{payLabel}</small><b><Roll value={t.total} /></b></div>
+        <div className="amt"><small>{payLabel}</small><b><Roll value={due} /></b></div>
         {!reviewing ? (
           <button type="submit" form="ax-co-addr" className="ax-btn teal go">Continue <ArrowRight size={17} /></button>
         ) : (
           <button type="button" className="ax-btn teal go" onClick={placeIt} disabled={placing || !method || t.count === 0 || priced.checking}>
-            {placing ? <Loader2 size={17} className="spin" /> : method === "online" ? <><Lock size={15} /> Pay {formatINR(t.total)}</> : "Place order"}
+            {placing ? <Loader2 size={17} className="spin" /> : method === "online" ? <><Lock size={15} /> Pay {formatINR(due)}</> : "Place order"}
           </button>
         )}
       </div>

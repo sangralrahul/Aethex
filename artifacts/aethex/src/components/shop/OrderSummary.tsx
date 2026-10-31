@@ -16,8 +16,8 @@ import { Roll } from "./BuyKit";
 
 type SummaryQuote = Pick<Quote, "count" | "subtotal" | "mrpTotal" | "savings" | "delivery" | "total" | "discount" | "coupon">;
 
-export function OrderSummary({ quote: t, children, coupon: couponSlot, items, brandName, title = "Order summary", payLabel = "To pay on delivery" }: {
-  quote: SummaryQuote; children?: ReactNode; coupon?: ReactNode; items?: PricedLine[]; brandName?: (slug: string) => string; title?: string; payLabel?: string;
+export function OrderSummary({ quote: t, children, coupon: couponSlot, items, brandName, title = "Order summary", payLabel = "To pay on delivery", credit = 0 }: {
+  quote: SummaryQuote; children?: ReactNode; coupon?: ReactNode; items?: PricedLine[]; brandName?: (slug: string) => string; title?: string; payLabel?: string; credit?: number;
 }) {
   const coupon = t.discount && t.discount > 0 ? t.discount : 0;
   const mrpOff = Math.max(0, Math.round((t.savings - coupon) * 100) / 100);
@@ -44,6 +44,7 @@ export function OrderSummary({ quote: t, children, coupon: couponSlot, items, br
         {mrpOff > 0 && <div className="good"><dt>Discount</dt><dd>− {formatINR(mrpOff)}</dd></div>}
         {coupon > 0 && <div className="good"><dt>Coupon{t.coupon ? <> <code>{t.coupon.code}</code></> : null}</dt><dd>− {formatINR(coupon)}</dd></div>}
         <div className={t.delivery === 0 ? "good" : ""}><dt>Delivery</dt><dd>{t.count === 0 ? "—" : t.delivery === 0 ? "Free" : formatINR(t.delivery)}</dd></div>
+        {credit > 0 && <div className="good" data-store="credit-row"><dt>Store credit</dt><dd>− {formatINR(credit)}</dd></div>}
         <div className="total"><dt>{payLabel}</dt><dd><Roll value={t.total} /></dd></div>
       </dl>
       <p className="ax-sum-note">Prices are inclusive of all taxes.{BUSINESS.gstin ? " A GST invoice comes with your order." : ""}</p>

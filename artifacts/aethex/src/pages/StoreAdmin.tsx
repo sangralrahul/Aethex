@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   AlertTriangle, BadgePercent, Building2, Check, ClipboardList, Copy, CreditCard, Download, ExternalLink, Inbox, Loader2, LogIn, Mail, Package, RefreshCw, RotateCcw, Search,
-  Gift, MessageCircleQuestion, Percent, PhoneCall, ShieldCheck, Star, Store, Truck,
+  Gift, MessageCircleQuestion, Percent, PhoneCall, ShieldCheck, Star, Store, Truck, Wallet,
 } from "lucide-react";
 import { Stars } from "@/components/store/Reviews";
 import { couponText, offerLive } from "@/lib/store/promo";
@@ -26,6 +26,7 @@ import { ProductImage } from "@/components/store/ProductImage";
 import { when } from "@/components/store/OrderView";
 import { loginUrl } from "@/lib/host";
 import { formatINR } from "@/lib/utils";
+import { CreditAdmin, printGiftSlip } from "@/components/store/StoreExtras3";
 
 type AdminOrder = Order & { adminNote: string; updatedAt: number; userId: string | null; paymentId?: string };
 type AdminBulk = BulkRequest & { adminNote: string; updatedAt: number };
@@ -35,7 +36,7 @@ type Summary = {
   catalog: { products: number; priceOnRequest: number; noOrigin: number; hidden: number; outOfStock: number };
   setup: { email: boolean; storeEmail: string; admins: number; gaps: string[]; onlinePayments?: boolean; razorpayMode?: string; webhook?: boolean; webhookUrl?: string; bankTransfer?: boolean; whatsapp?: boolean };
 };
-type Tab = "overview" | "orders" | "requests" | "bulk" | "products" | "promos" | "reviews" | "questions" | "tax" | "replacements";
+type Tab = "overview" | "orders" | "requests" | "bulk" | "products" | "promos" | "reviews" | "questions" | "tax" | "replacements" | "credit";
 
 const admin = <T,>(path: string, init?: { method?: string; json?: unknown }) => storeFetch<T>(`/admin/${path}`, init);
 
@@ -76,7 +77,7 @@ export default function StoreAdmin() {
         <div className="ax-wrap">
           <b><Store size={18} /> Store admin</b>
           <nav role="tablist">
-            {([["overview", "Overview", ClipboardList], ["orders", "Orders", Package], ["requests", "Requests", Inbox], ["bulk", "Bulk", Building2], ["products", "Products", Store], ["promos", "Offers", BadgePercent], ["reviews", "Reviews", Star], ["questions", "Questions", MessageCircleQuestion], ["replacements", "Replacements", RotateCcw], ["tax", "Tax", Percent]] as const).map(([k, label, I]) => (
+            {([["overview", "Overview", ClipboardList], ["orders", "Orders", Package], ["requests", "Requests", Inbox], ["bulk", "Bulk", Building2], ["products", "Products", Store], ["promos", "Offers", BadgePercent], ["reviews", "Reviews", Star], ["questions", "Questions", MessageCircleQuestion], ["replacements", "Replacements", RotateCcw], ["credit", "Store credit", Wallet], ["tax", "Tax", Percent]] as const).map(([k, label, I]) => (
               <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}><I size={15} /> {label}</button>
             ))}
           </nav>
@@ -94,6 +95,7 @@ export default function StoreAdmin() {
         {tab === "questions" && <Questions />}
         {tab === "tax" && <TaxRates />}
         {tab === "replacements" && <Replacements />}
+        {tab === "credit" && <CreditAdmin admin={admin} />}
       </div>
     </div>
   );
@@ -205,6 +207,30 @@ function Orders() {
   );
 }
 
+/** update 84: the prescription on an order: open it, approve it, or ask for a clearer one. */
+function RxAdmin({ order, onSaved }: { order: AdminOrder; onSaved: (o: AdminOrder) => void }) {
+  const [note, setNote] = useState(order.rx?.note ?? ""), [busy, setBusy] = useState(false), [msg, setMsg] = useState("");
+  const rx = order.rx!;
+  const open = async () => { const r = await fetch(`/api/store/admin/orders/${order.id}/rx`, { credentials: "same-origin" }); if (!r.ok) { setMsg("Couldn't open it."); return; } const u = URL.createObjectURL(await r.blob()); window.open(u, "_blank", "noopener"); setTimeout(() => URL.revokeObjectURL(u), 60000); };
+  const decide = async (decision: "approved" | "rejected") => {
+    setBusy(true); setMsg("");
+    try { const r = await admin<{ order: AdminOrder; emailed: boolean }>(`orders/${order.id}/rx`, { method: "POST", json: { decision, note } }); onSaved(r.order); setMsg(decision === "approved" ? "Approved: it can ship." : r.emailed ? "Rejected; the customer was emailed to send a clearer one." : "Rejected."); }
+    catch (e) { setMsg((e as Error).message); } finally { setBusy(false); }
+  };
+  return (
+    <div className={`note ax-rx-adm s-${rx.status}`} data-admin="rx">
+      <b>Prescription: {rx.status === "approved" ? "approved" : rx.status === "rejected" ? "rejected, waiting for a new one" : "to check before shipping"}</b>
+      <div className="row"><button type="button" className="ax-btn" onClick={() => void open()} data-admin="rx-open">Open it</button>
+        {rx.status !== "approved" && <button type="button" className="ax-btn teal" disabled={busy} onClick={() => void decide("approved")} data-admin="rx-approve">Approve</button>}
+        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="What's wrong (for a rejection)" maxLength={300} data-admin="rx-note" />
+        {rx.status !== "rejected" && <button type="button" className="ax-btn danger" disabled={busy || note.trim().length < 3} onClick={() => void decide("rejected")} data-admin="rx-reject">Reject</button>}
+      </div>
+      <small>Check the doctor's name, registration number, signature and date, and that it covers these items.</small>
+      {msg && <small role="status">{msg}</small>}
+    </div>
+  );
+}
+
 function OrderEditor({ order, onSaved }: { order: AdminOrder; onSaved: (o: AdminOrder) => void }) {
   const [courier, setCourier] = useState(order.tracking?.courier ?? "");
   const [number, setNumber] = useState(order.tracking?.number ?? "");
@@ -277,7 +303,8 @@ function OrderEditor({ order, onSaved }: { order: AdminOrder; onSaved: (o: Admin
           <p><b>{a.name}</b><br />{a.line1}{a.line2 ? `, ${a.line2}` : ""}{a.landmark ? `, near ${a.landmark}` : ""}<br />{a.city}, {a.state} {a.pincode}</p>
           <p><a href={`tel:+91${a.phone}`}>+91 {a.phone}</a>{a.email ? <> · <a href={`mailto:${a.email}`}>{a.email}</a></> : null}</p>
           {order.notes && <p className="note">Customer note: {order.notes}</p>}
-          {order.gift && <p className="note gift"><Gift size={13} /> <b>Gift: pack it without prices.</b>{order.gift.message ? <> Message: &ldquo;{order.gift.message}&rdquo;</> : null}{order.gift.from ? <> From {order.gift.from}</> : null}</p>}
+          {order.gift && <p className="note gift"><Gift size={13} /> <b>Gift: pack it without prices.</b>{order.gift.message ? <> Message: &ldquo;{order.gift.message}&rdquo;</> : null}{order.gift.from ? <> From {order.gift.from}</> : null}{order.gift.toEmail ? <> · Recipient emailed at {order.gift.toEmail} when it ships</> : null} <button type="button" className="ax-link" onClick={() => printGiftSlip(order)} data-admin="gift-slip">Print the gift slip</button></p>}
+          {order.rx && <RxAdmin order={order} onSaved={onSaved} />}
           {order.business && <p className="note"><Building2 size={13} /> For <b>{order.business.name}</b>{order.business.gstin ? <> · GSTIN {order.business.gstin}</> : null}</p>}
         </div>
         <div>
@@ -286,6 +313,7 @@ function OrderEditor({ order, onSaved }: { order: AdminOrder; onSaved: (o: Admin
             {order.lines.map((l) => <li key={`${l.productId}:${l.variantId ?? ""}`}><Link href={itemHref(l.productId, l.slug)}>{l.name}</Link>{l.variantLabel ? ` (${l.variantLabel})` : ""} × {l.qty} <b>{formatINR(l.lineTotal)}</b></li>)}
           </ul>
           {!!order.discount && <p>Coupon {order.coupon}: − {formatINR(order.discount)}</p>}
+          {!!order.credit && <p>Store credit: − {formatINR(order.credit)}{order.total <= 0 ? <b className="paid"> · Fully paid with credit: don't collect cash</b> : null}</p>}
           <p>Delivery {order.delivery ? formatINR(order.delivery) : "free"} · {order.payment === "cod"
             ? <b>Collect {formatINR(order.total)} cash</b>
             : paid ? <b className="paid">Paid online {formatINR(order.total)}: don't collect cash</b>
@@ -572,6 +600,7 @@ function ProductEditor({ p, maker, current, onSaved }: { p: ProductSummary; make
   const [mrp, setMrp] = useState(current?.mrp != null ? String(current.mrp) : "");
   const [inStock, setInStock] = useState(current?.inStock ?? p.inStock);
   const [coo, setCoo] = useState(current?.countryOfOrigin ?? "");
+  const [rx, setRx] = useState(!!current?.rx);
   const [vs, setVs] = useState<Record<string, { price: string; mrp: string; inStock: boolean }>>(() => Object.fromEntries((p.variants ?? []).map((v) => {
     const o = current?.variants?.[v.id];
     return [v.id, { price: o?.price != null ? String(o.price) : "", mrp: o?.mrp != null ? String(o.mrp) : "", inStock: o?.inStock ?? v.inStock }];
@@ -585,6 +614,7 @@ function ProductEditor({ p, maker, current, onSaved }: { p: ProductSummary; make
     if (mrp.trim()) o.mrp = Number(mrp);
     o.inStock = inStock;
     if (coo.trim()) o.countryOfOrigin = coo.trim();
+    if (rx) o.rx = true;
     if (hidden) o.hidden = true;
     const vo: Record<string, unknown> = {};
     for (const v of p.variants ?? []) {
@@ -618,6 +648,7 @@ function ProductEditor({ p, maker, current, onSaved }: { p: ProductSummary; make
         <label className="f"><span>MRP (₹)</span><input value={mrp} onChange={(e) => setMrp(e.target.value)} inputMode="decimal" placeholder={p.mrp ? String(p.mrp) : ""} /></label>
         {!book && <label className="f"><span>Country of origin</span><input value={coo} onChange={(e) => setCoo(e.target.value)} placeholder="As on the pack" maxLength={60} /></label>}
         <label className="ax-switch f"><input type="checkbox" checked={inStock} onChange={(e) => setInStock(e.target.checked)} /><span className="track"><i /></span><span>In stock</span></label>
+        {!book && <label className="ax-switch f"><input type="checkbox" checked={rx} onChange={(e) => setRx(e.target.checked)} data-admin="rx-switch" /><span className="track"><i /></span><span>Needs a prescription</span></label>}
       </div>
       {p.variants && p.variants.length > 0 && (
         <table className="ax-adm-vars">

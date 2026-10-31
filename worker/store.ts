@@ -168,6 +168,13 @@ export const STORE_TABLES = [
     id TEXT PRIMARY KEY, user_id TEXT NOT NULL, data TEXT NOT NULL, next_service TEXT, next_calibration TEXT, warranty_until TEXT,
     reminded TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
   "CREATE INDEX IF NOT EXISTS store_equipment_user ON store_equipment(user_id, updated_at)",
+  // update 84: store credit (a ledger: grants and refunds in, credit used on orders out) and prescriptions for orders
+  `CREATE TABLE IF NOT EXISTS store_credit (
+    id TEXT PRIMARY KEY, user_id TEXT NOT NULL, amount REAL NOT NULL, kind TEXT NOT NULL, order_id TEXT, note TEXT, by TEXT, created_at INTEGER NOT NULL)`,
+  "CREATE INDEX IF NOT EXISTS store_credit_user ON store_credit(user_id, created_at)",
+  `CREATE TABLE IF NOT EXISTS store_rx (
+    id TEXT PRIMARY KEY, order_id TEXT NOT NULL, name TEXT NOT NULL, type TEXT NOT NULL, size INTEGER NOT NULL, data TEXT NOT NULL, created_at INTEGER NOT NULL)`,
+  "CREATE INDEX IF NOT EXISTS store_rx_order ON store_rx(order_id)",
 ];
 /** Columns added after a table was first made: added where missing (an existing column is left alone). */
 export const STORE_COLUMNS: [table: string, column: string, type: string][] = [
@@ -186,6 +193,8 @@ export const STORE_COLUMNS: [table: string, column: string, type: string][] = [
   ["store_orders", "gift", "TEXT"],
   ["store_orders", "business", "TEXT"],
   ["store_orders", "bank_ref", "TEXT"],
+  // update 84: store credit used on the order; a prescription's check (pending, approved, rejected) and the note on it
+  ["store_orders", "credit", "REAL"], ["store_orders", "rx_status", "TEXT"], ["store_orders", "rx_note", "TEXT"],
 ];
 /** Indexes on those added columns (made once the columns are there). */
 const STORE_INDEXES = [
@@ -349,6 +358,7 @@ type OrderRow = {
   payment: string; history: string; tracking: string | null; notes: string | null; admin_note: string | null; token_hash: string; ip: string | null;
   payment_status?: string | null; payment_ref?: string | null; payment_id?: string | null; paid_at?: number | null; refund?: string | null;
   coupon?: string | null; discount?: number | null; gift?: string | null; business?: string | null; bank_ref?: string | null;
+  credit?: number | null; rx_status?: string | null; rx_note?: string | null;
 };
 const parse = <T>(s: string | null, fallback: T): T => { try { return s ? JSON.parse(s) : fallback; } catch { return fallback; } };
 
@@ -378,10 +388,12 @@ function toOrder(r: OrderRow): Order {
   if (gift) o.gift = gift;
   const business = parse<Order["business"] | null>(r.business ?? null, null);
   if (business) o.business = business;
+  if (r.credit) o.credit = r.credit;
+  if (r.rx_status) o.rx = { status: r.rx_status as NonNullable<Order["rx"]>["status"], ...(r.rx_note ? { note: r.rx_note } : {}) };
   return o;
 }
-/** Paid, online or by bank transfer (and not refunded in full). */
-const isPaid = (o: Order) => o.payment !== "cod" && o.paymentStatus === "paid";
+/** Paid, online or by bank transfer (and not refunded in full), or nothing left to pay after store credit. */
+const isPaid = (o: Order) => (o.payment !== "cod" && o.paymentStatus === "paid") || (o.total <= 0 && (o.credit ?? 0) > 0);
 
 /** What the customer sees. Looked up with the order number and phone alone, the address is shortened. */
 function customerView(r: OrderRow, full: boolean) {
@@ -431,11 +443,12 @@ const addressHtml = (a: Address) =>
 function linesHtml(o: Order) {
   const rows = o.lines.map((l) => `<tr><td style="padding:9px 0;border-bottom:1px solid #EDF0F4;font-size:14px;">${escapeHtml(l.name)}${l.variantLabel ? `<br><span style="color:#718096;font-size:12px;">${escapeHtml(l.variantLabel)}</span>` : ""}</td><td style="padding:9px 0;border-bottom:1px solid #EDF0F4;font-size:14px;color:#718096;text-align:center;">&times;${l.qty}</td><td style="padding:9px 0;border-bottom:1px solid #EDF0F4;font-size:14px;text-align:right;">${money(l.lineTotal)}</td></tr>`).join("");
   const how = o.payment === "online" ? (o.paymentStatus === "paid" || o.paymentStatus === "refunded" ? "paid online" : "to pay online")
-    : o.payment === "bank" ? (o.paymentStatus === "paid" ? "paid by bank transfer" : "to pay by bank transfer") : "cash on delivery";
+    : o.payment === "bank" ? (o.paymentStatus === "paid" ? "paid by bank transfer" : "to pay by bank transfer") : o.total <= 0 && o.credit ? "paid with store credit" : "cash on delivery";
   return `<table style="width:100%;border-collapse:collapse;margin:6px 0 10px;">${rows}</table>
 <table style="width:100%;border-collapse:collapse;font-size:14px;"><tr><td style="padding:3px 0;color:#4A5568;">Items</td><td style="text-align:right;">${money(o.subtotal)}</td></tr>
 ${o.discount ? `<tr><td style="padding:3px 0;color:#4A5568;">Coupon${o.coupon ? ` ${escapeHtml(o.coupon)}` : ""}</td><td style="text-align:right;color:#0F7A43;">&minus;${money(o.discount)}</td></tr>` : ""}
 <tr><td style="padding:3px 0;color:#4A5568;">Delivery</td><td style="text-align:right;">${o.delivery ? money(o.delivery) : "Free"}</td></tr>
+${o.credit ? `<tr><td style="padding:3px 0;color:#4A5568;">Store credit</td><td style="text-align:right;color:#0F7A43;">&minus;${money(o.credit)}</td></tr>` : ""}
 <tr><td style="padding:6px 0;font-weight:700;">Total (${how})</td><td style="text-align:right;font-weight:700;">${money(o.total)}</td></tr></table>`;
 }
 
@@ -526,6 +539,7 @@ function cleanOverride(raw: Record<string, any>, p: Product): Override | { error
   if (raw.hidden === true) o.hidden = true;
   const coo = str(raw.countryOfOrigin, 60);
   if (coo) o.countryOfOrigin = coo;
+  if (raw.rx === true) o.rx = true;
   if (raw.variants && typeof raw.variants === "object" && p.variants?.length) {
     const vs: NonNullable<Override["variants"]> = {};
     for (const v of p.variants) {
@@ -557,6 +571,7 @@ async function handleAdmin(request: Request, env: DBEnv, path: string, ctx?: Ctx
   const method = request.method;
 
   if (path === "me") return json({ ok: true, email: who });
+  { const r84 = await handleAdmin84(request, env, path, method, who); if (r84) return r84; }
 
   if (path === "summary" && method === "GET") {
     const dayStart = Date.now() - 86400_000;
@@ -702,6 +717,7 @@ async function handleAdmin(request: Request, env: DBEnv, path: string, ctx?: Ctx
           ? "This order is waiting for its bank transfer. Mark it paid once the money is in the account, or cancel it."
           : "This order is waiting for its online payment. You can cancel it, or wait: it's placed once the payment comes through." }, 409);
       }
+      if ((status === "shipped" || status === "delivered") && o.rx && o.rx.status !== "approved") return json({ error: "Check the prescription first: approve it before shipping." }, 409);
       o.status = status;
       o.history.push({ status, at: now, ...(note ? { note } : {}) });
       notify = status;
@@ -728,6 +744,7 @@ async function handleAdmin(request: Request, env: DBEnv, path: string, ctx?: Ctx
     if (notify && (was !== "pending" || o.payment === "bank") && o.address.email && b.notify !== false) {
       emailed = await sendEmail(env, o.address.email, `${STATUS_LABEL[notify]}: order ${o.id}`, customerEmail(o, notify, note || undefined)).catch(() => false);
     }
+    if (notify && o.gift?.toEmail && b.notify !== false) await giftRecipientEmail(env, o, notify);
     return json({ order: { ...o, adminNote: adminNote || "", paymentId: r.payment_id || "" }, emailed, ...(refundError ? { refundError } : {}) });
   }
 
@@ -1317,7 +1334,7 @@ const itemCount = (o: Order) => o.lines.reduce((s, l) => s + l.qty, 0);
 async function placedEmails(db: DBEnv, o: Order, paymentId?: string): Promise<boolean> {
   const a = o.address;
   const paid = isPaid(o);
-  const via = o.payment === "bank" ? "by bank transfer" : "online";
+  const via = o.payment === "bank" ? "by bank transfer" : o.total <= 0 && o.credit ? "with store credit" : "online";
   const n = itemCount(o);
   const results = await Promise.allSettled([
     a.email ? sendEmail(db, a.email, `Order ${o.id} placed: ${rupees(o.total)} ${paid ? "paid" : "cash on delivery"}`, customerEmail(o, "placed")) : Promise.resolve(false),
@@ -1480,15 +1497,17 @@ async function createOrder(request: Request, db: DBEnv): Promise<Response> {
   const cleaned = cleanAddress(b.address);
   if ("error" in cleaned) return json({ error: cleaned.error, field: "address" }, 400);
   const address = cleaned.address;
-  const payment: PaymentMethod = b.payment === "online" ? "online" : b.payment === "bank" ? "bank" : "cod";
-  if (payment === "online" && !razorpayReady(db)) return json({ error: "Paying online isn't available yet. Please choose cash on delivery.", field: "payment" }, 400);
-  const bank = payment === "bank" ? bankDetails(db) : null;
-  if (payment === "bank" && !bank) return json({ error: "Bank transfer isn't available. Please choose another way to pay.", field: "payment" }, 400);
+  const paymentAsked: PaymentMethod = b.payment === "online" ? "online" : b.payment === "bank" ? "bank" : "cod";
+  if (paymentAsked === "online" && !razorpayReady(db)) return json({ error: "Paying online isn't available yet. Please choose cash on delivery.", field: "payment" }, 400);
+  const bank = paymentAsked === "bank" ? bankDetails(db) : null;
+  if (paymentAsked === "bank" && !bank) return json({ error: "Bank transfer isn't available. Please choose another way to pay.", field: "payment" }, 400);
   // A gift (with its message), and a clinic's or business's name and GSTIN for the invoice.
   let gift: Order["gift"] | undefined;
   if (b.gift && typeof b.gift === "object") {
-    const message = longStr(b.gift.message, 300), from = str(b.gift.from, 60);
-    gift = { ...(message ? { message } : {}), ...(from ? { from } : {}) };
+    const message = longStr(b.gift.message, 300), from = str(b.gift.from, 60), toEmail = normEmail(b.gift.toEmail);
+    if (b.gift.toEmail && !toEmail) return json({ error: "Check the recipient's email, or leave it empty.", field: "gift" }, 400);
+    // update 84: the recipient can be told when it ships and follow it at a link with no prices on it
+    gift = { ...(message ? { message } : {}), ...(from ? { from } : {}), ...(toEmail ? { toEmail } : {}), token: newToken() };
   }
   let business: Order["business"] | undefined;
   if (b.business && typeof b.business === "object") {
@@ -1514,6 +1533,18 @@ async function createOrder(request: Request, db: DBEnv): Promise<Response> {
     limits = { all: c.coupon.limit ?? 0, phone: c.coupon.perPhone ?? 0 };
   }
   if (typeof b.expectTotal === "number" && Math.abs(b.expectTotal - quote.total) >= 1) return json({ error: "Prices in your cart have changed. Please check the new total.", quote }, 409);
+  // update 84: a prescription for the items that need one, and store credit off the total
+  const user = await currentUser(request, db).catch(() => null);
+  const rxNeeded = quote.lines.some((l) => !!find(l.productId)?.rx);
+  let rxFile: { name: string; type: string; size: number; data: string } | null = null;
+  if (rxNeeded) { const f = readRxFile(b.rx); if ("error" in f) return json({ error: f.error, field: "rx" }, 400); rxFile = f; }
+  let credit = 0;
+  if (b.useCredit === true) {
+    if (!user) return json({ error: "Sign in to use your store credit.", field: "credit" }, 401);
+    credit = Math.min(await creditBalance(db, user.id), quote.total);
+  }
+  if (credit > 0) quote = { ...quote, total: round2(quote.total - credit) };
+  const payment: PaymentMethod = quote.total <= 0 ? "cod" : paymentAsked;
   if (payment === "cod" && quote.total > COD_LIMIT) {
     return json({ error: `Cash on delivery is available on orders up to ₹${COD_LIMIT.toLocaleString("en-IN")}.${razorpayReady(db) ? " Please pay online, or split the order." : " Please split the order, or contact us."}`, field: "payment" }, 400);
   }
@@ -1525,7 +1556,6 @@ async function createOrder(request: Request, db: DBEnv): Promise<Response> {
   if (!(await allow(db, `store:order:ip:${ip}`, 8, 3600_000)) || !(await allow(db, `store:order:phone:${address.phone}`, 6, 86400_000))) {
     return json({ error: "Too many orders in a short time. Please try again later, or contact us." }, 429);
   }
-  const user = await currentUser(request, db).catch(() => null);
   const token = key || newToken();
   const now = Date.now();
   const id = orderId();
@@ -1545,6 +1575,15 @@ async function createOrder(request: Request, db: DBEnv): Promise<Response> {
   if (quote.discount) { order.discount = quote.discount; order.coupon = couponCode; }
   if (gift) order.gift = gift;
   if (business) order.business = business;
+  if (credit > 0) order.credit = round2(credit);
+  if (rxFile) order.rx = { status: "pending" };
+  // Credit is taken first, only while the balance still covers it (two orders at once can't spend it twice).
+  const creditId = credit > 0 ? nid("c") : "";
+  if (creditId) {
+    const took = await db.DB.prepare(`INSERT INTO store_credit (id, user_id, amount, kind, order_id, note, created_at) SELECT ?, ?, ?, 'use', ?, 'Used on an order', ?
+      WHERE (SELECT COALESCE(SUM(amount), 0) FROM store_credit WHERE user_id = ? AND NOT (kind = 'use' AND order_id IN (SELECT id FROM store_orders WHERE status = 'cancelled'))) >= ?`).bind(creditId, user!.id, -round2(credit), id, now, user!.id, round2(credit) - 0.005).run();
+    if (!changes(took)) return json({ error: "Your store credit has just changed. Please check the total again.", field: "credit" }, 409);
+  }
   const notes = longStr(b.notes, 500);
   if (notes) order.notes = notes;
   const email = address.email || (user ? normEmail(user.email) : "");
@@ -1558,7 +1597,12 @@ async function createOrder(request: Request, db: DBEnv): Promise<Response> {
       quote.count, order.subtotal, order.mrpTotal, order.delivery, order.total, payment, JSON.stringify(order.history), notes || null, await sha256(token), ip,
       payment === "cod" ? null : "pending", rzpId || null, couponCode || null, order.discount ?? null, gift ? JSON.stringify(gift) : null, business ? JSON.stringify(business) : null,
       limits.all, couponCode, limits.all, limits.phone, couponCode, address.phone, limits.phone).run();
-  if (!changes(saved)) return json({ error: `${couponCode} has just been used up. Remove it to order without it.`, field: "coupon" }, 409);
+  if (!changes(saved)) {
+    if (creditId) await db.DB.prepare("DELETE FROM store_credit WHERE id = ?").bind(creditId).run();
+    return json({ error: `${couponCode} has just been used up. Remove it to order without it.`, field: "coupon" }, 409);
+  }
+  if (credit > 0 || rxFile) await db.DB.prepare("UPDATE store_orders SET credit = ?, rx_status = ?, payment_status = CASE WHEN total <= 0 THEN 'paid' ELSE payment_status END WHERE id = ?").bind(credit > 0 ? round2(credit) : null, rxFile ? "pending" : null, order.id).run();
+  if (rxFile) await saveRx(db, order.id, rxFile);
   // Kept in the account for next time when asked (one kept already moves to the top of the list).
   if (user && b.saveAddress === true) {
     await keepAddress(db, user.id, address, str(b.addressLabel, 24), false).catch((e) => console.error("store: keeping an address", e));
@@ -2051,6 +2095,7 @@ export async function handleStore(request: Request, env: StoreEnv, ctx?: Ctx): P
   const db = env as DBEnv;
   await ensureTables(db.DB);
   if (path === "questions" && method === "POST") return createQuestion(request, db);
+  { const r84 = await handleStore84(request, db, path, method); if (r84) return r84; }
   if (path === "approvals" || /^approvals\/[A-Za-z0-9_-]{20,64}(\/(decision|comment))?$/.test(path)) return handleApprovals(request, db, path, method);
   if (path === "equipment" || /^equipment\/e[a-z0-9]{6,30}\/(delete|done)$/.test(path)) return handleEquipment(request, db, path, method);
   if (path === "reminders" || /^reminders\/r[a-z0-9]{6,30}\/delete$/.test(path)) return handleReminders(request, db, path, method);
@@ -2518,7 +2563,7 @@ async function handleEquipment(request: Request, db: DBEnv, path: string, method
   const user = await currentUser(request, db).catch(() => null);
   if (!user) return json({ error: "Sign in to keep an equipment register.", signIn: true }, 401);
   const list = async () => (await db.DB.prepare("SELECT * FROM store_equipment WHERE user_id = ? ORDER BY updated_at DESC LIMIT 500").bind(user.id).all<EqRow>()).results.map(eqOut);
-  const save = async (id: string, e: ReturnType<typeof cleanEquipment> & object, created: number) => {
+  const save = async (id: string, e: Exclude<ReturnType<typeof cleanEquipment>, { error: string }>, created: number) => {
     const ns = nextDue(e.lastService, e.purchased, e.serviceMonths), nc = nextDue(e.lastCalibration, e.purchased, e.calibrationMonths);
     await db.DB.prepare("INSERT INTO store_equipment (id, user_id, data, next_service, next_calibration, warranty_until, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data, next_service = excluded.next_service, next_calibration = excluded.next_calibration, warranty_until = excluded.warranty_until, updated_at = excluded.updated_at")
       .bind(id, user.id, JSON.stringify(e), ns, nc, e.warrantyUntil ?? null, created, Date.now()).run();
@@ -2586,4 +2631,189 @@ export async function runEquipmentReminders(env: StoreEnv): Promise<{ sent: numb
     if (ok) sent++;
   }
   return { sent };
+}
+
+/* ------------------------------------------------------------------ update 84: prescriptions, store credit, delivery times, gifts */
+
+const nid = (p: string) => `${p}${Date.now().toString(36)}${Array.from(crypto.getRandomValues(new Uint8Array(5)), (b) => b.toString(36).padStart(2, "0")).join("").slice(0, 7)}`;
+const STORE_SITE = "https://store.aethex.in";
+export const RX_MAX_BYTES = 1_048_576;
+/** A prescription file from the checkout: PDF, JPEG, PNG or WebP by its first bytes, up to 1 MB. */
+function readRxFile(v: unknown): { name: string; type: string; size: number; data: string } | { error: string } {
+  const o = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
+  const data = typeof o.data === "string" ? o.data.replace(/^data:[^,]*,/, "") : "";
+  if (!data) return { error: "Upload the prescription for the items that need one." };
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(data)) return { error: "That file couldn't be read. Try a photo or a PDF." };
+  const size = Math.floor((data.length * 3) / 4) - (data.endsWith("==") ? 2 : data.endsWith("=") ? 1 : 0);
+  if (size > RX_MAX_BYTES) return { error: "The prescription file can be up to 1 MB. A clear photo works well." };
+  const head = atob(data.slice(0, 16));
+  const type = head.startsWith("%PDF-") ? "application/pdf" : head.charCodeAt(0) === 0xff && head.charCodeAt(1) === 0xd8 ? "image/jpeg" : head.startsWith("\x89PNG") ? "image/png" : head.startsWith("RIFF") && head.slice(8, 12) === "WEBP" ? "image/webp" : "";
+  if (!type) return { error: "Upload the prescription as a photo (JPEG, PNG or WebP) or a PDF." };
+  return { name: str(o.name, 120).replace(/[\\/:*?"<>|]/g, "_") || "prescription", type, size, data };
+}
+async function saveRx(db: DBEnv, orderId: string, f: { name: string; type: string; size: number; data: string }) {
+  await db.DB.prepare("DELETE FROM store_rx WHERE order_id = ?").bind(orderId).run();
+  await db.DB.prepare("INSERT INTO store_rx (id, order_id, name, type, size, data, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(nid("x"), orderId, f.name, f.type, f.size, f.data, Date.now()).run();
+}
+function rxFileResponse(f: { name: string; type: string; data: string }) {
+  const bin = Uint8Array.from(atob(f.data), (c) => c.charCodeAt(0));
+  return new Response(bin, { headers: { "content-type": f.type, "content-disposition": `inline; filename="${f.name.replace(/[^\w.\- ]/g, "_")}"`, "cache-control": "no-store, private", "x-content-type-options": "nosniff", "content-security-policy": "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox" } });
+}
+
+/** Store credit: what an account has to spend. Credit used on an order that was then cancelled counts again. */
+async function creditBalance(db: DBEnv, userId: string): Promise<number> {
+  const r = await db.DB.prepare(`SELECT COALESCE(SUM(amount), 0) AS b FROM store_credit WHERE user_id = ? AND NOT (kind = 'use' AND order_id IN (SELECT id FROM store_orders WHERE status = 'cancelled'))`).bind(userId).first<{ b: number }>();
+  return round2(Math.max(0, Number(r?.b ?? 0)));
+}
+async function creditHistory(db: DBEnv, userId: string) {
+  const { results } = await db.DB.prepare(`SELECT c.*, o.status AS order_status FROM store_credit c LEFT JOIN store_orders o ON o.id = c.order_id WHERE c.user_id = ? ORDER BY c.created_at DESC LIMIT 50`).bind(userId).all<{ id: string; amount: number; kind: string; order_id: string | null; note: string | null; created_at: number; order_status: string | null }>();
+  return results.map((c) => ({ id: c.id, amount: c.amount, kind: c.kind, orderId: c.order_id, note: c.note, at: c.created_at, returned: c.kind === "use" && c.order_status === "cancelled" }));
+}
+
+/** Delivery times learnt from the store's own deliveries to the same area; the store's promise until there are enough. */
+const workdaysBetween = (a: number, b: number) => {
+  let n = 0;
+  const d = new Date(a + 330 * 60000); d.setUTCHours(0, 0, 0, 0);
+  const end = new Date(b + 330 * 60000); end.setUTCHours(0, 0, 0, 0);
+  while (d < end) { d.setUTCDate(d.getUTCDate() + 1); const w = d.getUTCDay(); if (w >= 1 && w <= 5) n++; }
+  return n;
+};
+const pct = (xs: number[], p: number) => { const s = [...xs].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.max(0, Math.ceil(p * s.length) - 1))]; };
+export async function etaFor(db: DBEnv, pin: string) {
+  const promise = { basis: "promise" as const, dispatch: [0, BUSINESS.dispatchDays] as [number, number], transit: BUSINESS.deliveryDays, samples: 0 };
+  if (!/^[1-9]\d{5}$/.test(pin)) return promise;
+  const { results } = await db.DB.prepare("SELECT pincode, created_at, history FROM store_orders WHERE status = 'delivered' AND created_at > ? ORDER BY created_at DESC LIMIT 1500").bind(Date.now() - 365 * 86400_000).all<{ pincode: string; created_at: number; history: string }>();
+  const rows = results.map((r) => {
+    const h = parse<{ status: string; at: number }[]>(r.history, []);
+    const placed = h.find((x) => x.status === "placed")?.at ?? r.created_at, shipped = h.find((x) => x.status === "shipped")?.at, delivered = h.find((x) => x.status === "delivered")?.at;
+    return shipped && delivered && delivered > shipped ? { pin: r.pincode, dispatch: workdaysBetween(placed, shipped), transit: workdaysBetween(shipped, delivered) } : null;
+  }).filter((x): x is { pin: string; dispatch: number; transit: number } => !!x);
+  const area = (n: number, min: number) => { const xs = rows.filter((r) => r.pin.slice(0, n) === pin.slice(0, n)); return xs.length >= min ? xs : null; };
+  const district = area(3, 3), near = district ?? area(2, 5);
+  if (!near || rows.length < 5) return promise;
+  const d = rows.map((r) => r.dispatch), t = near.map((r) => r.transit);
+  return { basis: "orders" as const, area: district ? "district" : "region", samples: near.length, dispatch: [Math.max(0, pct(d, 0.25)), Math.max(1, pct(d, 0.8))] as [number, number], transit: [Math.max(1, pct(t, 0.25)), Math.max(1, pct(t, 0.85))] as [number, number] };
+}
+
+/** A gift's recipient hears when it ships and when it arrives: no prices, a link to follow it. */
+async function giftRecipientEmail(db: DBEnv, o: Order, status: OrderStatus) {
+  const g = o.gift;
+  if (!g?.toEmail || !g.token || (status !== "shipped" && status !== "delivered")) return false;
+  const from = g.from ? escapeHtml(g.from) : "Someone";
+  const items = o.lines.map((l) => `<li>${escapeHtml(l.name)}${l.variantLabel ? ` (${escapeHtml(l.variantLabel)})` : ""}${l.qty > 1 ? ` &times;${l.qty}` : ""}</li>`).join("");
+  const cash = !isPaid(o) && o.total > 0 ? `<p style="margin:10px 0 0;font-size:14px;">Please keep ${money(o.total)} ready: it's cash on delivery.</p>` : "";
+  return sendEmail(db, g.toEmail, status === "shipped" ? `${g.from ?? "Someone"} sent you a gift: it's on its way` : `Your gift from ${g.from ?? "a friend"} has been delivered`, shell(`<h2 style="margin:0 0 10px;font-size:20px;">${status === "shipped" ? `${from} sent you a gift` : "Your gift has been delivered"}</h2>
+${g.message ? `<blockquote style="margin:0 0 12px;padding:10px 14px;border-left:3px solid #0d9488;background:#f8fafc;font-size:15px;white-space:pre-wrap;">${escapeHtml(g.message)}</blockquote>` : ""}
+<ul style="margin:0 0 10px;padding-left:18px;font-size:14px;line-height:1.7;">${items}</ul>${cash}
+<p style="margin:12px 0 0;font-size:14px;"><a href="${STORE_SITE}/gift/${g.token}">Follow your gift</a></p>`)).catch(() => false);
+}
+/** What the recipient's link shows: the gift, the message and where it is, never the prices or the buyer's details. */
+function giftView(r: OrderRow) {
+  const o = toOrder(r);
+  return {
+    id: o.id, status: o.status, from: o.gift?.message !== undefined || o.gift?.from ? o.gift?.from ?? null : null, message: o.gift?.message ?? null,
+    items: o.lines.map((l) => ({ productId: l.productId, name: l.name, variantLabel: l.variantLabel ?? null, qty: l.qty, image: (l as { image?: string }).image ?? null })),
+    history: o.history.filter((h) => h.status !== "pending").map((h) => ({ status: h.status, at: h.at })), tracking: o.status === "shipped" ? o.tracking ?? null : null,
+    city: o.address.city, cod: !isPaid(o) && o.total > 0 ? o.total : 0,
+  };
+}
+
+/** The customer's routes for update 84. */
+async function handleStore84(request: Request, db: DBEnv, path: string, method: string): Promise<Response | null> {
+  if (path === "eta" && method === "GET") {
+    const pin = str(new URL(request.url).searchParams.get("pin"), 6);
+    return json(await etaFor(db, pin), 200, { "cache-control": "public, max-age=900" });
+  }
+  if (path === "credit" && method === "GET") {
+    const user = await currentUser(request, db).catch(() => null);
+    if (!user) return json({ error: "Sign in to see your store credit.", signIn: true }, 401);
+    return json({ balance: await creditBalance(db, user.id), history: await creditHistory(db, user.id) });
+  }
+  const gm = /^gift\/([A-Za-z0-9_-]{20,64})$/.exec(path);
+  if (gm && method === "GET") {
+    if (!(await allow(db, `store:gift:${clientIp(request)}`, 60, 3600_000))) return json({ error: "Too many requests." }, 429);
+    const r = await db.DB.prepare("SELECT * FROM store_orders WHERE gift IS NOT NULL AND json_extract(gift, '$.token') = ?").bind(gm[1]).first<OrderRow>();
+    if (!r || r.status === "pending") return json({ error: "This gift link isn't valid." }, 404);
+    return json({ gift: giftView(r) });
+  }
+  // the customer's prescription for an order: see it, or send a clearer one while it's being checked
+  const rx = /^orders\/([A-Za-z0-9-]{6,20})\/rx$/.exec(path);
+  if (rx) {
+    const b = method === "POST" ? await readJson(request, 2_000_000) : null;
+    const access = await orderFor(request, db, rx[1], b?.phone);
+    if (access instanceof Response) return access;
+    if (!access.full) return json({ error: "Open the order from the browser or account that placed it." }, 403);
+    const r = access.r;
+    if (!r.rx_status) return json({ error: "This order doesn't need a prescription." }, 404);
+    if (method === "GET") {
+      const f = await db.DB.prepare("SELECT name, type, data FROM store_rx WHERE order_id = ?").bind(r.id).first<{ name: string; type: string; data: string }>();
+      return f ? rxFileResponse(f) : json({ error: "No file." }, 404);
+    }
+    if (method !== "POST") return json({ error: "Method not allowed" }, 405);
+    if (!["pending", "rejected"].includes(r.rx_status) || ["shipped", "delivered", "cancelled"].includes(r.status)) return json({ error: "The prescription has been checked already." }, 409);
+    const f = readRxFile(b?.rx);
+    if ("error" in f) return json({ error: f.error, field: "rx" }, 400);
+    await saveRx(db, r.id, f);
+    await db.DB.prepare("UPDATE store_orders SET rx_status = 'pending', rx_note = NULL, updated_at = ? WHERE id = ?").bind(Date.now(), r.id).run();
+    await sendEmail(db, storeInbox(db), `Prescription sent again: order ${r.id}`, shell(`<p style="margin:0;font-size:14px;">The customer sent a new prescription for order <b>${r.id}</b>. ${button(`${SITE_URL}/admin`, "Check it")}</p>`)).catch(() => false);
+    const fresh = (await rowById(db, r.id))!;
+    return json({ order: customerView(fresh, true) });
+  }
+  return null;
+}
+
+/** The admin's routes for update 84. */
+async function handleAdmin84(request: Request, env: DBEnv, path: string, method: string, who: string): Promise<Response | null> {
+  if (path === "credit" && method === "GET") {
+    const email = normEmail(new URL(request.url).searchParams.get("email") ?? "");
+    if (email) {
+      const u = await env.DB.prepare("SELECT id, email, name FROM users WHERE email = ?").bind(email).first<{ id: string; email: string; name: string | null }>();
+      if (!u) return json({ error: "No account with that email. They need to sign in to Aethex once first." }, 404);
+      return json({ user: { email: u.email, name: u.name }, balance: await creditBalance(env, u.id), history: await creditHistory(env, u.id) });
+    }
+    const { results } = await env.DB.prepare("SELECT c.*, u.email AS email FROM store_credit c LEFT JOIN users u ON u.id = c.user_id WHERE c.kind != 'use' ORDER BY c.created_at DESC LIMIT 100").all<{ id: string; amount: number; kind: string; order_id: string | null; note: string | null; created_at: number; email: string | null; by: string | null }>();
+    const tot = await env.DB.prepare(`SELECT COALESCE(SUM(amount), 0) AS b FROM store_credit WHERE NOT (kind = 'use' AND order_id IN (SELECT id FROM store_orders WHERE status = 'cancelled'))`).first<{ b: number }>();
+    return json({ grants: results.map((c) => ({ id: c.id, email: c.email, amount: c.amount, kind: c.kind, orderId: c.order_id, note: c.note, at: c.created_at, by: c.by })), outstanding: round2(Number(tot?.b ?? 0)) });
+  }
+  if (path === "credit" && method === "POST") {
+    const b = await readJson(request);
+    const email = normEmail(b?.email), amount = round2(Number(b?.amount)), note = str(b?.note, 200);
+    if (!email) return json({ error: "Enter the customer's email.", field: "email" }, 400);
+    if (!Number.isFinite(amount) || amount === 0 || Math.abs(amount) > 100000) return json({ error: "Enter an amount up to ₹1,00,000 (a minus amount takes credit back).", field: "amount" }, 400);
+    if (note.length < 3) return json({ error: "Say why, for example: refund for order AX…, or a goodwill gesture.", field: "note" }, 400);
+    const u = await env.DB.prepare("SELECT id, email FROM users WHERE email = ?").bind(email).first<{ id: string; email: string }>();
+    if (!u) return json({ error: "No account with that email. They need to sign in to Aethex once first.", field: "email" }, 404);
+    const orderId = b?.orderId ? cleanOrderId(b.orderId) : "";
+    if (orderId && !(await rowById(env, orderId))) return json({ error: "No such order.", field: "orderId" }, 404);
+    if (amount < 0 && (await creditBalance(env, u.id)) + amount < -0.005) return json({ error: "That's more than the customer has." }, 400);
+    await env.DB.prepare("INSERT INTO store_credit (id, user_id, amount, kind, order_id, note, by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").bind(nid("c"), u.id, amount, amount > 0 ? (orderId ? "refund" : "grant") : "adjust", orderId || null, note, who, Date.now()).run();
+    const balance = await creditBalance(env, u.id);
+    let emailed = false;
+    if (amount > 0 && b?.notify !== false) emailed = await sendEmail(env, u.email, `${rupees(amount)} store credit added to your Aethex account`, shell(`<h2 style="margin:0 0 10px;font-size:20px;">${money(amount)} store credit</h2>
+<p style="margin:0 0 8px;font-size:14px;">${escapeHtml(note)}</p><p style="margin:0 0 12px;font-size:14px;">Your balance is <b>${money(balance)}</b>. It's taken off your next order at checkout when you're signed in, and it doesn't expire.</p>${button(STORE_SITE, "Shop now")}`)).catch(() => false);
+    return json({ balance, emailed, history: await creditHistory(env, u.id) });
+  }
+  const rx = /^orders\/([A-Z0-9-]{6,20})\/rx$/.exec(path);
+  if (rx) {
+    const r = await rowById(env, rx[1]);
+    if (!r || !r.rx_status) return json({ error: "No prescription on this order." }, 404);
+    if (method === "GET") {
+      const f = await env.DB.prepare("SELECT name, type, data FROM store_rx WHERE order_id = ?").bind(r.id).first<{ name: string; type: string; data: string }>();
+      return f ? rxFileResponse(f) : json({ error: "No file." }, 404);
+    }
+    if (method !== "POST") return json({ error: "Method not allowed" }, 405);
+    const b = await readJson(request);
+    const decision = b?.decision === "approved" ? "approved" : b?.decision === "rejected" ? "rejected" : "";
+    const note = str(b?.note, 300);
+    if (!decision) return json({ error: "Approve or reject it." }, 400);
+    if (decision === "rejected" && note.length < 3) return json({ error: "Tell the customer what's wrong, for example: the doctor's signature isn't visible.", field: "note" }, 400);
+    await env.DB.prepare("UPDATE store_orders SET rx_status = ?, rx_note = ?, updated_at = ? WHERE id = ?").bind(decision, note || null, Date.now(), r.id).run();
+    const o = toOrder({ ...r, rx_status: decision, rx_note: note || null });
+    let emailed = false;
+    if (decision === "rejected" && o.address.email) emailed = await sendEmail(env, o.address.email, `Order ${o.id}: please send the prescription again`, shell(`<h2 style="margin:0 0 10px;font-size:20px;">We couldn't accept the prescription</h2>
+<p style="margin:0 0 10px;font-size:14px;">${escapeHtml(note)}</p><p style="margin:0 0 12px;font-size:14px;">Upload a clearer one on your order page and we'll check it again. Your order is held until then.</p>${button(`${STORE_SITE}/order/${o.id}`, "Open your order")}`)).catch(() => false);
+    const fresh = (await rowById(env, r.id))!;
+    return json({ order: { ...toOrder(fresh), userId: fresh.user_id, adminNote: fresh.admin_note || "", updatedAt: fresh.updated_at, paymentId: fresh.payment_id || "" }, emailed });
+  }
+  return null;
 }

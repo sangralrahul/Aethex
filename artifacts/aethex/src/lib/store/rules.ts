@@ -43,6 +43,7 @@ export function applyOverride(p: Product, o?: Override | null): Product | null {
   if (q.price !== null && (q.mrp === null || q.mrp < q.price)) q.mrp = q.price;
   if (typeof o.inStock === "boolean") q.inStock = o.inStock;
   if (o.countryOfOrigin) q.countryOfOrigin = o.countryOfOrigin;
+  if (o.rx) q.rx = true;
   if (p.variants?.length && o.variants) {
     q.variants = p.variants.map((v) => {
       const vo = o.variants?.[v.id];
@@ -110,6 +111,7 @@ export function summarize(p: Product): ProductSummary {
   if (from) s.from = true;
   if (p.offer) s.offer = p.offer;
   if (p.images[1]) s.image2 = p.images[1];
+  if (p.rx) s.rx = true;
   if (p.model) s.model = p.model;
   if (vs.length) {
     s.optionName = p.optionName ?? "Option";

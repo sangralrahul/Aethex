@@ -11,6 +11,7 @@
  * Styles: src/shop.css (.ax-pdp).
  */
 import { ReorderRemind } from "@/components/store/StoreExtras2";
+import { RxBadge } from "@/components/store/StoreExtras3";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { bulkListAt } from "@/lib/portals";
@@ -371,6 +372,7 @@ export default function ProductDetail() {
               <button type="button" className="ax-link" onClick={() => setCallMe(true)}><PhoneCall size={14} /> Call me to order</button>
             </div>
           )}
+          {product.rx && <RxBadge />}
           {!inst && <DeliveryCheck price={priceShown ?? (typeof lowest === "number" ? lowest : null)} />}
           {!inst && !product.priceOnRequest && <ReorderRemind productId={product.id} variantId={variant?.id ?? (variants.length === 1 ? variants[0]!.id : null)} name={`${brandName} ${product.name}`} />}
           {inst ? (
