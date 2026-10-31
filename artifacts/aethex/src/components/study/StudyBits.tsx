@@ -3,6 +3,7 @@
  * streak), the year heat-map, and the question runner shared by the custom test and the revision deck, with its
  * score report. Styles: src/shop.css (.st-*).
  */
+import { Discussion } from "./StudyBits3";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import { Bookmark as BookmarkIcon, BookmarkCheck, CheckCircle2, ChevronLeft, ChevronRight, Clock, Flag, Flame, NotebookPen, RotateCcw, Target, Trophy, XCircle } from "lucide-react";
@@ -222,6 +223,7 @@ export function Report({ r, onAgain, again = "Take another test" }: { r: RunResu
             <p className="q">{q.question}</p>
             <p className="ans">{a === null ? <span className="skip">Skipped.</span> : a === q.correct ? <span className="ok">Your answer: {q.options[a]}</span> : <><span className="no">Your answer: {q.options[a]}</span> · </>}{a !== q.correct && <span className="ok">Correct: {q.options[q.correct]}</span>}</p>
             <p className="ex">{q.explanation}</p>
+            <Discussion qkey={q.key} />
           </article>
         )) : <p className="mu">All correct. Nothing to review.</p>}
       </section>

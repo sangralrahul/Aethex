@@ -127,6 +127,10 @@ const legal = (kind: "terms" | "privacy" | "disclaimer" | "about") => () => <Cad
 const LegalTerms = legal("terms"), LegalPrivacy = legal("privacy"), LegalDisclaimer = legal("disclaimer"), LegalAbout = legal("about");
 const Invoice = lazyPage(() => import("@/pages/Invoice"));
 const CustomTest = lazyPage(() => import("@/pages/study/CustomTest"));
+const StudyGroups = lazyPage(() => import("@/components/study/StudyBits3").then((m) => ({ default: m.StudyGroups })));
+const Sectional = lazyPage(() => import("@/components/study/StudyBits3").then((m) => ({ default: m.Sectional })));
+const LibraryPrint = lazyPage(() => import("@/components/study/StudyBits3").then((m) => ({ default: m.LibraryPrint })));
+const StudyModeration = lazyPage(() => import("@/components/study/StudyBits3").then((m) => ({ default: m.Moderation })));
 const MyLibrary = lazyPage(() => import("@/pages/study/MyLibrary"));
 const BulkEstimate = lazyPage(() => import("@/pages/BulkEstimate"));
 const ApprovePage = lazyPage(() => import("@/components/store/BulkExtras2").then((m) => ({ default: m.ApprovePage })));
@@ -507,6 +511,10 @@ function Router() {
                 <Route path="/case-of-the-day" component={CaseOfTheDay} />
                 <Route path="/drug-interaction-checker" component={DrugInteractionCheckerPage} />
                 <Route path="/custom-test" component={CustomTest} />
+                <Route path="/study-groups" component={StudyGroups} />
+                <Route path="/sectional-tests" component={Sectional} />
+                <Route path="/my-library/print" component={LibraryPrint} />
+                <Route path="/study-moderation" component={StudyModeration} />
                 <Route path="/my-library" component={MyLibrary} />
                 <Route path="/neet-pg" component={NeetPg} />
 

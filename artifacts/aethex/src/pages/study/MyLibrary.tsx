@@ -9,7 +9,7 @@
 import { ExamPlan, MyFlashcards, dueCards } from "@/components/study/StudyBits2";
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
-import { CalendarDays, Layers, Bookmark, BookOpen, Cloud, CloudOff, Library, NotebookPen, RotateCcw, Search, Trash2, TrendingUp } from "lucide-react";
+import { CalendarDays, Layers, Bookmark, BookOpen, Cloud, CloudOff, Library, NotebookPen, Printer, RotateCcw, Search, Timer, Trash2, TrendingUp, Users } from "lucide-react";
 import { useSeo } from "@/hooks/use-seo";
 import { useUserAuth } from "@/hooks/use-user-auth";
 import { PageHero } from "@/components/PageHero";
@@ -110,6 +110,7 @@ export default function MyLibrary() {
     <div className="st-page" data-study="library">
       <PageHero tag="My library" title="Your study, in one place" subtitle="Your daily goal and streak, the questions to revise, and everything you bookmarked, with your own notes." icon={<Library className="w-7 h-7" />} />
       <div className="ax-wrap st-lib">
+        <div className="st-lib-tools"><Link href="/my-library/print" className="st-btn ghost" data-study="print-link"><Printer size={15} /> Download as PDF</Link><Link href="/sectional-tests" className="st-btn ghost"><Timer size={15} /> Sectional tests</Link><Link href="/study-groups" className="st-btn ghost"><Users size={15} /> Study groups</Link></div>
         <p className={`st-sync${isLoggedIn ? " on" : ""}`}>{isLoggedIn ? <><Cloud size={15} /> Saved to your account: it follows you to every device.</> : <><CloudOff size={15} /> Saved in this browser. <a href={loginUrl("/", { next: "/my-library" })}>Sign in</a> to keep it in your account.</>}</p>
         <div className="st-tabs" role="tablist">
           {([["progress", "Progress", TrendingUp, ""], ["revision", "Revision", RotateCcw, nWrong ? String(nWrong) : ""], ["bookmarks", "Bookmarks and notes", Bookmark, nBm ? String(nBm) : ""], ["flashcards", "Flashcards", Layers, nFc ? String(nFc) : ""], ["plan", "Exam plan", CalendarDays, ""]] as const).map(([k, l, I, n]) => (

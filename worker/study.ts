@@ -5,6 +5,7 @@
 import { allow, currentUser, type AuthEnv, type D1Like } from "./auth";
 import { QUESTIONS } from "../artifacts/aethex/src/data/neetpgQuestions";
 import { blankStudy, mergeStates, type StudyState } from "../artifacts/aethex/src/lib/study/merge";
+import { handleStudy2 } from "./study2";
 
 const json = (payload: unknown, status = 200) =>
   new Response(JSON.stringify(payload), { status, headers: { "content-type": "application/json", "cache-control": "no-store, private" } });
@@ -18,6 +19,8 @@ function ensure(db: D1Like) {
       wrong INTEGER NOT NULL, skipped INTEGER NOT NULL, marks INTEGER NOT NULL, max_marks INTEGER NOT NULL, seconds INTEGER NOT NULL, subjects TEXT NOT NULL)`).run();
     await db.prepare("CREATE INDEX IF NOT EXISTS study_mock_user ON study_mock(user_id, at)").run();
     await db.prepare("CREATE INDEX IF NOT EXISTS study_mock_at ON study_mock(at)").run();
+    // update 85: a sectional test (one subject) is kept with the mock tests, marked with its subject
+    try { await db.prepare("ALTER TABLE study_mock ADD COLUMN section TEXT").run(); } catch (e) { if (!/duplicate column/i.test(String((e as Error)?.message ?? e))) throw e; }
     await db.prepare("CREATE TABLE IF NOT EXISTS study_board (user_id TEXT PRIMARY KEY, name TEXT NOT NULL, city TEXT, show INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL)").run();
   })().catch((e) => { ready = null; throw e; });
   return ready;
@@ -42,9 +45,10 @@ function clean(raw: unknown): StudyState | null {
 
 export async function handleStudy(request: Request, env: AuthEnv & { DB?: D1Like }): Promise<Response> {
   const path = new URL(request.url).pathname.replace(/^\/api\/study/, "").replace(/\/+$/, "");
-  if (!["/state", "/mock", "/leaderboard", "/board"].includes(path)) return json({ error: "Not found" }, 404);
+  if (!["/state", "/mock", "/leaderboard", "/board"].includes(path) && !/^\/(groups|comments|sectional)(\/|$)/.test(path)) return json({ error: "Not found" }, 404);
   if (!env.DB) return json({ error: "The study record isn't switched on yet: the site's database isn't connected." }, 503);
   await ensure(env.DB);
+  { const r2 = await handleStudy2(request, env as Parameters<typeof handleStudy2>[1], path); if (r2) return r2; }
   if (path === "/leaderboard" && request.method === "GET") return leaderboard(env as AuthEnv & { DB: D1Like }, request);
   const user = await currentUser(request, env as AuthEnv & { DB: D1Like });
   if (!user) return json({ error: "Sign in to keep your study record in your account.", signIn: true }, 401);
@@ -77,7 +81,7 @@ const rid = () => `m${Date.now().toString(36)}${Array.from(crypto.getRandomValue
 
 /** Each person's best score (as % of the maximum marks) in a period, papers of 25+ questions only. */
 async function bests(db: DB, since: number) {
-  const { results } = await db.DB.prepare(`SELECT user_id, MAX(CAST(marks AS REAL) / max_marks) AS best, COUNT(*) AS n FROM study_mock WHERE at >= ? AND total >= ? GROUP BY user_id`).bind(since, MIN_FOR_BOARD).all<{ user_id: string; best: number; n: number }>();
+  const { results } = await db.DB.prepare(`SELECT user_id, MAX(CAST(marks AS REAL) / max_marks) AS best, COUNT(*) AS n FROM study_mock WHERE at >= ? AND total >= ? AND section IS NULL GROUP BY user_id`).bind(since, MIN_FOR_BOARD).all<{ user_id: string; best: number; n: number }>();
   return results.map((r) => ({ user: r.user_id, best: Number(r.best), n: Number(r.n) }));
 }
 /** The share of other people in the last 90 days whose best is below this score; null until enough people have taken tests. */
@@ -90,7 +94,7 @@ async function percentile(db: DB, userId: string, pct: number) {
 
 async function mock(db: DB, request: Request, user: User): Promise<Response> {
   if (request.method === "GET") {
-    const { results } = await db.DB.prepare("SELECT * FROM study_mock WHERE user_id = ? ORDER BY at DESC LIMIT 30").bind(user.id).all<Record<string, number | string>>();
+    const { results } = await db.DB.prepare("SELECT * FROM study_mock WHERE user_id = ? AND section IS NULL ORDER BY at DESC LIMIT 30").bind(user.id).all<Record<string, number | string>>();
     const history = results.map((r) => ({ id: r.id, at: Number(r.at), total: Number(r.total), correct: Number(r.correct), wrong: Number(r.wrong), skipped: Number(r.skipped), marks: Number(r.marks), maxMarks: Number(r.max_marks), seconds: Number(r.seconds), subjects: JSON.parse(String(r.subjects)) }));
     const last = history[0];
     const pc = last && last.total >= MIN_FOR_BOARD ? await percentile(db, user.id, last.marks / last.maxMarks) : { percentile: null, takers: 0 };
@@ -145,7 +149,7 @@ async function leaderboard(db: DB, request: Request): Promise<Response> {
   const since = Date.now() - days * 86400_000;
   const { results } = await db.DB.prepare(`SELECT b.name, b.city, m.user_id, MAX(CAST(m.marks AS REAL) / m.max_marks) AS best, COUNT(*) AS tests, SUM(m.total) AS answered
     FROM study_mock m JOIN study_board b ON b.user_id = m.user_id AND b.show = 1
-    WHERE m.at >= ? AND m.total >= ? GROUP BY m.user_id ORDER BY best DESC, answered DESC LIMIT 20`).bind(since, MIN_FOR_BOARD).all<{ name: string; city: string | null; user_id: string; best: number; tests: number; answered: number }>();
+    WHERE m.at >= ? AND m.total >= ? AND m.section IS NULL GROUP BY m.user_id ORDER BY best DESC, answered DESC LIMIT 20`).bind(since, MIN_FOR_BOARD).all<{ name: string; city: string | null; user_id: string; best: number; tests: number; answered: number }>();
   const me = await currentUser(request, db).catch(() => null);
   return json({
     period: days === 7 ? "week" : days === 30 ? "month" : "all", minQuestions: MIN_FOR_BOARD,
