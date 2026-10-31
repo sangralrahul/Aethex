@@ -21,6 +21,7 @@ import { useBooks, useStore } from "@/lib/store/api";
 import { FREE_DELIVERY_FROM } from "@/lib/store/rules";
 import { SPECIALTIES } from "@/lib/find";
 import { formatINR } from "@/lib/utils";
+import { hideBroken, ph, type PhotoKey } from "@/config/photos";
 
 const QotdCard = lazy(() => import("@/components/study/Qotd").then((m) => ({ default: m.QotdCard })));
 const IMG = (n: string) => `${import.meta.env.BASE_URL}product-images/${n}.jpg`;
@@ -116,6 +117,7 @@ export function HubHeader() {
         <div className="fk-r2">
           <BigSearch />
           <nav className="fk-acts" aria-label="Account">
+            <a className="fk-cadus" href={cadusUrl("/")} data-home="cadus-btn"><Sparkles size={16} /><span>Cadus</span><em>AI</em></a>
             {isLoggedIn ? (
               <Menu id="account" label={first} icon={<CircleUserRound size={22} strokeWidth={1.6} />}>
                 <MI href={mainUrl("/account")} icon={<User size={16} />}>My account</MI>
@@ -156,14 +158,32 @@ export function HubHeader() {
 }
 
 /* ---------------------------------------------------------------- banners (peeking carousel) */
-type Slide = { id: string; tone: string; tag: string; title: ReactNode; big: string; line: string; cta: string; href: string; img: string };
+type Slide = { id: string; tone: string; tag: string; title: ReactNode; big: string; cta: string; href: string; photo: PhotoKey; video?: string; live?: boolean };
+// update 97: short words, a real photograph behind (slow Ken Burns), and a product reel (our own short video made from
+// the store's product photos: public/videos/*-reel.mp4) on the right
 const SLIDES: Slide[] = [
-  { id: "aethex", tone: "b1", tag: "Aethex", title: "Everything medical, in one place.", big: "Doctors · Store · Study", line: "One account for all of it", cta: "Try Cadus free", href: cadusUrl("/"), img: "stethoscope" },
-  { id: "store", tone: "b2", tag: "Aethex Store", title: "Genuine medical devices", big: `Free delivery from ${formatINR(FREE_DELIVERY_FROM)}`, line: "Verified brands · Cash on delivery", cta: "Shop now", href: portalUrl("store"), img: "bp-monitor" },
-  { id: "doctors", tone: "b3", tag: "Aethex Doctors", title: "Book checked doctors", big: "Clinic or video visit", line: "Reminders and records in one place", cta: "Find a doctor", href: D("/doctors"), img: "otoscope" },
-  { id: "study", tone: "b4", tag: "Aethex Study", title: "Today's NEET-PG question", big: "Answer in one tap", line: "See how everyone did, then discuss", cta: "Answer it", href: ST("/question-of-the-day"), img: "test-books" },
-  { id: "hospitals", tone: "b5", tag: "Hospitals and colleges", title: "One list. One quotation.", big: "Beds, ICU, skills labs", line: "Approvals, indents and stock register", cta: "Get a quotation", href: portalUrl("hospitals", "/#list"), img: "ecg" },
+  { id: "aethex", tone: "b1", tag: "Aethex", title: "Everything medical.", big: "Doctors · Store · Study", cta: "Try Cadus free", href: cadusUrl("/"), photo: "doctorPatient" },
+  { id: "store", tone: "b2", tag: "Aethex Store", title: "Medical devices", big: `Free delivery ${formatINR(FREE_DELIVERY_FROM)}+`, cta: "Shop now", href: portalUrl("store"), photo: "bpCheck", video: "store-reel" },
+  { id: "doctors", tone: "b3", tag: "Aethex Doctors", title: "Book a doctor", big: "Clinic or video", cta: "Find a doctor", href: D("/doctors"), photo: "consultation", video: "care-reel" },
+  { id: "study", tone: "b4", tag: "Aethex Study", title: "NEET-PG, daily", big: "Today's question is live", cta: "Answer now", href: ST("/question-of-the-day"), photo: "lectureHall", video: "study-reel", live: true },
+  { id: "hospitals", tone: "b5", tag: "For institutions", title: "One list. One quote.", big: "Beds · ICU · Labs", cta: "Get a quote", href: portalUrl("hospitals", "/#list"), photo: "icuMonitor", video: "hospital-reel" },
 ];
+const VID = (n: string) => `${import.meta.env.BASE_URL}videos/${n}`;
+/** A muted product reel that plays only while it's on screen (and not at all when motion is reduced). */
+function Reel({ name }: { name: string }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const v = ref.current; if (!v) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    const io = new IntersectionObserver(([e]) => { if (e?.isIntersecting) void v.play().catch(() => {}); else v.pause(); }, { threshold: 0.4 });
+    io.observe(v);
+    return () => io.disconnect();
+  }, []);
+  return <video ref={ref} className="reel" poster={VID(`${name}.jpg`)} muted loop playsInline preload="metadata" aria-hidden="true" tabIndex={-1}><source src={VID(`${name}.webm`)} type="video/webm" /><source src={VID(`${name}.mp4`)} type="video/mp4" /></video>;
+}
+const Ecg = () => (
+  <svg className="ecg" viewBox="0 0 600 60" preserveAspectRatio="none" aria-hidden="true"><path d="M0 30 H170 L182 18 L194 44 L206 30 H260 L272 4 L286 56 L298 30 H380 L392 22 L404 38 L416 30 H600" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" /></svg>
+);
 export function Banners() {
   const ref = useRef<HTMLDivElement>(null);
   const [at, setAt] = useState(0), [hold, setHold] = useState(false);
@@ -187,11 +207,12 @@ export function Banners() {
             <span className="txt">
               <small>{s.tag}</small>
               {i === 0 ? <h1>{s.title}</h1> : <b className="t">{s.title}</b>}
-              <span className="big">{s.big}</span>
-              <span className="line">{s.line}</span>
-              <span className="cta">{s.cta}</span>
+              <span className="big">{s.live && <i className="live" aria-label="Live" />}{s.big}</span>
+              <span className="cta">{s.cta} <ArrowRight size={15} /></span>
             </span>
-            <span className="pic" aria-hidden="true"><img src={IMG(s.img)} alt="" loading={i < 3 ? "eager" : "lazy"} decoding="async" /></span>
+            <span className="bg" aria-hidden="true"><img src={ph(s.photo, 1100, 560)} alt="" onError={hideBroken} loading={i < 3 ? "eager" : "lazy"} decoding="async" /></span>
+            <Ecg />
+            {s.video && <span className="vid" aria-hidden="true"><Reel name={s.video} /></span>}
           </a>
         ))}
       </div>
@@ -262,7 +283,7 @@ export function LatestProducts() {
   })();
   if (!isLoading && !list.length) return null;
   return (
-    <Row id="latest-products" title="Latest in the store" sub="Recently added, from verified brands" more={S("/shop")}>
+    <Row id="latest-products" title="Latest in the store" more={S("/shop")}>
       {isLoading ? <Skel /> : list.map((p) => (
         <a key={p.id} href={S(`/products/${p.slug}`)} className="hx-card" data-product={p.id}>
           <span className="im"><ProductImage src={p.image} alt="" width={300} /></span>
@@ -281,7 +302,7 @@ export function LatestBooks() {
   const list = data ? [...data.books].filter((b) => b.inStock !== false).sort((a, b) => (b.year ?? 0) - (a.year ?? 0) || b.id - a.id).slice(0, 16) : [];
   if (!isLoading && !list.length) return null;
   return (
-    <Row id="latest-books" title="Latest medical books" sub="Newest editions from the publishers" more={S("/books")}>
+    <Row id="latest-books" title="Latest medical books" more={S("/books")}>
       {isLoading ? <Skel /> : list.map((b) => (
         <a key={b.id} href={S(`/books/${b.slug}`)} className="hx-card book" data-book={b.id}>
           <span className="im"><ProductImage src={b.cover} alt="" width={300} book /></span>
@@ -300,14 +321,14 @@ export function TodayInStudy() {
   const latest = (arts ?? []).slice(0, 4);
   return (
     <section className="hx-wrap hx-study" data-home="study" aria-label="Today in Study and health articles">
-      <div className="hd"><div><h2>Today in Study</h2><p>A new question every day, the same for everyone</p></div><a href={portalUrl("study")} className="all" aria-label="Open Aethex Study"><ArrowRight size={18} /></a></div>
+      <div className="hd"><div><h2>Today in Study</h2></div><a href={portalUrl("study")} className="all" aria-label="Open Aethex Study"><ArrowRight size={18} /></a></div>
       <div className="grid">
         <div className="q"><Suspense fallback={<div className="st-qotd load" />}><QotdCard compact /></Suspense></div>
         <div className="side">
-          <a href={ST("/case-of-the-day")} className="tile violet"><CalendarCheck size={20} /><b>Case of the day</b><small>A clinical case to work through</small></a>
-          <a href={ST("/mock-test")} className="tile blue"><Timer size={20} /><b>Mock test</b><small>NEET-PG pattern, scored with your rank</small></a>
-          <a href={ST("/my-library?tab=mastery")} className="tile teal"><Grid3x3 size={20} /><b>Your topic map</b><small>Strong and weak topics at a glance</small></a>
-          <a href={ST("/flashcards")} className="tile amber"><BookOpen size={20} /><b>Flashcards</b><small>Spaced revision, a few minutes a day</small></a>
+          <a href={ST("/case-of-the-day")} className="tile violet"><CalendarCheck size={20} /><b>Case of the day</b><small>Work it through</small></a>
+          <a href={ST("/mock-test")} className="tile blue"><Timer size={20} /><b>Mock test</b><small>With your rank</small></a>
+          <a href={ST("/my-library?tab=mastery")} className="tile teal"><Grid3x3 size={20} /><b>Your topic map</b><small>Strong and weak</small></a>
+          <a href={ST("/flashcards")} className="tile amber"><BookOpen size={20} /><b>Flashcards</b><small>5 minutes a day</small></a>
         </div>
       </div>
       {latest.length > 0 && (
@@ -325,7 +346,7 @@ export function TodayInStudy() {
 export function DoctorsAndHospitals() {
   return (
     <section className="hx-wrap hx-dh" data-home="doctors-hospitals" aria-label="Doctors and hospitals">
-      <div className="hd"><div><h2>Find a doctor by specialty</h2><p>Checked registrations, clinic visits and video consults</p></div><a href={D("/doctors")} className="all" aria-label="All doctors"><ArrowRight size={18} /></a></div>
+      <div className="hd"><div><h2>Find a doctor by specialty</h2></div><a href={D("/doctors")} className="all" aria-label="All doctors"><ArrowRight size={18} /></a></div>
       <ul className="specs">{SPECIALTIES.slice(0, 12).map((s) => (
         <li key={s}><a href={D(`/doctors?specialty=${encodeURIComponent(s)}`)} data-spec={s}><span>{s}</span><ChevronRight size={15} className="go" /></a></li>
       ))}</ul>
@@ -353,7 +374,7 @@ export function HubFooter() {
         <div className="top">
           <div className="brand">
             <Logo />
-            <p>Doctors, a medical store, exam preparation and supplies for hospitals and medical colleges, with one account. Built in India for patients and medical professionals.</p>
+            <p>Doctors, store, study and hospital supplies. One account. Made in India.</p>
             <a href="mailto:support@aethex.in" className="mail"><Mail size={15} /> support@aethex.in</a>
           </div>
           {FOOT.map((c) => (
@@ -370,5 +391,43 @@ export function HubFooter() {
       </div>
       <div className="hx-word" aria-hidden="true">aethex</div>
     </footer>
+  );
+}
+
+/* ---------------------------------------------------------------- update 97: live numbers (from the catalogue), counting up when seen */
+function CountUp({ to }: { to: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    const el = ref.current; if (!el || !to) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) { setN(to); return; }
+    let raf = 0;
+    const io = new IntersectionObserver(([e]) => {
+      if (!e?.isIntersecting) return;
+      io.disconnect();
+      const t0 = performance.now();
+      const step = (t: number) => { const k = Math.min(1, (t - t0) / 1200); setN(Math.round(to * (1 - Math.pow(1 - k, 3)))); if (k < 1) raf = requestAnimationFrame(step); };
+      raf = requestAnimationFrame(step);
+    }, { threshold: 0.5 });
+    io.observe(el);
+    return () => { io.disconnect(); cancelAnimationFrame(raf); };
+  }, [to]);
+  return <span ref={ref}>{n.toLocaleString("en-IN")}</span>;
+}
+export function LiveStats() {
+  const { data } = useStore();
+  const { data: books } = useBooks();
+  if (!data) return null;
+  const items: [number, string, ReactNode][] = [
+    [data.products.filter((p) => p.inStock).length, "Products in stock", <Package size={20} />],
+    [books?.books.length ?? 0, "Medical books", <BookOpen size={20} />],
+    [data.brands.length, "Brands", <ShoppingBag size={20} />],
+    [data.categories.length, "Categories", <LayoutGrid size={20} />],
+  ];
+  return (
+    <section className="hx-wrap fk-stats" data-home="stats" aria-label="Aethex in numbers">
+      {items.filter(([n]) => n > 0).map(([n, l, i]) => <div key={l}><span className="i">{i}</span><b><CountUp to={n} /></b><small>{l}</small></div>)}
+      <div className="cod"><span className="i"><Truck size={20} /></span><b>COD</b><small>Cash on delivery</small></div>
+    </section>
   );
 }

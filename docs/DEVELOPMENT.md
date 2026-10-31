@@ -459,3 +459,10 @@ cancels from `/practice`. Reviews can only be written for `completed` appointmen
 - Banners: a peeking carousel of five offers (colour, a short headline, a highlighted line, a product photo in a circle), side arrows, dots.
 - "Health essentials for every home": BP monitors, oximeters, thermometers and nebulizers with their live lowest price ("From ₹…") from the catalogue.
 - The account and Cadus side panels of update 95 are folded into the Login menu and the Cadus tab. Menus now stay open when clicked right after hovering.
+
+## Update 97: aethex.in, photos, product reels and live motion
+
+- Banners: a real photograph behind each (Unsplash, `config/photos.ts`) slowly zooming under a colour wash, a moving ECG trace, a pulsing "live" dot on the Study banner, and on four of them a short product reel: our own 11-second loops made from the store's product photos (`public/videos/*-reel.webm|mp4`, 50–90 KB each, poster `.jpg`), playing muted only while on screen and not at all with reduced motion. Shorter words throughout (two-to-four-word titles, one highlight line).
+- Live numbers under the banners counting up when seen: products in stock, medical books, brands and categories, all from the catalogue, plus cash on delivery.
+- A Cadus button (with a moving shine) just left of Login. Sections rise in as they scroll into view; images zoom slightly on hover.
+- Shorter section headings: no subtitles under rows; shorter study tiles and footer line.
