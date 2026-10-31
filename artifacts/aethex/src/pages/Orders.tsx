@@ -5,6 +5,7 @@
  */
 import { RemindersPanel } from "@/components/store/StoreExtras2";
 import { CreditPanel } from "@/components/store/StoreExtras3";
+import { MyTickets } from "@/components/store/StoreExtras4";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { ChevronDown, Loader2, Package, PackageSearch } from "lucide-react";
@@ -63,6 +64,7 @@ export default function Orders() {
         )}
         {note && <p className="ax-form-err">{note}</p>}
         <CreditPanel />
+        <MyTickets />
         <RemindersPanel />
         {orders === null ? (
           <div className="ax-orders-loading"><Loader2 size={22} className="spin" /> Loading your orders…</div>

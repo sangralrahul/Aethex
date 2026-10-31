@@ -12,6 +12,7 @@
  */
 import { ReorderRemind } from "@/components/store/StoreExtras2";
 import { RxBadge } from "@/components/store/StoreExtras3";
+import { PriceHistory } from "@/components/store/StoreExtras4";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { bulkListAt } from "@/lib/portals";
@@ -373,6 +374,7 @@ export default function ProductDetail() {
             </div>
           )}
           {product.rx && <RxBadge />}
+          {!inst && <PriceHistory productId={product.id} price={priceShown ?? null} />}
           {!inst && <DeliveryCheck price={priceShown ?? (typeof lowest === "number" ? lowest : null)} />}
           {!inst && !product.priceOnRequest && <ReorderRemind productId={product.id} variantId={variant?.id ?? (variants.length === 1 ? variants[0]!.id : null)} name={`${brandName} ${product.name}`} />}
           {inst ? (

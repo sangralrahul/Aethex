@@ -2739,3 +2739,45 @@ button.ec-promo{width:100%}
 @media print{.ax-po .noprint-edit{display:none!important}.ax-po .noprint-edit~.pre,.ax-po .noprint-edit~.pv{display:block!important}.ax-po td .pv{display:inline!important}}
 .ax-po td{vertical-align:middle}
 .ax-spend>.ax-btn{justify-self:start}
+
+/* Update 89: help requests and price history (components/store/StoreExtras4.tsx) */
+.ax-help{margin:16px 0;padding:14px 16px;border:1px solid #e5e7eb;border-radius:14px;background:#fff;display:grid;gap:10px}
+.ax-help-h{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.ax-help-h b{flex:1 1 auto}
+.ax-help-new{display:grid;gap:10px}
+.ax-help-new .topics{display:flex;flex-wrap:wrap;gap:6px}
+.ax-help-new .topics button{padding:7px 12px;border-radius:999px;border:1px solid #d0d5dd;background:#fff;font:inherit;font-size:13px;cursor:pointer}
+.ax-help-new .topics button.on{border-color:#0f766e;background:#f0fdfa;color:#0f766e;font-weight:600}
+.ax-help-new .row,.ax-help-t .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.ax-help-t{border:1px solid #eef0f4;border-radius:12px;padding:10px 12px;background:#fcfcfd}
+.ax-help-t .hd{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.ax-help-t .hd small{color:#667085;margin-left:auto}
+.ax-help-t ul{list-style:none;margin:8px 0;padding:0;display:grid;gap:6px}
+.ax-help-t li{padding:8px 10px;border-radius:10px;background:#fff;border:1px solid #eef0f4;max-width:90%}
+.ax-help-t li.store{background:#f0fdfa;border-color:#ccfbf1;justify-self:end}
+.ax-help-t li small{display:block;color:#667085;font-size:11.5px}
+.ax-help-t li p{margin:2px 0 0;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}
+.ax-help-t textarea{width:100%;padding:8px 10px;border:1px solid #d0d5dd;border-radius:9px;font:inherit;font-size:14px;margin-bottom:6px}
+.ax-help-st{padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;background:#f2f4f7;color:#475467}
+.ax-help-st.s-open{background:#fffbeb;color:#92400e}.ax-help-st.s-waiting{background:#eff6ff;color:#1d4ed8}.ax-help-st.s-solved{background:#ecfdf5;color:#047857}
+.ax-help-mine{margin:0 0 16px;padding:12px 14px;border:1px solid #fde68a;border-radius:12px;background:#fffbeb}
+.ax-help-mine b{display:flex;align-items:center;gap:6px}
+.ax-help-mine ul{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:4px}
+.ax-help-mine li{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:14px}
+.ax-help-adm{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.ax-help-adm>li{border:1px solid #e5e7eb;border-radius:12px;background:#fff;overflow:hidden}
+.ax-help-adm .row{display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border:0;background:none;font:inherit;text-align:left;cursor:pointer}
+.ax-help-adm .row>span:first-child{flex:1;min-width:0}
+.ax-help-adm .row small{display:block;color:#667085;font-size:12.5px}
+.ax-help-adm .body{padding:0 14px 14px;display:grid;gap:8px}
+.ax-help-adm .body>.row{padding:0;cursor:default}
+.ax-ph90{margin:10px 0;border:1px solid #e5e7eb;border-radius:12px;background:#fff}
+.ax-ph90-h{display:flex;align-items:center;gap:8px;width:100%;padding:9px 12px;border:0;background:none;font:inherit;font-size:14px;color:#0f172a;cursor:pointer;text-align:left}
+.ax-ph90-h b{color:#047857}
+.ax-ph90-h small{color:#667085;margin-left:auto}
+.ax-ph90-h .ch{margin-left:auto}
+.ax-ph90-h small+.ch{margin-left:6px}
+.ax-ph90-b{padding:0 12px 12px;font-size:13.5px}
+.ax-ph90-b svg{width:100%;height:auto;max-height:120px}
+.ax-ph90-b p{margin:4px 0}
+.ax-ph90-b small{color:#667085}

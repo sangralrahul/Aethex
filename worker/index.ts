@@ -23,7 +23,7 @@
 import { functionHandler, functionNames, useEnv } from "./deno-shim";
 import { handleAuth, handleCart, handleProfile, runScheduled, type AuthEnv } from "./auth";
 import { serveDownload, type R2Bucket } from "./downloads";
-import { handleStore, runEquipmentReminders, runReorderReminders, runStoreScheduled, type StoreEnv } from "./store";
+import { handleStore, logPrices, runEquipmentReminders, runReorderReminders, runStoreScheduled, type StoreEnv } from "./store";
 import { handleTranscribe, type AiBinding } from "./transcribe";
 import { handleVoice, voiceEnabled, type VoiceEnv } from "./voice";
 import { guestGate, requireAccount } from "./guest";
@@ -220,6 +220,7 @@ export default {
   async scheduled(_event: unknown, env: Env, ctx: { waitUntil: (p: Promise<unknown>) => void }) {
     ctx.waitUntil(runScheduled(env).then((r) => console.log("scheduled", r), (e) => console.error("scheduled failed", e)));
     ctx.waitUntil(runFollowUps(env).then((r) => console.log("find follow-ups", r), (e) => console.error("find follow-ups failed", e)));
+    ctx.waitUntil(logPrices(env as StoreEnv).then((r) => console.log("store prices", r), (e) => console.error("store prices failed", e)));
     ctx.waitUntil(cleanSharedRecords(env).then((r) => console.log("find shared records", r), (e) => console.error("find shared records failed", e)));
     ctx.waitUntil(runFindReminders(env).then((r) => console.log("find reminders", r), (e) => console.error("find reminders failed", e)));
     ctx.waitUntil(runReorderReminders(env).then((r) => console.log("reorder reminders", r), (e) => console.error("reorder reminders failed", e)));

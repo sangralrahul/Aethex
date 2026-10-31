@@ -182,6 +182,15 @@ export const STORE_TABLES = [
     token TEXT NOT NULL, invited_by TEXT, invited_at INTEGER NOT NULL, joined_at INTEGER, PRIMARY KEY (team_id, email))`,
   "CREATE INDEX IF NOT EXISTS store_team_members_user ON store_team_members(user_id)",
   "CREATE UNIQUE INDEX IF NOT EXISTS store_team_members_token ON store_team_members(token)",
+  // update 89: help requests on orders (a conversation with the store) and each product's price over time
+  `CREATE TABLE IF NOT EXISTS store_tickets (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, user_id TEXT, email TEXT, topic TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open',
+    created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
+  "CREATE INDEX IF NOT EXISTS store_tickets_order ON store_tickets(order_id)",
+  "CREATE INDEX IF NOT EXISTS store_tickets_status ON store_tickets(status, updated_at)",
+  "CREATE TABLE IF NOT EXISTS store_ticket_msgs (id TEXT PRIMARY KEY, ticket_id TEXT NOT NULL, who TEXT NOT NULL, name TEXT, body TEXT NOT NULL, at INTEGER NOT NULL)",
+  "CREATE INDEX IF NOT EXISTS store_ticket_msgs_t ON store_ticket_msgs(ticket_id, at)",
+  "CREATE TABLE IF NOT EXISTS store_price_log (product_id INTEGER NOT NULL, price REAL NOT NULL, mrp REAL, at INTEGER NOT NULL)",
+  "CREATE INDEX IF NOT EXISTS store_price_log_p ON store_price_log(product_id, at)",
   "CREATE TABLE IF NOT EXISTS store_spend_budget (owner TEXT NOT NULL, fy INTEGER NOT NULL, amount REAL NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (owner, fy))",
 ];
 /** Columns added after a table was first made: added where missing (an existing column is left alone). */
@@ -582,6 +591,7 @@ async function handleAdmin(request: Request, env: DBEnv, path: string, ctx?: Ctx
 
   if (path === "me") return json({ ok: true, email: who });
   { const r84 = await handleAdmin84(request, env, path, method, who); if (r84) return r84; }
+  { const r89 = await handleAdminTickets(request, env, path, method, who); if (r89) return r89; }
 
   if (path === "summary" && method === "GET") {
     const dayStart = Date.now() - 86400_000;
@@ -2107,6 +2117,9 @@ export async function handleStore(request: Request, env: StoreEnv, ctx?: Ctx): P
   await ensureTables(db.DB);
   if (path === "questions" && method === "POST") return createQuestion(request, db);
   { const r84 = await handleStore84(request, db, path, method); if (r84) return r84; }
+  { const r89 = await handleTickets(request, db, path, method); if (r89) return r89; }
+  const ph89 = /^products\/(\d{1,7})\/price-history$/.exec(path);
+  if (ph89 && method === "GET") return json(await priceHistory(db, Number(ph89[1])), 200, { "cache-control": "public, max-age=600" });
   if (path === "approvals" || /^approvals\/[A-Za-z0-9_-]{20,64}(\/(decision|comment))?$/.test(path)) return handleApprovals(request, db, path, method);
   if (path === "equipment" || /^equipment\/e[a-z0-9]{6,30}\/(delete|done)$/.test(path)) return handleEquipment(request, db, path, method);
   if (path === "reminders" || /^reminders\/r[a-z0-9]{6,30}\/delete$/.test(path)) return handleReminders(request, db, path, method);
@@ -3016,4 +3029,121 @@ async function handlePo(request: Request, db: DBEnv, path: string, method: strin
   await db.DB.prepare("UPDATE store_bulk_requests SET po = ? WHERE id = ?").bind(JSON.stringify(next), r.id).run();
   if (!po) await sendEmail(db, storeInbox(db), `Purchase order ${number} for quotation ${r.id}`, shell(`<p style="margin:0;font-size:14px;"><b>${escapeHtml(r.institution)}</b> made purchase order <b>${escapeHtml(number)}</b> for quotation request ${r.id}: ${items.length} items, ${money(items.reduce((s, i) => s + (i.unitPrice ?? 0) * i.qty, 0))}.</p>${button(`${SITE_URL}/admin`, "Open the store admin")}`)).catch(() => false);
   return json({ po: next });
+}
+
+/* ------------------------------------------------------------------ update 89: help tickets, price history */
+
+export const TICKET_TOPICS = ["Late delivery", "Wrong or missing item", "Damaged item", "Payment or refund", "Invoice or GST", "Something else"];
+type TicketRow = { id: string; order_id: string; user_id: string | null; email: string | null; topic: string; status: string; created_at: number; updated_at: number };
+type MsgRow = { id: string; ticket_id: string; who: string; name: string | null; body: string; at: number };
+async function ticketsFor(db: DBEnv, where: string, binds: unknown[]) {
+  const { results } = await db.DB.prepare(`SELECT * FROM store_tickets WHERE ${where} ORDER BY updated_at DESC LIMIT 200`).bind(...binds).all<TicketRow>();
+  if (!results.length) return [];
+  const { results: msgs } = await db.DB.prepare(`SELECT * FROM store_ticket_msgs WHERE ticket_id IN (${results.map(() => "?").join(",")}) ORDER BY at`).bind(...results.map((t) => t.id)).all<MsgRow>();
+  return results.map((t) => ({ id: t.id, orderId: t.order_id, topic: t.topic, status: t.status, createdAt: t.created_at, updatedAt: t.updated_at, email: t.email,
+    messages: msgs.filter((m) => m.ticket_id === t.id).map((m) => ({ id: m.id, who: m.who, name: m.name, body: m.body, at: m.at })) }));
+}
+async function addMsg(db: DBEnv, ticketId: string, who: "customer" | "store", name: string | null, body: string, status: string) {
+  const now = Date.now();
+  await db.DB.prepare("INSERT INTO store_ticket_msgs (id, ticket_id, who, name, body, at) VALUES (?, ?, ?, ?, ?, ?)").bind(nid("m"), ticketId, who, name, body, now).run();
+  await db.DB.prepare("UPDATE store_tickets SET status = ?, updated_at = ? WHERE id = ?").bind(status, now, ticketId).run();
+}
+
+/** The customer's help requests on an order (the order's own access: its browser or account). */
+async function handleTickets(request: Request, db: DBEnv, path: string, method: string): Promise<Response | null> {
+  const m = /^orders\/([A-Za-z0-9-]{6,20})\/tickets(?:\/(k[a-z0-9]{6,30})\/(reply|close))?$/.exec(path);
+  if (!m) {
+    if (path === "my-tickets" && method === "GET") {
+      const user = await currentUser(request, db).catch(() => null);
+      if (!user) return json({ error: "Sign in to see your help requests.", signIn: true }, 401);
+      return json({ tickets: await ticketsFor(db, "user_id = ? OR email = ?", [user.id, normEmail(user.email)]) });
+    }
+    return null;
+  }
+  const b = method === "POST" ? await readJson(request) : null;
+  const access = await orderFor(request, db, m[1], b?.phone);
+  if (access instanceof Response) return access;
+  if (!access.full) return json({ error: "Open the order from the browser or account that placed it." }, 403);
+  const o = toOrder(access.r);
+  if (method === "GET" && !m[2]) return json({ tickets: await ticketsFor(db, "order_id = ?", [o.id]), topics: TICKET_TOPICS });
+  if (method !== "POST") return json({ error: "Method not allowed" }, 405);
+  const body = longStr(b?.body, 2000);
+  if (!m[2]) {
+    const topic = TICKET_TOPICS.includes(String(b?.topic)) ? String(b!.topic) : "";
+    if (!topic) return json({ error: "Choose what it's about.", field: "topic" }, 400);
+    if (body.length < 5) return json({ error: "Tell us a little more.", field: "body" }, 400);
+    if (!(await allow(db, `store:ticket:${o.id}`, 5, 86400_000))) return json({ error: "You've raised several requests today. We'll reply to those first." }, 429);
+    const open = await db.DB.prepare("SELECT id FROM store_tickets WHERE order_id = ? AND topic = ? AND status != 'solved'").bind(o.id, topic).first<{ id: string }>();
+    if (open) return json({ error: "There's already an open request about this. Add to it below.", ticket: open.id }, 409);
+    const id = nid("k"), now = Date.now();
+    await db.DB.prepare("INSERT INTO store_tickets (id, order_id, user_id, email, topic, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 'open', ?, ?)").bind(id, o.id, access.r.user_id, o.address.email ?? access.r.email, topic, now, now).run();
+    await addMsg(db, id, "customer", o.address.name, body, "open");
+    await sendEmail(db, storeInbox(db), `Help request on ${o.id}: ${topic}`, shell(`<p style="margin:0 0 8px;font-size:14px;"><b>${escapeHtml(o.address.name)}</b> on order <b>${o.id}</b> (${escapeHtml(topic)}):</p><blockquote style="margin:0 0 12px;padding:10px 14px;border-left:3px solid #0d9488;background:#f8fafc;font-size:14px;white-space:pre-wrap;">${escapeHtml(body)}</blockquote>${button(`${SITE_URL}/admin`, "Reply in the store admin")}`)).catch(() => false);
+    return json({ tickets: await ticketsFor(db, "order_id = ?", [o.id]) }, 201);
+  }
+  const t = await db.DB.prepare("SELECT * FROM store_tickets WHERE id = ? AND order_id = ?").bind(m[2], o.id).first<TicketRow>();
+  if (!t) return json({ error: "Request not found." }, 404);
+  if (m[3] === "close") await db.DB.prepare("UPDATE store_tickets SET status = 'solved', updated_at = ? WHERE id = ?").bind(Date.now(), t.id).run();
+  else {
+    if (body.length < 2) return json({ error: "Write your message.", field: "body" }, 400);
+    if (!(await allow(db, `store:ticket-msg:${t.id}`, 30, 86400_000))) return json({ error: "That's a lot of messages. We'll be in touch." }, 429);
+    await addMsg(db, t.id, "customer", o.address.name, body, "open");
+    await sendEmail(db, storeInbox(db), `New message on ${o.id}: ${t.topic}`, shell(`<p style="margin:0 0 8px;font-size:14px;">${escapeHtml(body)}</p>${button(`${SITE_URL}/admin`, "Reply in the store admin")}`)).catch(() => false);
+  }
+  return json({ tickets: await ticketsFor(db, "order_id = ?", [o.id]) });
+}
+async function handleAdminTickets(request: Request, env: DBEnv, path: string, method: string, who: string): Promise<Response | null> {
+  if (path === "tickets" && method === "GET") {
+    const status = str(new URL(request.url).searchParams.get("status"), 12);
+    const list = await ticketsFor(env, ["open", "waiting", "solved"].includes(status) ? "status = ?" : "1 = 1", ["open", "waiting", "solved"].includes(status) ? [status] : []);
+    const counts = await env.DB.prepare("SELECT status, COUNT(*) AS n FROM store_tickets GROUP BY status").all<{ status: string; n: number }>();
+    return json({ tickets: list, counts: Object.fromEntries(counts.results.map((c) => [c.status, Number(c.n)])) });
+  }
+  const m = /^tickets\/(k[a-z0-9]{6,30})$/.exec(path);
+  if (!m || method !== "POST") return null;
+  const t = await env.DB.prepare("SELECT * FROM store_tickets WHERE id = ?").bind(m[1]).first<TicketRow>();
+  if (!t) return json({ error: "Request not found." }, 404);
+  const b = await readJson(request);
+  const body = longStr(b?.body, 3000), status = ["open", "waiting", "solved"].includes(String(b?.status)) ? String(b!.status) : body ? "waiting" : t.status;
+  if (body) await addMsg(env, t.id, "store", "Aethex support", body, status);
+  else await env.DB.prepare("UPDATE store_tickets SET status = ?, updated_at = ? WHERE id = ?").bind(status, Date.now(), t.id).run();
+  let emailed = false;
+  if (body && t.email && b?.notify !== false) emailed = await sendEmail(env, t.email, `Re: your order ${t.order_id} (${t.topic})`, shell(`<h2 style="margin:0 0 10px;font-size:19px;">A reply about your order</h2><blockquote style="margin:0 0 12px;padding:10px 14px;border-left:3px solid #0d9488;background:#f8fafc;font-size:14px;white-space:pre-wrap;">${escapeHtml(body)}</blockquote><p style="margin:0;font-size:14px;">Reply on your order page${status === "solved" ? "; we've marked this solved, but you can reopen it by replying" : ""}.</p>${button(`${STORE_SITE}/order/${t.order_id}#help`, "Open your order")}`)).catch(() => false);
+  void who;
+  return json({ ticket: (await ticketsFor(env, "id = ?", [t.id]))[0], emailed });
+}
+
+/** Price history: the selling price of every product, logged when it changes (once a day at most per product). */
+export async function logPrices(env: StoreEnv): Promise<{ logged: number }> {
+  if (!env.DB) return { logged: 0 };
+  const db = env as DBEnv;
+  await ensureTables(db.DB);
+  const st = await storeState(db);
+  const { results } = await db.DB.prepare("SELECT l.product_id, l.price FROM store_price_log l JOIN (SELECT product_id, MAX(at) AS at FROM store_price_log GROUP BY product_id) m ON m.product_id = l.product_id AND m.at = l.at").all<{ product_id: number; price: number }>();
+  const last = new Map(results.map((r) => [Number(r.product_id), Number(r.price)]));
+  const now = Date.now(), rows: [number, number, number | null][] = [];
+  for (const p of catalog.products) {
+    const q = sellAs(p, st.overrides.get(p.id), st.offers, st.now);
+    if (!q || q.priceOnRequest) continue;
+    const s = summarize(q);
+    if (s.price === null || s.priceOnRequest) continue;
+    if (last.get(p.id) !== s.price) rows.push([p.id, s.price, s.mrp]);
+  }
+  for (let i = 0; i < rows.length; i += 40) {
+    const chunk = rows.slice(i, i + 40);
+    await db.DB.prepare(`INSERT INTO store_price_log (product_id, price, mrp, at) VALUES ${chunk.map(() => "(?, ?, ?, ?)").join(",")}`).bind(...chunk.flatMap((r) => [...r, now])).run();
+  }
+  return { logged: rows.length };
+}
+async function priceHistory(db: DBEnv, productId: number) {
+  const since = Date.now() - 365 * 86400_000;
+  const { results } = await db.DB.prepare("SELECT price, mrp, at FROM store_price_log WHERE product_id = ? AND at >= ? ORDER BY at").bind(productId, since).all<{ price: number; mrp: number | null; at: number }>();
+  const first = await db.DB.prepare("SELECT MIN(at) AS at FROM store_price_log").first<{ at: number | null }>();
+  const d90 = Date.now() - 90 * 86400_000;
+  // the price in force on each day of the last 90: the last change before the window counts from its start
+  const before = [...results].reverse().find((r) => r.at < d90);
+  const window = [...(before ? [{ ...before, at: d90 }] : []), ...results.filter((r) => r.at >= d90)];
+  const low = window.length ? window.reduce((a, r) => (r.price < a.price ? r : a)) : null;
+  const high = window.length ? window.reduce((a, r) => (r.price > a.price ? r : a)) : null;
+  return { points: results.map((r) => ({ price: r.price, mrp: r.mrp, at: r.at })), low90: low ? { price: low.price, at: low.at } : null, high90: high ? { price: high.price, at: high.at } : null, trackingSince: first?.at ?? null };
 }
