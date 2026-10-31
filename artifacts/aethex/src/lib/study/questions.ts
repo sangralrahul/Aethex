@@ -1,8 +1,9 @@
 /** Update 77: questions from each source as the study record keeps them (QSnap). */
 import type { MCQ } from "@/data/neetpgQuestions";
 import { qKey, type QSnap } from "./progress";
+import { topicFor } from "./topics";
 
-export const fromBank = (q: MCQ): QSnap => ({ key: qKey("neetpg", q.question, q.id), question: q.question, options: [...q.options], correct: q.correct, explanation: q.explanation, subject: q.subject, source: "neetpg" });
+export const fromBank = (q: MCQ): QSnap => ({ key: qKey("neetpg", q.question, q.id), question: q.question, options: [...q.options], correct: q.correct, explanation: q.explanation, subject: q.subject, topic: topicFor(q.subject, `${q.question} ${q.options.join(" ")} ${q.explanation}`), source: "neetpg" });
 
 /** A generated question ({question, options: ["A) …"], correct: "A", explanation}) as a QSnap, or null if malformed. */
 export function fromGenerated(x: unknown, subject: string, topic: string): QSnap | null {

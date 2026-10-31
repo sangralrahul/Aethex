@@ -4,7 +4,7 @@
  * of the platform as small tiles. Signed out, the numbers make way for a short line and sign-in.
  * Styles: src/site-hub.css (.ax-qs*).
  */
-import type { ComponentType, ReactNode } from "react";
+import { lazy, Suspense, type ComponentType, type ReactNode } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, type LucideProps } from "lucide-react";
@@ -18,6 +18,8 @@ import { istDay, openWrong, streakOf, useStudy } from "@/lib/study/progress";
 import { dueCards } from "@/components/study/StudyBits2";
 import { WORKSPACE, PORTAL_NAMES, type Site } from "@/lib/workspace";
 import { loginUrl } from "@/lib/host";
+
+const QotdCard = lazy(() => import("@/components/study/Qotd").then((m) => ({ default: m.QotdCard })));
 import { formatINR } from "@/lib/utils";
 
 type Stat = { label: string; value: ReactNode; sub?: string; href: string };
@@ -115,6 +117,7 @@ export function QuickStart({ portal }: { portal: Site }) {
       {stats.length > 0 ? (
         <div className="ax-qs-stats">{stats.map((s) => <L key={s.label} href={s.href} className="ax-qs-stat"><small>{s.label}</small><b data-qs-stat={s.label}>{s.value}</b>{s.sub && <span>{s.sub}</span>}</L>)}</div>
       ) : null}
+      {portal === "study" && <Suspense fallback={null}><QotdCard compact /></Suspense>}
       {!isLoggedIn && portal !== "store" && <p className="ax-qs-in"><a href={loginUrl("/")}>Sign in</a> to see your {portal === "doctors" ? "appointments and records" : portal === "study" ? "progress on every device" : "quotations, approvals and equipment"} here.</p>}
       <div className="ax-qs-all" aria-label={`Everything in Aethex ${PORTAL_NAMES[portal]}`}>{all.map((i) => { const I = i.icon as ComponentType<LucideProps>; return <L key={i.href + i.label} href={i.href} className="ax-qs-tile"><I size={18} /><span>{i.label}</span></L>; })}</div>
     </section>

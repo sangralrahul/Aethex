@@ -9,7 +9,7 @@ import {
   Activity, BadgePercent, Beaker, Bed, BookMarked, BookOpen, Boxes, Brain, Building2, CalendarCheck, CalendarDays, ClipboardList, Compass, FileHeart, FileText,
   FlaskConical, GraduationCap, Heart, HeartPulse, Home, Layers, LayoutDashboard, Library, ListChecks, MessageCircleQuestion, Newspaper, Package, PenLine,
   PiggyBank, Pill, Puzzle, RotateCcw, Scale, Search, ShieldCheck, ShoppingBag, ShoppingCart, Siren, Star, Stethoscope, Syringe, Target, Timer, Trophy,
-  Truck, UserPlus, Users, Wrench, Calculator, Headset, ClipboardCheck,
+  Truck, UserPlus, Users, Wrench, Calculator, Headset, ClipboardCheck, ClipboardPen, PackageCheck, Sparkles, Grid3x3,
 } from "lucide-react";
 import type { Portal } from "@/lib/host";
 
@@ -39,6 +39,8 @@ const institution = (seg: "hospital" | "college"): WsGroup[] => [
   { title: "Work", items: [
     { href: "/account/quotations", label: "Quotations and POs", icon: ClipboardList, tab: true, mine: true },
     { href: "/approvals", label: "Approvals", icon: ClipboardCheck, mine: true },
+    { href: "/indents", label: "Department indents", icon: ClipboardPen, mine: true },
+    { href: "/stock", label: "Consumables stock", icon: PackageCheck, mine: true },
     { href: "/equipment", label: "Equipment register", icon: Wrench, mine: true },
     { href: "/spend", label: "Spend", icon: PiggyBank, tab: true, mine: true },
     { href: "/team", label: "Team", icon: Users, mine: true },
@@ -104,6 +106,7 @@ export const WORKSPACE: Record<Site, WsGroup[]> = {
       { href: "/custom-test", label: "Custom test", icon: ListChecks },
       { href: "/sectional-tests", label: "Sectional tests", icon: Timer },
       { href: "/flashcards", label: "Flashcards", icon: Layers },
+      { href: "/question-of-the-day", label: "Question of the day", icon: Sparkles },
       { href: "/case-of-the-day", label: "Case of the day", icon: CalendarDays },
     ] },
     { title: "Learn", items: [
@@ -117,6 +120,7 @@ export const WORKSPACE: Record<Site, WsGroup[]> = {
     ] },
     { title: "Mine", items: [
       { href: "/my-library", label: "My library", icon: Library, tab: true, mine: true },
+      { href: "/my-library?tab=mastery", label: "Topic mastery", icon: Grid3x3, mine: true },
       { href: "/my-library?tab=revision", label: "Revision deck", icon: RotateCcw, mine: true },
       { href: "/study-planner", label: "Exam plan", icon: CalendarDays, mine: true },
       { href: "/study-groups", label: "Study groups", icon: Users, mine: true },

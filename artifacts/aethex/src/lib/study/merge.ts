@@ -1,6 +1,6 @@
 /** Update 77: the study record's shape and how two copies merge (shared by the site and worker/study.ts). */
 export interface QSnap { key: string; question: string; options: string[]; correct: number; explanation: string; subject: string; topic?: string; source: string }
-export interface Attempt { key: string; subject: string; correct: boolean; at: number }
+export interface Attempt { key: string; subject: string; correct: boolean; at: number; /** update 90 */ topic?: string }
 export interface WrongItem { q: QSnap; at: number; tries: number; mastered?: number; updatedAt: number }
 export type BookmarkKind = "question" | "topic" | "condition" | "subject";
 export interface Bookmark { key: string; kind: BookmarkKind; title: string; href?: string; subject?: string; q?: QSnap; note?: string; at: number; updatedAt: number; removed?: boolean }

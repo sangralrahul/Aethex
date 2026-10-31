@@ -36,7 +36,7 @@ function clean(raw: unknown): StudyState | null {
   return {
     ...blankStudy(),
     goal: Math.max(5, Math.min(500, Math.round(Number(s.goal) || 30))), goalAt: Number(s.goalAt) || 0, days,
-    attempts: Array.isArray(s.attempts) ? s.attempts.filter((a) => a && typeof a.key === "string" && typeof a.at === "number").map((a) => ({ key: String(a.key).slice(0, 120), subject: String(a.subject ?? "").slice(0, 60), correct: !!a.correct, at: a.at })) : [],
+    attempts: Array.isArray(s.attempts) ? s.attempts.filter((a) => a && typeof a.key === "string" && typeof a.at === "number").map((a) => ({ key: String(a.key).slice(0, 120), subject: String(a.subject ?? "").slice(0, 60), correct: !!a.correct, at: a.at, ...(typeof a.topic === "string" && a.topic ? { topic: String(a.topic).slice(0, 80) } : {}) })) : [],
     wrong: obj(s.wrong) as StudyState["wrong"], bookmarks: obj(s.bookmarks) as StudyState["bookmarks"], updatedAt: Number(s.updatedAt) || 0,
     cards: obj(s.cards) as NonNullable<StudyState["cards"]>,
     exam: s.exam && typeof s.exam === "object" && /^(\d{4}-\d{2}-\d{2})?$/.test(String(s.exam.date ?? "")) ? { name: String(s.exam.name ?? "").slice(0, 40), date: String(s.exam.date ?? ""), at: Number(s.exam.at) || 0 } : null,
@@ -45,7 +45,7 @@ function clean(raw: unknown): StudyState | null {
 
 export async function handleStudy(request: Request, env: AuthEnv & { DB?: D1Like }): Promise<Response> {
   const path = new URL(request.url).pathname.replace(/^\/api\/study/, "").replace(/\/+$/, "");
-  if (!["/state", "/mock", "/leaderboard", "/board"].includes(path) && !/^\/(groups|comments|sectional)(\/|$)/.test(path)) return json({ error: "Not found" }, 404);
+  if (!["/state", "/mock", "/leaderboard", "/board"].includes(path) && !/^\/(groups|comments|sectional|qotd)(\/|$)/.test(path)) return json({ error: "Not found" }, 404);
   if (!env.DB) return json({ error: "The study record isn't switched on yet: the site's database isn't connected." }, 503);
   await ensure(env.DB);
   { const r2 = await handleStudy2(request, env as Parameters<typeof handleStudy2>[1], path); if (r2) return r2; }

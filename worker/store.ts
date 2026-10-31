@@ -27,7 +27,7 @@ import type {
 import { bookAsProduct, isBookId, itemHref } from "../artifacts/aethex/src/lib/store/bookdata";
 import {
   applyOverride, BANK_DAYS, BANK_LIMIT, BANK_MIN, BULK_STATUSES, cancellable, cleanSchedule, COD_LIMIT, everyText, formatDay, INDIAN_STATES, INSTITUTION_TYPES, MAX_ADDRESSES, normPhone, ONLINE_LIMIT,
-  ORDER_STATUSES, priceBulk, quoteLines, round2, cleanBulkLines,
+  ORDER_STATUSES, priceBulk, quoteLines, round2, cleanBulkLines, lineKey,
   STATUS_LABEL, scheduleText, summarize, validEmail, validGstin, validPincode,
 } from "../artifacts/aethex/src/lib/store/rules";
 import { applyCoupon, applyOffers, cleanCouponCode, couponLive, liveOfferKey, offerLive, publicCoupon } from "../artifacts/aethex/src/lib/store/promo";
@@ -191,6 +191,15 @@ export const STORE_TABLES = [
   "CREATE INDEX IF NOT EXISTS store_ticket_msgs_t ON store_ticket_msgs(ticket_id, at)",
   "CREATE TABLE IF NOT EXISTS store_price_log (product_id INTEGER NOT NULL, price REAL NOT NULL, mrp REAL, at INTEGER NOT NULL)",
   "CREATE INDEX IF NOT EXISTS store_price_log_p ON store_price_log(product_id, at)",
+  // update 90: department indents (raised by a department, approved by the purchase officer, merged into the bulk list) and the consumables stock register
+  `CREATE TABLE IF NOT EXISTS store_indents (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, requester TEXT NOT NULL, department TEXT NOT NULL, lines TEXT NOT NULL, note TEXT, status TEXT NOT NULL DEFAULT 'pending',
+    decided_by TEXT, decision_note TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
+  "CREATE INDEX IF NOT EXISTS store_indents_user ON store_indents(user_id, updated_at)",
+  `CREATE TABLE IF NOT EXISTS store_stock (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT NOT NULL, unit TEXT NOT NULL, qty REAL NOT NULL, reorder_level REAL NOT NULL, reorder_qty REAL NOT NULL,
+    location TEXT, product_id INTEGER, variant_id TEXT, alerted INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
+  "CREATE INDEX IF NOT EXISTS store_stock_user ON store_stock(user_id)",
+  "CREATE TABLE IF NOT EXISTS store_stock_moves (id TEXT PRIMARY KEY, stock_id TEXT NOT NULL, kind TEXT NOT NULL, qty REAL NOT NULL, after REAL NOT NULL, note TEXT, by_name TEXT, at INTEGER NOT NULL)",
+  "CREATE INDEX IF NOT EXISTS store_stock_moves_s ON store_stock_moves(stock_id, at)",
   "CREATE TABLE IF NOT EXISTS store_spend_budget (owner TEXT NOT NULL, fy INTEGER NOT NULL, amount REAL NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (owner, fy))",
 ];
 /** Columns added after a table was first made: added where missing (an existing column is left alone). */
@@ -2121,6 +2130,8 @@ export async function handleStore(request: Request, env: StoreEnv, ctx?: Ctx): P
   const ph89 = /^products\/(\d{1,7})\/price-history$/.exec(path);
   if (ph89 && method === "GET") return json(await priceHistory(db, Number(ph89[1])), 200, { "cache-control": "public, max-age=600" });
   if (path === "approvals" || /^approvals\/[A-Za-z0-9_-]{20,64}(\/(decision|comment))?$/.test(path)) return handleApprovals(request, db, path, method);
+  if (path === "indents" || /^indents\/i[a-z0-9]{6,30}\/(approve|reject|cancel|merged)$/.test(path)) return handleIndents(request, db, path, method);
+  if (path === "stock" || /^stock\/s[a-z0-9]{6,30}\/(move|delete)$/.test(path)) return handleStock(request, db, path, method);
   if (path === "equipment" || /^equipment\/e[a-z0-9]{6,30}\/(delete|done)$/.test(path)) return handleEquipment(request, db, path, method);
   if (path === "reminders" || /^reminders\/r[a-z0-9]{6,30}\/delete$/.test(path)) return handleReminders(request, db, path, method);
   // update 86: teams, spend and purchase orders
@@ -3146,4 +3157,166 @@ async function priceHistory(db: DBEnv, productId: number) {
   const low = window.length ? window.reduce((a, r) => (r.price < a.price ? r : a)) : null;
   const high = window.length ? window.reduce((a, r) => (r.price > a.price ? r : a)) : null;
   return { points: results.map((r) => ({ price: r.price, mrp: r.mrp, at: r.at })), low90: low ? { price: low.price, at: low.at } : null, high90: high ? { price: high.price, at: high.at } : null, trackingSince: first?.at ?? null };
+}
+
+/* ------------------------------------------------------------------ update 90: department indents, consumables stock */
+
+type IndentRow = { id: string; user_id: string; requester: string; department: string; lines: string; note: string | null; status: string; decided_by: string | null; decision_note: string | null; created_at: number; updated_at: number };
+const INDENT_STATUS = ["pending", "approved", "rejected", "merged", "cancelled"] as const;
+const indentOut = (r: IndentRow, me: string) => {
+  const lines = cleanBulkLines(parse<unknown>(r.lines, []));
+  return { id: r.id, requester: r.requester, department: r.department, note: r.note, status: r.status, decidedBy: r.decided_by, decisionNote: r.decision_note, createdAt: r.created_at, updatedAt: r.updated_at, mine: r.user_id === me,
+    lines: lines.map((l) => { const p = byId.get(l.productId); return { ...l, name: p?.name ?? `Item ${l.productId}`, slug: p?.slug ?? null }; }) };
+};
+/** May this account approve its team's indents? The team's admins; someone not in a team approves their own. */
+async function approver(db: DBEnv, userId: string): Promise<boolean> {
+  const t = await teamOf(db, userId);
+  return !t || t.role === "admin";
+}
+async function handleIndents(request: Request, db: DBEnv, path: string, method: string): Promise<Response> {
+  const user = await currentUser(request, db).catch(() => null);
+  if (!user) return json({ error: "Sign in to raise and approve indents.", signIn: true }, 401);
+  const team = await teamIds(db, user.id), canApprove = await approver(db, user.id);
+  const list = async () => (await db.DB.prepare(`SELECT * FROM store_indents WHERE user_id IN (${ph(team.length)}) ORDER BY CASE status WHEN 'pending' THEN 0 WHEN 'approved' THEN 1 ELSE 2 END, updated_at DESC LIMIT 300`).bind(...team).all<IndentRow>()).results.map((r) => indentOut(r, user.id));
+  const out = async (status = 200) => {
+    const items = await list();
+    return json({ indents: items, canApprove, departments: [...new Set(items.map((i) => i.department))].slice(0, 40) }, status);
+  };
+  if (path === "indents" && method === "GET") return out();
+  const b = method === "POST" ? (await readJson(request, 32_768)) ?? {} : {};
+  if (path === "indents" && method === "POST") {
+    const department = str(b.department, 60), requester = str(b.requester, 60) || str(user.name, 60) || normEmail(user.email);
+    if (department.length < 2) return json({ error: "Which department is this for? (e.g. ICU, OT, Pathology lab)", field: "department" }, 400);
+    const lines = cleanBulkLines(b.lines).filter((l) => byId.has(l.productId));
+    if (!lines.length) return json({ error: "Add at least one item.", field: "lines" }, 400);
+    if (!(await allow(db, `store:indent:${user.id}`, 40, 86400_000))) return json({ error: "That's a lot of indents for one day." }, 429);
+    const id = nid("i"), now = Date.now();
+    await db.DB.prepare("INSERT INTO store_indents (id, user_id, requester, department, lines, note, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)")
+      .bind(id, user.id, requester, department, JSON.stringify(lines), longStr(b.note, 500) || null, now, now).run();
+    // tell the team's admins (not the person who raised it)
+    const t = await teamOf(db, user.id);
+    if (t) {
+      const { results } = await db.DB.prepare("SELECT email FROM store_team_members WHERE team_id = ? AND status = 'active' AND role = 'admin' AND user_id != ?").bind(t.id, user.id).all<{ email: string }>();
+      const site = t.segment === "college" ? "https://medicalcolleges.aethex.in" : "https://hospitals.aethex.in";
+      for (const a of results.slice(0, 10)) await sendEmail(db, a.email, `Indent from ${department}: ${lines.length} item${lines.length === 1 ? "" : "s"}`, shell(`<p style="margin:0 0 8px;font-size:14px;"><b>${escapeHtml(requester)}</b> (${escapeHtml(department)}) raised an indent:</p><ul style="margin:0 0 12px;padding-left:18px;font-size:14px;line-height:1.7;">${lines.map((l) => `<li>${escapeHtml(byId.get(l.productId)?.name ?? "")} × ${l.qty}</li>`).join("")}</ul>${button(`${site}/indents`, "Review indents")}`)).catch(() => false);
+    }
+    return out(201);
+  }
+  const m = /^indents\/(i[a-z0-9]{6,30})\/(approve|reject|cancel|merged)$/.exec(path);
+  if (!m || method !== "POST") return json({ error: "Not found" }, 404);
+  const r = await db.DB.prepare(`SELECT * FROM store_indents WHERE id = ? AND user_id IN (${ph(team.length)})`).bind(m[1], ...team).first<IndentRow>();
+  if (!r) return json({ error: "Indent not found." }, 404);
+  const now = Date.now(), act = m[2];
+  if (act === "cancel") {
+    if (r.user_id !== user.id) return json({ error: "Only the person who raised it can withdraw it." }, 403);
+    if (r.status !== "pending") return json({ error: "It has already been decided." }, 409);
+    await db.DB.prepare("UPDATE store_indents SET status = 'cancelled', updated_at = ? WHERE id = ?").bind(now, r.id).run();
+    return out();
+  }
+  if (!canApprove) return json({ error: "Only the team's admins (the purchase officer) can do this." }, 403);
+  if (act === "merged") {
+    if (r.status !== "approved") return json({ error: "Approve it first." }, 409);
+    await db.DB.prepare("UPDATE store_indents SET status = 'merged', updated_at = ? WHERE id = ?").bind(now, r.id).run();
+    return out();
+  }
+  if (r.status !== "pending") return json({ error: "It has already been decided." }, 409);
+  const note = longStr(b.note, 300) || null, by = str(user.name, 60) || normEmail(user.email);
+  // the approver may cut quantities (or drop a line by setting it to 0) before approving
+  let lines = cleanBulkLines(parse<unknown>(r.lines, []));
+  if (act === "approve" && Array.isArray(b.lines)) {
+    const want = new Map((b.lines as { productId?: unknown; variantId?: unknown; qty?: unknown }[]).map((l) => [lineKey(Number(l?.productId), typeof l?.variantId === "string" ? l.variantId : null), Math.max(0, Math.trunc(Number(l?.qty)) || 0)]));
+    lines = lines.map((l) => ({ ...l, qty: Math.min(l.qty, want.get(lineKey(l.productId, l.variantId)) ?? l.qty) })).filter((l) => l.qty > 0);
+    if (!lines.length) return json({ error: "Nothing left to approve: reject it instead." }, 400);
+  }
+  await db.DB.prepare("UPDATE store_indents SET status = ?, lines = ?, decided_by = ?, decision_note = ?, updated_at = ? WHERE id = ?").bind(act === "approve" ? "approved" : "rejected", JSON.stringify(lines), by, note, now, r.id).run();
+  if (r.user_id !== user.id) {
+    const who = await db.DB.prepare("SELECT email FROM users WHERE id = ?").bind(r.user_id).first<{ email: string }>();
+    if (who?.email) await sendEmail(db, who.email, `Your indent for ${r.department} was ${act === "approve" ? "approved" : "not approved"}`, shell(`<p style="margin:0 0 8px;font-size:14px;">${escapeHtml(by)} ${act === "approve" ? "approved" : "did not approve"} your indent for <b>${escapeHtml(r.department)}</b>.</p>${note ? `<blockquote style="margin:0 0 12px;padding:10px 14px;border-left:3px solid #0d9488;background:#f8fafc;font-size:14px;">${escapeHtml(note)}</blockquote>` : ""}`)).catch(() => false);
+  }
+  return out();
+}
+
+export interface StockItem { id: string; name: string; unit: string; qty: number; reorderLevel: number; reorderQty: number; location?: string; productId?: number; variantId?: string | null; productName?: string; low: boolean; moves: { kind: string; qty: number; after: number; note: string | null; by: string | null; at: number }[]; updatedAt: number }
+type StockRow = { id: string; user_id: string; name: string; unit: string; qty: number; reorder_level: number; reorder_qty: number; location: string | null; product_id: number | null; variant_id: string | null; alerted: number; created_at: number; updated_at: number };
+const UNITS = ["pcs", "boxes", "packs", "pairs", "rolls", "bottles", "litres", "ml", "kg", "g", "vials", "ampoules", "strips", "kits", "sets"];
+async function handleStock(request: Request, db: DBEnv, path: string, method: string): Promise<Response> {
+  const user = await currentUser(request, db).catch(() => null);
+  if (!user) return json({ error: "Sign in to keep a stock register.", signIn: true }, 401);
+  const team = await teamIds(db, user.id);
+  const list = async (): Promise<StockItem[]> => {
+    const { results } = await db.DB.prepare(`SELECT * FROM store_stock WHERE user_id IN (${ph(team.length)}) ORDER BY name LIMIT 500`).bind(...team).all<StockRow>();
+    if (!results.length) return [];
+    const { results: mv } = await db.DB.prepare(`SELECT * FROM (SELECT stock_id, kind, qty, after, note, by_name, at, ROW_NUMBER() OVER (PARTITION BY stock_id ORDER BY at DESC) AS rn FROM store_stock_moves WHERE stock_id IN (${ph(results.length)})) WHERE rn <= 8`).bind(...results.map((r) => r.id)).all<{ stock_id: string; kind: string; qty: number; after: number; note: string | null; by_name: string | null; at: number }>();
+    return results.map((r) => ({ id: r.id, name: r.name, unit: r.unit, qty: Number(r.qty), reorderLevel: Number(r.reorder_level), reorderQty: Number(r.reorder_qty), location: r.location ?? undefined,
+      productId: r.product_id ?? undefined, variantId: r.variant_id, productName: r.product_id ? byId.get(r.product_id)?.name : undefined, low: Number(r.qty) <= Number(r.reorder_level), updatedAt: r.updated_at,
+      moves: mv.filter((x) => x.stock_id === r.id).sort((a, b) => b.at - a.at).map((x) => ({ kind: x.kind, qty: Number(x.qty), after: Number(x.after), note: x.note, by: x.by_name, at: x.at })) }));
+  };
+  const num = (v: unknown, max = 1_000_000) => { const n = Number(v); return Number.isFinite(n) && n >= 0 && n <= max ? Math.round(n * 100) / 100 : NaN; };
+  if (path === "stock" && method === "GET") return json({ stock: await list(), units: UNITS });
+  if (method !== "POST") return json({ error: "Method not allowed" }, 405);
+  const b = (await readJson(request)) ?? {};
+  const by = str(user.name, 60) || normEmail(user.email), now = Date.now();
+  if (path === "stock") {
+    const name = str(b.name, 100), unit = UNITS.includes(String(b.unit)) ? String(b.unit) : "pcs";
+    if (name.length < 2) return json({ error: "Name the item, like \"Nitrile gloves, medium\".", field: "name" }, 400);
+    const level = num(b.reorderLevel), rq = num(b.reorderQty);
+    if (Number.isNaN(level) || Number.isNaN(rq)) return json({ error: "Enter the reorder level and reorder quantity as numbers.", field: "reorderLevel" }, 400);
+    const pid = Number.isInteger(Number(b.productId)) && byId.has(Number(b.productId)) ? Number(b.productId) : null;
+    const vid = pid && typeof b.variantId === "string" && byId.get(pid)?.variants?.some((v) => v.id === b.variantId) ? String(b.variantId) : null;
+    const location = str(b.location, 60) || null;
+    if (b.id) {
+      const cur = await db.DB.prepare(`SELECT * FROM store_stock WHERE id = ? AND user_id IN (${ph(team.length)})`).bind(str(b.id, 40), ...team).first<StockRow>();
+      if (!cur) return json({ error: "Not found." }, 404);
+      await db.DB.prepare("UPDATE store_stock SET name = ?, unit = ?, reorder_level = ?, reorder_qty = ?, location = ?, product_id = ?, variant_id = ?, alerted = CASE WHEN qty > ? THEN 0 ELSE alerted END, updated_at = ? WHERE id = ?").bind(name, unit, level, rq, location, pid, vid, level, now, cur.id).run();
+    } else {
+      const qty = num(b.qty ?? 0);
+      if (Number.isNaN(qty)) return json({ error: "Enter the quantity in hand as a number.", field: "qty" }, 400);
+      const n = await db.DB.prepare("SELECT COUNT(*) AS c FROM store_stock WHERE user_id = ?").bind(user.id).first<{ c: number }>();
+      if (Number(n?.c) >= 500) return json({ error: "The register holds up to 500 items." }, 400);
+      const id = nid("s");
+      await db.DB.prepare("INSERT INTO store_stock (id, user_id, name, unit, qty, reorder_level, reorder_qty, location, product_id, variant_id, alerted, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)").bind(id, user.id, name, unit, qty, level, rq, location, pid, vid, now, now).run();
+      await db.DB.prepare("INSERT INTO store_stock_moves (id, stock_id, kind, qty, after, note, by_name, at) VALUES (?, ?, 'set', ?, ?, 'Opening stock', ?, ?)").bind(nid("v"), id, qty, qty, by, now).run();
+    }
+    return json({ stock: await list() });
+  }
+  const m = /^stock\/(s[a-z0-9]{6,30})\/(move|delete)$/.exec(path);
+  if (!m) return json({ error: "Not found" }, 404);
+  const cur = await db.DB.prepare(`SELECT * FROM store_stock WHERE id = ? AND user_id IN (${ph(team.length)})`).bind(m[1], ...team).first<StockRow>();
+  if (!cur) return json({ error: "Not found." }, 404);
+  if (m[2] === "delete") {
+    await db.DB.prepare("DELETE FROM store_stock WHERE id = ?").bind(cur.id).run();
+    await db.DB.prepare("DELETE FROM store_stock_moves WHERE stock_id = ?").bind(cur.id).run();
+    return json({ stock: await list() });
+  }
+  const kind = ["in", "out", "set"].includes(String(b.kind)) ? String(b.kind) : "";
+  const qty = num(b.qty);
+  if (!kind) return json({ error: "Received, used or counted?" }, 400);
+  if (Number.isNaN(qty) || (kind !== "set" && qty <= 0)) return json({ error: "Enter a quantity.", field: "qty" }, 400);
+  const before = Number(cur.qty);
+  if (kind === "out" && qty > before) return json({ error: `Only ${before} ${cur.unit} in hand. Count the stock if that's wrong.`, field: "qty" }, 400);
+  const after = Math.round((kind === "in" ? before + qty : kind === "out" ? before - qty : qty) * 100) / 100;
+  await db.DB.prepare("UPDATE store_stock SET qty = ?, alerted = CASE WHEN ? > reorder_level THEN 0 ELSE alerted END, updated_at = ? WHERE id = ?").bind(after, after, now, cur.id).run();
+  await db.DB.prepare("INSERT INTO store_stock_moves (id, stock_id, kind, qty, after, note, by_name, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").bind(nid("v"), cur.id, kind, qty, after, str(b.note, 120) || null, by, now).run();
+  return json({ stock: await list() });
+}
+/** Hourly job: one email per account when items it added reach their reorder level (once until restocked). */
+export async function runStockAlerts(env: StoreEnv): Promise<{ sent: number }> {
+  if (!env.DB) return { sent: 0 };
+  const db = env as DBEnv;
+  await ensureTables(db.DB);
+  const { results } = await db.DB.prepare("SELECT s.*, u.email AS email FROM store_stock s JOIN users u ON u.id = s.user_id WHERE s.alerted = 0 AND s.qty <= s.reorder_level LIMIT 500").all<StockRow & { email: string }>();
+  const byUser = new Map<string, { email: string; rows: (StockRow & { email: string })[] }>();
+  for (const r of results) { const u = byUser.get(r.user_id) ?? { email: r.email, rows: [] }; u.rows.push(r); byUser.set(r.user_id, u); }
+  let sent = 0;
+  for (const [uid, u] of byUser.entries()) {
+    await db.DB.prepare(`UPDATE store_stock SET alerted = 1 WHERE id IN (${ph(u.rows.length)})`).bind(...u.rows.map((r) => r.id)).run();
+    if (!u.email || !(await emailOk(db.DB, { userId: uid }, "stock"))) continue;
+    const t = await teamOf(db, uid);
+    const site = t?.segment === "college" ? "https://medicalcolleges.aethex.in" : "https://hospitals.aethex.in";
+    const ok = await sendEmail(db, u.email, `Low stock: ${u.rows.length} item${u.rows.length === 1 ? "" : "s"} at reorder level`, withPrefsLink(shell(`<h2 style="margin:0 0 10px;font-size:19px;">Time to reorder</h2>
+<ul style="margin:0 0 12px;padding-left:18px;font-size:14px;line-height:1.7;">${u.rows.map((r) => `<li><b>${escapeHtml(r.name)}</b>${r.location ? ` (${escapeHtml(r.location)})` : ""}: ${Number(r.qty)} ${escapeHtml(r.unit)} left, reorder level ${Number(r.reorder_level)}</li>`).join("")}</ul>
+${button(`${site}/stock`, "Open the stock register")}`))).catch(() => false);
+    if (ok) sent++;
+  }
+  return { sent };
 }

@@ -73,7 +73,7 @@ export const study = {
   record(q: QSnap, correct: boolean) {
     load();
     const now = Date.now(), day = istDay(now);
-    const next: StudyState = { ...state, days: { ...state.days, [day]: (state.days[day] ?? 0) + 1 }, attempts: [...state.attempts, { key: q.key, subject: q.subject, correct, at: now }].slice(-MAX_ATTEMPTS), wrong: { ...state.wrong } };
+    const next: StudyState = { ...state, days: { ...state.days, [day]: (state.days[day] ?? 0) + 1 }, attempts: [...state.attempts, { key: q.key, subject: q.subject, correct, at: now, ...(q.topic ? { topic: q.topic.slice(0, 80) } : {}) }].slice(-MAX_ATTEMPTS), wrong: { ...state.wrong } };
     const w = next.wrong[q.key];
     if (!correct) next.wrong[q.key] = { q, at: w && !w.mastered ? w.at : now, tries: (w?.tries ?? 0) + 1, updatedAt: now };
     save(next);

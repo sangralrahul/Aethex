@@ -15,6 +15,7 @@ import { medicalSubjects } from "@/data/medicalSubjects";
 import { invokeAi } from "@/lib/ai-functions";
 import { liveBookmarks, openWrong, useStudy, type QSnap } from "@/lib/study/progress";
 import { fromBank, fromGenerated, parseArray } from "@/lib/study/questions";
+import { hubSubject } from "@/lib/study/topics";
 import { Report, Runner, TodayCard, useStudySync, type RunMode, type RunResult } from "@/components/study/StudyBits";
 
 const shuffle = <T,>(a: T[]) => { const b = [...a]; for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j]!, b[i]!]; } return b; };
@@ -26,15 +27,24 @@ export default function CustomTest() {
   useSeo({ title: "Custom test builder | Aethex Study", description: "Build your own NEET-PG test: choose subjects, how many questions and the timer, then see your score and the subjects to work on.", path: "/custom-test" });
   useStudySync();
   const s = useStudy();
-  const [source, setSource] = useState<Source>("bank");
-  const [subjects, setSubjects] = useState<string[]>([]);
+  // update 90: /custom-test?subject=<hub slug>[&topic=<topic slug>] (from the topic mastery map)
+  const [preset] = useState(() => {
+    const p = typeof window === "undefined" ? null : new URLSearchParams(window.location.search);
+    const slug = p?.get("subject") ?? "", topic = p?.get("topic") ?? "";
+    const sub = medicalSubjects.find((x) => x.slug === slug);
+    if (!sub) return null;
+    const bankSub = BANK_SUBJECTS.find((b) => hubSubject(b)?.slug === sub.slug);
+    return topic || !bankSub ? { source: "cadus" as Source, slug: sub.slug, topic: sub.topics.some((t) => t.slug === topic) ? topic : "", subjects: [] as string[] } : { source: "bank" as Source, slug: sub.slug, topic: "", subjects: [bankSub] };
+  });
+  const [source, setSource] = useState<Source>(preset?.source ?? "bank");
+  const [subjects, setSubjects] = useState<string[]>(preset?.subjects ?? []);
   const [diff, setDiff] = useState<"All" | "Easy" | "Medium" | "Hard">("All");
   const [count, setCount] = useState(10);
   const [timer, setTimer] = useState<"none" | "auto" | "custom">("auto");
   const [mins, setMins] = useState(15);
   const [mode, setMode] = useState<RunMode>("exam");
-  const [aiSubject, setAiSubject] = useState(medicalSubjects[0]!.slug);
-  const [aiTopic, setAiTopic] = useState("");
+  const [aiSubject, setAiSubject] = useState(preset?.source === "cadus" ? preset.slug : medicalSubjects[0]!.slug);
+  const [aiTopic, setAiTopic] = useState(preset?.topic ?? "");
   const [busy, setBusy] = useState(false), [err, setErr] = useState("");
   const [run, setRun] = useState<{ qs: QSnap[]; minutes: number | null; title: string } | null>(null);
   const [result, setResult] = useState<RunResult | null>(null);

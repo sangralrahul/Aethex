@@ -10,6 +10,7 @@ export const EMAIL_KINDS = {
   reorder: "Reorder reminders you set on products",
   alerts: "Price-drop and back-in-stock alerts you asked for",
   equipment: "Equipment service, calibration and warranty reminders",
+  stock: "Low-stock alerts from your consumables register",
 } as const;
 export type EmailKind = keyof typeof EMAIL_KINDS;
 export type EmailPrefs = Record<EmailKind, boolean>;

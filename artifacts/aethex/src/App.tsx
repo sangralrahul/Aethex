@@ -143,6 +143,9 @@ const EquipmentPage = lazyPage(() => import("@/components/store/BulkExtras2").th
 const OffersPage = lazyPage(() => import("@/pages/Offers"));
 const TeamPage = lazyPage(() => import("@/components/store/BulkExtras3").then((m) => ({ default: m.TeamPage })));
 const SpendPage = lazyPage(() => import("@/components/store/BulkExtras3").then((m) => ({ default: m.SpendPage })));
+const IndentsPage = lazyPage(() => import("@/components/store/BulkExtras4").then((m) => ({ default: m.IndentsPage })));
+const StockPage = lazyPage(() => import("@/components/store/BulkExtras4").then((m) => ({ default: m.StockPage })));
+const QotdPage = lazyPage(() => import("@/components/study/Qotd"));
 const PurchaseOrderPage = lazyPage(() => import("@/components/store/BulkExtras3").then((m) => ({ default: m.PurchaseOrderPage })));
 const EmailPrefs = lazyPage(() => import("@/components/home/EmailPrefs"));
 const GiftPage = lazyPage(() => import("@/components/store/StoreExtras3").then((m) => ({ default: m.GiftPage })));
@@ -489,6 +492,8 @@ function Router() {
                 <Route path="/equipment" component={EquipmentPage} />
                 <Route path="/team" component={TeamPage} />
                 <Route path="/spend" component={SpendPage} />
+                <Route path="/indents" component={IndentsPage} />
+                <Route path="/stock" component={StockPage} />
                 <Route path="/purchase-order/:id" component={PurchaseOrderPage} />
                 <Route path="/email-preferences" component={EmailPrefs} />
                 <Route path="/offers" component={OffersPage} />
@@ -530,6 +535,7 @@ function Router() {
                 <Route path="/drug-interaction-checker" component={DrugInteractionCheckerPage} />
                 <Route path="/custom-test" component={CustomTest} />
                 <Route path="/study-groups" component={StudyGroups} />
+                <Route path="/question-of-the-day" component={QotdPage} />
                 <Route path="/sectional-tests" component={Sectional} />
                 <Route path="/my-library/print" component={LibraryPrint} />
                 <Route path="/study-moderation" component={StudyModeration} />

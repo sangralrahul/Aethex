@@ -33,6 +33,8 @@ function ensure(db: D1Like) {
       `CREATE TABLE IF NOT EXISTS study_comments (id TEXT PRIMARY KEY, qkey TEXT NOT NULL, user_id TEXT NOT NULL, name TEXT NOT NULL, body TEXT NOT NULL, created_at INTEGER NOT NULL,
         hidden INTEGER, reports INTEGER NOT NULL DEFAULT 0, helpful INTEGER NOT NULL DEFAULT 0)`,
       "CREATE INDEX IF NOT EXISTS study_comments_q ON study_comments(qkey, created_at)",
+      // update 90: question of the day answers (one per account per India day)
+      `CREATE TABLE IF NOT EXISTS study_qotd (day TEXT NOT NULL, user_id TEXT NOT NULL, qid INTEGER NOT NULL, choice INTEGER NOT NULL, correct INTEGER NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (day, user_id))`,
       `CREATE TABLE IF NOT EXISTS study_comment_flags (comment_id TEXT NOT NULL, user_id TEXT NOT NULL, kind TEXT NOT NULL, reason TEXT, at INTEGER NOT NULL, PRIMARY KEY (comment_id, user_id, kind))`,
     ]) await db.prepare(sql).run();
   })().catch((e) => { ready = null; throw e; });
@@ -290,12 +292,63 @@ async function sectional(env: Env, request: Request, user: User): Promise<Respon
   return json({ result: { id, at, subject, ...s, seconds } }, 201);
 }
 
+
+/* ------------------------------------------------------------------ update 90: question of the day */
+
+/** The bank question for an India day: the same for everyone, walking the bank in a fixed shuffled order. */
+export function qotdId(day: string): number {
+  const n = QUESTIONS.length;
+  const dayNo = Math.floor(Date.parse(`${day}T00:00:00Z`) / 86400000);
+  // a stride co-prime with n visits every question once before repeating
+  let stride = 97 % n || 1;
+  const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a);
+  while (gcd(stride, n) !== 1) stride++;
+  return QUESTIONS[((dayNo * stride) % n + n) % n]!.id;
+}
+async function qotdStats(env: Env, day: string) {
+  const r = await env.DB.prepare("SELECT COUNT(*) AS n, SUM(correct) AS c FROM study_qotd WHERE day = ?").bind(day).first<{ n: number; c: number | null }>();
+  const n = Number(r?.n ?? 0), right = Number(r?.c ?? 0);
+  const { results } = await env.DB.prepare("SELECT choice, COUNT(*) AS n FROM study_qotd WHERE day = ? GROUP BY choice").bind(day).all<{ choice: number; n: number }>();
+  const picks = [0, 0, 0, 0];
+  for (const x of results) if (x.choice >= 0 && x.choice < 4) picks[x.choice] = Number(x.n);
+  return { answered: n, right, pct: n ? Math.round((right / n) * 100) : null, picks };
+}
+async function qotd(env: Env, request: Request, user: User | null): Promise<Response> {
+  const day = istDay(), q = byId.get(qotdId(day))!;
+  const pub = { id: q.id, key: `neetpg:${q.id}`, subject: q.subject, difficulty: q.difficulty, question: q.question, options: q.options };
+  const reveal = (choice: number) => ({ choice, correct: choice === q.correct, answer: q.correct, explanation: q.explanation });
+  if (request.method === "GET") {
+    const mine = user ? await env.DB.prepare("SELECT choice FROM study_qotd WHERE day = ? AND user_id = ?").bind(day, user.id).first<{ choice: number }>() : null;
+    const y = addDays(day, -1), yq = byId.get(qotdId(y))!;
+    const ys = await qotdStats(env, y);
+    let history: { day: string; correct: boolean }[] = [];
+    if (user) {
+      const { results } = await env.DB.prepare("SELECT day, correct FROM study_qotd WHERE user_id = ? ORDER BY day DESC LIMIT 30").bind(user.id).all<{ day: string; correct: number }>();
+      history = results.map((r) => ({ day: r.day, correct: !!r.correct }));
+    }
+    return json({ day, question: pub, you: mine ? reveal(mine.choice) : null, stats: mine ? await qotdStats(env, day) : null, signedIn: !!user, history,
+      yesterday: { day: y, question: yq.question, subject: yq.subject, key: `neetpg:${yq.id}`, answer: yq.options[yq.correct], ...ys } });
+  }
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  let b: Record<string, unknown> = {};
+  try { b = await request.json(); } catch { /* below */ }
+  const choice = Number(b.choice);
+  if (![0, 1, 2, 3].includes(choice)) return json({ error: "Choose an answer." }, 400);
+  if (Number(b.id) !== q.id) return json({ error: "That was yesterday's question. Here's today's.", stale: true }, 409);
+  if (!user) return json({ day, you: reveal(choice), stats: await qotdStats(env, day), counted: false });
+  const had = await env.DB.prepare("SELECT choice FROM study_qotd WHERE day = ? AND user_id = ?").bind(day, user.id).first<{ choice: number }>();
+  if (had) return json({ day, you: reveal(had.choice), stats: await qotdStats(env, day), counted: true, already: true });
+  await env.DB.prepare("INSERT INTO study_qotd (day, user_id, qid, choice, correct, at) VALUES (?, ?, ?, ?, ?, ?)").bind(day, user.id, q.id, choice, choice === q.correct ? 1 : 0, Date.now()).run();
+  return json({ day, you: reveal(choice), stats: await qotdStats(env, day), counted: true }, 201);
+}
+
 /** Update 85's routes; null when the path isn't one of them. */
 export async function handleStudy2(request: Request, env: Env, path: string): Promise<Response | null> {
-  if (!/^\/(groups|comments|sectional)(\/|$)/.test(path)) return null;
+  if (!/^\/(groups|comments|sectional|qotd)(\/|$)/.test(path)) return null;
   await ensure(env.DB);
   const user = await currentUser(request, env).catch(() => null);
   if (path.startsWith("/comments")) return comments(env, request, user, path);
+  if (path === "/qotd") return qotd(env, request, user);
   if (!user) return json({ error: "Sign in to use this.", signIn: true }, 401);
   if (path.startsWith("/groups")) return groups(env, request, user, path);
   return sectional(env, request, user);
