@@ -30,7 +30,7 @@ import { guestGate, requireAccount } from "./guest";
 import { cadusHome, hostRobots, hostSitemap, portalHome, portalOf } from "./seo";
 import { handleStudy } from "./study";
 import { handleNotifications } from "./notify";
-import { handleFind, type FindEnv, runFindReminders, runFollowUps } from "./find";
+import { cleanSharedRecords, handleFind, type FindEnv, runFindReminders, runFollowUps } from "./find";
 import "./names/cadus";
 import "../supabase/functions/cadus/index.ts";
 import "./names/analyze-drug-interactions";
@@ -220,6 +220,7 @@ export default {
   async scheduled(_event: unknown, env: Env, ctx: { waitUntil: (p: Promise<unknown>) => void }) {
     ctx.waitUntil(runScheduled(env).then((r) => console.log("scheduled", r), (e) => console.error("scheduled failed", e)));
     ctx.waitUntil(runFollowUps(env).then((r) => console.log("find follow-ups", r), (e) => console.error("find follow-ups failed", e)));
+    ctx.waitUntil(cleanSharedRecords(env).then((r) => console.log("find shared records", r), (e) => console.error("find shared records failed", e)));
     ctx.waitUntil(runFindReminders(env).then((r) => console.log("find reminders", r), (e) => console.error("find reminders failed", e)));
     ctx.waitUntil(runReorderReminders(env).then((r) => console.log("reorder reminders", r), (e) => console.error("reorder reminders failed", e)));
     ctx.waitUntil(runEquipmentReminders(env).then((r) => console.log("equipment reminders", r), (e) => console.error("equipment reminders failed", e)));

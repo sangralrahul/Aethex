@@ -1,5 +1,6 @@
 /** /practice: the doctor's dashboard: today's and upcoming appointments, confirm, complete, video links. */
 import { PracticeAnalytics } from "./DoctorTools2";
+import { ClinicQueue, LeaveDays, ReplyBox, SharedFiles } from "./DoctorTools3";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
@@ -51,26 +52,6 @@ function RxEditor({ id, onDone }: { id: string; onDone: () => void }) {
         try { await findApi(`/practice/appointments/${id}/prescription`, { ...f, items: items.filter((x) => x.name.trim()) }); onDone(); } catch (x) { setErr((x as FindError).message); } finally { setBusy(false); }
       }}><FileText size={14} /> {busy ? "Saving…" : "Save and send to the patient"}</button></div>
     </div>
-  );
-}
-
-/** Leave days: no bookings can be made on them. */
-function TimeOff({ off, onSaved }: { off: string[]; onSaved: () => void }) {
-  const [dates, setDates] = useState<string[]>(off), [pick, setPick] = useState(""), [msg, setMsg] = useState(""), [busy, setBusy] = useState(false);
-  useEffect(() => setDates(off), [off.join()]);
-  const save = async (next: string[]) => {
-    setBusy(true); setMsg("");
-    try { const r = await findApi<{ dates: string[]; clashes: number }>("/me/timeoff", { dates: next }); setDates(r.dates); setMsg(r.clashes ? `${r.clashes} booking${r.clashes === 1 ? "" : "s"} already on these days: cancel or keep them below.` : "Saved."); onSaved(); }
-    catch (x) { setMsg((x as FindError).message); } finally { setBusy(false); }
-  };
-  return (
-    <section className="fd-box" data-find="timeoff">
-      <h2><CalendarX2 size={18} /> Leave days</h2>
-      <p className="mu">Patients can't book these days.</p>
-      <div className="fd-chips">{dates.length ? dates.map((x) => <span key={x}>{dateLabel(x)} <button type="button" onClick={() => void save(dates.filter((y) => y !== x))} aria-label={`Remove ${x}`}>×</button></span>) : <span className="none">No leave planned</span>}</div>
-      <div className="fd-replyform"><input type="date" value={pick} onChange={(e) => setPick(e.target.value)} aria-label="Leave date" /><button type="button" className="fd-btn sm" disabled={!pick || busy} onClick={() => { void save([...dates, pick]); setPick(""); }}><Plus size={14} /> Add</button></div>
-      {msg && <p className="tiny">{msg}</p>}
-    </section>
   );
 }
 
@@ -140,6 +121,7 @@ export default function Practice() {
           <div><Star size={20} /><b>{data.rating ? data.rating.avg.toFixed(1) : "–"}</b><small>{data.rating ? `${data.rating.count} reviews` : "No reviews yet"}</small></div>
           <div><Users size={20} /><b>{data.patients}</b><small>Patients seen</small></div>
         </div>
+        <ClinicQueue />
         {err && <p className="fd-err" role="alert">{err}</p>}
         <div className="fd-tabs" role="tablist">
           {TABS.map(([id, label]) => <button key={id} type="button" role="tab" aria-selected={tab === id} className={tab === id ? "on" : ""} onClick={() => setTab(id)}>{label} <small>{lists[id].length}</small></button>)}
@@ -170,13 +152,14 @@ export default function Practice() {
                 {a.status !== "cancelled" && a.date <= data.today && <button type="button" className="fd-btn sm ghost" onClick={() => setRxFor(rxFor === a.id ? "" : a.id)} data-rx={a.id}><FileText size={14} /> {a.prescription ? "Edit prescription" : "Write prescription"}</button>}
                 {a.prescription && <Link href={`/prescription/${a.prescription}`} className="fd-btn sm ghost"><Printer size={14} /> View</Link>}
               </div>
+              <SharedFiles id={a.id} count={a.files ?? 0} />
               {rxFor === a.id && <RxEditor id={a.id} onDone={() => { setRxFor(""); void qc.invalidateQueries({ queryKey: ["find", "practice"] }); }} />}
             </article>
           ))}
         </div>
 
         <div className="fd-dash-grid">
-          <TimeOff off={d.timeOff} onSaved={() => void qc.invalidateQueries({ queryKey: ["find"] })} />
+          <LeaveDays off={d.timeOff} note={d.timeOffNote ?? null} onSaved={() => void qc.invalidateQueries({ queryKey: ["find"] })} />
           <section className="fd-box" data-find="open-questions">
             <h2><MessageCircleQuestionMark size={18} /> Questions for {d.specialty}s</h2>
             {data.openQuestions.length ? <ul className="fd-mini-list">{data.openQuestions.map((q) => <li key={q.id}><Link href={`/ask/${q.id}`}>{q.title}</Link><small>{ago(q.at)}</small></li>)}</ul> : <p className="mu">No questions waiting for you.</p>}
@@ -196,8 +179,7 @@ export default function Practice() {
             <div key={r.id} className="fd-review">
               <div className="top"><b>{r.name}</b> · {r.rating}★{r.recommend != null && <span className={`pill ${r.recommend ? "completed" : "cancelled"}`}>{r.recommend ? "Recommends" : "Doesn't recommend"}</span>}</div>
               <p>{r.text || "No comment."}</p>
-              {r.reply ? <div className="fd-reply"><b>Your reply</b><p>{r.reply}</p></div>
-                : <div className="fd-replyform"><input placeholder="Reply publicly (optional)" value={replies[r.id!] ?? ""} onChange={(e) => setReplies({ ...replies, [r.id!]: e.target.value })} /><button type="button" className="fd-btn sm" disabled={!(replies[r.id!] ?? "").trim()} onClick={async () => { try { await findApi(`/practice/reviews/${r.id}`, { reply: replies[r.id!] }); void qc.invalidateQueries({ queryKey: ["find"] }); } catch (x) { setErr((x as FindError).message); } }}><Reply size={14} /> Reply</button></div>}
+              <ReplyBox r={r} onSaved={() => void qc.invalidateQueries({ queryKey: ["find"] })} />
             </div>
           ))}
         </section>

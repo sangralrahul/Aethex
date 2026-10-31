@@ -12,9 +12,9 @@ export interface Doctor {
   experience: number; clinic: string; address: string; locality: string | null; city: string; pincode: string; fee: number;
   video: boolean; videoFee: number | null; languages: string[]; about: string | null; services: string[]; hours: Hours | null;
   rating: { avg: number; count: number } | null;
-  education: { degree: string; college: string; year: string }[]; awards: string[]; memberships: string[]; timeOff: string[];
+  education: { degree: string; college: string; year: string }[]; awards: string[]; memberships: string[]; timeOff: string[]; timeOffNote?: string | null;
 }
-export interface Review { id?: string; rating: number; text: string | null; name: string; at: number; recommend: boolean | null; wait: string | null; visited?: string | null; reply: string | null }
+export interface Review { id?: string; rating: number; text: string | null; name: string; at: number; recommend: boolean | null; wait: string | null; visited?: string | null; reply: string | null; replyAt?: number | null; hidden?: boolean }
 export interface RxItem { name: string; dose: string; frequency: string; duration: string; notes: string }
 export interface Prescription {
   id: string; date: string; time: string; mode: string; diagnosis: string | null; advice: string | null; tests: string | null; followUp: string | null; items: RxItem[]; createdAt: number;
@@ -35,6 +35,8 @@ export interface Appointment {
   familyId?: string | null;
   /** update 79: the follow-up date the doctor set on the prescription */
   followUp?: string | null;
+  /** update 83: records the patient shared for the visit (practice view) */
+  files?: number;
 }
 
 /** The specialties a doctor can list under (the same list as worker/find.ts). */

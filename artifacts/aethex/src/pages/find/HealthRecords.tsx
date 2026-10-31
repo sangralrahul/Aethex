@@ -8,6 +8,7 @@ import { Download, FileHeart, FileText, Lock, Trash2, Upload } from "lucide-reac
 import { useSeo } from "@/hooks/use-seo";
 import { dateLabel, displayName, useMyAppointments } from "@/lib/find";
 import { FindNav } from "./FindParts";
+import { ShareRecordButton } from "./DoctorTools3";
 
 type Rec = { id: string; name: string; type: string; kind: string; person: string; date: string; note: string; size: number; data: Blob; at: number };
 const KINDS = ["Lab report", "Prescription", "Scan or X-ray", "Discharge summary", "Vaccination", "Bill", "Other"];
@@ -61,7 +62,7 @@ export default function HealthRecords() {
     <div className="fd-page" data-find="records">
       <FindNav />
       <div className="ax-wrap fd-narrow wide">
-        <header className="fd-pagehead"><h1><FileHeart size={26} /> Health records</h1><p><Lock size={14} /> Kept on this device only: nothing is uploaded. Back up important files elsewhere too.</p></header>
+        <header className="fd-pagehead"><h1><FileHeart size={26} /> Health records</h1><p><Lock size={14} /> Kept on this device only: nothing is uploaded unless you share a record with a doctor for a visit. Back up important files elsewhere too.</p></header>
         <form className="fd-box fd-pform fd-recform" onSubmit={add} data-find="record-form">
           <div className="three">
             <label>File<input id="fd-rec-file" type="file" accept="image/*,application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
@@ -85,7 +86,7 @@ export default function HealthRecords() {
             <div key={r.id} className="fd-rec" data-record={r.id}>
               <FileText size={22} />
               <span><b>{r.kind} · {r.person}</b><small>{dateLabel(r.date, { day: "numeric", month: "short", year: "numeric" })} · {r.name} · {kb(r.size)}</small>{r.note && <small>{r.note}</small>}</span>
-              <span className="acts"><button type="button" className="fd-btn sm ghost" onClick={() => open(r)}>Open</button><button type="button" className="fd-icon" onClick={() => save(r)} aria-label="Download"><Download size={15} /></button><button type="button" className="fd-icon" onClick={() => void remove(r)} aria-label="Delete"><Trash2 size={15} /></button></span>
+              <span className="acts"><ShareRecordButton rec={r} /><button type="button" className="fd-btn sm ghost" onClick={() => open(r)}>Open</button><button type="button" className="fd-icon" onClick={() => save(r)} aria-label="Download"><Download size={15} /></button><button type="button" className="fd-icon" onClick={() => void remove(r)} aria-label="Delete"><Trash2 size={15} /></button></span>
             </div>
           ))}</div>}
       </div>

@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Award, BadgeCheck, Building2, CalendarCheck, CalendarX2, CheckCircle2, Clock, GraduationCap, Languages, MapPin, ShieldAlert, ThumbsUp, Users, Video } from "lucide-react";
 import { useSeo } from "@/hooks/use-seo";
 import { useRememberVisit } from "@/lib/lastSeen";
+import { ReviewList } from "./DoctorTools3";
 import { useUserAuth } from "@/hooks/use-user-auth";
 import { formatINR } from "@/lib/utils";
 import { daySlots, addDays, clinicKey, dateLabel, displayName, findApi, freeSlots, hoursText, signInHere, time12, useDoctor, useFamily, type Appointment, type FindError } from "@/lib/find";
@@ -22,7 +23,7 @@ export default function DoctorPage() {
   useRememberVisit("doctor", d ? displayName(d.name) : null, `/doctor/${slug}`, d ? `${d.specialty}, ${d.city}` : undefined);
   useSeo({ title: d ? `${displayName(d.name)}, ${d.specialty} in ${d.city}: book an appointment | Aethex Doctors` : "Doctor | Aethex Doctors", description: d ? `${displayName(d.name)}, ${d.qualifications}. ${d.experience} years experience. ${d.clinic}, ${d.city}. Book online on Aethex Doctors.` : "Book a doctor on Aethex Doctors.", path: `/doctor/${slug}` });
 
-  const [tab, setTab] = useState<"info" | "stories" | "consult" | "articles">("info");
+  const [tab, setTab] = useState<"info" | "stories" | "consult" | "articles">(() => (typeof window !== "undefined" && (window.location.hash === "#reviews" || new URLSearchParams(window.location.search).get("tab") === "stories") ? "stories" : "info"));
   const [mode, setMode] = useState<"clinic" | "video">(new URLSearchParams(search).get("mode") === "video" ? "video" : "clinic");
   const [date, setDate] = useState(""), [time, setTime] = useState("");
   const [form, setForm] = useState({ name: "", phone: "", email: "", age: "", reason: "" });
@@ -113,7 +114,7 @@ export default function DoctorPage() {
                 <h2>Clinic</h2>
                 <p><Building2 size={17} /> <span><Link href={`/clinic/${clinicKey(d.clinic, d.city)}`}><b>{d.clinic}</b></Link><br />{d.address}{d.locality ? `, ${d.locality}` : ""}, {d.city} {d.pincode}</span></p>
                 <p><Clock size={17} /> <span>{hoursText(d.hours)}</span></p>
-                {d.timeOff.length > 0 && <p><CalendarX2 size={17} /> <span>On leave: {d.timeOff.slice(0, 6).map((x) => dateLabel(x)).join(", ")}</span></p>}
+                {d.timeOff.length > 0 && <p><CalendarX2 size={17} /> <span>On leave: {d.timeOff.slice(0, 6).map((x) => dateLabel(x)).join(", ")}{d.timeOff.length > 6 ? ` and ${d.timeOff.length - 6} more` : ""}{d.timeOffNote ? ` (${d.timeOffNote})` : ""}</span></p>}
                 <p><MapPin size={17} /> <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${d.clinic}, ${d.address}, ${d.city} ${d.pincode}`)}`} target="_blank" rel="noopener noreferrer">Get directions</a></p>
                 {d.languages.length > 0 && <p><Languages size={17} /> <span>Speaks {d.languages.join(", ")}</span></p>}
               </section>
@@ -131,16 +132,7 @@ export default function DoctorPage() {
               <section className="fd-box" data-find="reviews">
                 <h2>Patient stories</h2>
                 {data.recommendPct != null && <p className="fd-recpct"><ThumbsUp size={18} /> <b>{data.recommendPct}%</b> of patients who reviewed would recommend {displayName(d.name)}</p>}
-                {data.reviews.length ? data.reviews.map((r, i) => (
-                  <div key={i} className="fd-review">
-                    <div className="top"><Stars value={r.rating} size={13} />{r.recommend != null && <span className={`pill ${r.recommend ? "completed" : "cancelled"}`}>{r.recommend ? "Recommends the doctor" : "Doesn't recommend"}</span>}</div>
-                    {r.visited && <small className="mu">Visited for {r.visited}</small>}
-                    <p>{r.text || "No comment."}</p>
-                    {r.wait && <small className="mu"><Clock size={12} /> Waited {r.wait.toLowerCase()}</small>}
-                    {r.reply && <div className="fd-reply"><b>Reply from {displayName(d.name)}</b><p>{r.reply}</p></div>}
-                    <small>{r.name} · {new Date(r.at).toLocaleDateString("en-IN", { month: "short", year: "numeric" })} · Verified visit</small>
-                  </div>
-                )) : <p className="mu">No stories yet. Only patients whose visit was completed can share one.</p>}
+                <ReviewList reviews={data.reviews} doctorName={displayName(d.name)} />
               </section>
             )}
             {tab === "consult" && (

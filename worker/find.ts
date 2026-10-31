@@ -51,6 +51,14 @@ export const FIND_TABLES = [
     created_at INTEGER NOT NULL, notified_at INTEGER)`,
   "CREATE UNIQUE INDEX IF NOT EXISTS find_waitlist_one ON find_waitlist(doctor_id, user_id, date)",
   "CREATE INDEX IF NOT EXISTS find_waitlist_day ON find_waitlist(doctor_id, date)",
+  // update 83: records a patient shares with the doctor for a visit (kept 30 days after it), and reported reviews
+  `CREATE TABLE IF NOT EXISTS find_shared (
+    id TEXT PRIMARY KEY, appointment_id TEXT NOT NULL, user_id TEXT NOT NULL, doctor_id TEXT NOT NULL, name TEXT NOT NULL, type TEXT NOT NULL,
+    size INTEGER NOT NULL, kind TEXT, data TEXT NOT NULL, created_at INTEGER NOT NULL, viewed_at INTEGER)`,
+  "CREATE INDEX IF NOT EXISTS find_shared_appt ON find_shared(appointment_id)",
+  `CREATE TABLE IF NOT EXISTS find_review_reports (
+    id TEXT PRIMARY KEY, review_id TEXT NOT NULL, user_id TEXT NOT NULL, reason TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open', created_at INTEGER NOT NULL)`,
+  "CREATE UNIQUE INDEX IF NOT EXISTS find_review_reports_one ON find_review_reports(review_id, user_id)",
   "CREATE INDEX IF NOT EXISTS find_doctors_search ON find_doctors(status, city, specialty)",
   "CREATE INDEX IF NOT EXISTS find_questions_list ON find_questions(specialty, created_at)",
   "CREATE INDEX IF NOT EXISTS find_answers_q ON find_answers(question_id, created_at)",
@@ -70,6 +78,9 @@ export const FIND_COLUMNS: [string, string, string][] = [
   // update 79: the follow-up reminder
   ["find_prescriptions", "followup_reminded", "INTEGER"],
   ["find_reviews", "recommend", "INTEGER"], ["find_reviews", "wait", "TEXT"], ["find_reviews", "visited", "TEXT"], ["find_reviews", "reply", "TEXT"],
+  // update 83: the clinic queue, leave notes, reply dates, hidden reviews
+  ["find_appointments", "arrived_at", "INTEGER"], ["find_appointments", "started_at", "INTEGER"], ["find_appointments", "done_at", "INTEGER"],
+  ["find_doctors", "timeoff_note", "TEXT"], ["find_reviews", "reply_at", "INTEGER"], ["find_reviews", "hidden", "INTEGER"],
 ];
 let ready: Promise<void> | null = null;
 function ensure(db: D1Like) {
@@ -98,12 +109,12 @@ type DoctorRow = {
   fee: number; video: number; video_fee: number | null; languages: string | null; about: string | null; services: string | null; hours: string;
   admin_note: string | null; created_at: number; updated_at: number;
   education?: string | null; awards?: string | null; memberships?: string | null; timeoff?: string | null;
-  contact_email?: string | null; contact_phone?: string | null;
+  contact_email?: string | null; contact_phone?: string | null; timeoff_note?: string | null;
 };
 type ApptRow = {
   id: string; doctor_id: string; user_id: string; patient_name: string; patient_phone: string; patient_email: string | null; patient_age: number | null;
   date: string; time: string; mode: string; reason: string | null; status: string; link: string | null; note: string | null; created_at: number; updated_at: number;
-  family_id?: string | null;
+  family_id?: string | null; arrived_at?: number | null; started_at?: number | null; done_at?: number | null;
 };
 type FamilyRow = { id: string; user_id: string; name: string; relation: string; age: number | null; gender: string | null; phone: string | null; created_at: number };
 export const RELATIONS = ["Spouse", "Child", "Father", "Mother", "Brother", "Sister", "Grandparent", "Other"];
@@ -157,6 +168,7 @@ function publicDoctor(d: DoctorRow, rating?: { avg: number; count: number }) {
     education: parseJson<{ degree: string; college: string; year: string }[]>(d.education, []),
     awards: d.awards ? d.awards.split("\n").filter(Boolean) : [], memberships: d.memberships ? d.memberships.split("\n").filter(Boolean) : [],
     timeOff: parseJson<string[]>(d.timeoff, []).filter((x) => x >= istNow().date),
+    timeOffNote: parseJson<string[]>(d.timeoff, []).some((x) => x >= istNow().date) ? d.timeoff_note ?? null : null,
   };
 }
 function parseJson<T>(raw: string | null | undefined, fallback: T): T { if (!raw) return fallback; try { return JSON.parse(raw) as T; } catch { return fallback; } }
@@ -222,7 +234,7 @@ async function doctorEmail(db: DBEnv, d: DoctorRow): Promise<{ email: string } |
 async function ratings(env: DBEnv, ids: string[]) {
   const map = new Map<string, { avg: number; count: number }>();
   if (!ids.length) return map;
-  const { results } = await env.DB.prepare(`SELECT doctor_id, AVG(rating) AS avg, COUNT(*) AS n FROM find_reviews WHERE doctor_id IN (${ids.map(() => "?").join(",")}) GROUP BY doctor_id`).bind(...ids).all<{ doctor_id: string; avg: number; n: number }>();
+  const { results } = await env.DB.prepare(`SELECT doctor_id, AVG(rating) AS avg, COUNT(*) AS n FROM find_reviews WHERE doctor_id IN (${ids.map(() => "?").join(",")}) AND hidden IS NULL GROUP BY doctor_id`).bind(...ids).all<{ doctor_id: string; avg: number; n: number }>();
   for (const r of results) map.set(r.doctor_id, { avg: Math.round(Number(r.avg) * 10) / 10, count: Number(r.n) });
   return map;
 }
@@ -321,14 +333,14 @@ export async function handleFind(request: Request, env: FindEnv): Promise<Respon
     if (!d || (d.status !== "live" && d.user_id !== user?.id)) return json({ error: "This doctor isn't listed." }, 404);
     const today = istNow().date;
     const { results: taken } = await db.DB.prepare("SELECT date, time FROM find_appointments WHERE doctor_id = ? AND status != 'cancelled' AND date >= ? AND date <= ?").bind(d.id, today, addDays(today, BOOK_AHEAD_DAYS)).all<{ date: string; time: string }>();
-    const { results: reviews } = await db.DB.prepare("SELECT rating, text, name, created_at, recommend, wait, visited, reply FROM find_reviews WHERE doctor_id = ? ORDER BY created_at DESC LIMIT 50").bind(d.id).all<{ rating: number; text: string | null; name: string; created_at: number; recommend: number | null; wait: string | null; visited: string | null; reply: string | null }>();
+    const { results: reviews } = await db.DB.prepare("SELECT id, rating, text, name, created_at, recommend, wait, visited, reply, reply_at FROM find_reviews WHERE doctor_id = ? AND hidden IS NULL ORDER BY created_at DESC LIMIT 100").bind(d.id).all<{ id: string; reply_at: number | null; rating: number; text: string | null; name: string; created_at: number; recommend: number | null; wait: string | null; visited: string | null; reply: string | null }>();
     const r = await ratings(db, [d.id]);
     const rec = reviews.filter((x) => x.recommend != null);
     const { results: answers } = await db.DB.prepare("SELECT a.body, a.helpful, a.created_at, q.id AS qid, q.title FROM find_answers a JOIN find_questions q ON q.id = a.question_id WHERE a.doctor_id = ? ORDER BY a.created_at DESC LIMIT 10").bind(d.id).all<{ body: string; helpful: number; created_at: number; qid: string; title: string }>();
     const { results: arts } = await db.DB.prepare("SELECT slug, title, summary, created_at FROM find_articles WHERE doctor_id = ? ORDER BY created_at DESC LIMIT 10").bind(d.id).all<{ slug: string; title: string; summary: string | null; created_at: number }>();
     const counts = await db.DB.prepare("SELECT (SELECT COUNT(*) FROM find_answers WHERE doctor_id = ?) AS answers, (SELECT COUNT(*) FROM find_appointments WHERE doctor_id = ? AND status = 'completed') AS visits").bind(d.id, d.id).first<{ answers: number; visits: number }>();
     return json({ doctor: publicDoctor(d, r.get(d.id)), preview: d.status !== "live", taken: taken.map((t) => `${t.date} ${t.time}`), today, now: istNow().min, aheadDays: BOOK_AHEAD_DAYS,
-      reviews: reviews.map((x) => ({ rating: x.rating, text: x.text, name: x.name.split(" ")[0], at: x.created_at, recommend: x.recommend == null ? null : !!x.recommend, wait: x.wait, visited: x.visited, reply: x.reply })),
+      reviews: reviews.map((x) => ({ id: x.id, rating: x.rating, text: x.text, name: x.name.split(" ")[0], at: x.created_at, recommend: x.recommend == null ? null : !!x.recommend, wait: x.wait, visited: x.visited, reply: x.reply, replyAt: x.reply_at })),
       recommendPct: rec.length ? Math.round((rec.filter((x) => x.recommend).length / rec.length) * 100) : null,
       answers: answers.map((a) => ({ questionId: a.qid, title: a.title, body: a.body, helpful: a.helpful, at: a.created_at })),
       articles: arts.map((a) => ({ slug: a.slug, title: a.title, summary: a.summary, at: a.created_at })),
@@ -743,26 +755,175 @@ export async function handleFind(request: Request, env: FindEnv): Promise<Respon
     return json({ ok: true, id: saved?.id });
   }
 
-  /* the doctor's leave days (no bookings on those dates) */
+  /* the doctor's leave days (no bookings on those dates). Update 83: a note patients see, and the choice to tell
+     the patients already booked on those days: their booking is cancelled and they get a link to the next day the
+     doctor works. */
   if (path === "/me/timeoff" && method === "POST") {
     if (!user) return signIn();
     const mine = await db.DB.prepare("SELECT * FROM find_doctors WHERE user_id = ?").bind(user.id).first<DoctorRow>();
     if (!mine) return json({ error: "List your practice first." }, 404);
     const today = istNow().date, b = await body(request);
     const dates = Array.from(new Set((Array.isArray(b.dates) ? b.dates : []).map(String).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x) && x >= today && x <= addDays(today, 365)))).sort().slice(0, 60);
-    await db.DB.prepare("UPDATE find_doctors SET timeoff = ?, updated_at = ? WHERE id = ?").bind(dates.length ? JSON.stringify(dates) : null, Date.now(), mine.id).run();
-    const clash = await db.DB.prepare(`SELECT COUNT(*) AS n FROM find_appointments WHERE doctor_id = ? AND status IN ('booked', 'confirmed') AND date IN (${dates.map(() => "?").join(",") || "''"})`).bind(mine.id, ...dates).first<{ n: number }>();
-    return json({ ok: true, dates, clashes: Number(clash?.n ?? 0) });
+    const note = typeof b.note === "string" ? str(b.note, 140) || null : mine.timeoff_note ?? null;
+    await db.DB.prepare("UPDATE find_doctors SET timeoff = ?, timeoff_note = ?, updated_at = ? WHERE id = ?").bind(dates.length ? JSON.stringify(dates) : null, dates.length ? note : null, Date.now(), mine.id).run();
+    const { results: clash } = dates.length ? await db.DB.prepare(`SELECT * FROM find_appointments WHERE doctor_id = ? AND status IN ('booked', 'confirmed') AND date IN (${dates.map(() => "?").join(",")}) ORDER BY date, time`).bind(mine.id, ...dates).all<ApptRow>() : { results: [] as ApptRow[] };
+    let notified = 0;
+    if (b.notify === true && clash.length) {
+      const after = { ...mine, timeoff: JSON.stringify(dates) };
+      for (const a of clash) {
+        await db.DB.prepare("UPDATE find_appointments SET status = 'cancelled', note = ?, updated_at = ? WHERE id = ? AND status IN ('booked', 'confirmed')").bind(`Doctor on leave${note ? `: ${note}` : ""}`, Date.now(), a.id).run();
+        let next = "";
+        for (let i = 1; i <= BOOK_AHEAD_DAYS && !next; i++) { const d = addDays(a.date, i); if (d > today && worksOn(after, d)) next = d; }
+        if (a.patient_email) {
+          const ok = await sendEmail(env, a.patient_email, `${mine.name} is on leave on ${nice(a.date, a.time).split(",").slice(0, 2).join(",")}`, shell(`<h2 style="margin:0 0 10px;font-size:20px;">Your appointment can't go ahead</h2>
+<p style="margin:0 0 10px;font-size:14px;">${escapeHtml(mine.name)} is on leave on ${escapeHtml(nice(a.date, a.time))}${note ? ` (${escapeHtml(note)})` : ""}, so your booking for ${escapeHtml(a.patient_name)} has been cancelled. Nothing was charged.</p>
+<p style="margin:0;font-size:14px;"><a href="${SITE}/doctor/${mine.slug}${next ? `?date=${next}` : ""}#book">${next ? `Book another time from ${escapeHtml(nice(next, "09:00").split(",").slice(0, 2).join(","))}` : "Book another time"}</a></p>`)).catch(() => false);
+          if (ok) notified++;
+        }
+      }
+    }
+    return json({ ok: true, dates, note: dates.length ? note : null, clashes: b.notify === true ? 0 : clash.length, clashList: b.notify === true ? [] : clash.map((a) => ({ id: a.id, name: a.patient_name, date: a.date, time: a.time })), cancelled: b.notify === true ? clash.length : 0, notified });
   }
 
-  /* reply to a review (the doctor) */
+  /* reply to a review (the doctor). Update 83: edit or remove the reply; the patient is emailed the first time. */
   const reply = /^\/practice\/reviews\/([a-z0-9]{6,40})$/.exec(path);
   if (reply && method === "POST") {
     if (!user) return signIn();
-    const r = await db.DB.prepare("SELECT r.id FROM find_reviews r JOIN find_doctors d ON d.id = r.doctor_id WHERE r.id = ? AND d.user_id = ?").bind(reply[1], user.id).first<{ id: string }>();
+    const r = await db.DB.prepare("SELECT r.id, r.reply, r.user_id, d.name AS d_name, d.slug AS d_slug FROM find_reviews r JOIN find_doctors d ON d.id = r.doctor_id WHERE r.id = ? AND d.user_id = ?").bind(reply[1], user.id).first<{ id: string; reply: string | null; user_id: string; d_name: string; d_slug: string }>();
     if (!r) return json({ error: "Review not found." }, 404);
-    await db.DB.prepare("UPDATE find_reviews SET reply = ? WHERE id = ?").bind(longStr((await body(request)).reply, 600) || null, r.id).run();
+    const text = longStr((await body(request)).reply, 600) || null;
+    await db.DB.prepare("UPDATE find_reviews SET reply = ?, reply_at = ? WHERE id = ?").bind(text, text ? Date.now() : null, r.id).run();
+    if (text && !r.reply) {
+      const u = await db.DB.prepare("SELECT email FROM users WHERE id = ?").bind(r.user_id).first<{ email: string }>();
+      if (u?.email) await sendEmail(env, u.email, `${r.d_name} replied to your review`, shell(`<h2 style="margin:0 0 10px;font-size:20px;">${escapeHtml(r.d_name)} replied to your review</h2>
+<blockquote style="margin:0 0 12px;padding:10px 14px;border-left:3px solid #0d9488;background:#f8fafc;font-size:14px;white-space:pre-wrap;">${escapeHtml(text)}</blockquote>
+<p style="margin:0;font-size:14px;"><a href="${SITE}/doctor/${r.d_slug}#reviews">See it on the doctor's profile</a></p>`)).catch(() => false);
+    }
+    return json({ ok: true, reply: text });
+  }
+
+  /* report a review (anyone signed in, once per review); an admin decides */
+  const report = /^\/reviews\/([a-z0-9]{6,40})\/report$/.exec(path);
+  if (report && method === "POST") {
+    if (!user) return signIn();
+    if (!(await allow(db, `find-report:${user.id}`, 10, 86400_000))) return json({ error: "That's a lot of reports for one day." }, 429);
+    const r = await db.DB.prepare("SELECT id FROM find_reviews WHERE id = ?").bind(report[1]).first<{ id: string }>();
+    if (!r) return json({ error: "Review not found." }, 404);
+    const reason = String((await body(request)).reason ?? "");
+    if (!REPORT_REASONS.includes(reason)) return json({ error: "Choose a reason." }, 400);
+    try { await db.DB.prepare("INSERT INTO find_review_reports (id, review_id, user_id, reason, created_at) VALUES (?, ?, ?, ?, ?)").bind(id("rr"), r.id, user.id, reason, Date.now()).run(); }
+    catch { return json({ ok: true, already: true }); }
+    const admins = adminEmails(env);
+    if (admins[0]) await sendEmail(env, admins[0], "A doctor review was reported", shell(`<p style="margin:0;font-size:14px;">Reason: ${escapeHtml(reason)}. <a href="${SITE}/admin/doctors?tab=reviews">Look at it</a>.</p>`)).catch(() => false);
     return json({ ok: true });
+  }
+
+  /* admin: reported reviews */
+  if (path === "/admin/review-reports" || /^\/admin\/review-reports\/[a-z0-9]{6,40}$/.test(path)) {
+    if (!user) return signIn();
+    if (!adminEmails(env).includes(normEmail(user.email))) return json({ error: "This account can't moderate reviews." }, 403);
+    if (path === "/admin/review-reports" && method === "GET") {
+      const { results } = await db.DB.prepare(`SELECT r.id, r.rating, r.text, r.name, r.created_at, r.reply, r.hidden, d.name AS d_name, d.slug AS d_slug,
+        (SELECT COUNT(*) FROM find_review_reports x WHERE x.review_id = r.id AND x.status = 'open') AS open_n,
+        (SELECT GROUP_CONCAT(x.reason, '|') FROM find_review_reports x WHERE x.review_id = r.id) AS reasons
+        FROM find_reviews r JOIN find_doctors d ON d.id = r.doctor_id WHERE r.id IN (SELECT review_id FROM find_review_reports) ORDER BY open_n DESC, r.created_at DESC LIMIT 100`).all<Record<string, string | number | null>>();
+      return json({ reports: results.map((r) => ({ id: r.id, rating: r.rating, text: r.text, name: String(r.name).split(" ")[0], at: r.created_at, reply: r.reply, hidden: !!r.hidden, doctor: { name: r.d_name, slug: r.d_slug }, open: Number(r.open_n), reasons: String(r.reasons ?? "").split("|").filter(Boolean) })) });
+    }
+    if (method === "POST") {
+      const rid = path.split("/").pop()!, action = String((await body(request)).action);
+      if (!["hide", "keep", "restore"].includes(action)) return json({ error: "Choose hide, keep or restore." }, 400);
+      await db.DB.prepare("UPDATE find_reviews SET hidden = ? WHERE id = ?").bind(action === "hide" ? 1 : null, rid).run();
+      await db.DB.prepare("UPDATE find_review_reports SET status = ? WHERE review_id = ?").bind(action === "hide" ? "hidden" : "kept", rid).run();
+      return json({ ok: true });
+    }
+    return json({ error: "Method not allowed" }, 405);
+  }
+
+  /* the clinic queue (update 83): the doctor or the front desk marks who arrived, who is in, who is done */
+  if (path === "/practice/queue" && method === "GET") {
+    if (!user) return signIn();
+    const mine = await db.DB.prepare("SELECT * FROM find_doctors WHERE user_id = ?").bind(user.id).first<DoctorRow>();
+    if (!mine) return json({ error: "List your practice first.", noProfile: true }, 404);
+    return json(await queueOf(db, mine, istNow().date));
+  }
+  const qStep = /^\/practice\/queue\/([a-z0-9]{6,40})$/.exec(path);
+  if (qStep && method === "POST") {
+    if (!user) return signIn();
+    const a = await db.DB.prepare("SELECT a.* FROM find_appointments a JOIN find_doctors d ON d.id = a.doctor_id WHERE a.id = ? AND d.user_id = ?").bind(qStep[1], user.id).first<ApptRow>();
+    if (!a) return json({ error: "Appointment not found." }, 404);
+    if (a.date !== istNow().date) return json({ error: "The queue is for today's appointments." }, 400);
+    const step = String((await body(request)).step), now = Date.now();
+    if (step === "arrived") await db.DB.prepare("UPDATE find_appointments SET arrived_at = COALESCE(arrived_at, ?), status = CASE WHEN status = 'booked' THEN 'confirmed' ELSE status END, updated_at = ? WHERE id = ?").bind(now, now, a.id).run();
+    else if (step === "start") {
+      // one patient in the room at a time: whoever was in is marked done
+      await db.DB.prepare("UPDATE find_appointments SET done_at = ?, status = 'completed', updated_at = ? WHERE doctor_id = ? AND date = ? AND started_at IS NOT NULL AND done_at IS NULL AND id != ?").bind(now, now, a.doctor_id, a.date, a.id).run();
+      await db.DB.prepare("UPDATE find_appointments SET arrived_at = COALESCE(arrived_at, ?), started_at = ?, done_at = NULL, status = CASE WHEN status IN ('booked', 'completed') THEN 'confirmed' ELSE status END, updated_at = ? WHERE id = ?").bind(now, now, now, a.id).run();
+    } else if (step === "done") await db.DB.prepare("UPDATE find_appointments SET started_at = COALESCE(started_at, ?), done_at = ?, status = 'completed', updated_at = ? WHERE id = ?").bind(now, now, now, a.id).run();
+    else if (step === "no-show") await db.DB.prepare("UPDATE find_appointments SET status = 'no-show', updated_at = ? WHERE id = ?").bind(now, a.id).run();
+    else if (step === "undo") await db.DB.prepare(`UPDATE find_appointments SET ${a.done_at ? "done_at = NULL, status = 'confirmed'" : a.started_at ? "started_at = NULL" : a.status === "no-show" ? "status = 'confirmed'" : "arrived_at = NULL"}, updated_at = ? WHERE id = ?`).bind(now, a.id).run();
+    else return json({ error: "Unknown step." }, 400);
+    const mine = await db.DB.prepare("SELECT * FROM find_doctors WHERE id = ?").bind(a.doctor_id).first<DoctorRow>();
+    return json(await queueOf(db, mine!, a.date));
+  }
+  /* the patient's place in the queue */
+  const myQ = /^\/queue\/([a-z0-9]{6,40})$/.exec(path);
+  if (myQ && method === "GET") {
+    if (!user) return signIn();
+    const a = await db.DB.prepare("SELECT * FROM find_appointments WHERE id = ? AND user_id = ?").bind(myQ[1], user.id).first<ApptRow>();
+    if (!a) return json({ error: "Appointment not found." }, 404);
+    const d = await db.DB.prepare("SELECT * FROM find_doctors WHERE id = ?").bind(a.doctor_id).first<DoctorRow>();
+    if (!d || a.date !== istNow().date || a.mode !== "clinic") return json({ state: "not-today" });
+    const q = await queueOf(db, d, a.date);
+    const me = q.list.find((x) => x.id === a.id);
+    if (!me || ["cancelled", "no-show"].includes(me.status)) return json({ state: "closed" });
+    if (me.state === "done") return json({ state: "done" });
+    if (me.state === "in") return json({ state: "in" });
+    const nowMin = istNow().min;
+    const inRoom = q.list.find((x) => x.state === "in");
+    const ahead = q.list.filter((x) => x.id !== a.id && x.state !== "done" && x.state !== "gone" && (x.state === "in" || x.time < a.time || (x.state === "arrived" && me.state !== "arrived" && x.time <= a.time)));
+    const leftNow = inRoom ? Math.max(1, q.avgMin - Math.round((Date.now() - inRoom.startedAt!) / 60000)) : 0;
+    const queued = ahead.filter((x) => x.state !== "in").length;
+    const wait = Math.max(leftNow + queued * q.avgMin, mins(a.time) - nowMin);
+    return json({ state: me.state, ahead: ahead.length, nowServing: inRoom ? inRoom.time : null, waitMin: Math.max(0, Math.round(wait)), expectedAt: fmt(Math.min(23 * 60 + 59, nowMin + Math.max(0, Math.round(wait)))), lateMin: q.lateMin, started: q.started, avgMin: q.avgMin, updatedAt: Date.now() });
+  }
+
+  /* records the patient shares with the doctor for a visit (update 83) */
+  const files = /^\/appointments\/([a-z0-9]{6,40})\/files$/.exec(path);
+  if (files) {
+    if (!user) return signIn();
+    const a = await db.DB.prepare("SELECT a.*, d.user_id AS doctor_user FROM find_appointments a JOIN find_doctors d ON d.id = a.doctor_id WHERE a.id = ?").bind(files[1]).first<ApptRow & { doctor_user: string }>();
+    if (!a || (a.user_id !== user.id && a.doctor_user !== user.id)) return json({ error: "Appointment not found." }, 404);
+    if (method === "GET") return json({ files: await sharedList(db, a.id) });
+    if (method !== "POST" || a.user_id !== user.id) return json({ error: "Method not allowed" }, 405);
+    if (!["booked", "confirmed", "completed"].includes(a.status) || a.date < addDays(istNow().date, -7)) return json({ error: "You can share records for upcoming visits and visits in the last week." }, 400);
+    if (!(await allow(db, `find-share:${user.id}`, 40, 86400_000))) return json({ error: "That's a lot of uploads for one day." }, 429);
+    const have = await db.DB.prepare("SELECT COUNT(*) AS n FROM find_shared WHERE appointment_id = ?").bind(a.id).first<{ n: number }>();
+    if (Number(have?.n) >= SHARE_MAX_FILES) return json({ error: `Up to ${SHARE_MAX_FILES} files a visit. Remove one to add another.` }, 400);
+    const b = await body(request);
+    const name = str(b.name, 120).replace(/[\\/:*?"<>|]/g, "_") || "record", data = typeof b.data === "string" ? b.data.replace(/^data:[^,]*,/, "") : "";
+    if (!/^[A-Za-z0-9+/]+={0,2}$/.test(data)) return json({ error: "That file couldn't be read." }, 400);
+    const size = Math.floor((data.length * 3) / 4) - (data.endsWith("==") ? 2 : data.endsWith("=") ? 1 : 0);
+    if (size > SHARE_MAX_BYTES) return json({ error: "Files can be up to 1 MB. Photos are shrunk for you; for a large PDF, share the important pages." }, 400);
+    const type = sniff(data);
+    if (!type) return json({ error: "Share a PDF or a photo (JPEG, PNG or WebP)." }, 400);
+    const kind = ["Lab report", "Prescription", "Scan or X-ray", "Discharge summary", "Vaccination", "Bill", "Other"].includes(String(b.kind)) ? String(b.kind) : "Other";
+    await db.DB.prepare("INSERT INTO find_shared (id, appointment_id, user_id, doctor_id, name, type, size, kind, data, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(id("f"), a.id, user.id, a.doctor_id, name, type, size, kind, data, Date.now()).run();
+    return json({ files: await sharedList(db, a.id) });
+  }
+  const fileOne = /^\/files\/(f[a-z0-9]{6,40})(\/delete)?$/.exec(path);
+  if (fileOne) {
+    if (!user) return signIn();
+    const f = await db.DB.prepare("SELECT f.*, d.user_id AS doctor_user FROM find_shared f JOIN find_doctors d ON d.id = f.doctor_id WHERE f.id = ?").bind(fileOne[1]).first<{ id: string; appointment_id: string; user_id: string; doctor_user: string; name: string; type: string; data: string }>();
+    if (!f || (f.user_id !== user.id && f.doctor_user !== user.id)) return json({ error: "File not found." }, 404);
+    if (fileOne[2]) {
+      if (method !== "POST" || f.user_id !== user.id) return json({ error: "Only the patient can remove it." }, 403);
+      await db.DB.prepare("DELETE FROM find_shared WHERE id = ?").bind(f.id).run();
+      return json({ files: await sharedList(db, f.appointment_id) });
+    }
+    if (method !== "GET") return json({ error: "Method not allowed" }, 405);
+    if (f.doctor_user === user.id) await db.DB.prepare("UPDATE find_shared SET viewed_at = COALESCE(viewed_at, ?) WHERE id = ?").bind(Date.now(), f.id).run();
+    const bin = Uint8Array.from(atob(f.data), (c) => c.charCodeAt(0));
+    return new Response(bin, { headers: { "content-type": f.type, "content-disposition": `inline; filename="${f.name.replace(/[^\w.\- ]/g, "_")}"`, "cache-control": "no-store, private", "x-content-type-options": "nosniff", "content-security-policy": "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox" } });
   }
 
   /* the doctor's practice dashboard */
@@ -771,14 +932,14 @@ export async function handleFind(request: Request, env: FindEnv): Promise<Respon
     const mine = await db.DB.prepare("SELECT * FROM find_doctors WHERE user_id = ?").bind(user.id).first<DoctorRow>();
     if (!mine) return json({ error: "List your practice first.", noProfile: true }, 404);
     const from = /^\d{4}-\d{2}-\d{2}$/.test(String(url.searchParams.get("from"))) ? String(url.searchParams.get("from")) : addDays(istNow().date, -30);
-    const { results } = await db.DB.prepare("SELECT a.*, (SELECT p.id FROM find_prescriptions p WHERE p.appointment_id = a.id) AS rx FROM find_appointments a WHERE a.doctor_id = ? AND a.date >= ? ORDER BY a.date ASC, a.time ASC LIMIT 500").bind(mine.id, from).all<ApptRow & { rx: string | null }>();
+    const { results } = await db.DB.prepare("SELECT a.*, (SELECT p.id FROM find_prescriptions p WHERE p.appointment_id = a.id) AS rx, (SELECT COUNT(*) FROM find_shared f WHERE f.appointment_id = a.id) AS files FROM find_appointments a WHERE a.doctor_id = ? AND a.date >= ? ORDER BY a.date ASC, a.time ASC LIMIT 500").bind(mine.id, from).all<ApptRow & { rx: string | null; files: number }>();
     const r = await ratings(db, [mine.id]);
-    const { results: reviews } = await db.DB.prepare("SELECT id, rating, text, name, created_at, recommend, wait, reply FROM find_reviews WHERE doctor_id = ? ORDER BY created_at DESC LIMIT 50").bind(mine.id).all<Record<string, string | number | null>>();
+    const { results: reviews } = await db.DB.prepare("SELECT id, rating, text, name, created_at, recommend, wait, reply, reply_at, hidden FROM find_reviews WHERE doctor_id = ? ORDER BY created_at DESC LIMIT 100").bind(mine.id).all<Record<string, string | number | null>>();
     const { results: open } = await db.DB.prepare("SELECT q.id, q.title, q.created_at FROM find_questions q WHERE q.specialty = ? AND NOT EXISTS (SELECT 1 FROM find_answers a WHERE a.question_id = q.id AND a.doctor_id = ?) ORDER BY q.created_at DESC LIMIT 10").bind(mine.specialty, mine.id).all<{ id: string; title: string; created_at: number }>();
     const { results: arts } = await db.DB.prepare("SELECT slug, title, created_at FROM find_articles WHERE doctor_id = ? ORDER BY created_at DESC LIMIT 20").bind(mine.id).all<{ slug: string; title: string; created_at: number }>();
     const patients = await db.DB.prepare("SELECT COUNT(DISTINCT user_id) AS n FROM find_appointments WHERE doctor_id = ? AND status = 'completed'").bind(mine.id).first<{ n: number }>();
-    return json({ doctor: ownDoctor(mine), rating: r.get(mine.id) ?? null, today: istNow().date, appointments: results.map((a) => ({ ...apptOut(a), prescription: a.rx })),
-      reviews: reviews.map((x) => ({ id: x.id, rating: x.rating, text: x.text, name: String(x.name).split(" ")[0], at: x.created_at, recommend: x.recommend == null ? null : !!x.recommend, wait: x.wait, reply: x.reply })),
+    return json({ doctor: ownDoctor(mine), rating: r.get(mine.id) ?? null, today: istNow().date, appointments: results.map((a) => ({ ...apptOut(a), prescription: a.rx, files: Number(a.files) })),
+      reviews: reviews.map((x) => ({ id: x.id, rating: x.rating, text: x.text, name: String(x.name).split(" ")[0], at: x.created_at, recommend: x.recommend == null ? null : !!x.recommend, wait: x.wait, reply: x.reply, replyAt: x.reply_at, hidden: !!x.hidden })),
       openQuestions: open.map((q) => ({ id: q.id, title: q.title, at: q.created_at })), articles: arts.map((a) => ({ slug: a.slug, title: a.title, at: a.created_at })), patients: Number(patients?.n ?? 0) });
   }
   const upd = /^\/practice\/appointments\/([a-z0-9]{6,40})$/.exec(path);
@@ -882,6 +1043,15 @@ function followEmail(doc: { slug: string; name: string }, date: string, patient:
 }
 
 /** Three days before a follow-up date, a reminder to anyone who hasn't booked it yet (run hourly, once each). */
+/** Update 83: shared records are deleted 30 days after the visit. */
+export async function cleanSharedRecords(env: FindEnv): Promise<{ deleted: number }> {
+  if (!env.DB) return { deleted: 0 };
+  const db = env as DBEnv;
+  await ensure(db.DB);
+  const r = await db.DB.prepare("DELETE FROM find_shared WHERE appointment_id IN (SELECT id FROM find_appointments WHERE date < ?) OR appointment_id NOT IN (SELECT id FROM find_appointments)").bind(addDays(istNow().date, -30)).run();
+  return { deleted: Number((r as { meta?: { changes?: number } }).meta?.changes ?? 0) };
+}
+
 export async function runFollowUps(env: FindEnv): Promise<{ sent: number }> {
   if (!env.DB) return { sent: 0 };
   const db = env as DBEnv;
@@ -940,4 +1110,37 @@ async function practiceAnalytics(db: DBEnv, doctorId: string) {
     leadDays: leadN ? Math.round((lead / leadN) * 10) / 10 : null,
     ratings: [...months.entries()].slice(-12).map(([month, x]) => ({ month, avg: Math.round((x.sum / x.n) * 10) / 10, count: x.n })),
   };
+}
+
+/* ------------------------------------------------------------------ update 83: queue, shared records, reports */
+
+const REPORT_REASONS = ["Not a real visit", "Offensive or abusive", "Personal or private details", "Spam or advertising", "Other"];
+const SHARE_MAX_FILES = 6, SHARE_MAX_BYTES = 1_048_576;
+/** The file's real type from its first bytes (the name and the browser's claim aren't trusted). */
+function sniff(b64: string): string | null {
+  const head = atob(b64.slice(0, 16));
+  if (head.startsWith("%PDF-")) return "application/pdf";
+  if (head.charCodeAt(0) === 0xff && head.charCodeAt(1) === 0xd8 && head.charCodeAt(2) === 0xff) return "image/jpeg";
+  if (head.startsWith("\x89PNG")) return "image/png";
+  if (head.startsWith("RIFF") && head.slice(8, 12) === "WEBP") return "image/webp";
+  return null;
+}
+async function sharedList(db: DBEnv, appointmentId: string) {
+  const { results } = await db.DB.prepare("SELECT id, name, type, size, kind, created_at, viewed_at FROM find_shared WHERE appointment_id = ? ORDER BY created_at").bind(appointmentId).all<{ id: string; name: string; type: string; size: number; kind: string | null; created_at: number; viewed_at: number | null }>();
+  return results.map((f) => ({ id: f.id, name: f.name, type: f.type, size: f.size, kind: f.kind, at: f.created_at, viewed: !!f.viewed_at }));
+}
+type QState = "waiting" | "arrived" | "in" | "done" | "gone";
+async function queueOf(db: DBEnv, d: DoctorRow, date: string) {
+  const { results } = await db.DB.prepare("SELECT a.*, (SELECT COUNT(*) FROM find_shared f WHERE f.appointment_id = a.id) AS files FROM find_appointments a WHERE a.doctor_id = ? AND a.date = ? AND a.mode = 'clinic' AND a.status != 'cancelled' ORDER BY a.time").bind(d.id, date).all<ApptRow & { files: number }>();
+  const ist = (ms: number) => istNow(ms).min;
+  const list = results.map((a) => {
+    const state: QState = a.status === "no-show" ? "gone" : a.done_at || a.status === "completed" ? "done" : a.started_at ? "in" : a.arrived_at ? "arrived" : "waiting";
+    return { id: a.id, time: a.time, name: a.patient_name, age: a.patient_age, phone: a.patient_phone, reason: a.reason, status: a.status, state, arrivedAt: a.arrived_at ?? null, startedAt: a.started_at ?? null, doneAt: a.done_at ?? null, files: Number(a.files) };
+  });
+  const durations = list.filter((x) => x.startedAt && x.doneAt && x.doneAt > x.startedAt).sort((x, y) => y.doneAt! - x.doneAt!).slice(0, 8).map((x) => (x.doneAt! - x.startedAt!) / 60000);
+  const slot = parseHours(d.hours)?.slot ?? 15;
+  const avgMin = durations.length >= 2 ? Math.min(60, Math.max(3, Math.round(durations.reduce((s, x) => s + x, 0) / durations.length))) : slot;
+  const last = list.filter((x) => x.startedAt).sort((x, y) => y.startedAt! - x.startedAt!)[0];
+  const lateMin = last && last.state === "in" ? Math.max(0, ist(last.startedAt!) - mins(last.time)) : 0;
+  return { date, list, avgMin, lateMin, started: list.some((x) => x.startedAt), counts: { waiting: list.filter((x) => x.state === "waiting").length, arrived: list.filter((x) => x.state === "arrived").length, done: list.filter((x) => x.state === "done").length } };
 }

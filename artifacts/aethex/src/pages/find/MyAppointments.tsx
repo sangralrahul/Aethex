@@ -1,5 +1,6 @@
 /** /appointments: the patient's bookings, with cancel and (after a completed visit) a review. */
 import { MyWaitlists } from "./DoctorTools2";
+import { QueueStatus, ShareRecords } from "./DoctorTools3";
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
@@ -86,12 +87,14 @@ export default function MyAppointments() {
         {people.length > 0 && <span className="fd-for"><Users size={13} /> For {nameOf(a)}</span>}
         <span className={`pill ${a.status}`}>{LABEL[a.status]}</span>
         {a.note && a.status === "cancelled" && <span className="mu">{a.note}</span>}
+        <QueueStatus a={a} />
       </div>
       <div className="do">
         {["booked", "confirmed"].includes(a.status) && a.date >= today && <CalendarButtons a={a} />}
         {a.prescription && <Link href={`/prescription/${a.prescription}`} className="fd-btn sm"><FileText size={14} /> Prescription</Link>}
         {["booked", "confirmed"].includes(a.status) && a.date >= today && <button type="button" className="fd-btn sm ghost" onClick={() => setMoving(moving === a.id ? "" : a.id)}><CalendarClock size={14} /> Reschedule</button>}
         {["booked", "confirmed"].includes(a.status) && a.date >= today && <button type="button" className="fd-btn sm danger" onClick={() => void cancel(a)}><X size={14} /> Cancel</button>}
+        <ShareRecords a={a} />
         {moving === a.id && <Reschedule a={a} onDone={() => { setMoving(""); refresh(); }} />}
         {a.status === "completed" && !a.reviewed && <Review a={a} onDone={refresh} />}
         {a.status === "completed" && a.reviewed && <span className="mu">Thanks for your review</span>}

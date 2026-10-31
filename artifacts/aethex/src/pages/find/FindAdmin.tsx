@@ -7,6 +7,7 @@ import { useSeo } from "@/hooks/use-seo";
 import { displayName, findApi, hoursText, signInHere, type FindError, type OwnDoctor } from "@/lib/find";
 import { formatINR } from "@/lib/utils";
 import { SignInCard } from "./FindParts";
+import { ReportedReviews } from "./DoctorTools3";
 
 type Row = OwnDoctor & { email: string; phone?: string | null; account?: boolean };
 const TABS = ["pending", "live", "paused", "rejected"] as const;
@@ -52,6 +53,7 @@ export default function FindAdmin() {
               </article>
             ))}
           </>}
+        {!fe && <ReportedReviews />}
       </div>
     </div>
   );
