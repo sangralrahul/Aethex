@@ -466,3 +466,9 @@ cancels from `/practice`. Reviews can only be written for `completed` appointmen
 - Live numbers under the banners counting up when seen: products in stock, medical books, brands and categories, all from the catalogue, plus cash on delivery.
 - A Cadus button (with a moving shine) just left of Login. Sections rise in as they scroll into view; images zoom slightly on hover.
 - Shorter section headings: no subtitles under rows; shorter study tiles and footer line.
+
+## Update 98: aethex.in, a refined pass
+
+- Platform tabs: upright (not italic) semibold labels, slimmer tabs with a hairline border, smaller icon tiles; the header with a soft shadow; a slimmer search and actions; smaller category icons.
+- Banners: 268px tall, a calmer wash, small uppercase tag, 28px title with one highlight line, the product reel smaller and tucked into the right; quieter heartbeat line and arrows.
+- Live numbers as one bar with dividers instead of five boxes.
