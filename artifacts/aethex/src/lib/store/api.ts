@@ -5,6 +5,7 @@
  * alerts, requests and the admin. In local development without the Worker, the
  * catalogue and books are read from src/data/store/ instead.
  */
+import { homeData, type HomeData } from "./home";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type {
@@ -167,8 +168,28 @@ async function loadLatestBooks(): Promise<LatestBooks> {
     return { count: d.books.length, books };
   }
 }
+/** Update 105: data the Worker wrote into the page (<script type="application/json" id=…>), read once. */
+function inlineJson<T>(id: string): T | undefined {
+  try {
+    if (typeof document === "undefined") return undefined;
+    const el = document.getElementById(id);
+    return el?.textContent ? (JSON.parse(el.textContent) as T) : undefined;
+  } catch { return undefined; }
+}
 export function useLatestBooks(enabled = true) {
-  return useQuery({ queryKey: ["store", "books", "latest"], queryFn: loadLatestBooks, staleTime: 5 * 60_000, gcTime: 60 * 60_000, enabled, retry: 1 });
+  return useQuery({ queryKey: ["store", "books", "latest"], queryFn: loadLatestBooks, initialData: () => inlineJson<LatestBooks>("ax-books"), staleTime: 5 * 60_000, gcTime: 60 * 60_000, enabled, retry: 1 });
+}
+
+/** Update 105: the store sections of aethex.in's home page (lib/store/home.ts): in the page, else /api/store/home, else worked out from the catalogue. */
+async function loadHome(): Promise<HomeData> {
+  try {
+    return await storeFetch<HomeData>("/home");
+  } catch {
+    return homeData(await loadCatalog()); // an older Worker without /home
+  }
+}
+export function useHome() {
+  return useQuery({ queryKey: ["store", "home"], queryFn: loadHome, initialData: () => inlineJson<HomeData>("ax-home"), staleTime: 5 * 60_000, gcTime: 60 * 60_000, retry: 1 });
 }
 
 /** One product in full (description, specifications, every photo). */

@@ -36,6 +36,7 @@ import {
   type RazorpayEnv, type RzpRefund,
 } from "./razorpay";
 import { BUSINESS, SITE_URL, launchGaps } from "../artifacts/aethex/src/config/business";
+import { homeData } from "../artifacts/aethex/src/lib/store/home";
 import { allow, clientIp, currentUser, escapeHtml, normEmail, sendEmail, sha256, shell, type AuthEnv, type D1Like } from "./auth";
 import { emailOk, withPrefsLink } from "./prefs";
 
@@ -374,7 +375,7 @@ async function booksBody(env: StoreEnv): Promise<string> {
 
 /** Update 103: the home page needs only the newest books and how many there are, not the whole list (about 500 KB). */
 let latestBooksCache: { src: string; body: string } | null = null;
-async function latestBooksBody(env: StoreEnv): Promise<string> {
+export async function latestBooksBody(env: StoreEnv): Promise<string> {
   const full = await booksBody(env);
   if (latestBooksCache && latestBooksCache.src === full) return latestBooksCache.body;
   const d = JSON.parse(full) as { version: string; books: Record<string, unknown>[] };
@@ -383,6 +384,16 @@ async function latestBooksBody(env: StoreEnv): Promise<string> {
     .map((b) => ({ id: b.id, slug: b.slug, title: b.title, authors: b.authors, edition: b.edition, year: b.year, cover: b.cover, price: b.price, mrp: b.mrp, priceOnRequest: b.priceOnRequest, inStock: b.inStock }));
   const body = JSON.stringify({ version: d.version, count: d.books.length, books });
   latestBooksCache = { src: full, body };
+  return body;
+}
+
+/** Update 105: what the aethex.in home page shows from the store (lib/store/home.ts), a few KB instead of the catalogue. */
+let homeCache: { src: string; body: string } | null = null;
+export async function homeBody(env: StoreEnv): Promise<string> {
+  const full = await catalogSummary(env).catch(() => catalogSummary({ ...env, DB: undefined }));
+  if (homeCache && homeCache.src === full) return homeCache.body;
+  const body = JSON.stringify(homeData(JSON.parse(full)));
+  homeCache = { src: full, body };
   return body;
 }
 
@@ -2072,6 +2083,7 @@ export async function handleStore(request: Request, env: StoreEnv, ctx?: Ctx): P
       return new Response(await booksBody({ ...env, DB: undefined }), { headers: { "content-type": "application/json", "cache-control": "no-store" } });
     }
   }
+  if (path === "home" && method === "GET") return await etagged(request, "home", await homeBody(env));
   if (path === "books/latest" && method === "GET") {
     try {
       return await etagged(request, "books-latest", await latestBooksBody(env));

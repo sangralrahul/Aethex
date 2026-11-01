@@ -23,7 +23,7 @@
 import { functionHandler, functionNames, useEnv } from "./deno-shim";
 import { handleAuth, handleCart, handleProfile, runScheduled, type AuthEnv } from "./auth";
 import { serveDownload, type R2Bucket } from "./downloads";
-import { handleStore, logPrices, runEquipmentReminders, runStockAlerts, runReorderReminders, runStoreScheduled, type StoreEnv } from "./store";
+import { handleStore, homeBody, latestBooksBody, logPrices, runEquipmentReminders, runStockAlerts, runReorderReminders, runStoreScheduled, type StoreEnv } from "./store";
 import { handleTranscribe, type AiBinding } from "./transcribe";
 import { handleVoice, voiceEnabled, type VoiceEnv } from "./voice";
 import { guestGate, requireAccount } from "./guest";
@@ -99,7 +99,8 @@ export default {
     }
     // aethex.in: the home page's data and first photo start loading with the HTML (update 103).
     if (url.pathname === "/" && request.method === "GET" && /^(?:www\.)?aethex\.in$/.test(url.hostname)) {
-      return hubHome(await env.ASSETS.fetch(new Request(new URL("/", url), request)));
+      const [page, home, books] = await Promise.all([env.ASSETS.fetch(new Request(new URL("/", url), request)), homeBody(env).catch(() => null), latestBooksBody(env).catch(() => null)]);
+      return hubHome(page, home, books);
     }
 
     if (url.pathname === "/api/health" && url.searchParams.get("live") === "1") {

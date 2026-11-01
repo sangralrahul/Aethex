@@ -18,7 +18,7 @@ import { PlatformLogo, type PlatformId } from "@/components/home/PlatformLogos";
 import { ProductImage } from "@/components/store/ProductImage";
 import { useUserAuth } from "@/hooks/use-user-auth";
 import { cadusUrl, loginUrl, mainUrl, portalUrl, type Portal } from "@/lib/host";
-import { useLatestBooks, useStore } from "@/lib/store/api";
+import { useHome, useLatestBooks } from "@/lib/store/api";
 import { FREE_DELIVERY_FROM } from "@/lib/store/rules";
 import { SPECIALTIES } from "@/lib/find";
 import { formatINR } from "@/lib/utils";
@@ -224,14 +224,9 @@ export function Banners() {
 }
 
 /* ---------------------------------------------------------------- "Health essentials for every home": the lowest price in each category, live */
-const ESSENTIALS: [string, string][] = [["bp-monitors", "BP monitors"], ["pulse-oximeters", "Pulse oximeters"], ["thermometers", "Thermometers"], ["nebulizers", "Nebulizers"], ["diabetes-care", "Diabetes care"], ["stethoscopes", "Stethoscopes"], ["weighing-scales", "Weighing scales"], ["orthopaedic-supports", "Orthopaedic supports"]];
 export function Essentials() {
-  const { data } = useStore();
-  if (!data) return null;
-  const tiles = ESSENTIALS.map(([slug, label]) => {
-    const list = data.products.filter((p) => p.category === slug && p.inStock && !p.priceOnRequest && p.price != null && p.image).sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
-    return list.length ? { slug, label, from: list[0]!.price!, image: (list.find((p) => p.featured) ?? list[Math.floor(list.length / 2)] ?? list[0])!.image } : null;
-  }).filter((x): x is NonNullable<typeof x> => !!x).slice(0, 4);
+  const { data } = useHome(); // update 105: worked out by the Worker, in the page
+  const tiles = data?.essentials ?? [];
   if (tiles.length < 4) return null;
   return (
     <section className="hx-wrap fk-band" data-home="essentials-band" aria-label="Health essentials for every home">
@@ -240,7 +235,7 @@ export function Essentials() {
         <div className="tiles">
           {tiles.map((t) => (
             <a key={t.slug} href={S(`/category/${t.slug}`)} data-cat={t.slug}>
-              <span className="im"><ProductImage src={t.image} alt="" width={360} /></span>
+              <span className="im"><ProductImage src={t.image} alt="" width={360} eager /></span>
               <span className="nm">{t.label}</span>
               <b>From {formatINR(t.from)}</b>
             </a>
@@ -273,14 +268,8 @@ export const price = (p: number | null | undefined, mrp: number | null | undefin
 export const Skel = () => <>{Array.from({ length: 6 }, (_, i) => <span key={i} className="hx-card sk" aria-hidden="true" />)}</>;
 
 export function LatestProducts() {
-  const { data, isLoading } = useStore();
-  // the most recently added (highest numbers) in stock, a few per category so the row isn't all one kind
-  const list = (() => {
-    if (!data) return [];
-    const seen = new Map<string, number>();
-    return [...data.products].filter((p) => p.inStock && !p.priceOnRequest && p.price != null && p.image).sort((a, b) => b.id - a.id)
-      .filter((p) => { const n = seen.get(p.category) ?? 0; seen.set(p.category, n + 1); return n < 2; }).slice(0, 16);
-  })();
+  const { data, isLoading } = useHome(); // the most recently added in stock, two per category at most (lib/store/home.ts)
+  const list = data?.latest ?? [];
   if (!isLoading && !list.length) return null;
   return (
     <Row id="latest-products" title="Latest in the store" more={S("/shop")}>
@@ -429,14 +418,14 @@ function CountUp({ to }: { to: number }) {
   return <span ref={ref}>{n.toLocaleString("en-IN")}</span>;
 }
 export function LiveStats() {
-  const { data } = useStore();
+  const { data } = useHome();
   const { data: books } = useLatestBooks();
   if (!data) return null;
   const items: [number, string, ReactNode][] = [
-    [data.products.filter((p) => p.inStock).length, "Products in stock", <Package size={20} />],
+    [data.stats.inStock, "Products in stock", <Package size={20} />],
     [books?.count ?? 0, "Medical books", <BookOpen size={20} />],
-    [data.brands.length, "Brands", <ShoppingBag size={20} />],
-    [data.categories.length, "Categories", <LayoutGrid size={20} />],
+    [data.stats.brands, "Brands", <ShoppingBag size={20} />],
+    [data.stats.categories, "Categories", <LayoutGrid size={20} />],
   ];
   return (
     <section className="hx-wrap fk-stats" data-home="stats" aria-label="Aethex in numbers">

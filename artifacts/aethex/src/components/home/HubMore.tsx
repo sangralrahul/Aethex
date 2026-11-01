@@ -12,16 +12,14 @@ import {
 import { ProductImage } from "@/components/store/ProductImage";
 import { Row, Skel, price } from "@/components/home/HubTop";
 import { cadusUrl, portalUrl } from "@/lib/host";
-import { useStore } from "@/lib/store/api";
+import { useHome } from "@/lib/store/api";
 import { COD_LIMIT, FREE_DELIVERY_FROM } from "@/lib/store/rules";
-import type { ProductSummary } from "@/lib/store/types";
+import type { HomeProduct } from "@/lib/store/home";
 import { formatINR } from "@/lib/utils";
 
 const S = (p: string) => portalUrl("store", p), D = (p: string) => portalUrl("doctors", p), ST = (p: string) => portalUrl("study", p);
-const buyable = (p: ProductSummary) => p.inStock && !p.priceOnRequest && p.price != null && !!p.image;
-const off = (p: ProductSummary) => (p.mrp && p.price != null && p.mrp > p.price ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0);
 
-function Card({ p }: { p: ProductSummary }) {
+function Card({ p }: { p: HomeProduct }) {
   return (
     <a href={S(`/products/${p.slug}`)} className="hx-card" data-product={p.id}>
       <span className="im"><ProductImage src={p.image} alt="" width={300} /></span>
@@ -33,16 +31,12 @@ function Card({ p }: { p: ProductSummary }) {
   );
 }
 
+// Update 105: every section reads the home data (lib/store/home.ts), which comes inside the page; no catalogue download.
+
 /* ---------------------------------------------------------------- shop by category: every category with its own photo and live count */
 export function ShopByCategory() {
-  const { data } = useStore();
-  if (!data) return null;
-  const cats = data.categories.map((c) => {
-    const list = data.products.filter((p) => p.category === c.slug && p.image);
-    const pick = list.find((p) => p.featured && p.inStock) ?? list.find((p) => p.inStock) ?? list[0];
-    const n = list.filter((p) => p.inStock).length;
-    return pick && n ? { ...c, image: pick.image, n } : null;
-  }).filter((x): x is NonNullable<typeof x> => !!x);
+  const { data } = useHome();
+  const cats = data?.cats ?? [];
   if (cats.length < 4) return null;
   return (
     <section className="hx-wrap hx-scat" data-home="categories" aria-label="Shop by category">
@@ -59,8 +53,8 @@ export function ShopByCategory() {
 
 /* ---------------------------------------------------------------- top deals: the biggest real discounts off MRP */
 export function TopDeals() {
-  const { data, isLoading } = useStore();
-  const list = data ? data.products.filter((p) => buyable(p) && off(p) >= 5).sort((a, b) => off(b) - off(a) || b.id - a.id).slice(0, 16) : [];
+  const { data, isLoading } = useHome();
+  const list = data?.deals ?? [];
   if (!isLoading && list.length < 4) return null;
   return (
     <Row id="top-deals" title="Top deals" sub="The biggest savings off MRP right now" more={S("/offers")}>
@@ -71,15 +65,11 @@ export function TopDeals() {
 
 /* ---------------------------------------------------------------- best of the three biggest categories */
 export function CategoryRows() {
-  const { data } = useStore();
-  if (!data) return null;
-  const top = [...data.categories].filter((c) => c.audience !== "institution")
-    .map((c) => ({ c, list: data.products.filter((p) => p.category === c.slug && buyable(p)) }))
-    .filter((x) => x.list.length >= 6).sort((a, b) => b.list.length - a.list.length).slice(0, 3);
+  const { data } = useHome();
   return (
-    <>{top.map(({ c, list }) => (
-      <Row key={c.slug} id={`cat-${c.slug}`} title={`Best of ${c.name.toLowerCase()}`} sub={c.blurb || undefined} more={S(`/category/${c.slug}`)}>
-        {[...list].sort((a, b) => Number(b.featured) - Number(a.featured) || (b.rating?.count ?? 0) - (a.rating?.count ?? 0) || b.id - a.id).slice(0, 14).map((p) => <Card key={p.id} p={p} />)}
+    <>{(data?.rows ?? []).map((r) => (
+      <Row key={r.slug} id={`cat-${r.slug}`} title={`Best of ${r.name.toLowerCase()}`} sub={r.blurb || undefined} more={S(`/category/${r.slug}`)}>
+        {r.list.map((p) => <Card key={p.id} p={p} />)}
       </Row>
     ))}</>
   );
@@ -87,9 +77,8 @@ export function CategoryRows() {
 
 /* ---------------------------------------------------------------- top rated: only products with real buyer reviews */
 export function TopRated() {
-  const { data } = useStore();
-  if (!data) return null;
-  const list = data.products.filter((p) => buyable(p) && (p.rating?.count ?? 0) > 0).sort((a, b) => b.rating!.avg - a.rating!.avg || b.rating!.count - a.rating!.count).slice(0, 16);
+  const { data } = useHome();
+  const list = data?.rated ?? [];
   if (list.length < 4) return null;
   return (
     <Row id="top-rated" title="Top rated by buyers" sub="From reviews by people who bought them" more={S("/shop")}>
@@ -100,9 +89,8 @@ export function TopRated() {
 
 /* ---------------------------------------------------------------- shop by brand */
 export function ShopByBrand() {
-  const { data } = useStore();
-  if (!data) return null;
-  const brands = data.brands.map((b) => ({ ...b, n: data.products.filter((p) => p.brand === b.slug && p.inStock).length })).filter((b) => b.n > 0).sort((a, b) => b.n - a.n);
+  const { data } = useHome();
+  const brands = data?.brands ?? [];
   if (brands.length < 4) return null;
   return (
     <section className="hx-wrap hx-brands" data-home="brands" aria-label="Shop by brand">

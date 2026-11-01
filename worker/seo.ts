@@ -149,15 +149,17 @@ export async function portalHome(res: Response, portal: Portal): Promise<Respons
 /**
  * Update 103: aethex.in's home page starts loading what it shows first while the app's code is still downloading:
  * the store catalogue, the newest books and the first banner photo (whose host is connected to early).
+ * Update 105: instead of the catalogue, the home page's store sections are written into the HTML itself.
  */
-export async function hubHome(res: Response): Promise<Response> {
+export async function hubHome(res: Response, home?: string | null, books?: string | null): Promise<Response> {
   if (!res.ok || !(res.headers.get("content-type") || "").includes("text/html")) return res;
+  // Update 105: the home page's store sections come inside the HTML (no wait for a second request).
   const hero = "https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?w=1100&h=560&q=70&auto=format&fit=crop";
   const tags = [
     `<link rel="preconnect" href="https://images.unsplash.com" />`,
     `<link rel="preload" href="${hero}" as="image" fetchpriority="high" />`,
-    `<link rel="preload" href="/api/store/catalog" as="fetch" crossorigin="anonymous" />`,
-    `<link rel="preload" href="/api/store/books/latest" as="fetch" crossorigin="anonymous" />`,
+    books ? `<script id="ax-books" type="application/json">${books.replace(/</g, "\\u003c")}</script>` : `<link rel="preload" href="/api/store/books/latest" as="fetch" crossorigin="anonymous" />`,
+    ...(home ? [`<script id="ax-home" type="application/json">${home.replace(/</g, "\\u003c")}</script>`] : [`<link rel="preload" href="/api/store/home" as="fetch" crossorigin="anonymous" />`]),
   ].map((t) => `    ${t}\n`).join("");
   const html = (await res.text()).replace("</head>", `${tags}  </head>`);
   const headers = new Headers(res.headers);
