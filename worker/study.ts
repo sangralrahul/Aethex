@@ -10,9 +10,13 @@ import { handleStudy2 } from "./study2";
 const json = (payload: unknown, status = 200) =>
   new Response(JSON.stringify(payload), { status, headers: { "content-type": "application/json", "cache-control": "no-store, private" } });
 const MAX_BYTES = 900_000;
-let ready: Promise<void> | null = null;
-function ensure(db: D1Like) {
-  if (!ready) ready = (async () => {
+// Update 106: set-up runs per request until it has once succeeded. A promise shared between requests can stay
+// unsettled for ever in Workers when the request that started it is cancelled, which hung every later request
+// (the store's catalogue and the home page stopped loading). Every statement here is safe to repeat.
+let ready = false;
+async function ensure(db: D1Like): Promise<void> {
+  if (ready) return;
+  await (async () => {
     await db.prepare("CREATE TABLE IF NOT EXISTS study_state (user_id TEXT PRIMARY KEY, data TEXT NOT NULL, updated_at INTEGER NOT NULL)").run();
     // update 81: mock test results (scored here, from the answers), and who shows on the leaderboard
     await db.prepare(`CREATE TABLE IF NOT EXISTS study_mock (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, at INTEGER NOT NULL, total INTEGER NOT NULL, correct INTEGER NOT NULL,
@@ -22,8 +26,8 @@ function ensure(db: D1Like) {
     // update 85: a sectional test (one subject) is kept with the mock tests, marked with its subject
     try { await db.prepare("ALTER TABLE study_mock ADD COLUMN section TEXT").run(); } catch (e) { if (!/duplicate column/i.test(String((e as Error)?.message ?? e))) throw e; }
     await db.prepare("CREATE TABLE IF NOT EXISTS study_board (user_id TEXT PRIMARY KEY, name TEXT NOT NULL, city TEXT, show INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL)").run();
-  })().catch((e) => { ready = null; throw e; });
-  return ready;
+  })();
+  ready = true;
 }
 
 /** Keeps only the fields and shapes the site writes. */

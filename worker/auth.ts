@@ -143,7 +143,7 @@ export async function allow(env: AuthEnv & { DB: D1Like }, key: string, limit: n
 export const clientIp = (request: Request) => request.headers.get("cf-connecting-ip") || "unknown";
 
 /** Checked when there is no account, so a wrong email takes as long as a wrong password. */
-let dummyHash: Promise<string> | null = null;
+let dummyHash: string | null = null; // update 106: the value is kept, never a promise shared between requests
 
 /* ------------------------------------------------------------------ email (Brevo) */
 
@@ -347,7 +347,7 @@ export async function handleAuth(request: Request, env: AuthEnv): Promise<Respon
     if (!(await allow(db, `login-ip:${ip}`, 60, 15 * 60_000))) return json({ error: "Too many attempts from this network. Wait 15 minutes, or sign in with an email code." }, 429);
     if (!(await allow(db, `login:${email}`, 10, 15 * 60_000))) return json({ error: "Too many attempts. Wait 15 minutes, or sign in with an email code." }, 429);
     const user = await userByEmail(db, email);
-    const ok = user?.password_hash ? await checkPassword(password, user.password_hash) : (await checkPassword(password, await (dummyHash ??= hashPassword("not-a-password"))), false);
+    const ok = user?.password_hash ? await checkPassword(password, user.password_hash) : (await checkPassword(password, (dummyHash ??= await hashPassword("not-a-password"))), false);
     if (!ok || !user) return json({ error: "That email and password don't match. If you signed up with Google or an email code, use that instead." }, 401);
     await env.DB.prepare("DELETE FROM rate_limits WHERE key = ?").bind(`login:${email}`).run();
     return signedIn(db, url, user);

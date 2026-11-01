@@ -16,8 +16,11 @@ const nice = (date: string, time?: string) => {
   const h = Number(time.slice(0, 2));
   return `${d}, ${((h + 11) % 12) + 1}:${time.slice(3)} ${h < 12 ? "AM" : "PM"}`;
 };
-let ready: Promise<void> | null = null;
-const ensure = (db: D1Like) => (ready ??= db.prepare("CREATE TABLE IF NOT EXISTS notif_seen (user_id TEXT PRIMARY KEY, seen_at INTEGER NOT NULL)").run().then(() => undefined).catch((e) => { ready = null; throw e; }));
+// Update 106: set-up runs per request until it has once succeeded. A promise shared between requests can stay
+// unsettled for ever in Workers when the request that started it is cancelled, which hung every later request
+// (the store's catalogue and the home page stopped loading). Every statement here is safe to repeat.
+let ready = false;
+const ensure = async (db: D1Like): Promise<void> => { if (ready) return; await db.prepare("CREATE TABLE IF NOT EXISTS notif_seen (user_id TEXT PRIMARY KEY, seen_at INTEGER NOT NULL)").run(); ready = true; };
 async function rows<T>(db: DB, sql: string, ...args: unknown[]): Promise<T[]> {
   try { return (await db.DB.prepare(sql).bind(...args).all<T>()).results; } catch { return []; }
 }

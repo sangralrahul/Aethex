@@ -99,7 +99,9 @@ export default {
     }
     // aethex.in: the home page's data and first photo start loading with the HTML (update 103).
     if (url.pathname === "/" && request.method === "GET" && /^(?:www\.)?aethex\.in$/.test(url.hostname)) {
-      const [page, home, books] = await Promise.all([env.ASSETS.fetch(new Request(new URL("/", url), request)), homeBody(env).catch(() => null), latestBooksBody(env).catch(() => null)]);
+      // update 106: the page never waits more than 2.5 s for the store data (it then loads it itself)
+      const within = <T,>(p: Promise<T>) => Promise.race([p.catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 2500))]);
+      const [page, home, books] = await Promise.all([env.ASSETS.fetch(new Request(new URL("/", url), request)), within(homeBody(env)), within(latestBooksBody(env))]);
       return hubHome(page, home, books);
     }
 

@@ -236,22 +236,22 @@ const STORE_INDEXES = [
   "CREATE INDEX IF NOT EXISTS store_orders_coupon ON store_orders(coupon)",
   "CREATE INDEX IF NOT EXISTS store_orders_token ON store_orders(token_hash)",
 ];
-let tablesReady: Promise<void> | null = null;
-function ensureTables(db: D1Like): Promise<void> {
-  if (!tablesReady) {
-    tablesReady = (async () => {
-      for (const sql of STORE_TABLES) await db.prepare(sql).run();
-      for (const [table, column, type] of STORE_COLUMNS) {
-        try {
-          await db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`).run();
-        } catch (e) {
-          if (!/duplicate column/i.test(String((e as Error)?.message ?? e))) throw e;
-        }
-      }
-      for (const sql of STORE_INDEXES) await db.prepare(sql).run();
-    })().catch((e) => { tablesReady = null; throw e; });
+// Update 106: set-up runs per request until it has once succeeded. A promise shared between requests can stay
+// unsettled for ever in Workers when the request that started it is cancelled, which hung every later request
+// (the store's catalogue and the home page stopped loading). Every statement here is safe to repeat.
+let tablesReady = false;
+async function ensureTables(db: D1Like): Promise<void> {
+  if (tablesReady) return;
+  for (const sql of STORE_TABLES) await db.prepare(sql).run();
+  for (const [table, column, type] of STORE_COLUMNS) {
+    try {
+      await db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`).run();
+    } catch (e) {
+      if (!/duplicate column/i.test(String((e as Error)?.message ?? e))) throw e;
+    }
   }
-  return tablesReady;
+  for (const sql of STORE_INDEXES) await db.prepare(sql).run();
+  tablesReady = true;
 }
 
 /* ------------------------------------------------------------------ the catalogue, with the store's changes */

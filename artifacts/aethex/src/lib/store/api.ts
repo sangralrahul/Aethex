@@ -29,18 +29,25 @@ export class StoreError extends Error {
 
 export async function storeFetch<T>(path: string, init: { method?: string; json?: unknown; headers?: Record<string, string> } = {}): Promise<T> {
   let r: Response;
+  const method = init.method ?? (init.json !== undefined ? "POST" : "GET");
+  // update 106: a read that hangs gives up after 15 seconds (and can be retried) instead of leaving the page loading for ever
+  const ctl = method === "GET" && typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timer = ctl ? setTimeout(() => ctl.abort(), 15_000) : 0;
   try {
     r = await fetch(`${API}${path}`, {
-      method: init.method ?? (init.json !== undefined ? "POST" : "GET"),
+      method,
       credentials: "same-origin",
       headers: { ...(init.json !== undefined ? { "content-type": "application/json" } : {}), ...(init.headers ?? {}) },
       body: init.json !== undefined ? JSON.stringify(init.json) : undefined,
+      signal: ctl?.signal,
     });
   } catch {
-    throw new StoreError("You seem to be offline. Check your connection and try again.", 0, null);
+    if (timer) clearTimeout(timer);
+    throw new StoreError(ctl?.signal.aborted ? "The store is taking too long to answer. Please try again." : "You seem to be offline. Check your connection and try again.", 0, null);
   }
   let data: any = null;
-  try { data = await r.json(); } catch { /* not JSON */ }
+  try { data = await r.json(); } catch { /* not JSON (or the read timed out) */ }
+  if (timer) clearTimeout(timer);
   if (!r.ok || data === null) throw new StoreError(data?.error || `Something went wrong (${r.status}). Please try again.`, r.status, data);
   return data as T;
 }

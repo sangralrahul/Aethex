@@ -17,10 +17,14 @@ export type EmailPrefs = Record<EmailKind, boolean>;
 const ALL = Object.keys(EMAIL_KINDS) as EmailKind[];
 export const defaultPrefs = (): EmailPrefs => Object.fromEntries(ALL.map((k) => [k, true])) as EmailPrefs;
 
-let ready: Promise<void> | null = null;
-export function ensurePrefs(db: D1Like) {
-  if (!ready) ready = db.prepare("CREATE TABLE IF NOT EXISTS email_prefs (user_id TEXT PRIMARY KEY, data TEXT NOT NULL, updated_at INTEGER NOT NULL)").run().then(() => undefined).catch((e) => { ready = null; throw e; });
-  return ready;
+// Update 106: set-up runs per request until it has once succeeded. A promise shared between requests can stay
+// unsettled for ever in Workers when the request that started it is cancelled, which hung every later request
+// (the store's catalogue and the home page stopped loading). Every statement here is safe to repeat.
+let ready = false;
+export async function ensurePrefs(db: D1Like): Promise<void> {
+  if (ready) return;
+  await db.prepare("CREATE TABLE IF NOT EXISTS email_prefs (user_id TEXT PRIMARY KEY, data TEXT NOT NULL, updated_at INTEGER NOT NULL)").run();
+  ready = true;
 }
 export async function readPrefs(db: D1Like, userId: string): Promise<EmailPrefs> {
   await ensurePrefs(db);

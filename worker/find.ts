@@ -91,15 +91,17 @@ export const FIND_COLUMNS: [string, string, string][] = [
   ["find_appointments", "arrived_at", "INTEGER"], ["find_appointments", "started_at", "INTEGER"], ["find_appointments", "done_at", "INTEGER"],
   ["find_doctors", "timeoff_note", "TEXT"], ["find_reviews", "reply_at", "INTEGER"], ["find_reviews", "hidden", "INTEGER"],
 ];
-let ready: Promise<void> | null = null;
-function ensure(db: D1Like) {
-  if (!ready) ready = (async () => {
-    for (const sql of FIND_TABLES) await db.prepare(sql).run();
-    for (const [t, c, type] of FIND_COLUMNS) {
-      try { await db.prepare(`ALTER TABLE ${t} ADD COLUMN ${c} ${type}`).run(); } catch (e) { if (!/duplicate column/i.test(String((e as Error)?.message ?? e))) throw e; }
-    }
-  })().catch((e) => { ready = null; throw e; });
-  return ready;
+// Update 106: set-up runs per request until it has once succeeded. A promise shared between requests can stay
+// unsettled for ever in Workers when the request that started it is cancelled, which hung every later request
+// (the store's catalogue and the home page stopped loading). Every statement here is safe to repeat.
+let ready = false;
+async function ensure(db: D1Like): Promise<void> {
+  if (ready) return;
+  for (const sql of FIND_TABLES) await db.prepare(sql).run();
+  for (const [t, c, type] of FIND_COLUMNS) {
+    try { await db.prepare(`ALTER TABLE ${t} ADD COLUMN ${c} ${type}`).run(); } catch (e) { if (!/duplicate column/i.test(String((e as Error)?.message ?? e))) throw e; }
+  }
+  ready = true;
 }
 
 /* ------------------------------------------------------------------ values */

@@ -21,9 +21,13 @@ const admins = (env: Env) => String(env.ADMIN_EMAILS || "").split(/[,;\s]+/).map
 const isAdmin = (env: Env, u: User | null) => !!u && admins(env).includes(normEmail(u.email));
 export const GROUP_MAX_MEMBERS = 50, GROUP_MAX_PER_USER = 10;
 
-let ready: Promise<void> | null = null;
-function ensure(db: D1Like) {
-  if (!ready) ready = (async () => {
+// Update 106: set-up runs per request until it has once succeeded. A promise shared between requests can stay
+// unsettled for ever in Workers when the request that started it is cancelled, which hung every later request
+// (the store's catalogue and the home page stopped loading). Every statement here is safe to repeat.
+let ready = false;
+async function ensure(db: D1Like): Promise<void> {
+  if (ready) return;
+  await (async () => {
     for (const sql of [
       `CREATE TABLE IF NOT EXISTS study_groups (id TEXT PRIMARY KEY, code TEXT NOT NULL UNIQUE, name TEXT NOT NULL, owner_id TEXT NOT NULL, test TEXT, created_at INTEGER NOT NULL)`,
       `CREATE TABLE IF NOT EXISTS study_group_members (group_id TEXT NOT NULL, user_id TEXT NOT NULL, name TEXT NOT NULL, joined_at INTEGER NOT NULL, PRIMARY KEY (group_id, user_id))`,
@@ -37,8 +41,8 @@ function ensure(db: D1Like) {
       `CREATE TABLE IF NOT EXISTS study_qotd (day TEXT NOT NULL, user_id TEXT NOT NULL, qid INTEGER NOT NULL, choice INTEGER NOT NULL, correct INTEGER NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (day, user_id))`,
       `CREATE TABLE IF NOT EXISTS study_comment_flags (comment_id TEXT NOT NULL, user_id TEXT NOT NULL, kind TEXT NOT NULL, reason TEXT, at INTEGER NOT NULL, PRIMARY KEY (comment_id, user_id, kind))`,
     ]) await db.prepare(sql).run();
-  })().catch((e) => { ready = null; throw e; });
-  return ready;
+  })();
+  ready = true;
 }
 
 /** Score a paper of bank question ids against the bank; null if it doesn't match it. */

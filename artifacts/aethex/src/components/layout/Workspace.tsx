@@ -88,7 +88,7 @@ function Bar({ portal }: { portal: Site }) {
   return (
     <div className="ax-wsb no-print" ref={ref} data-ws="bar">
       <div className="ax-wsb-in">
-        <nav className="ax-wsb-tabs" aria-label={`Aethex ${PORTAL_NAMES[portal]} main pages`}>
+        <nav className="ax-wsb-tabs" aria-label={`Aethex ${PORTAL_NAMES[portal]}: main links`}>
           {tabs.map((t) => { const I = t.icon; const on = isActive(t.href, location, search); const inner = <><I size={16} aria-hidden="true" /><span>{t.label}</span></>; return t.href.includes("#")
             ? <a key={t.href} href={t.href} className={on ? "on" : ""}>{inner}</a>
             : <Link key={t.href} href={t.href} className={on ? "on" : ""} aria-current={on ? "page" : undefined}>{inner}</Link>; })}
