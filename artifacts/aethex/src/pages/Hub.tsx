@@ -2,11 +2,14 @@
  * aethex.in, the front door to Aethex. Update 91: a marketplace front page (components/home/HubTop.tsx): the platforms,
  * one search, categories, banners, then the latest products, books, study and doctors. Update 92: a quieter header,
  * the platform cards below removed (the platforms are in the header), and a full footer with the Aethex wordmark.
+ * Update 102: a longer page with more products and features (components/home/HubMore.tsx): shop by category, top deals,
+ * more on Aethex, the best of the biggest categories, top rated, shop by brand and why shop on Aethex.
  * Styles: src/site-hub.css (hb-*, hx-*).
  */
 import { MyAethex } from "@/components/home/MyAethex";
 import { ContinueStrip } from "@/components/home/HubBits";
 import { Banners, DoctorsAndHospitals, Essentials, LiveStats, HubFooter, HubHeader, LatestBooks, LatestProducts, TodayInStudy } from "@/components/home/HubTop";
+import { CategoryRows, MoreOnAethex, ShopByBrand, ShopByCategory, TopDeals, TopRated, WhyAethex } from "@/components/home/HubMore";
 import { useSeo } from "@/hooks/use-seo";
 import { useEffect } from "react";
 
@@ -33,11 +36,18 @@ export default function Hub() {
         <Banners />
         <LiveStats />
         <Essentials />
+        <ShopByCategory />
         <div className="hx-wrap hx-mine"><MyAethex /><ContinueStrip /></div>
         <LatestProducts />
+        <TopDeals />
+        <MoreOnAethex />
         <TodayInStudy />
+        <CategoryRows />
         <LatestBooks />
+        <TopRated />
+        <ShopByBrand />
         <DoctorsAndHospitals />
+        <WhyAethex />
       </div>
       <HubFooter />
     </div>

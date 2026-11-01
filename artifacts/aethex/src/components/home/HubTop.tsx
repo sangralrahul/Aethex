@@ -252,7 +252,7 @@ export function Essentials() {
 }
 
 /* ---------------------------------------------------------------- rows */
-function Row({ title, sub, more, children, id }: { title: string; sub?: string; more?: string; children: ReactNode; id: string }) {
+export function Row({ title, sub, more, children, id }: { title: string; sub?: string; more?: string; children: ReactNode; id: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const step = (d: number) => ref.current?.scrollBy({ left: d * (ref.current.clientWidth - 80), behavior: "smooth" });
   return (
@@ -269,8 +269,8 @@ function Row({ title, sub, more, children, id }: { title: string; sub?: string; 
     </section>
   );
 }
-const price = (p: number | null | undefined, mrp: number | null | undefined) => p == null ? <b className="por">Price on request</b> : <><b>{formatINR(p)}</b>{mrp && mrp > p && <><s>{formatINR(mrp)}</s>{Math.round(((mrp - p) / mrp) * 100) >= 1 && <em>{Math.round(((mrp - p) / mrp) * 100)}% off</em>}</>}</>;
-const Skel = () => <>{Array.from({ length: 6 }, (_, i) => <span key={i} className="hx-card sk" aria-hidden="true" />)}</>;
+export const price = (p: number | null | undefined, mrp: number | null | undefined) => p == null ? <b className="por">Price on request</b> : <><b>{formatINR(p)}</b>{mrp && mrp > p && <><s>{formatINR(mrp)}</s>{Math.round(((mrp - p) / mrp) * 100) >= 1 && <em>{Math.round(((mrp - p) / mrp) * 100)}% off</em>}</>}</>;
+export const Skel = () => <>{Array.from({ length: 6 }, (_, i) => <span key={i} className="hx-card sk" aria-hidden="true" />)}</>;
 
 export function LatestProducts() {
   const { data, isLoading } = useStore();

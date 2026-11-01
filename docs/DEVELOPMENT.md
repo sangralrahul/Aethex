@@ -490,3 +490,9 @@ cancels from `/practice`. Reviews can only be written for `completed` appointmen
 - **Search engines**: each subdomain serves its own robots.txt and sitemap.xml (`siteSitemap` in `worker/seo.ts`) with only its own public pages at its own address (aethex.in's sitemap used to list every page at aethex.in addresses that redirect).
 - Fixes: case of the day had two H1s; sideways scroll on phones on patient education, institution analytics and some product pages; a test made weekday-independent.
 - Tests: `shots/launch101.mjs`, `shots/seo101.mjs`, `shots/crawl.mjs`.
+
+## Update 102: a longer home page
+
+- New sections on aethex.in (`components/home/HubMore.tsx`, styles `.hx-scat`, `.hx-feat`, `.hx-brands`, `.hx-why` in `site-hub.css`), all live from the store catalogue: **Shop by category** (every category with its photo and in-stock count), **Top deals** (biggest real discounts off MRP), **More on Aethex** (12 feature shortcuts: ask a doctor, video consultation, vitals, articles, offers, order tracking, Sell on Aethex, mock tests, Knowledge Hub, quotations, list your practice, Cadus), **Best of** rows for the three biggest categories, **Top rated by buyers** (shown only once products have real reviews), **Shop by brand**, and **Why shop on Aethex** (free delivery, COD limit, replacements, tracking, from `lib/store/rules.ts`).
+- Page order: banners, numbers, essentials, shop by category, your Aethex, latest in the store, top deals, more on Aethex, today in Study, best-of rows, latest books, top rated, brands, doctors and hospitals, why Aethex, footer.
+- Test: `shots/hub102.mjs`.
