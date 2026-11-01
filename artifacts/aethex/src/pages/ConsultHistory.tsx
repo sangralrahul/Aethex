@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, MessageSquare, Trash2, ChevronDown, ChevronUp, Brain, Clock, Search } from "lucide-react";
 import { useUserAuth } from "@/hooks/use-user-auth";
-import { loginUrl } from "@/lib/host";
+import { cadusUrl, loginUrl } from "@/lib/host";
 
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -113,11 +113,9 @@ export default function ConsultHistory() {
                   {search ? "Try a different search term." : "Your Cadus conversations will be saved here automatically."}
                 </p>
                 {!search && (
-                  <Link href="/cadus">
-                    <button className="mt-4 px-5 py-2.5 rounded-xl font-semibold text-sm text-white" style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)" }}>
-                      Start a Consult
-                    </button>
-                  </Link>
+                  <a href={cadusUrl("/")} className="mt-4 inline-block px-5 py-2.5 rounded-xl font-semibold text-sm text-white" style={{ background: "linear-gradient(135deg,#007AFF,#00C2A8)" }}>
+                    Start a Consult
+                  </a>
                 )}
               </div>
             ) : (

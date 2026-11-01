@@ -9,6 +9,8 @@
  * reaches, in percent of the photo's height: "26" cuts across the full width;
  * "29.3,28,72,19.5" cuts 29.3% between 28% and 72% of the width and 19.5%
  * elsewhere, for photos where the product starts beside the badge.
+ * Update 104: photos load through aethex.in (/img, worker/img.ts), kept at the edge for a month, so they come from one
+ * fast address; if that fails the photo is loaded straight from the brand's site, and only then the placeholder shows.
  * Styles: src/shop.css (.ax-pimg).
  */
 import { useEffect, useState, type CSSProperties } from "react";
@@ -21,6 +23,9 @@ function sized(url: string, w: number): string {
   if (/^https:\/\/(?:s7d9\.scene7\.com|assets\.solventum\.com)\/is\/image\//.test(url)) return `${url}${url.includes("?") ? "&" : "?"}wid=${w}`;
   return url;
 }
+
+/** The photo through aethex.in's photo cache (absolute addresses on other sites only). */
+export const viaUs = (u: string) => (/^https:\/\//.test(u) && !/^https:\/\/([a-z]+\.)?aethex\.in\//.test(u) ? `/img?u=${encodeURIComponent(u)}` : u);
 
 export interface Crop { clip: string; shift: number }
 
@@ -51,9 +56,10 @@ export function ProductImage({ src, alt = "", width = 600, eager = false, classN
   /** A medical book: without a cover photo it shows a book instead of a parcel. */
   book?: boolean;
 }) {
-  const [failed, setFailed] = useState(false);
-  useEffect(() => { setFailed(false); }, [src]);
-  if (!src || failed) {
+  // 0: through aethex.in; 1: straight from the brand's site; 2: neither loaded
+  const [tries, setTries] = useState(0);
+  useEffect(() => { setTries(0); }, [src]);
+  if (!src || tries >= 2) {
     return <span className={`ax-pimg none${book ? " book" : ""} ${className}`} aria-hidden="true">{book ? <BookOpen size={26} /> : <Package size={28} />}</span>;
   }
   const info = imageInfo(src, width);
@@ -61,14 +67,14 @@ export function ProductImage({ src, alt = "", width = 600, eager = false, classN
   return (
     <img
       className={`ax-pimg${info.crop ? " crop" : ""} ${className}`}
-      src={info.src}
-      srcSet={info.srcSet}
+      src={tries === 0 ? viaUs(info.src) : info.src}
+      srcSet={info.srcSet && tries === 0 ? info.srcSet.split(", ").map((x) => { const [u, d] = x.split(" "); return `${viaUs(u!)} ${d}`; }).join(", ") : info.srcSet}
       alt={alt}
       loading={eager ? "eager" : "lazy"}
       decoding="async"
       referrerPolicy="no-referrer"
       style={cropVars || style ? { ...cropVars, ...style } : undefined}
-      onError={() => setFailed(true)}
+      onError={() => setTries((t) => t + 1)}
     />
   );
 }

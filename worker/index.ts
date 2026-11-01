@@ -27,6 +27,7 @@ import { handleStore, logPrices, runEquipmentReminders, runStockAlerts, runReord
 import { handleTranscribe, type AiBinding } from "./transcribe";
 import { handleVoice, voiceEnabled, type VoiceEnv } from "./voice";
 import { guestGate, requireAccount } from "./guest";
+import { productImage } from "./img";
 import { cadusHome, hostRobots, hostSitemap, hubHome, portalHome, portalOf, siteSitemap } from "./seo";
 import { handleStudy } from "./study";
 import { handleNotifications } from "./notify";
@@ -65,6 +66,9 @@ const json = (payload: unknown, status = 200) =>
 export default {
   async fetch(request: Request, env: Env, ctx?: { waitUntil: (p: Promise<unknown>) => void }): Promise<Response> {
     const url = new URL(request.url);
+
+    // Product and book photos through aethex.in, kept at the edge (worker/img.ts, update 104).
+    if (url.pathname === "/img") return productImage(request, ctx);
 
     // downloads.aethex.in: installers from R2; every other path is the download page.
     if (url.hostname === "downloads.aethex.in" && !url.pathname.startsWith("/api/")) {

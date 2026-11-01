@@ -2,7 +2,7 @@
  * Update 87: the top of every portal home, compact: a greeting, the three things people come for, your own numbers
  * (each a link: the next appointment, orders on the way, today's questions, the bulk list…) and, on phones, every page
  * of the platform as small tiles. Signed out, the numbers make way for a short line and sign-in.
- * Styles: src/site-hub.css (.ax-qs*).
+ * Styles: src/site-hub.css (.ax-qs*). Update 104: the top is a photo banner (src/site-ws.css, .ax-qs-hero).
  */
 import { lazy, Suspense, type ComponentType, type ReactNode } from "react";
 import { Link } from "wouter";
@@ -91,6 +91,13 @@ const ACTIONS: Record<Site, Act[]> = {
   hospitals: [{ label: "Build your list", href: "/#list", primary: true }, { label: "Quotations", href: "/account/quotations" }, { label: "Spend", href: "/spend" }],
   medicalcolleges: [{ label: "Build your list", href: "/#list", primary: true }, { label: "Quotations", href: "/account/quotations" }, { label: "Spend", href: "/spend" }],
 };
+const HEAD: Record<Site, string> = {
+  doctors: "Find the right doctor, fast",
+  store: "Medical supplies you can trust",
+  study: "Prepare for NEET-PG, every day",
+  hospitals: "Equip your hospital with one list",
+  medicalcolleges: "Equip your college with one list",
+};
 const LEAD: Record<Site, string> = {
   doctors: "Book checked doctors, keep your records, and follow up.",
   store: "Genuine medical supplies, delivered. Cash on delivery available.",
@@ -110,8 +117,9 @@ export function QuickStart({ portal }: { portal: Site }) {
   const all = WORKSPACE[portal].flatMap((g) => g.items);
   return (
     <section className={`ax-wrap ax-qs ${portal}`} data-qs={portal} aria-label="Quick start">
-      <div className="ax-qs-top">
-        <div><h2 className="h">{isLoggedIn && first ? `${hello()}, ${first}` : `Aethex ${PORTAL_NAMES[portal]}`}</h2><p>{LEAD[portal]}</p></div>
+      {/* update 104: a banner with the platform's photograph behind (set by the workspace as --ws-photo) */}
+      <div className="ax-qs-top ax-qs-hero">
+        <div><small className="ax-qs-eyebrow">Aethex {PORTAL_NAMES[portal]}</small><h2 className="h">{isLoggedIn && first ? `${hello()}, ${first}` : HEAD[portal]}</h2><p>{LEAD[portal]}</p></div>
         <div className="ax-qs-acts">{ACTIONS[portal].map((a) => <L key={a.href} href={a.href} className={`ax-qs-btn${a.primary ? " p" : ""}`}>{a.label}{a.primary && <ArrowRight size={15} />}</L>)}</div>
       </div>
       {stats.length > 0 ? (

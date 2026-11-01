@@ -234,3 +234,106 @@ body.ax-ws-on .mk-catbar{display:none}
 .ax-stk .ax-eq-table tr.hist ul{list-style:none;margin:0;padding:0;font-size:13px}
 .ax-stk .ax-eq-table tr.hist li{padding:3px 0}
 .ax-stk .ax-eq-table tr.hist small{display:inline;margin-left:8px}
+
+/* ---------------------------------------------------------------- update 104: a cleaner, more professional workspace
+   Computers: no sidebar; a bar under the header with the main pages as tabs and "All sections" (every page, in groups).
+   Each platform's photograph sits behind its home banner and, faintly, behind page titles. A sharper logo. */
+.ax-ws,.ax-ws.collapsed{display:block;background:#fff}
+.ax-ws-side{display:none!important}
+.ax-ws-main{background:#fff}
+
+/* the logo: the platform's mark and a plain wordmark */
+.ax-plogo{display:inline-flex;align-items:center;gap:10px;text-decoration:none}
+.ax-plogo .pl-logo{flex:none;border-radius:10px;box-shadow:0 4px 12px -6px rgba(15,23,42,.35)}
+.ax-plw{display:inline-flex;align-items:baseline;gap:6px;font-size:20px;line-height:1;letter-spacing:-.02em;white-space:nowrap}
+.ax-site .ax-plw,.ax-site .ax-plw *{font-family:var(--ax-display)!important}
+.ax-plw b{font-weight:800;color:#0f172a}
+.ax-plw span{font-weight:700}
+.ax-plw .store{color:#0f766e}.ax-plw .doctors{color:#1d4ed8}.ax-plw .study{color:#6d28d9}.ax-plw .hospitals{color:#0e7490}.ax-plw .medicalcolleges{color:#b45309}
+.ax-pfoot .ax-plogo .pl-logo{box-shadow:none}
+@media (max-width:440px){.ax-plw{font-size:17px;gap:4px}.ax-plogo .pl-logo{width:30px!important;height:30px!important}}
+
+/* the bar */
+.ax-wsb{position:sticky;top:var(--ws-top);z-index:40;background:rgba(255,255,255,.96);backdrop-filter:saturate(1.4) blur(10px);-webkit-backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid #e9ecf1;box-shadow:0 6px 16px -14px rgba(15,23,42,.35)}
+.ax-wsb-in{display:flex;align-items:center;gap:8px;width:min(1240px,calc(100% - 2*clamp(16px,2.4vw,28px)));margin:0 auto;height:50px}
+.ax-wsb-tabs{flex:1;min-width:0;display:flex;align-items:stretch;gap:2px;height:100%;overflow-x:auto;scrollbar-width:none}
+.ax-wsb-tabs::-webkit-scrollbar{display:none}
+.ax-wsb-tabs a{position:relative;display:inline-flex;align-items:center;gap:7px;padding:0 12px;color:#475467;font-size:14px;font-weight:600;text-decoration:none;white-space:nowrap;transition:color .15s}
+.ax-wsb-tabs a svg{color:#98a2b3;transition:color .15s}
+.ax-wsb-tabs a::after{content:"";position:absolute;left:10px;right:10px;bottom:0;height:3px;border-radius:3px 3px 0 0;background:var(--ws-accent,#1d4ed8);transform:scaleX(0);transition:transform .2s ease}
+.ax-wsb-tabs a:hover{color:#0f172a}
+.ax-wsb-tabs a:hover svg{color:#475467}
+.ax-wsb-tabs a.on{color:var(--ws-accent,#1d4ed8)}
+.ax-wsb-tabs a.on svg{color:currentColor}
+.ax-wsb-tabs a.on::after{transform:scaleX(1)}
+.ax-wsb-all{flex:none;display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 14px;border:1px solid #d0d5dd;border-radius:10px;background:#fff;color:#1d2939;font:inherit;font-size:14px;font-weight:650;cursor:pointer;transition:border-color .15s,background .15s}
+.ax-wsb-all:hover{border-color:#98a2b3}
+.ax-wsb-all.open{background:#0f172a;border-color:#0f172a;color:#fff}
+.ax-wsb-all .chev{transition:transform .2s}
+.ax-wsb-all.open .chev{transform:rotate(180deg)}
+.ax-ws{--ws-accent:#1d4ed8}
+.ax-ws.store{--ws-accent:#0f766e}.ax-ws.study{--ws-accent:#6d28d9}.ax-ws.hospitals,.ax-ws.medicalcolleges{--ws-accent:#0e7490}
+
+/* "All sections": every page, groups side by side */
+.ax-wsb-panel{position:absolute;left:0;right:0;top:100%;background:#fff;border-bottom:1px solid #e9ecf1;box-shadow:0 30px 60px -30px rgba(15,23,42,.45);animation:wsDrop .18s ease-out}
+@keyframes wsDrop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.ax-ws-nav.wide{width:min(1240px,calc(100% - 2*clamp(16px,2.4vw,28px)));margin:0 auto;padding:16px 0 20px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px 24px}
+.ax-ws-nav.wide .ax-ws-find{grid-column:1/-1;max-width:420px;height:40px;margin:0 0 8px}
+.ax-ws-nav.wide .ax-ws-groups{grid-column:1/4;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 24px}
+.ax-ws-nav.wide .ax-ws-group{border-top:0;padding:0}
+.ax-ws-nav.wide .ax-ws-group small{padding:6px 10px 6px}
+.ax-ws-nav.wide .ax-ws-others{grid-column:4;padding:12px;border-radius:14px;background:#f8fafc}
+.ax-ws-nav.wide .ax-ws-none{grid-column:1/4}
+@media (max-width:1023px){.ax-wsb{display:none}}
+
+/* home banner with the platform's photograph */
+.ax-ws-main .ax-qs{padding-top:22px}
+.ax-qs-hero{position:relative;isolation:isolate;overflow:hidden;min-height:230px;padding:34px 36px;border-radius:20px;color:#fff;background:#0f172a;align-items:flex-end}
+.ax-qs-hero::before{content:"";position:absolute;inset:0;z-index:-2;background-image:var(--ws-photo);background-size:cover;background-position:center 35%;transform:scale(1.04);animation:wsKen 18s ease-in-out infinite alternate}
+.ax-qs-hero::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(100deg,rgba(15,23,42,.92) 0%,rgba(15,23,42,.72) 45%,rgba(15,23,42,.2) 100%)}
+.ax-ws.store .ax-qs-hero::after{background:linear-gradient(100deg,rgba(4,47,46,.94) 0%,rgba(15,118,110,.72) 48%,rgba(15,118,110,.12) 100%)}
+.ax-ws.doctors .ax-qs-hero::after{background:linear-gradient(100deg,rgba(23,37,84,.94) 0%,rgba(29,78,216,.7) 48%,rgba(29,78,216,.12) 100%)}
+.ax-ws.study .ax-qs-hero::after{background:linear-gradient(100deg,rgba(46,16,101,.94) 0%,rgba(109,40,217,.7) 48%,rgba(109,40,217,.12) 100%)}
+.ax-ws.hospitals .ax-qs-hero::after,.ax-ws.medicalcolleges .ax-qs-hero::after{background:linear-gradient(100deg,rgba(8,51,68,.94) 0%,rgba(14,116,144,.7) 48%,rgba(14,116,144,.12) 100%)}
+.ax-ws.medicalcolleges .ax-qs-hero::after{background:linear-gradient(100deg,rgba(67,20,7,.94) 0%,rgba(180,83,9,.7) 48%,rgba(180,83,9,.12) 100%)}
+@keyframes wsKen{from{transform:scale(1.04)}to{transform:scale(1.12) translateX(-1.5%)}}
+.ax-qs-hero .ax-qs-eyebrow{display:inline-block;margin-bottom:10px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.ax-qs-hero .h{color:#fff!important;font-size:clamp(26px,3vw,38px)!important;line-height:1.1;letter-spacing:-.025em}
+.ax-qs-hero p{color:rgba(255,255,255,.86)!important;font-size:15.5px!important;margin-top:8px!important;max-width:52ch}
+.ax-qs-hero .ax-qs-btn{height:42px;border-color:rgba(255,255,255,.5);background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.ax-qs-hero .ax-qs-btn:hover{background:rgba(255,255,255,.2);border-color:#fff}
+.ax-qs.ax-qs .ax-qs-hero .ax-qs-btn.p{border-color:#fff;background:#fff;color:#0f172a}
+.ax-qs-hero .ax-qs-btn.p:hover{transform:translateY(-1px);box-shadow:0 10px 24px -12px rgba(0,0,0,.6)}
+.ax-qs-stats{margin-top:-34px;padding:0 18px;position:relative;z-index:1}
+.ax-qs-stat{background:#fff;border-color:#e6e9f0;box-shadow:0 14px 30px -22px rgba(15,23,42,.5);padding:12px 14px}
+.ax-qs-stat b{font-size:20px}
+@media (max-width:760px){
+  .ax-qs-hero{min-height:0;padding:22px 18px;border-radius:16px}
+  .ax-qs-hero .h{font-size:24px!important}
+  .ax-qs-stats{margin-top:-20px;padding:0 10px}
+}
+
+/* page titles: a faint photograph and the platform's colour behind */
+.ax-ws-main :is(.ax-ph,.ax-sh,.fd-pagehead){position:relative;isolation:isolate}
+.ax-ws-main :is(.ax-ph,.ax-sh)::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,#fff 0%,rgba(255,255,255,.96) 42%,rgba(255,255,255,.78) 100%),var(--ws-photo) right 30%/cover no-repeat;pointer-events:none}
+.ax-ws-main :is(.ax-ph,.ax-sh)::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:linear-gradient(90deg,var(--ws-accent),transparent 70%);opacity:.6;pointer-events:none}
+
+/* calmer pages: a little more air, consistent cards */
+.ax-ws-main{font-feature-settings:"cv11","ss01"}
+.ax-ws-main h1,.ax-ws-main h2{letter-spacing:-.02em}
+
+@media (prefers-reduced-motion:reduce){.ax-qs-hero::before{animation:none}.ax-wsb-panel{animation:none}}
+@media print{.ax-wsb{display:none!important}}
+.ax-ws-find input{border:0!important;box-shadow:none!important;outline:0!important;height:auto!important;padding:0!important;background:none!important}
+.ax-wsb-tabs{-webkit-mask-image:linear-gradient(90deg,#000 92%,transparent);mask-image:linear-gradient(90deg,#000 92%,transparent)}
+/* phones: numbers and shortcuts scroll sideways instead of stacking */
+@media (max-width:1023px){
+  .ax-qs-all{grid-auto-flow:column;grid-template-columns:none;grid-template-rows:repeat(2,auto);grid-auto-columns:minmax(92px,28%);overflow-x:auto;scroll-snap-type:x proximity;padding-bottom:4px;scrollbar-width:none}
+  .ax-qs-all::-webkit-scrollbar{display:none}
+  .ax-qs-tile{scroll-snap-align:start}
+}
+@media (max-width:560px){
+  .ax-qs-stats{display:flex;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;padding-bottom:6px}
+  .ax-qs-stats::-webkit-scrollbar{display:none}
+  .ax-qs-stat{flex:0 0 44%;scroll-snap-align:start}
+}
