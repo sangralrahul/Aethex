@@ -20,3 +20,8 @@
   Cache-Control: public, max-age=2592000
 /product-images/*
   Cache-Control: public, max-age=2592000
+# Update 103: the home page's reels and posters, and the small logo mark.
+/videos/*
+  Cache-Control: public, max-age=2592000
+/aethex-mark-96.png
+  Cache-Control: public, max-age=2592000

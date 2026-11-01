@@ -11,10 +11,18 @@ import { useMemo, useState, type FormEvent } from "react";
 import { Link } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, Check, Eye, Layers, Medal, Target, Trophy } from "lucide-react";
-import { ALL_SUBJECTS } from "@/data/neetpgQuestions";
+import type { Subject } from "@/data/neetpgQuestions";
 import { addDay, bySubject, istDay, liveBookmarks, openWrong, study, useStudy, type StudyState } from "@/lib/study/progress";
 import { useUserAuth } from "@/hooks/use-user-auth";
 import { loginUrl } from "@/lib/host";
+
+// Update 103: the subject names without the question bank itself (this file is on every page via QuickStart, and
+// importing ALL_SUBJECTS pulled the whole bank into the first download). The type keeps the list complete.
+const SUBJECT_SET: Record<Subject, true> = {
+  Anatomy: true, Physiology: true, Biochemistry: true, Pathology: true, Pharmacology: true, Microbiology: true, Medicine: true, Surgery: true, Gynaecology: true,
+  Paediatrics: true, "Community Medicine": true, "Forensic Medicine": true, Ophthalmology: true, ENT: true, Psychiatry: true, Dermatology: true, Orthopaedics: true, Anaesthesia: true, Radiology: true,
+};
+const ALL_SUBJECTS = Object.keys(SUBJECT_SET) as Subject[];
 
 /* ---------------------------------------------------------------- flashcards */
 export interface Flashcard { key: string; front: string; back: string; extra?: string; source: "Revision" | "Bookmark" | "Note"; subject?: string }

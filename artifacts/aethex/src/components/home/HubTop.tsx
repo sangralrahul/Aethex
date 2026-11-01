@@ -18,7 +18,7 @@ import { PlatformLogo, type PlatformId } from "@/components/home/PlatformLogos";
 import { ProductImage } from "@/components/store/ProductImage";
 import { useUserAuth } from "@/hooks/use-user-auth";
 import { cadusUrl, loginUrl, mainUrl, portalUrl, type Portal } from "@/lib/host";
-import { useBooks, useStore } from "@/lib/store/api";
+import { useLatestBooks, useStore } from "@/lib/store/api";
 import { FREE_DELIVERY_FROM } from "@/lib/store/rules";
 import { SPECIALTIES } from "@/lib/find";
 import { formatINR } from "@/lib/utils";
@@ -210,7 +210,7 @@ export function Banners() {
               <span className="big">{s.live && <i className="live" aria-label="Live" />}{s.big}</span>
               <span className="cta">{s.cta} <ArrowRight size={15} /></span>
             </span>
-            <span className="bg" aria-hidden="true"><img src={ph(s.photo, 1100, 560)} alt="" onError={hideBroken} loading={i < 3 ? "eager" : "lazy"} decoding="async" /></span>
+            <span className="bg" aria-hidden="true"><img src={ph(s.photo, 1100, 560)} alt="" onError={hideBroken} loading={i < 2 ? "eager" : "lazy"} fetchPriority={i === 0 ? "high" : "low"} decoding="async" /></span>
             <Ecg />
             {s.video && <span className="vid" aria-hidden="true"><Reel name={s.video} /></span>}
           </a>
@@ -298,8 +298,8 @@ export function LatestProducts() {
 }
 
 export function LatestBooks() {
-  const { data, isLoading } = useBooks();
-  const list = data ? [...data.books].filter((b) => b.inStock !== false).sort((a, b) => (b.year ?? 0) - (a.year ?? 0) || b.id - a.id).slice(0, 16) : [];
+  const { data, isLoading } = useLatestBooks(); // update 103: only the newest 16, not the whole list
+  const list = data?.books ?? [];
   if (!isLoading && !list.length) return null;
   return (
     <Row id="latest-books" title="Latest medical books" more={S("/books")}>
@@ -315,6 +315,20 @@ export function LatestBooks() {
   );
 }
 
+/** Update 103: mounts its children only when they come near the screen, so their code and data load later. */
+function WhenNear({ children, fallback, margin = "500px" }: { children: ReactNode; fallback: ReactNode; margin?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    const el = ref.current; if (!el || on) return;
+    if (!("IntersectionObserver" in window)) { setOn(true); return; }
+    const io = new IntersectionObserver(([e]) => { if (e?.isIntersecting) { setOn(true); io.disconnect(); } }, { rootMargin: margin });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [on, margin]);
+  return <div ref={ref} className="hx-near">{on ? children : fallback}</div>;
+}
+
 type Article = { slug: string; title: string; summary: string | null; specialty: string | null; at: number; minutes: number; doctor: { name: string; specialty: string } };
 export function TodayInStudy() {
   const { data: arts } = useQuery({ queryKey: ["find", "articles", "latest"], queryFn: async () => { const r = await fetch("/api/find/articles"); if (!r.ok) return [] as Article[]; return ((await r.json()).articles ?? []) as Article[]; }, staleTime: 5 * 60_000, retry: false });
@@ -323,7 +337,7 @@ export function TodayInStudy() {
     <section className="hx-wrap hx-study" data-home="study" aria-label="Today in Study and health articles">
       <div className="hd"><div><h2>Today in Study</h2></div><a href={portalUrl("study")} className="all" aria-label="Open Aethex Study"><ArrowRight size={18} /></a></div>
       <div className="grid">
-        <div className="q"><Suspense fallback={<div className="st-qotd load" />}><QotdCard compact /></Suspense></div>
+        <div className="q"><WhenNear fallback={<div className="st-qotd load" />}><Suspense fallback={<div className="st-qotd load" />}><QotdCard compact /></Suspense></WhenNear></div>
         <div className="side">
           <a href={ST("/case-of-the-day")} className="tile violet"><CalendarCheck size={20} /><b>Case of the day</b><small>Work it through</small></a>
           <a href={ST("/mock-test")} className="tile blue"><Timer size={20} /><b>Mock test</b><small>With your rank</small></a>
@@ -416,11 +430,11 @@ function CountUp({ to }: { to: number }) {
 }
 export function LiveStats() {
   const { data } = useStore();
-  const { data: books } = useBooks();
+  const { data: books } = useLatestBooks();
   if (!data) return null;
   const items: [number, string, ReactNode][] = [
     [data.products.filter((p) => p.inStock).length, "Products in stock", <Package size={20} />],
-    [books?.books.length ?? 0, "Medical books", <BookOpen size={20} />],
+    [books?.count ?? 0, "Medical books", <BookOpen size={20} />],
     [data.brands.length, "Brands", <ShoppingBag size={20} />],
     [data.categories.length, "Categories", <LayoutGrid size={20} />],
   ];

@@ -25,7 +25,7 @@ function L({ to, className, children, onClick }: { to: string; className?: strin
 export function PortalLogo({ portal }: { portal: Site }) {
   return (
     <Link href="/" className="ax-logo ax-plogo" aria-label={`Aethex ${PORTALS[portal].name} home`}>
-      <img className="ax-logo-mark" src={`${import.meta.env.BASE_URL}aethex-mark.png`} alt="" width={36} height={36} />
+      <img className="ax-logo-mark" src={`${import.meta.env.BASE_URL}aethex-mark-96.png`} alt="" width={36} height={36} decoding="async" />
       <span className="ax-logo-word"><span className="sh">Aethex</span></span>
       <span className={`ax-ptag ${portal}`}>{PORTALS[portal].name.replace(/^for /, "")}</span>
     </Link>

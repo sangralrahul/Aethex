@@ -52,7 +52,7 @@ const GLYPH: Record<Exclude<PlatformId, "aethex" | "cadus">, ReactNode> = {
 
 export function PlatformLogo({ id, size = 30 }: { id: PlatformId; size?: number }) {
   const base = import.meta.env.BASE_URL;
-  if (id === "aethex") return <span className="pl-logo pl-img aethex" style={{ width: size, height: size }}><img src={`${base}aethex-mark.png`} alt="" width={size} height={size} /></span>;
+  if (id === "aethex") return <span className="pl-logo pl-img aethex" style={{ width: size, height: size }}><img src={`${base}aethex-mark-96.png`} alt="" width={size} height={size} /></span>;
   if (id === "cadus") return <span className="pl-logo pl-img cadus" style={{ width: size, height: size }}><img src={`${base}cadus-icon.svg`} alt="" width={size} height={size} /></span>;
   const [a, b] = TONES[id];
   const gid = `plg-${id}`;

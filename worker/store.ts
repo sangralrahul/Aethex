@@ -372,6 +372,35 @@ async function booksBody(env: StoreEnv): Promise<string> {
   return body;
 }
 
+/** Update 103: the home page needs only the newest books and how many there are, not the whole list (about 500 KB). */
+let latestBooksCache: { src: string; body: string } | null = null;
+async function latestBooksBody(env: StoreEnv): Promise<string> {
+  const full = await booksBody(env);
+  if (latestBooksCache && latestBooksCache.src === full) return latestBooksCache.body;
+  const d = JSON.parse(full) as { version: string; books: Record<string, unknown>[] };
+  const n = (v: unknown) => (typeof v === "number" ? v : 0);
+  const books = d.books.filter((b) => b.inStock !== false).sort((a, b) => n(b.year) - n(a.year) || n(b.id) - n(a.id)).slice(0, 16)
+    .map((b) => ({ id: b.id, slug: b.slug, title: b.title, authors: b.authors, edition: b.edition, year: b.year, cover: b.cover, price: b.price, mrp: b.mrp, priceOnRequest: b.priceOnRequest, inStock: b.inStock }));
+  const body = JSON.stringify({ version: d.version, count: d.books.length, books });
+  latestBooksCache = { src: full, body };
+  return body;
+}
+
+/** Update 103: an ETag on the big catalogue answers, so a repeat visit gets an empty 304 instead of the whole list again. */
+const etags = new Map<string, { body: string; tag: string }>();
+async function etagged(request: Request, key: string, body: string): Promise<Response> {
+  let e = etags.get(key);
+  if (!e || e.body !== body) {
+    const h = new Uint8Array(await crypto.subtle.digest("SHA-1", new TextEncoder().encode(body)));
+    e = { body, tag: `W/"${Array.from(h.slice(0, 12), (b) => b.toString(16).padStart(2, "0")).join("")}"` };
+    etags.set(key, e);
+  }
+  const headers = { "content-type": "application/json", etag: e.tag, ...CACHED };
+  const inm = request.headers.get("if-none-match");
+  if (inm && inm.split(",").some((t) => t.trim() === e!.tag)) return new Response(null, { status: 304, headers });
+  return new Response(body, { headers });
+}
+
 /* ------------------------------------------------------------------ orders */
 
 const ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
@@ -2029,7 +2058,7 @@ export async function handleStore(request: Request, env: StoreEnv, ctx?: Ctx): P
   // The catalogue works without the database (the store's own prices then don't apply).
   if (path === "catalog" && method === "GET") {
     try {
-      return new Response(await catalogSummary(env), { headers: { "content-type": "application/json", ...CACHED } });
+      return await etagged(request, "catalog", await catalogSummary(env));
     } catch (e) {
       console.error("store catalog", e);
       return new Response(await catalogSummary({ ...env, DB: undefined }), { headers: { "content-type": "application/json", "cache-control": "no-store" } });
@@ -2037,10 +2066,18 @@ export async function handleStore(request: Request, env: StoreEnv, ctx?: Ctx): P
   }
   if (path === "books" && method === "GET") {
     try {
-      return new Response(await booksBody(env), { headers: { "content-type": "application/json", ...CACHED } });
+      return await etagged(request, "books", await booksBody(env));
     } catch (e) {
       console.error("store books", e);
       return new Response(await booksBody({ ...env, DB: undefined }), { headers: { "content-type": "application/json", "cache-control": "no-store" } });
+    }
+  }
+  if (path === "books/latest" && method === "GET") {
+    try {
+      return await etagged(request, "books-latest", await latestBooksBody(env));
+    } catch (e) {
+      console.error("store latest books", e);
+      return new Response(await latestBooksBody({ ...env, DB: undefined }), { headers: { "content-type": "application/json", "cache-control": "no-store" } });
     }
   }
   if (path === "config" && method === "GET") {

@@ -155,6 +155,22 @@ export function useBooks(enabled = true) {
   return { data, isLoading: enabled && q.isLoading, error: q.error as StoreError | null, refetch: q.refetch };
 }
 
+/** Update 103: the newest books and how many there are, for the home page (a few KB instead of the whole list). */
+export type LatestBook = Pick<Book, "id" | "slug" | "title" | "authors" | "edition" | "year" | "cover" | "price" | "mrp" | "priceOnRequest" | "inStock">;
+export interface LatestBooks { count: number; books: LatestBook[] }
+async function loadLatestBooks(): Promise<LatestBooks> {
+  try {
+    return await storeFetch<LatestBooks>("/books/latest");
+  } catch {
+    const d = await loadBooks(); // an older Worker without /books/latest
+    const books = d.books.filter((b) => b.inStock !== false).sort((a, b) => (b.year ?? 0) - (a.year ?? 0) || b.id - a.id).slice(0, 16);
+    return { count: d.books.length, books };
+  }
+}
+export function useLatestBooks(enabled = true) {
+  return useQuery({ queryKey: ["store", "books", "latest"], queryFn: loadLatestBooks, staleTime: 5 * 60_000, gcTime: 60 * 60_000, enabled, retry: 1 });
+}
+
 /** One product in full (description, specifications, every photo). */
 export function useProduct(key: string | undefined) {
   return useQuery({ queryKey: ["store", "product", key], queryFn: () => loadProduct(key!), enabled: !!key, staleTime: 5 * 60_000, retry: (n, e) => (e as StoreError).status !== 404 && n < 1 });

@@ -27,7 +27,7 @@ import { handleStore, logPrices, runEquipmentReminders, runStockAlerts, runReord
 import { handleTranscribe, type AiBinding } from "./transcribe";
 import { handleVoice, voiceEnabled, type VoiceEnv } from "./voice";
 import { guestGate, requireAccount } from "./guest";
-import { cadusHome, hostRobots, hostSitemap, portalHome, portalOf, siteSitemap } from "./seo";
+import { cadusHome, hostRobots, hostSitemap, hubHome, portalHome, portalOf, siteSitemap } from "./seo";
 import { handleStudy } from "./study";
 import { handleNotifications } from "./notify";
 import { cleanSharedRecords, handleFind, type FindEnv, runFindReminders, runFollowUps } from "./find";
@@ -92,6 +92,10 @@ export default {
     // store., study., find., hospitals. and medicalcolleges.aethex.in: their own title and preview tags on the home page.
     if (url.pathname === "/" && request.method === "GET" && portalOf(url.hostname)) {
       return portalHome(await env.ASSETS.fetch(new Request(new URL("/", url), request)), portalOf(url.hostname)!);
+    }
+    // aethex.in: the home page's data and first photo start loading with the HTML (update 103).
+    if (url.pathname === "/" && request.method === "GET" && /^(?:www\.)?aethex\.in$/.test(url.hostname)) {
+      return hubHome(await env.ASSETS.fetch(new Request(new URL("/", url), request)));
     }
 
     if (url.pathname === "/api/health" && url.searchParams.get("live") === "1") {

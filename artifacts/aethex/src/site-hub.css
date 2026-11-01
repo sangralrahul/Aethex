@@ -1841,16 +1841,16 @@
 .hx-scat .hd,.hx-brands .hd,.hx-feat .hd{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:12px}
 .hx-scat ul,.hx-brands ul,.hx-feat ul{list-style:none;margin:0;padding:0;display:grid;gap:12px}
 .hx-scat ul{grid-template-columns:repeat(auto-fill,minmax(132px,1fr))}
-.hx-scat a{display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 10px 14px;border:1px solid #eceef3;border-radius:14px;background:#fff;color:#0f172a;text-decoration:none;text-align:center;transition:box-shadow .15s,transform .15s}
-.hx-scat a:hover{box-shadow:0 14px 30px -18px rgba(15,23,42,.35);transform:translateY(-2px)}
+.hx-scat li>a{display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 10px 14px;border:1px solid #eceef3;border-radius:14px;background:#fff;color:#0f172a;text-decoration:none;text-align:center;transition:box-shadow .15s,transform .15s}
+.hx-scat li>a:hover{box-shadow:0 14px 30px -18px rgba(15,23,42,.35);transform:translateY(-2px)}
 .hx-scat .im{display:grid;place-items:center;width:84px;height:84px;margin-bottom:4px;border-radius:50%;background:#f1f5ff;overflow:hidden}
 .hx-scat .im img{width:78%;height:78%;object-fit:contain}
 .hx-scat li{display:flex}.hx-scat li>a{flex:1}
 .hx-scat b{font-size:13.5px;font-weight:700;line-height:1.25;overflow-wrap:anywhere}
 .hx-scat small,.hx-brands small{font-size:12px;color:#64748b}
 .hx-feat ul{grid-template-columns:repeat(4,minmax(0,1fr))}
-.hx-feat a{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid #eceef3;border-radius:14px;background:#fff;color:#0f172a;text-decoration:none;transition:box-shadow .15s,border-color .15s}
-.hx-feat a:hover{border-color:#c7d2fe;box-shadow:0 12px 26px -18px rgba(43,63,208,.5)}
+.hx-feat li>a{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid #eceef3;border-radius:14px;background:#fff;color:#0f172a;text-decoration:none;transition:box-shadow .15s,border-color .15s}
+.hx-feat li>a:hover{border-color:#c7d2fe;box-shadow:0 12px 26px -18px rgba(43,63,208,.5)}
 .hx-feat .i{flex:0 0 44px;display:grid;place-items:center;width:44px;height:44px;border-radius:12px}
 .hx-feat .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .hx-feat b{font-size:14.5px;font-weight:700}
@@ -1859,8 +1859,8 @@
 .hx-feat .blue .i{background:#e8edff;color:#2b3fd0}.hx-feat .teal .i{background:#e0f5f1;color:#0f766e}.hx-feat .rose .i{background:#fde8ee;color:#be123c}
 .hx-feat .violet .i{background:#efe9ff;color:#6d28d9}.hx-feat .amber .i{background:#fff1dc;color:#b45309}.hx-feat .ink .i{background:#0f172a;color:#fff}
 .hx-brands ul{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
-.hx-brands a{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border:1px solid #eceef3;border-radius:12px;background:#fff;color:#0f172a;text-decoration:none}
-.hx-brands a:hover{border-color:#c7d2fe}
+.hx-brands li>a{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border:1px solid #eceef3;border-radius:12px;background:#fff;color:#0f172a;text-decoration:none}
+.hx-brands li>a:hover{border-color:#c7d2fe}
 .hx-brands b{font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hx-why{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
 .hx-why>div{display:flex;align-items:center;gap:12px;padding:16px;border-radius:14px;background:linear-gradient(135deg,#f4f6ff,#eefaf7);border:1px solid #e4e9f7}
@@ -1872,8 +1872,90 @@
   .hx-feat ul{grid-template-columns:1fr}
   .hx-why{grid-template-columns:1fr}
   .hx-scat ul{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-  .hx-scat a{padding:10px 6px 12px}
+  .hx-scat li>a{padding:10px 6px 12px}
   .hx-scat .im{width:64px;height:64px}
   .hx-scat b{font-size:12.5px}
   .hx-brands ul{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+/* ---------------------------------------------------------------- update 103: speed and motion
+   Speed: sections well below the first screen skip layout and paint until they're near (content-visibility).
+   Motion: only transform and opacity (smooth on phones), and none at all with reduced motion. */
+.hx-main>:nth-child(n+7){content-visibility:auto;contain-intrinsic-size:auto 460px}
+.hx-near{min-height:inherit}
+
+/* section titles: a short accent bar that draws in when the section arrives */
+.hx-main .hd h2{position:relative;padding-bottom:6px}
+.hx-main .hd h2::after{content:"";position:absolute;left:0;bottom:0;width:34px;height:3px;border-radius:3px;background:linear-gradient(90deg,#2b3fd0,#0f9488);transform-origin:left;transform:scaleX(1)}
+.hx-main .rv .hd h2::after{transform:scaleX(0);transition:transform .7s cubic-bezier(.2,.8,.2,1) .15s}
+.hx-main .rv.in .hd h2::after{transform:scaleX(1)}
+.fk-band h2::after{background:#fff!important}
+
+/* cards and tiles rise in one after another */
+@keyframes hxRise{from{opacity:0;transform:translateY(16px) scale(.98)}to{opacity:1;transform:none}}
+.rv :is(.rail>.hx-card,.hx-scat li,.hx-feat li,.hx-brands li,.hx-why>div,.fk-band .tiles>a,.specs li){opacity:0}
+.rv.in :is(.rail>.hx-card,.hx-scat li,.hx-feat li,.hx-brands li,.hx-why>div,.fk-band .tiles>a,.specs li){animation:hxRise .55s cubic-bezier(.2,.8,.2,1) both;animation-delay:.42s}
+.rv.in :is(.rail>.hx-card,.hx-scat li,.hx-feat li,.hx-brands li,.hx-why>div,.fk-band .tiles>a,.specs li):nth-child(1){animation-delay:0s}
+.rv.in :is(.rail>.hx-card,.hx-scat li,.hx-feat li,.hx-brands li,.hx-why>div,.fk-band .tiles>a,.specs li):nth-child(2){animation-delay:.04s}
+.rv.in :is(.rail>.hx-card,.hx-scat li,.hx-feat li,.hx-brands li,.hx-why>div,.fk-band .tiles>a,.specs li):nth-child(3){animation-delay:.08s}
+.rv.in :is(.rail>.hx-card,.hx-scat li,.hx-feat li,.hx-brands li,.hx-why>div,.fk-band .tiles>a,.specs li):nth-child(4){animation-delay:.12s}
+.rv.in :is(.rail>.hx-card,.hx-scat li,.hx-feat li,.hx-brands li,.hx-why>div,.fk-band .tiles>a,.specs li):nth-child(5){animation-delay:.16s}
+.rv.in :is(.rail>.hx-card,.hx-scat li,.hx-feat li,.hx-brands li,.hx-why>div,.fk-band .tiles>a,.specs li):nth-child(6){animation-delay:.2s}
+.rv.in :is(.rail>.hx-card,.hx-scat li,.hx-feat li,.hx-brands li,.hx-why>div,.fk-band .tiles>a,.specs li):nth-child(7){animation-delay:.24s}
+.rv.in :is(.rail>.hx-card,.hx-scat li,.hx-feat li,.hx-brands li,.hx-why>div,.fk-band .tiles>a,.specs li):nth-child(8){animation-delay:.28s}
+.rv.in :is(.rail>.hx-card,.hx-scat li,.hx-feat li,.hx-brands li,.hx-why>div,.fk-band .tiles>a,.specs li):nth-child(9){animation-delay:.32s}
+.rv.in :is(.rail>.hx-card,.hx-scat li,.hx-feat li,.hx-brands li,.hx-why>div,.fk-band .tiles>a,.specs li):nth-child(10){animation-delay:.36s}
+.rv.in :is(.rail>.hx-card,.hx-scat li,.hx-feat li,.hx-brands li,.hx-why>div,.fk-band .tiles>a,.specs li):nth-child(11){animation-delay:.4s}
+
+/* product cards: a soft light sweep and a lift on hover */
+.hx-card{position:relative;overflow:hidden;will-change:transform}
+.hx-card::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.55) 50%,transparent 65%);transform:translateX(-120%)}
+.hx-card:hover::after{transform:translateX(120%);transition:transform .8s ease}
+.hx-card:hover{border-color:#d7ddf8}
+.hx-card .pr em{display:inline-block;padding:1px 6px;border-radius:5px;background:#ecfdf3}
+[data-home=top-deals] .hx-card .pr em{background:linear-gradient(90deg,#dcfce7,#bbf7d0,#dcfce7);background-size:200% 100%;animation:hxGlow 2.6s linear infinite}
+@keyframes hxGlow{to{background-position:-200% 0}}
+
+/* category circles, features, brands */
+.hx-scat .im{transition:transform .3s cubic-bezier(.2,.8,.2,1),box-shadow .3s,background .3s}
+.hx-scat li>a:hover .im{transform:scale(1.08);background:radial-gradient(circle at 30% 25%,#fff,#e3e9ff);box-shadow:0 0 0 4px #eef1ff}
+.hx-scat li>a:hover b{color:#2b3fd0}
+.hx-feat .i{transition:transform .3s cubic-bezier(.3,1.6,.5,1)}
+.hx-feat li>a:hover .i{transform:scale(1.1) rotate(-6deg)}
+.hx-feat .go{transition:transform .25s,color .25s}
+.hx-feat li>a:hover .go{transform:translateX(4px);color:#2b3fd0}
+.hx-brands li>a{position:relative;transition:transform .2s,box-shadow .2s,border-color .2s}
+.hx-brands li>a:hover{transform:translateY(-2px);border-color:transparent;box-shadow:0 0 0 1.5px #2b3fd0,0 12px 24px -16px rgba(43,63,208,.6)}
+
+/* why Aethex: a gentle ripple around each icon */
+.hx-why .i{position:relative}
+.hx-why .i::after{content:"";position:absolute;inset:0;border-radius:50%;border:2px solid #2b3fd0;opacity:0;animation:hxRipple 2.8s ease-out infinite}
+.hx-why>div:nth-child(2) .i::after{animation-delay:.7s}.hx-why>div:nth-child(3) .i::after{animation-delay:1.4s}.hx-why>div:nth-child(4) .i::after{animation-delay:2.1s}
+@keyframes hxRipple{0%{transform:scale(1);opacity:.45}80%,100%{transform:scale(1.6);opacity:0}}
+
+/* the numbers bar: icons breathe once when counted */
+.fk-stats>div{transition:transform .2s,box-shadow .2s}
+.fk-stats>div:hover{transform:translateY(-2px);box-shadow:0 12px 24px -18px rgba(15,23,42,.45)}
+
+/* reading progress along the top, drawn by the browser from the scroll position (no script) */
+.hx-progress{display:none}
+@supports (animation-timeline:scroll()){
+  .hx-progress{display:block;position:fixed;left:0;top:0;right:0;height:3px;z-index:60;transform-origin:left;transform:scaleX(0);background:linear-gradient(90deg,#2b3fd0,#0f9488,#f59e0b);animation:hxProg linear both;animation-timeline:scroll(root)}
+  @keyframes hxProg{to{transform:scaleX(1)}}
+}
+
+/* back to top */
+.hx-top{position:fixed;right:18px;bottom:22px;z-index:55;display:grid;place-items:center;width:46px;height:46px;border:0;border-radius:50%;background:#111827;color:#fff;cursor:pointer;box-shadow:0 12px 26px -10px rgba(17,24,39,.6);opacity:0;transform:translateY(16px) scale(.9);pointer-events:none;transition:opacity .25s,transform .25s}
+.hx-top.on{opacity:1;transform:none;pointer-events:auto}
+.hx-top:hover{background:#2b3fd0}
+.hx-top:focus-visible{outline:3px solid #93a5ff;outline-offset:3px}
+@media (max-width:760px){.hx-top{right:14px;bottom:78px;width:42px;height:42px}}
+
+@media (prefers-reduced-motion:reduce){
+  .rv :is(.rail>.hx-card,.hx-scat li,.hx-feat li,.hx-brands li,.hx-why>div,.fk-band .tiles>a,.specs li){opacity:1;animation:none!important}
+  .hx-main .rv .hd h2::after{transform:scaleX(1);transition:none}
+  .hx-why .i::after,[data-home=top-deals] .hx-card .pr em,.hx-progress{animation:none}
+  .hx-progress{display:none}
+  .hx-card::after{display:none}
+  .hx-scat .im,.hx-feat .i,.hx-feat .go,.hx-brands li>a,.hx-top{transition:none}
 }
