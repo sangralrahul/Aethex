@@ -529,3 +529,13 @@ cancels from `/practice`. Reviews can only be written for `completed` appointmen
 - The workspace bar's label no longer contains "pages" (a form's "Age" label matched it in tests).
 - Full check: 106 suites and the route crawl (1,122 visits, every subdomain, desktop, phone and signed in): 47 flags against 54 at update 104, none new; the rest are known (old addresses kept as "not found", sign-in-only admin pages, the test host serving downloads.aethex.in). Suites still failing test pages that no longer exist (the pre-91 home, the old admin address, the update-87 sidebar) or a date-dependent Cadus schedule.
 - Test: `shots/hang106.mjs`.
+
+## Update 107: Cadus Andro, the male fertility work-up
+
+- New Cadus tool `andro` (More → Mother & Child, the Tools grid and the command bar): `components/cadus/AndroView.tsx`, rules in `lib/cadus/andro.ts`. Four steps:
+  1. **Private intake**: ages, months trying, habits and history (smoking, alcohol, heat, testosterone or steroids, recent fever, BMI, drugs, undescended testis, mumps, chemotherapy, injury, sexual problems), warning signs (testicular lump, sudden painful swelling) and the doctor's examination (varicocele felt or only on ultrasound, small testes, absent vas). No name needed.
+  2. **Reports**: semen analysis (volume, concentration, total number, total and progressive motility, normal forms, vitality, pH) and hormones (FSH, LH, total testosterone in ng/dL or nmol/L, prolactin). Typed in, or read from photos or PDFs with the existing `lab-extract` action and then checked by the user. Each value shows the WHO 2021 lower limit and whether it is below.
+  3. **Doctor summary**: the pattern named (e.g. oligoasthenozoospermia), a flag table, hormone notes, a numbered work-up with each step's source (WHO 2021, AUA/ASRM 2020, EAU), what he can change, red flags, copy summary (no names), "Discuss with Cadus" (sends the summary to chat; the AI explains, it never changes a value), and doctor sign-off (name; any later change clears it).
+  4. **Patient explainer**: plain English or Hinglish, written by rules, released only after sign-off; repeat-test reminder about 3 months later as a calendar file.
+- Numbers are judged by fixed rules, never by the AI. Kept on the device only if the user agrees, deleted with one tap. Tools count is now 338.
+- Test: `shots/andro107.mjs`.
