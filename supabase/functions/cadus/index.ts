@@ -80,6 +80,8 @@
 //   procedure             Procedure Guide: a bedside procedure step by step, with a consent sheet in
 //                         the patient's language.
 //   poison                Poisoning & Snakebite: first actions, antidotes with doses, monitoring.
+//   andro-ask             Cadus Andro: a question about one man's fertility work-up, answered from his own
+//                         record (intake, results judged by rules, plan, referral journey, progress).
 //   report-explain        Report Explainer: a lab, imaging or other report as a summary for
 //                         the doctor and an explanation for the patient in their language.
 import {
@@ -156,6 +158,7 @@ import {
   REV_NOTE_SYSTEM, REV_STYLES, revNote, ROUND_UPDATE_SYSTEM, roundUpdate,
 } from "../_shared/clinic22.ts";
 import { TRANSLATE_DOC_SYSTEM, translatedDoc } from "../_shared/clinic27.ts";
+import { ANDRO_AUDIENCES, androAnswer, androPrompt, androSystem, type AndroAudience } from "../_shared/andro.ts";
 import { RENAL_SYSTEM, renalAi, renalDrugs } from "../_shared/clinic25.ts";
 import { TELE_KINDS, TELE_MODES, TELECONSULT_SYSTEM, teleconsult, type TeleKind, type TeleMode } from "../_shared/clinic24.ts";
 import { CONSENT_KINDS, CONSENT_SYSTEM, consentForm, DIET_SYSTEM, DIET_TYPES, dietChart, ICD_SYSTEM, icdResult, MLC_SYSTEM, mlcReport } from "../_shared/clinic23.ts";
@@ -2069,6 +2072,23 @@ Deno.serve(async (req) => {
       if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
       const result = rxDraft(parseJsonLoose<any>(r.content));
       if (!result) return jsonResponse({ error: "Couldn't draft the prescription this time. Please try again." }, 502);
+      return jsonResponse({ result });
+    }
+
+    if (action === "andro-ask") {
+      // Update 108: answered from the person's own record, never from a blank chat. The record carries no name.
+      const question = String(body.question || "").replace(/\s+/g, " ").trim().slice(0, 500);
+      if (question.length < 2) return jsonResponse({ error: "Type a question about the report" }, 400);
+      if (String(body.record || "").trim().length < 40) return jsonResponse({ error: "Add the intake or a report first" }, 400);
+      const audience: AndroAudience = (ANDRO_AUDIENCES as readonly string[]).includes(String(body.audience)) ? (body.audience as AndroAudience) : "patient";
+      const r = await callAI({
+        model: CLAUDE_REVIEW_MODEL,
+        messages: [{ role: "system", content: androSystem(audience) }, { role: "user", content: androPrompt(body as Record<string, unknown>, question) }],
+        jsonMode: true, effort: "low", maxTokens: 1500,
+      });
+      if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, r.status);
+      const result = androAnswer(parseJsonLoose<any>(r.content));
+      if (!result) return jsonResponse({ error: "Couldn't answer that this time. Please try again." }, 502);
       return jsonResponse({ result });
     }
 

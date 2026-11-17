@@ -4,14 +4,23 @@
  * every value is judged by rules against WHO 2021 limits with AUA/ASRM 2020 and EAU steps cited, and a plain-language
  * explainer in English or Hinglish that is released only after a doctor signs off. Follow-up reminder by calendar file.
  * Rules: lib/cadus/andro.ts. Kept on this device only if the user agrees; deleted with one tap.
+ *
+ * Update 108 connects it into one journey (parts in AndroParts.tsx): Cadus AI answers from this case's own intake
+ * and results instead of asking for them; the referral, booking, specialist visit and repeat test are tracked to
+ * completion; repeat reports show progress after habit, medicine or procedure changes; and he can see what the AI
+ * is sent, switch it off, download his data or delete it.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BadgeCheck, CalendarPlus, Camera, ClipboardCopy, FlaskConical, Loader2, Lock, MessageSquareText, ShieldCheck, Siren, Sparkles, Stethoscope, Trash2, UserRound } from "lucide-react";
+import { BadgeCheck, CalendarPlus, Camera, Check, ClipboardCopy, Download, FlaskConical, Loader2, Lock, MessageSquareText, ShieldCheck, Siren, Sparkles, Stethoscope, Trash2, UserRound } from "lucide-react";
 import { attachmentPayload, type Attachment } from "@/lib/cadus/files";
-import { emptyCase, evaluate, exampleCase, explainer, summaryText, type AndroCase, type Intake, type SemenKey } from "@/lib/cadus/andro";
+import {
+  emptyCase, emptyJourney, evaluate, exampleFollowUp, explainer, journeyStatus, lifestyleDone, patientNext, patientRecord, progress, progressLines, ruleAnswer, sortReports, summaryText,
+  type AndroCase, type Intake, type Journey, type Qa, type Report, type SemenKey,
+} from "@/lib/cadus/andro";
+import { AndroAsk, AndroJourney, AndroProgress, PARTS_CSS, saveText } from "@/components/cadus/AndroParts";
 
 const KEY = "cadus.andro.v1";
-interface Saved { c: AndroCase; signer: string; signedAt: number | null; note: string }
+interface Saved { c: AndroCase; signer: string; signedAt: number | null; note: string; journey?: Journey; reports?: Report[]; qa?: Qa[]; ai?: boolean }
 const read = (): Saved | null => { try { const v = localStorage.getItem(KEY); return v ? JSON.parse(v) : null; } catch { return null; } };
 
 const HISTORY: [keyof Intake, string][] = [
@@ -51,11 +60,23 @@ export default function AndroView({ generate, readFile, friendlyError, toast, on
   const [reading, setReading] = useState(false);
   const [readCount, setReadCount] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
+  // update 108: the referral journey, the reports over time, his questions, and whether Cadus AI may read the case
+  const [journey, setJourney] = useState<Journey>({ ...emptyJourney(), ...(saved?.journey ?? {}) });
+  const [reports, setReports] = useState<Report[]>(Array.isArray(saved?.reports) ? saved.reports : []);
+  const [qa, setQa] = useState<Qa[]>(Array.isArray(saved?.qa) ? saved.qa : []);
+  const [docQa, setDocQa] = useState<Qa[]>([]);
+  const [ai, setAi] = useState(!!saved?.ai);
   const r = useMemo(() => evaluate(c), [c]);
+  const js = useMemo(() => journeyStatus(journey, c, r, reports), [journey, c, r, reports]);
+  const prog = useMemo(() => progress(reports), [reports]);
+  const record = useMemo(() => patientRecord(c, r, { note, signed: !!signedAt, journey: js, progress: prog }), [c, r, note, signedAt, js, prog]);
+  const done = useMemo(() => lifestyleDone(r, reports), [r, reports]);
+  const everything = (): Saved => ({ c, signer, signedAt, note, journey, reports, qa, ai });
 
   useEffect(() => {
-    try { if (keep) localStorage.setItem(KEY, JSON.stringify({ c, signer, signedAt, note } satisfies Saved)); else localStorage.removeItem(KEY); } catch { /* storage blocked */ }
-  }, [keep, c, signer, signedAt, note]);
+    try { if (keep) localStorage.setItem(KEY, JSON.stringify(everything())); else localStorage.removeItem(KEY); } catch { /* storage blocked */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keep, c, signer, signedAt, note, journey, reports, qa, ai]);
   // any change after sign-off needs a new sign-off
   const first = useRef(true);
   useEffect(() => { if (first.current) { first.current = false; return; } setSignedAt(null); }, [c]);
@@ -103,30 +124,41 @@ export default function AndroView({ generate, readFile, friendlyError, toast, on
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   };
   const copy = async () => { try { await navigator.clipboard.writeText(summaryText(c, r) + (note.trim() ? `\nDoctor's note: ${note.trim()}` : "")); toast("Summary copied (no names)"); } catch { toast("Couldn't copy"); } };
-  const ask = () => onAsk(`${summaryText(c, r)}\n\nAs the treating doctor's assistant: explain this pattern, the likely causes to look for, and anything in the suggested work-up I should add or question, citing AUA/ASRM 2020 or EAU where relevant. Do not change any value or limit.`);
-  const reset = () => { setC(emptyCase()); setSigner(""); setSignedAt(null); setNote(""); setStep(0); setReadCount(0); toast("Cleared"); };
+  const ask = () => onAsk(`${record}\n\nAs the treating doctor's assistant: explain this pattern, the likely causes to look for, and anything in the suggested work-up I should add or question, citing AUA/ASRM 2020 or EAU where relevant. Do not change any value or limit.`);
+  const reset = () => { setC(emptyCase()); setSigner(""); setSignedAt(null); setNote(""); setJourney(emptyJourney()); setReports([]); setQa([]); setDocQa([]); setAi(false); setStep(0); setReadCount(0); toast("Cleared"); };
+  const loadExample = () => { const ex = exampleFollowUp(); setC(ex.c); setReports(ex.reports); setJourney(ex.journey); setQa([]); setDocQa([]); setStep(1); };
+  // The newest report is the current one: its values replace the Reports step, so the summary needs a new sign-off.
+  const addReport = (rep: Report) => {
+    const next = sortReports([...reports, rep]);
+    setReports(next);
+    const newest = next[next.length - 1]?.id === rep.id;
+    if (newest && next.length > 1 && JSON.stringify(rep.semen) !== JSON.stringify(c.semen)) { setC((x) => ({ ...x, semen: rep.semen })); toast("This is now the current report. The doctor summary needs a new sign-off."); }
+    else toast(next.length === 1 ? "First report saved" : "Report added");
+  };
+  const downloadData = () => saveText("cadus-andro-my-data.json", JSON.stringify({ exportedAt: new Date().toISOString(), about: "Your Cadus Andro case, as kept on this device. It has no name in it.", ...everything() }, null, 2), "application/json");
 
-  const STEPS = ["Private intake", "Reports", "Doctor summary", "Patient explainer"];
+  const STEPS = ["Private intake", "Reports", "Doctor summary", "Patient explainer", "Follow-up", "Progress"];
+  const late = js.stages.some((x) => x.state === "late");
   const flagged = r.rows.filter((x) => x.status === "low" || x.status === "absent").length;
 
   return (
     <section className="cx-page cx-lab cx-andro" data-andro="view">
-      <style>{CSS}</style>
+      <style>{CSS}{PARTS_CSS}</style>
       <header className="cx-page-h">
         <div>
           <p className="cx-andro-kicker"><Stethoscope size={14} /> Cadus Andro</p>
           <h1>Male Fertility Work-up</h1>
-          <p>Brings the male partner into the fertility work-up: a private intake, the semen report judged against WHO 2021 limits, a cited plan for the doctor, and a plain explainer for him in English or Hinglish.</p>
+          <p>Brings the male partner into the fertility work-up: a private intake, the semen report judged against WHO 2021 limits, a cited plan for the doctor, a plain explainer he can question in English or Hinglish, the referral tracked to completion, and his progress across repeat reports.</p>
         </div>
         <div className="cx-andro-head-acts">
-          <button className="cx-btn" onClick={() => { setC(exampleCase()); setStep(1); }} data-andro="example"><Sparkles size={14} /> Try an example</button>
+          <button className="cx-btn" onClick={loadExample} data-andro="example"><Sparkles size={14} /> Try an example</button>
           <button className="cx-btn ghost" onClick={reset} data-andro="clear"><Trash2 size={14} /> Clear</button>
         </div>
       </header>
 
       <ol className="cx-andro-steps" role="tablist">
         {STEPS.map((s, i) => (
-          <li key={s}><button role="tab" aria-selected={step === i} className={step === i ? "on" : i < step ? "done" : ""} onClick={() => setStep(i)} data-andro-step={i}><span>{i + 1}</span>{s}</button></li>
+          <li key={s}><button role="tab" aria-selected={step === i} className={step === i ? "on" : i < step ? "done" : ""} onClick={() => setStep(i)} data-andro-step={i}><span>{i + 1}</span>{s}{i === 4 && js.total > 0 && (journey.referredOn || js.reasons.length > 0) ? <i className={late ? "late" : ""}>{js.complete ? "Closed" : `${js.done}/${js.total}`}</i> : i === 5 && reports.length > 0 ? <i>{reports.length}</i> : null}</button></li>
         ))}
       </ol>
 
@@ -202,7 +234,7 @@ export default function AndroView({ generate, readFile, friendlyError, toast, on
           {r.flags.filter((f) => !f.urgent).length > 0 && <div className="cx-andro-flags">{r.flags.filter((f) => !f.urgent).map((f) => <p key={f.text}><Siren size={14} /> {f.text}</p>)}</div>}
           <h4>Suggested work-up</h4>
           <ol className="cx-andro-list" data-andro="workup">{r.workup.map((w) => <li key={w.text}>{w.text} <cite>{w.source}</cite></li>)}</ol>
-          {r.lifestyle.length > 0 && <><h4>Things he can change</h4><ul className="cx-andro-list">{r.lifestyle.map((l) => <li key={l}>{l}</li>)}</ul></>}
+          {r.lifestyle.length > 0 && <><h4>Things he can change</h4><ul className="cx-andro-list">{r.lifestyle.map((l) => <li key={l}>{l}{done.has(l) && <span className="cx-andro-done"> <Check size={13} /> he reports he has done this</span>}</li>)}</ul></>}
           <div className="cx-andro-sign" data-andro="signoff">
             <h4><BadgeCheck size={16} /> Doctor review and sign-off</h4>
             <textarea className="cx-input" rows={2} value={note} onChange={(e) => { setNote(e.target.value); setSignedAt(null); }} placeholder="Your edits or notes for this patient (optional)" />
@@ -217,6 +249,23 @@ export default function AndroView({ generate, readFile, friendlyError, toast, on
             <button className="cx-btn" onClick={ask} disabled={r.entered === 0} data-andro="ask"><MessageSquareText size={14} /> Discuss with Cadus</button>
             <button className="cx-btn primary" onClick={() => setStep(3)} data-andro="to-patient">Patient explainer</button>
           </div>
+          {r.entered > 0 && <AndroAsk audience="doctor" lang="en" record={record} locked={false} ai={ai} setAi={setAi} items={docQa} onAdd={(x) => setDocQa((l) => [...l, x])} generate={generate} friendlyError={friendlyError} toast={toast} fallback={(k) => ruleAnswer(k, c, r, js, prog, "en")} />}
+          {qa.length > 0 && (
+            <div className="cx-andro-review" data-andro="qa-review">
+              <h4>Questions he asked Cadus ({qa.length})</h4>
+              {qa.map((x) => (
+                <article key={x.id}>
+                  <p><b>{x.q}</b></p>
+                  <p>{x.a.answer}</p>
+                  <div>
+                    <span>{x.by === "ai" ? "Cadus AI" : "From the rules"} · {x.a.basis === "record" ? "from his record" : "general information"} · {new Date(x.at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</span>
+                    <button className="cx-btn" onClick={() => setQa((l) => l.map((y) => (y.id === x.id ? { ...y, reviewed: !y.reviewed } : y)))} data-andro="qa-mark">{x.reviewed ? <><Check size={12} /> Reviewed</> : "Mark reviewed"}</button>
+                    <button className="cx-btn ghost" onClick={() => setQa((l) => l.filter((y) => y.id !== x.id))}><Trash2 size={12} /> Remove answer</button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
           <p className="cx-andro-fine">Numbers are judged by fixed rules against WHO laboratory manual, 6th ed. (2021). Steps follow Schlegel PN et al., AUA/ASRM Guideline on Infertility in Men (2020), and EAU guidelines. Decision support for a doctor, not a diagnosis.</p>
         </div>
       )}
@@ -232,19 +281,28 @@ export default function AndroView({ generate, readFile, friendlyError, toast, on
               <p className="cx-andro-for"><UserRound size={15} /> {lang === "en" ? "For you, in plain words" : "Aapke liye, aasaan shabdon mein"}</p>
               {explainer(r, lang).map((p) => <p key={p}>{p}</p>)}
               {note.trim() && <p className="cx-andro-docnote"><b>{lang === "en" ? "From your doctor:" : "Doctor ki salah:"}</b> {note.trim()}</p>}
+              {prog.enough && <div className="cx-andro-sub" data-andro="patient-progress"><small>{lang === "en" ? "Your progress" : "Aapki pragati"}</small>{progressLines(prog, lang).map((p) => <p key={p}>{p}</p>)}</div>}
+              {patientNext(js, lang) && <div className="cx-andro-sub" data-andro="patient-next"><small>{lang === "en" ? "Your next step" : "Aapka agla kadam"}</small><p>{patientNext(js, lang)}</p></div>}
               <p className="cx-andro-ok"><ShieldCheck size={14} /> {lang === "en" ? `Reviewed by ${signer}` : `${signer} ne dekha hai`}</p>
             </div>
           ) : (
             <div className="cx-andro-locked" data-andro="locked"><Lock size={18} /><div><b>Awaiting doctor sign-off</b><p>The explainer is released to the patient only after a doctor reviews the summary in step 3.</p><button className="cx-btn" onClick={() => setStep(2)}>Go to sign-off</button></div></div>
           )}
+          <AndroAsk audience="patient" lang={lang} record={record} locked={!signedAt} ai={ai} setAi={setAi} items={qa} onAdd={(x) => setQa((l) => [...l, x])} generate={generate} friendlyError={friendlyError} toast={toast} fallback={(k) => ruleAnswer(k, c, r, js, prog, lang)} />
           {r.repeatInMonths && (
-            <div className="cx-andro-follow" data-andro="followup"><CalendarPlus size={16} /><div><b>Repeat semen analysis around {repeatDate.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</b><p>About {r.repeatInMonths} months: one full cycle of sperm production.</p></div><button className="cx-btn" onClick={downloadIcs} data-andro="ics">Add to calendar</button></div>
+            <div className="cx-andro-follow" data-andro="followup" hidden={js.stages[3].state === "done"}><CalendarPlus size={16} /><div><b>Repeat semen analysis around {repeatDate.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</b><p>About {r.repeatInMonths} months: one full cycle of sperm production.</p></div><button className="cx-btn" onClick={downloadIcs} data-andro="ics">Add to calendar</button></div>
           )}
         </div>
       )}
 
-      <div className="cx-andro-keep">
+      {step === 4 && <AndroJourney j={journey} setJ={setJourney} status={js} c={c} r={r} note={note} signed={!!signedAt} toast={toast} onOpenProgress={() => setStep(5)} />}
+
+      {step === 5 && <AndroProgress reports={reports} p={prog} current={c.semen} currentEntered={r.entered > 0} onAdd={addReport} onRemove={(id) => setReports((l) => l.filter((x) => x.id !== id))} lang={lang} setLang={setLang} signed={!!signedAt} toast={toast} />}
+
+      <div className="cx-andro-keep" data-andro="privacy">
         <label className="cx-pa-mine"><input type="checkbox" checked={keep} onChange={(e) => setKeep(e.target.checked)} data-andro="keep" /> Keep this case on this device (you agree; delete any time)</label>
+        <label className="cx-pa-mine"><input type="checkbox" checked={ai} onChange={(e) => setAi(e.target.checked)} data-andro="ai-switch" /> Let Cadus AI read this case when a question is asked</label>
+        <button className="cx-btn ghost" onClick={downloadData} data-andro="export"><Download size={13} /> Download my data</button>
         {keep && <button className="cx-btn ghost" onClick={() => { setKeep(false); reset(); }}><Trash2 size={13} /> Delete it now</button>}
       </div>
     </section>
@@ -255,7 +313,7 @@ const CSS = `
 .cx-andro .cx-page-h{display:flex;gap:16px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
 .cx-andro-kicker{display:inline-flex;align-items:center;gap:6px;margin:0 0 4px;padding:3px 10px;border-radius:999px;background:#e6f2ef;color:#1f5e57;font-size:12.5px;font-weight:700;letter-spacing:.02em}
 .cx-andro-head-acts{display:flex;gap:8px;flex-wrap:wrap}
-.cx-andro-steps{list-style:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:14px 0;padding:0}
+.cx-andro-steps{list-style:none;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:14px 0;padding:0}
 .cx-andro-steps button{display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--t2);font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;text-align:left}
 .cx-andro-steps button span{display:grid;place-items:center;flex:none;width:22px;height:22px;border-radius:50%;background:var(--line);color:var(--text);font-size:12px}
 .cx-andro-steps button.on{border-color:#1f5e57;color:var(--text);box-shadow:0 0 0 2px rgba(31,94,87,.15)}
@@ -310,5 +368,6 @@ const CSS = `
 .cx-andro-follow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px}
 .cx-andro-follow div{flex:1;min-width:200px}.cx-andro-follow p{margin:2px 0 0;font-size:13px;color:var(--t2)}
 .cx-andro-keep{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
+@media (max-width:1500px){.cx-andro-steps{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:760px){.cx-andro-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.cx-andro-ticks{grid-template-columns:1fr}.cx-andro-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cx-andro-table{font-size:12.5px}}
 `;
